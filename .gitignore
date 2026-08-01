@@ -1,4 +1,33 @@
+# RPG Maker MZ local save data
 save/
+*.rmmzsave
+
+# Backups and temporary files
 *.bak
+*.tmp
+*.temp
+*.old
+*~
+
+# Distribution and build outputs
+www/
+dist/
+build/
+output/
+deploy/
+*.zip
+*.7z
+*.rar
+
+# Local dependencies and logs
+node_modules/
+*.log
+
+# OS files
 Thumbs.db
 .DS_Store
+desktop.ini
+
+# Editor settings
+.vscode/
+.idea/
