@@ -44,6 +44,8 @@
     "SF_People2",
     "SF_People3",
     "SF_Vehicle",
-    "Vehicle"
+    "Vehicle",
+    "VFX\\$Bullet",
+    "VFX\\$Gun"
   ]
 }
