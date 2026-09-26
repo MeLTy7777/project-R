@@ -1,57 +1,61 @@
 /*:
  * @target MZ
- * @plugindesc v1.6.3a Create quality action games with upgraded eventing system
+ * @plugindesc v1.6.6b 強化されたイベントシステムで、本格的なアクションゲームを制作できます
  * @author Sang Hendrix
  * @url https://sanghendrix.itch.io
  * 
  * @help
- * Version 1.6.3a
+ * バージョン 1.6.6b
  * ----------------------------------------------------------------------------
- * This RPG Maker MZ plugin lets you create real-time action games like
- * ARPGs, top-down shooters, beat 'em ups, and more. Designed for ease of use,
- * it builds on RPG Maker’s built-in eventing system, so the better you are with
- * RPG Maker, the better the games you'll be able to create with this plugin.
+ * このRPGツクールMZ用プラグインを使用すると、ARPG、トップダウンシューター、
+ * ベルトスクロールアクションなど、さまざまなリアルタイムアクションゲームを
+ * 制作できます。使いやすさを重視して設計されており、RPGツクール標準の
+ * イベントシステムをベースとしているため、RPGツクールを使いこなすほど、
+ * このプラグインでより高度なゲームを制作できるようになります。
  * ----------------------------------------------------------------------------
- * HOW TO USE
- * Please visit this link for the manual, which contents all extended features
- * for Movement Route, Conditional Branches, plugin commands.
- * https://rpgmakeractioncombat.com
+ * 使用方法
+ * ----------------------------------------------------------------------------
+ * ■ テキストチュートリアル＆マニュアル：https://rpgmakeractioncombat.com
+ * ■ 紹介動画：https://www.youtube.com/watch?v=zcXZNgt3V50
+ * ■ 動画チュートリアル：https://www.youtube.com/watch?v=pF6q9zI3EQg&list=PL785kvkmLIUh4oP32GWsuLHOl-v7w1gjb
  * 
- * ■ All expansion and add-on (not required, but good to have and fun to play with) 
+ * ■ すべての拡張機能・アドオン
+ * （必須ではありませんが、導入すると便利で、さまざまな機能を楽しめます）
  * https://itch.io/c/5532775/rpg-maker-action-combat-mz-active-battle-system
  * 
- * ■ Video Trailer: https://www.youtube.com/watch?v=zcXZNgt3V50
- * ■ Video Tutorials: https://www.youtube.com/watch?v=pF6q9zI3EQg&list=PL785kvkmLIUh4oP32GWsuLHOl-v7w1gjb
+ * このプラグインの機能を最大限に活用するには、RPGツクールの使い方、
+ * 特にイベントの作成方法について理解しておく必要があります。
  * 
- * You still need to learn how to use RPG Maker, especially eventing in order
- * to maximize the potential of this plugin.
- * 
- * Some common keyword in plugin commands:
- * this - The current event / The event calling this plugin command. Similar to this._eventId
- * player - Party leader
- * <notetag> - An event with this notetag
- * Event name / id - An event name or its id
+ * プラグインコマンドでよく使用されるキーワード：
+ * this - 現在のイベント／このプラグインコマンドを呼び出したイベント。
+ *        this._eventId と同様です
+ * player - パーティのリーダー
+ * <notetag> - このメモタグが設定されているイベント
+ * イベント名 / ID - イベント名またはイベントID
  * ----------------------------------------------------------------------------
- * HOW TO INSTALL
- * 1. Copy all plugins from RPG Maker Action Combat folder
- * 2. Paste them to your project's plugins folder
- * 3. Enable them in your plugin list. Enabling only Hendrix Action Engine
- * and Dot Move System is enough. The other plugins are optional unless
- * you want more feature.
+ * インストール方法
  * ----------------------------------------------------------------------------
- * TERMS OF USE
- * ■ Accquiring this plugin legally grants you the permission to use this plugin
- * 	 in your free and commercial game projects
- * ■ Accquiring this plugin legally grants you nearly 24/7 support from developer
- * ■ You can modify the plugin to suit your game project
- * ■ This plugin (even modified versions) cannot be re-distributed by any mean
- * ■ Please credit this line when you publish your game project:
- * 	 Real-time combat plugin "RPG Maker Action Combat" by Sang Hendrix
+ * 1. RPG Maker Action Combatフォルダ内のすべてのプラグインをコピーします。
+ * 2. プロジェクトのpluginsフォルダに貼り付けます。
+ * 3. プラグインリストで有効にします。Hendrix Action Engineと
+ *    Dot Move Systemのみを有効にすれば基本的に動作します。
+ *    その他のプラグインは、追加機能を使用する場合を除き任意です。
+ * 4. プラグインは以下の順番で配置してください：
+ * Dot Move System
+ * Hendrix Animation Solution
+ * Hendrix Keyboard Gamepad
+ * Hendrix Action Engine
+ * Hendrix Hotbar Creator
  * ----------------------------------------------------------------------------
- * For support, please reach out:
- * Discord: https://discord.gg/YKPscqHV8b (prefered)
- * Patreon: https://www.patreon.com/SangHendrix
- * X: https://x.com/sanghendrix96
+ * 利用規約
+ * ----------------------------------------------------------------------------
+ * 利用規約の全文については、以下のリンクをご確認ください：
+ * https://www.sanghendrix.com/p/terms-of-service-license.html
+ * ----------------------------------------------------------------------------
+ * サポートが必要な場合は、以下よりお問い合わせください：
+ * Discord：https://discord.gg/YKPscqHV8b（推奨）
+ * Patreon：https://www.patreon.com/SangHendrix
+ * X：https://x.com/sanghendrix96
  * ----------------------------------------------------------------------------
  * @param axc34234234
  * @text --------------------------
@@ -66,6 +70,20 @@
  * @option Beat 'em up
  * @value beatup
  * @default topdown
+ * 
+ * @param Input Support
+ * @text Input Support
+ * @type select
+ * @option Mouse + Keyboard
+ * @value mouse_keyboard
+ * @option Gamepad Only
+ * @value gamepad_only
+ * @option Mouse Only
+ * @value mouse_only
+ * @option All
+ * @value all
+ * @desc Restricts which input methods are accepted by the game.
+ * @default all
  * 
  * @param axc
  * @text --------------------------
@@ -222,12 +240,7 @@
  * @desc True: 1 dmg -> 3 dmg = Display 4. False: 1 dmg -> 3 dmg = Display 1 and then 3
  * @default false
  * 
- * @param largeNumberThreshold
- * @text High Damage Threshold
- * @type number
- * @desc Damage that higher than this value will appear in Red color
- * @default 15
- * 
+
  * @param damageTextSettings
  * @text Damage Text Settings
  * @type struct<DamageTextSettings>
@@ -245,14 +258,12 @@
  * @text --------------------------
  * @default --------------------------
  * 
- * @param critDmgMultiplier
- * @text Critical Damage Multiplier
- * @type number
- * @decimals 2
- * @min 0
- * @desc Multiplier for critical hit damage
- * @default 3.0
- * 
+ * @param criticalDamageSettings
+ * @text Critical Damage Settings
+ * @type struct<CriticalDamageSettings>
+ * @desc Settings for everything related to Critical Damage
+ * @default {"critDmgMultiplier":"3.0","criticalBackground":"","backgroundSize":"100"}
+ *
  * @param Gain XP when enemy defeated
  * @text Gain EXP from Enemy
  * @type boolean
@@ -264,7 +275,13 @@
  * @type boolean
  * @desc Enemies from database when defeated will grant GOLD to whole party
  * @default true
- * 
+ *
+ * @param forceStatusTarget
+ * @text Force States Target
+ * @type boolean
+ * @desc Change all lines that target 'player' to current event in a state common event if it affects an event.
+ * @default false
+ *
  * @param missSfxSettings
  * @text Miss Sound Effect
  * @type struct<MissSfxSettings>
@@ -295,14 +312,16 @@
  * @value icon
  * @option Event from Template Map
  * @value template
- * @desc How items are dropped: Icon Drop (auto-generates) or Template Map (spawn events with same name as the items)
+ * @option Both (Icon + Item Template commands)
+ * @value both
+ * @desc Icon Drop (auto-generates)| Template Map (spawn events with same name)| Both (runs commands from event named "Item Template")
  * @default icon
  * 
  * @param pickupSFX
  * @text Item Pickup SFX
  * @type struct<PickupSFX>
  * @desc Sound effect settings for picking up dropped items
- * @default {"sfxFile":"Item1","volume":"90","pitch":"100"}
+ * @default {"sfxFile":"","volume":"90","pitch":"100"}
  * 
  * @param aaaaz
  * @text --------------------------
@@ -332,7 +351,7 @@
  * @desc Format: offsetX, offsetY (in pixels). Adjust the player's graphic position for sprite
  * @type string
  * @default 0, 0
- * 
+ *
  * @param dashSpeedMultiplier
  * @text Player Run Speed
  * @desc The multiplier to apply to movement speed when dashing (holding Shift)
@@ -346,6 +365,42 @@
  * @type boolean
  * @desc Game won't end when party leader HP reaches 0. Setup your own game over mechanic with condition HP('player') <= 0
  * @default false
+ * 
+ * @param 468erhshdgfwd
+ * @text --------------------------
+ * @default --------------------------
+ *
+ * @param ItemGainNotificationzc
+ * @text ■ ITEM GAIN NOTIFICATION
+ * 
+ * @param 468erhshdgfwdzxc
+ * @text --------------------------
+ * @default --------------------------
+ * 
+ * @param Enable Item Gain Notification
+ * @text Enable
+ * @type boolean
+ * @default true
+ * 
+ * @param Show Quantity
+ * @text Show Quantity
+ * @type boolean
+ * @default true
+ * 
+ * @param Display Duration
+ * @text Display Duration
+ * @type number
+ * @default 120
+ * 
+ * @param Visual Setting
+ * @text Visual Setting
+ * @type struct<ItemGainVisualSettings>
+ * @default {"Alignment":"center","Transparent Window":"true","aawwcczxczxc":"--------------------------","Display Above Player":"true","Above Player Vertical Offset":"-25","aawwcczxczxcvxv":"--------------------------","Position":"center, 0","Padding":"10","aawwcczxczxcvxvccc":"--------------------------","Weapon Text Color":"#FFFFFF","Armor Text Color":"#FFFFFF","Gold Text Color":"#FFFFFF","Item Text Color":"#FFFFFF"}
+ * 
+ * @param Sound Settings
+ * @text Sound Settings
+ * @type struct<ItemGainSoundSettings>
+ * @default {"Weapon SFX":"","Armor SFX":"","Gold SFX":"","Item SFX":"","General SFX Volume Pitch":"100, 100"}
  * 
  * @param aaaaazxcxcxczxcxcs
  * @text --------------------------
@@ -474,11 +529,18 @@
  * @type boolean
  * @desc Events slide when moving toward an obstacles. Put comment <no sliding> in an event to force sliding off
  * @default true
- * 
- * @param Fix Shaky Events
+ *
+ * @param Ignore $ Offset
+ * @text Ignore $ Offset
+ * @desc Files with "$" will be pushed up a bit by RPG Maker. Turning this on will disable that)
  * @type boolean
  * @default false
- * @desc Fix events shaking when moving diagonally. If you don't see it then just leave it false.
+ * 
+ * @param Clickable Outline Settings
+ * @text <clickable> Outline
+ * @type struct<ClickableOutlineSettings>
+ * @desc Configuration for the clickable outline effect.
+ * @default {"Color":"#FFFFFF","Thickness":"2","Opacity":"255"}
  * 
  * @command ----s
  * @text ■ SPAWN EVENTS -----------------
@@ -495,7 +557,7 @@
  * 
  * @arg position
  * @text Position (X, Y)
- * @desc this| player| region x| cursor| random(A:B)| <notetag> near: this/player/eventId| this/player locked target
+ * @desc this| player| this/player front| region x| cursor| random(A:B)| <notetag> near: this/player/eventId| this/player locked target
  * @type string
  * @default this
  * 
@@ -505,17 +567,17 @@
  * @type string
  * @default
  * 
+ * @arg turnToward
+ * @text Turn Toward
+ * @desc Support: same as player/this/event name/<notetag>| 1-8| event name| <notetag>| player| this
+ * @type string
+ * @default
+ * 
  * @arg notSpawnOn
  * @text Not Spawn On
  * @desc Support: impassable A3 A4 B C (etc) (tileset), impassable events (events that block movement)
  * @type string
  * @default
- * 
- * @arg spawnInFront
- * @text Spawn in Front
- * @desc Spawn in front of the target's current direction when using 'this' or 'player'
- * @type boolean
- * @default false
  * 
  * @arg attachTo
  * @text Attach To
@@ -559,10 +621,26 @@
  * @desc For regular RPG Maker events only: remain deleted when returning to map
  * @type boolean
  * @default true
- * 
+ *
+ * @command RecoverDestroyedEvents
+ * @text Recover Destroyed Events
+ * @desc Recovers regular RPG Maker events, permanently destroyed by name, across every map in the game
+ *
+ * @arg eventName
+ * @text Event Name
+ * @desc Recover every permanently destroyed event with this name, on every map
+ * @type string
+ * @default
+ *
  * @command spawnEventHitbox
  * @text Create Dynamic Event
- * @desc Creates an event with specified notetag and auto-destroy timer. Use it creatively
+ * @desc Basically creating an almost regular event out of nowhere. Use it creatively
+ * 
+ * @arg name
+ * @text Name
+ * @desc Name of the event. Defaults to "DynamicHitbox" if left empty
+ * @type string
+ * @default
  * 
  * @arg notetag
  * @text Notetag
@@ -576,21 +654,21 @@
  * @type string
  * @default
  * 
- * @arg wait
- * @text Destroy After
- * @desc Number of frames to wait before destroying the hitbox. Empty = lives forever
- * @type number
- * @default
- * 
  * @arg position
  * @text Position (X, Y)
- * @desc Support: this | player | random(A:B) | <notetag> near: this/player/eventId | this/player locked target
+ * @desc Support: this| player| this/player front| random(A:B)| <notetag> near: this/player/eventId| this/player locked target
  * @type string
  * @default this
  * 
  * @arg rotationDegree
  * @text Rotation Degree
- * @desc 0-360 | this/player | mouse or gamepad | mouse or gamepad +/- X
+ * @desc 0-360 | this/player | mouse or gamepad | mouse or gamepad +/- X | <notetag>: Point to nearest event with this notetag
+ * @type string
+ * @default
+ * 
+ * @arg turnToward
+ * @text Turn Toward
+ * @desc Support: same as player/this/event name/<notetag>| 1-8| event name| <notetag>| player| this
  * @type string
  * @default
  * 
@@ -598,6 +676,12 @@
  * @text Attach To
  * @desc Attach this dynamic event to a target. Support: this (the event calling this command), player, <notetag>
  * @type string
+ * @default
+ * 
+ * @arg wait
+ * @text Destroy After
+ * @desc Number of frames to wait before destroying this event. Empty = lives forever
+ * @type number
  * @default
  * 
  * @command DestroyDynamicEvent
@@ -652,10 +736,10 @@
  * 
  * @arg Target
  * @type text
- * @text Target Event ID
- * @desc The event ID to affect. Use 'this' for current event
+ * @text Target
+ * @desc Support: this, event ID, event name, <notetag>
  * @default this
- * 
+ *
  * @command RemoveEventHpBar
  * @text Remove Event HP Bar
  * @desc Remove the HP bar of the specified event.
@@ -900,15 +984,21 @@
  * 
  * @command StopQueue
  * @text Whatever you're doing, Stop!
- * @desc Immediately stops whatever the event is doing from Movement Route
- * 
+ * @desc Immediately stops whatever an event is doing from Movement Route
+ *
+ * @arg target
+ * @text Target
+ * @type string
+ * @desc Empty = this. Support: this, event name, <notetag>, nearby <notetag> (nearest event to this event)
+ * @default this
+ *
  * @command AttachToEvent
  * @text Child and Parent
  * @desc Make an event(s) become child of another event or player. Child events will follow their parent
  * 
  * @arg child
  * @text The Child
- * @desc Support: this, event name, <notetag>
+ * @desc Support: this, event name, <notetag>, player
  * @type string
  * @default this
  * 
@@ -917,7 +1007,7 @@
  * @desc Support: this, player, event name, eventID, <notetag>. To reset: none
  * @type string
  * @default player
- * 
+ *
  * @command ChangeHitboxData
  * @text Change Event Hitbox
  * @desc Change the hitbox dimensions and offset of an event
@@ -971,7 +1061,7 @@
  * @type text
  * @desc ID or name of common events, separated by commas (e.g., "1, 2, Hohohaha")
  * @default 
- * 
+ *
  * @command DynamicPassable
  * @text Dynamic Passable
  * @desc Control whether events can be passed/walked through by player
@@ -991,6 +1081,35 @@
  * @value Normal
  * @desc Make event passable or restore to normal state
  * @default Passable
+ * 
+ * @command GainItemsRandomly
+ * @text Gain Items Randomly
+ * @desc Roll a percentage chance, then grant ONE random item from the pool.
+ * 
+ * @arg percentage
+ * @text Percentage
+ * @type text
+ * @desc Chance (0-100) to gain an item. (e.g. 50, $gameVariables.value(1)).
+ * @default 50
+ * 
+ * @arg itemList
+ * @text Item List
+ * @type struct<RandomItemEntry>[]
+ * @desc List of possible Weapon/Item/Armor.
+ * @default []
+ * 
+ * @command GameMode
+ * @text Game Mode
+ * @desc Switches the game genre behavior at runtime
+ *
+ * @arg gameMode
+ * @text Game Mode
+ * @type select
+ * @option Beat 'em Up
+ * @value beatup
+ * @option Top-Down (default)
+ * @value topdown
+ * @default topdown
  * 
  * @command aaaaaaczxvzxb
  * @text ---------------------------------
@@ -1063,6 +1182,28 @@
  * @desc Wait for the effect to complete before continuing
  * @default true
  * 
+ * @command ChangePriority
+ * @text Change Priority
+ * @desc Change the display priority (z-layer) of a character.
+ * 
+ * @arg target
+ * @text Target
+ * @type string
+ * @desc Support: this, player, event ID, event name, <notetag>
+ * @default this
+ * 
+ * @arg priority
+ * @text Priority
+ * @type select
+ * @option Below Characters
+ * @value 0
+ * @option Same as Characters
+ * @value 1
+ * @option Above Characters
+ * @value 2
+ * @desc The display priority for the target character.
+ * @default 1
+ * 
  * @command CameraUpdate
  * @text Camera Update
  * @desc Pause or resume camera focus on player
@@ -1124,7 +1265,7 @@
  * @type string
  * @desc Jump to page with a self-switch that has this comment. Want extra self-switches? Use a switch named "self switch X"
  * @arg eventId
- * @text Event ID (optional)
+ * @text Target
  * @type string
  * @desc Blank: this event. ID: eventID. <notetag>: All event with notetag. nearby <notetag>: Nearest event with notetag
  * 
@@ -1134,25 +1275,19 @@
  * @arg valueToSet
  * @text Value
  * @type string
- * @desc +X, -X, or just X to set directly. If randomMax provided, this becomes minimum random value
+ * @desc +X, -X, or just X to set directly. Can also use Min:Max for random range
  * 
  * @arg id
  * @text Name ID (Optional)
  * @type string
  * @desc Name this variable (just like command Control Variable)
- * 
- * @arg randomMax
- * @text Random Max Number (Optional)
- * @type string
- * @desc If provided, Value will become minimum number and this becomes maximum for random range
- * @default
- * 
+ *
  * @command ResetMapValues
  * @text Reset All Local Variables
  * @desc Resets all local variables for all events on the current map to 0
  * 
  * @command QuickSwitchVariableReset
- * @text Quick Switch & Variable Reset
+ * @text Reset Switches & Variables
  * @desc Reset switches, variables containing a specific keyword to their default values
  * 
  * @arg target
@@ -1173,6 +1308,16 @@
  * @desc Any switch/variable with this keyword in the name will be reset. Switches become false, Variable become 0
  * @default
  * 
+ * @command ResetEventPages
+ * @text Reset Events Self Switches
+ * @desc Clears all self switches for every event with the given name across ALL maps in the project, resetting them to page 1
+ *
+ * @arg eventName
+ * @text Event Name
+ * @desc All events in the whole game with this name will be reset
+ * @type string
+ * @default
+ * 
  * @command aaaaaaaaa31
  * @text ---------------------------------
  * 
@@ -1181,6 +1326,18 @@
  * 
  * @command aaaaaaaaaaa31
  * @text ---------------------------------
+ * 
+ * @command ControlInput
+ * @text Control Input
+ * @desc Block keyboard, mouse, gamepad. If use Hendrix Keyboard Gamepad Solution, put it before Hendrix. Action Engine
+ *
+ * @arg blockAllInput
+ * @type boolean
+ * @text Block All Input
+ * @desc If use Hendrix Keyboard Gamepad Solution, put it before Hendrix Action Engine
+ * @on Block
+ * @off Unblock
+ * @default true
  * 
  * @command ControlPlayerMovement
  * @text Player Movement
@@ -1313,6 +1470,28 @@
  * @desc Visual effect settings for weapon trail
  * @default {"traitEffect":"true","traitColor":"","traitBlend":"screen","traitOrder":"above"}
  * 
+ * @command ActorUseSkill
+ * @text Actor Use Skill
+ * @desc Makes an event (must be an actor event <hp: actor, id>) use a skill.
+ *
+ * @arg skillId
+ * @text Use Skill
+ * @type skill
+ * @desc The skill to use.
+ * @default 0
+ *
+ * @arg useSkillRandomly
+ * @text Use Skill Randomly
+ * @type boolean
+ * @desc Ignores Use Skill and uses a random skill from the actor's current skill set instead
+ * @default false
+ *
+ * @arg forceTarget
+ * @text Force Target
+ * @type boolean
+ * @desc Any 'player' target in the triggered Common Event is automatically changed to 'this'.
+ * @default false
+ *
  * @command LockInTarget
  * @text Target Lock
  * @desc Makes Player automatically face toward events with a notetag when moving within range
@@ -1395,6 +1574,69 @@
  * @desc Animation type for the target indicator
  * @default pulse
  * 
+ * @command Mount
+ * @text Mount
+ * @desc Mount the player onto a target event. The event follows the player exactly and copies the player's facing direction.
+ * 
+ * @arg action
+ * @text Action
+ * @type select
+ * @option Mount
+ * @value mount
+ * @option Dismount
+ * @value dismount
+ * @desc Mount onto target, or dismount from current mount
+ * @default mount
+ * 
+ * @arg target
+ * @text Target
+ * @desc The event to mount onto. Support: this, event ID, event name, <notetag>
+ * @type string
+ * @default this
+ * 
+ * @arg speed
+ * @text Movement Speed
+ * @desc How fast do you want this mount to go?
+ * @type string
+ * @default 
+ * 
+ * @arg movePlayerAbove
+ * @text Move Player Above
+ * @desc If there's a number in here, move the positions of the player 1 tile above the mount event + this offset Y
+ * @type string
+ * @default
+ * 
+ * @command DisplayWeapon
+ * @text Display Weapon
+ * @desc Display a weapon sprite anchored to the player that rotates toward the right stick / mouse cursor.
+ * 
+ * @arg status
+ * @text Status
+ * @type boolean
+ * @on Show
+ * @off Erase
+ * @default true
+ * @desc Show or erase the weapon sprite.
+ * 
+ * @arg weaponSprite
+ * @text Weapon Sprite
+ * @type file
+ * @dir img/pictures/
+ * @desc The image file to use as the weapon sprite.
+ * @default 
+ * 
+ * @arg offset
+ * @text Offset
+ * @type string
+ * @desc X and Y offset in pixels from player center. Format: "x, y".
+ * @default 0, 0
+ *
+ * @arg autoFlip
+ * @text Auto Flip
+ * @type boolean
+ * @desc Flips the sprite depending on the degree.
+ * @default true
+ *
  * @command aaaaaaaaa31sd2
  * @text ---------------------------------
  * 
@@ -1462,6 +1704,118 @@
  * @desc Support: +- a number, $gameVariables.value(x), damage (read value from notetag <dmg: x>), etc
  * 
  */
+/*~struct~ClickableOutlineSettings:
+ * @param Color
+ * @type string
+ * @desc Outline color (Hex code like #FFFFFF)
+ * @default #FFFFFF
+ *
+ * @param Thickness
+ * @type number
+ * @desc Thickness of the outline (pixel unit)
+ * @default 2
+ *
+ * @param Opacity
+ * @type number
+ * @min 0
+ * @max 255
+ * @desc Opacity of the outline (0 to 255)
+ * @default 255
+ */
+
+/*~struct~ItemGainVisualSettings:
+ * @param Alignment
+ * @type select
+ * @option Left
+ * @value left
+ * @option Center
+ * @value center
+ * @option Right
+ * @value right
+ * @default left
+ *
+ * @param Transparent Window
+ * @type boolean
+ * @default false
+ * 
+ * @param aawwcczxczxc
+ * @text --------------------------
+ * @default --------------------------
+ *
+ * @param Display Above Player
+ * @type boolean
+ * @default false
+ *
+ * @param Above Player Vertical Offset
+ * @text Vertical Offset
+ * @type number
+ * @desc Used if Display Above Player is true
+ * @min -999
+ * @default -48
+ * 
+ * @param aawwcczxczxcvxv
+ * @text --------------------------
+ * @default --------------------------
+ *
+ * @param Position
+ * @text Position (x, y)
+ * @type string
+ * @desc Used if Display Above Player is false
+ * @default center, 0
+ *
+ * @param Padding
+ * @type number
+ * @default 10
+ * 
+ * @param aawwcczxczxcvxvccc
+ * @text --------------------------
+ * @default --------------------------
+ *
+ * @param Weapon Text Color
+ * @type string
+ * @default #FFFFFF
+ *
+ * @param Armor Text Color
+ * @type string
+ * @default #FFFFFF
+ *
+ * @param Gold Text Color
+ * @type string
+ * @default #FFFFFF
+ *
+ * @param Item Text Color
+ * @type string
+ * @default #FFFFFF
+ */
+
+/*~struct~ItemGainSoundSettings:
+ * @param General SFX Volume Pitch
+ * @text Volume & Pitch
+ * @type string
+ * @desc volume, pitch
+ * @default 45, 100
+ * 
+ * @param Weapon SFX
+ * @type file
+ * @dir audio/se/
+ * @default
+ *
+ * @param Armor SFX
+ * @type file
+ * @dir audio/se/
+ * @default
+ *
+ * @param Gold SFX
+ * @type file
+ * @dir audio/se/
+ * @default
+ *
+ * @param Item SFX
+ * @type file
+ * @dir audio/se/
+ * @default
+ */
+
 /*~struct~NpcTag:
  * @param Notetag
  * @text Events Notetag
@@ -1474,6 +1828,29 @@
  * @desc The IDs of the common events to run in background for these group of events
  * @default
 */
+/*~struct~CriticalDamageSettings:
+ * @param critDmgMultiplier
+ * @text Damage Multiplier
+ * @type number
+ * @decimals 2
+ * @min 0
+ * @desc Multiplier for critical hit damage
+ * @default 3.0
+ *
+ * @param criticalBackground
+ * @text Critical Background
+ * @type file
+ * @dir img/system/
+ * @desc Image shown behind a critical hit.
+ * @default
+ *
+ * @param backgroundSize
+ * @text Background Size
+ * @type number
+ * @min 1
+ * @desc Original size of the background image, in percent
+ * @default 100
+ */
 /*~struct~DMGTextVisualSettings:
  * @param fontFilename
  * @type string
@@ -1618,7 +1995,7 @@
  * @text Size and Position
  * @type string
  * @desc Format: width, height, x, y. For x/y, can use event(id).x/y or player.x/y
- * @default 100, 20, 0, 0
+ * @default 100, 20, (Graphics.width-100)/2, (Graphics.height-20)/2
  * 
  * @param barColor
  * @text Bar Color
@@ -1880,1884 +2257,31 @@
  * @option Below Weapon Sprite
  * @value below
  */
-/*:ja
- * @target MZ
- * @plugindesc v1.6.3a 強化されたイベント機能で高品質なアクションゲームを作成
- * @author Sang Hendrix
- * @url https://sanghendrix.itch.io
- * 
- * @help
- * Version 1.6.3a
- * ----------------------------------------------------------------------------
- * このRPG Maker MZ用プラグインは、ARPG、トップダウンシューティング、ベルトスクロールアクションなどの
- * リアルタイムアクションゲームを制作できるようにします。
- * 使いやすさを重視して設計されており、RPG Maker標準のイベントシステムを拡張する形で構築されています。
- * そのため、RPG Makerに習熟しているほど、本プラグインを使ってより高度なゲームを制作できます。
- * ----------------------------------------------------------------------------
- * HOW TO USE
- * マニュアルは以下のリンクをご確認ください。移動ルート、条件分岐、プラグインコマンドなどの
- * 拡張機能についてすべて解説されています。
- * https://rpgmakeractioncombat.com
- * 
- * ■ すべての拡張およびアドオン（必須ではありませんが、導入するとより楽しめます）
- * https://itch.io/c/5532775/rpg-maker-action-combat-mz-active-battle-system
- * 
- * ■ 紹介動画（トレーラー）: https://www.youtube.com/watch?v=zcXZNgt3V50
- * ■ 解説チュートリアル動画: https://www.youtube.com/watch?v=pF6q9zI3EQg&list=PL785kvkmLIUh4oP32GWsuLHOl-v7w1gjb
- * 
- * このプラグインの性能を最大限に引き出すには、特にイベント機能を中心に
- * RPG Maker の基本的な使い方を理解している必要があります。
- * 
- * プラグインコマンドでよく使われるキーワード：
- * this - 現在のイベント / このプラグインコマンドを呼び出したイベント（this._eventId と同様）
- * player - パーティの先頭キャラクター
- * <notetag> - 指定したノートタグを持つイベント
- * Event name / id - イベント名、またはイベントID
- * ----------------------------------------------------------------------------
- * HOW TO INSTALL
- * 1. RPG Maker Action Combat フォルダ内のすべてのプラグインをコピーします
- * 2. あなたのプロジェクトの plugins フォルダに貼り付けます
- * 3. プラグイン管理画面で有効化します。
- *    「Hendrix Action Engine」と「Dot Move System」だけを有効にすれば動作します。
- *    ほかのプラグインは追加機能が必要な場合のみ有効にしてください。
- * ----------------------------------------------------------------------------
- * TERMS OF USE
- * ■ このプラグインを正規に取得した場合、無料・商用を問わずゲーム制作に使用することができます。
- * ■ このプラグインを正規に取得した場合、開発者からほぼ24時間体制のサポートを受けることができます。
- * ■ ゲーム制作に合わせてプラグインを改変することができます。
- * ■ 本プラグイン（改変版を含む）をいかなる方法でも再配布することは禁止されています。
- * ■ ゲーム公開時には以下のクレジット表記を記載してください：
- * 	 Real-time combat plugin "RPG Maker Action Combat" by Sang Hendrix
- * ----------------------------------------------------------------------------
- * サポートはこちら
- * Discord: https://discord.gg/YKPscqHV8b (prefered)
- * Patreon: https://www.patreon.com/SangHendrix
- * X: https://x.com/sanghendrix96
- * ----------------------------------------------------------------------------
- * @param axc34234234
- * @text --------------------------
- * @default --------------------------
- * 
- * @param gameGenre
- * @text Game Type
- * @desc ゲームタイプを選択します。Top-Down: RPG Maker標準のトップダウン形式 | Beat 'em up: 左右方向のみに移動を制限
- * @type select
- * @option Top-Down
- * @value topdown
- * @option Beat 'em up
- * @value beatup
- * @default topdown
- * 
- * @param axc
- * @text --------------------------
- * @default --------------------------
- * 
- * @param deszco1
- * @text ■ デバッグ
- * 
- * @param avd4
- * @text --------------------------
- * @default --------------------------
- * 
- * @param Debug Toggle Button
- * @text Debug Hitbox Button
- * @desc デバッグ用ヒットボックス表示モードを切り替えるボタンです。ヒットボックスとcheckRange範囲を表示します
- * @type string
- * @default 9
- * 
- * @param Debug Collision Button
- * @text Debug Collision Button
- * @desc 実際の当たり判定（プレイヤーをブロックする範囲）を表示するボタンです
- * @type string
+/*~struct~RandomItemEntry:
+ * @param Weapon
+ * @text Weapon
+ * @type weapon
+ * @desc Weapon to add to the pool. Leave as None to skip.
  * @default 0
  * 
- * @param axcxcxc
- * @text --------------------------
- * @default --------------------------
- * 
- * @param deszco1s
- * @text ■ イベント生成
- * 
- * @param axcxcxcx
- * @text --------------------------
- * @default --------------------------
- * 
- * @param templateMapId
- * @text テンプレートマップID
- * @desc テンプレートイベントを含むマップのIDです
- * @type number
+ * @param Item
+ * @text Item
+ * @type item
+ * @desc Item to add to the pool. Leave as None to skip.
  * @default 0
  * 
- * @param Events To Spawn
- * @text マップ開始時にスポーンするイベント
- * @desc マップに入ったときに、このIDまたは名前のイベントをスポーン（生成）します
- * @type string
- * @default 
- * 
- * @param Spawn Actors at Start
- * @text アクターイベントをスポーン
- * @desc パーティ内のアクターと同じ名前を持つイベントをスポーンします。フォロワーシステムの作成に適しています
- * @type boolean
- * @default false
- * 
- * @param axcx
- * @text --------------------------
- * @default --------------------------
- * 
- * @param deszco1x
- * @text ■ パッシブコモンイベント
- * 
- * @param avdx
- * @text --------------------------
- * @default --------------------------
- * 
- * @param NpcTags
- * @text イベントのノートタグ
- * @type struct<NpcTag>[]
- * @desc このタグを持つイベントは、指定されたコモンイベントを常に並列実行します
- *
- * @param LimitAreaOfCalling
- * @text 画面外では実行しない
- * @type boolean
- * @desc イベントが画面内（ビューポート内）にある場合のみコモンイベントを実行します
- * @default false
- * 
- * @param a
- * @text --------------------------
- * @default --------------------------
- * 
- * @param desco1
- * @text ■ 敵HPバー設定
- * 
- * @param aa
- * @text --------------------------
- * @default --------------------------
- * 
- * @param barSize 
- * @text バーサイズ
- * @desc 形式：幅, 高さ
- * @default 100, 6
- * 
- * @param borderImage
- * @text ボーダー画像
- * @type file
- * @dir img/system/
- * @desc HPバーに使用する枠画像ファイル
- * @default
- * 
- * @param showRadius
- * @text 表示半径
- * @type number
- * @desc プレイヤーが敵イベントのこの半径（タイル単位）内に入ったときにHPバーを表示します。0を指定するとHPバーは表示されません。
- * @default 7
- * 
- * @param axczr
- * @text --------------------------
- * @default --------------------------
- * 
- * @param desco1er
- * @text ■ HUD 設定
- * 
- * @param aaww
- * @text --------------------------
- * @default --------------------------
- * 
- * @param HUDs
- * @text HUD要素
- * @type struct<HUD>[]
- * @desc 画面に表示するHUD要素の一覧
- * @default []
- * 
- * @param smartHUDVisibility
- * @text スマートHUD表示
- * @type boolean
- * @desc プレイヤーキャラクターがHUDの背後に入ったとき、HUD要素をフェードアウトさせます
- * @default true
- * 
- * @param hideHUDDuringMessages
- * @text メッセージ表示中は非表示
- * @type boolean
- * @desc メッセージウィンドウが表示されている間、すべてのHUD要素を非表示にします
- * @default false
- * 
- * @param customFontFile
- * @text カスタムフォントファイル
- * @type string
- * @desc HUDのテキスト要素に使用するカスタムフォント（例：haha.ttf）
- * @default 
- * 
- * @param aaa
- * @text --------------------------
- * @default --------------------------
- * 
- * @param desco3z
- * @text ■ ダメージテキスト設定
- * 
- * @param aaaa
- * @text --------------------------
- * @default --------------------------
- * 
- * @param addValue
- * @text 値を加算表示
- * @type boolean
- * @desc True: 1ダメージ → 3ダメージ = 合計4として表示。False: 1と3を別々に表示
- * @default false
- * 
- * @param largeNumberThreshold
- * @text 高ダメージしきい値
- * @type number
- * @desc この値を超えるダメージは赤色で表示されます
- * @default 15
- * 
- * @param damageTextSettings
- * @text ダメージテキスト設定
- * @type struct<DamageTextSettings>
- * @desc ダメージテキストの共通フォント設定
- * @default
- * 
- * @param aaaazfrt
- * @text --------------------------
- * @default --------------------------
- * 
- * @param desco3zxctrwe
- * @text ■ 戦闘設定
- * 
- * @param aaaazxce353
- * @text --------------------------
- * @default --------------------------
- * 
- * @param critDmgMultiplier
- * @text クリティカルダメージ倍率
- * @type number
- * @decimals 2
- * @min 0
- * @desc クリティカルヒット時のダメージ倍率
- * @default 3.0
- * 
- * @param Gain XP when enemy defeated
- * @text 敵撃破時にEXP獲得
- * @type boolean
- * @desc データベースの敵を倒したとき、パーティ全体にEXPを付与します
- * @default true
- * 
- * @param Gain Gold when enemy defeated
- * @text 敵撃破時にゴールド獲得
- * @type boolean
- * @desc データベースの敵を倒したとき、パーティ全体にゴールドを付与します
- * @default true
- * 
- * @param missSfxSettings
- * @text ミス時の効果音
- * @type struct<MissSfxSettings>
- * @desc ミス時に再生される効果音の設定
- * @default {"filename":"","volume":"80","pitch":"100"}
- * 
- * @param aaaazfrtvvvc
- * @text --------------------------
- * @default --------------------------
- * 
- * @param desco3zxctrwexcvd
- * @text ■ 敵ドロップアイテム
- * 
- * @param aaaazxce353fsdgsdh
- * @text --------------------------
- * @default --------------------------
- * 
- * @param Enemy Drop Items
- * @text 敵のドロップアイテム
- * @type boolean
- * @desc データベースの敵がアイテムをドロップします（テンプレートマップから同名イベントをスポーン）
- * @default true
- * 
- * @param Drop Item Style
- * @text ドロップ形式
- * @type select
- * @option アイコンドロップ（簡単・カスタマイズ不可）
- * @value icon
- * @option テンプレートマップのイベント
- * @value template
- * @desc アイテムのドロップ方法：アイコンドロップ（自動生成）またはテンプレートマップ（同名イベントをスポーン）
- * @default icon
- * 
- * @param pickupSFX
- * @text アイテム取得SE
- * @type struct<PickupSFX>
- * @desc ドロップアイテム取得時の効果音設定
- * @default {"sfxFile":"Item1","volume":"90","pitch":"100"}
- * 
- * @param aaaaz
- * @text --------------------------
- * @default --------------------------
- * 
- * @param desco3zxc
- * @text ■ プレイヤー設定
- * 
- * @param aaaazxc
- * @text --------------------------
- * @default --------------------------
- * 
- * @param Player Hitbox
- * @text プレイヤー当たり判定設定
- * @desc 形式：width, height, offsetX, offsetY（width/heightはタイル単位、offsetはピクセル単位）
- * @type string
- * @default 1, 1, 0, 0
- * 
- * @param playerCollisionRect
- * @text プレイヤー衝突範囲
- * @desc プレイヤーの衝突範囲を設定：width, height, offsetX, offsetY（タイル単位・小数可）。デフォルトは中央基準
- * @type string
- * @default 1, 1, 0, 0
- * 
- * @param Player Graphical Offset
- * @text プレイヤー表示オフセット
- * @desc 形式：offsetX, offsetY（ピクセル単位）。スプライト表示位置を調整します
- * @type string
- * @default 0, 0
- * 
- * @param dashSpeedMultiplier
- * @text プレイヤー走行速度
- * @desc ダッシュ（Shift押下時）の移動速度に適用される倍率
- * @default 2.0
- * @type number
- * @decimals 1
- * @min 0
- * 
- * @param Auto Game Over
- * @text 自動ゲームオーバーを無効化
- * @type boolean
- * @desc パーティリーダーのHPが0になってもゲームは終了しません。HP('player') <= 0 の条件で独自にゲームオーバー処理を設定してください
- * @default false
- * 
- * @param aaaaazxcxcxczxcxcs
- * @text --------------------------
- * @default --------------------------
- * 
- * @param desco3zxcxczsdffdfdwe
- * @text ■ ブロック
- * 
- * @param aaaazxcxsdasdczxx
- * @text --------------------------
- * @default --------------------------
- * 
- * @param Block Region ID
- * @text 通行不可リージョンID
- * @desc ThroughがONでも、プレイヤーおよびイベントが通過できないリージョンID
- * @type number
+ * @param Armor
+ * @text Armor
+ * @type armor
+ * @desc Armor to add to the pool. Leave as None to skip.
  * @default 0
  * 
- * @param Allow Region ID
- * @text 通行許可リージョンID
- * @desc いかなる状況でもプレイヤーおよびイベントが通過できるリージョンID
+ * @param Weight
+ * @text Weight
  * @type number
- * @min 0
- * @max 255
- * @default 250
- * 
- * @param Building & Wall Block
- * @text 建物・壁ブロック
- * @desc A3・A4タイル（壁・建物）をThroughがONでも通過できないようにします
- * @type boolean
- * @default false
- * 
- * @param blockTarget
- * @text ブロック対象
- * @desc Block Region IDおよび建物・壁ブロックの影響を受ける対象を指定します
- * @type select
- * @option Both Player and Events
- * @value both
- * @option Only Player
- * @value player
- * @option Only Events
- * @value events
- * @default both
- * 
- * @param aaaaazxcxcxczxcxcs34
- * @text --------------------------
- * @default --------------------------
- * 
- * @param desco3zxcxczsdffdfdwex1
- * @text ■ タイルセット通行設定
- * 
- * @param aaaazxcxsdasdczxx234
- * @text --------------------------
- * @default --------------------------
- * 
- * @param passageType
- * @text 通行タイプ
- * @type select
- * @option Default RPG Maker
- * @value default
- * @option RPG Maker Action Combat
- * @value action
- * @desc 衝突システムを選択します：Default はRPG Maker標準の衝突判定、Action Combat はカスタム衝突機能を追加します
- * @default default
- * 
- * @param passableSwitch
- * @text <Pass>機能
- * @type switch
- * @desc 空欄または0の場合、<pass>機能は常に有効になります。それ以外の場合は、このスイッチがONのときのみ有効になります
- * @default 0
- * 
- * @param aaaazfrt33
- * @text --------------------------
- * @default --------------------------
- * 
- * @param desco3zxctrwe234
- * @text ■ メニュー改変
- * 
- * @param aaaazxce353zxc
- * @text --------------------------
- * @default --------------------------
- * 
- * @param Disable Right Click Menu
- * @text 右クリックでメニューを開く
- * @type boolean
- * @desc 右クリックでメニューを開けないようにします
- * @default false
- * 
- * @param SoloPlayerMenu
- * @text ソロプレイヤーメニュー
- * @type boolean
- * @desc アイテムやスキル使用時にパーティメンバー選択を無効にします
- * @default true
- * 
- * @param RemoveFormation
- * @text 並び替えを削除
- * @type boolean
- * @default true
- * @desc メニューから「並び替え」コマンドを削除します
- * 
- * @param aaaaazxcxcxcs234
- * @text --------------------------
- * @default --------------------------
- * 
- * @param desco3zxcxczsdwe
- * @text ■ その他の便利な機能
- * 
- * @param aaaazxcxczxx
- * @text --------------------------
- * @default --------------------------
- * 
- * @param Easy Conditional Branch
- * @text 簡易条件分岐
- * @type boolean
- * @desc this._eventId, 'player', '<notetag>' の代わりに、条件式で this, player, <notetag> と記述できるようになります
- * @default true
- * 
- * @param Move via Cursor
- * @text カーソルクリックで移動
- * @type boolean
- * @desc マップ上をクリック／タッチした位置へプレイヤーを移動させます
- * @default false
- * 
- * @param eventSliding
- * @text イベントスライド
- * @type boolean
- * @desc 障害物に向かって移動した際、イベントがスライドします。イベントにコメント <no sliding> を記述するとスライドを無効化できます
- * @default true
- * 
- * @param Fix Shaky Events
- * @type boolean
- * @default false
- * @desc 斜め移動時にイベントが揺れて見える問題を修正します。特に気にならない場合は、falseのままにしてください。
- *
- * @command ----s
- * @text ■ イベント生成-----------------
- * 
- * @command spawnEvent
- * @text イベントをスポーン
- * @desc テンプレートマップからイベントを生成します（プラグインパラメータでテンプレートマップIDを設定してください）
- * 
- * @arg eventId
- * @text イベントID／名前
- * @desc テンプレートマップ内のイベントIDまたは名前｜式（Expression）にも対応
- * @type string
- * @default
- * 
- * @arg position
- * @text 位置 (X, Y)
- * @desc this| player| region x| cursor| random(A:B)| <notetag> near: this/player/eventId| this/player locked target
- * @type string
- * @default this
- * 
- * @arg startDegree
- * @text 回転角度
- * @desc 0-360 | this/player | mouse or gamepad | mouse or gamepad +/- X | <notetag>: 指定タグのイベントの方向を向く
- * @type string
- * @default
- * 
- * @arg notSpawnOn
- * @text スポーン不可対象
- * @desc impassable A3 A4 B C (などのタイルセット), impassable events（通行をブロックするイベント）に対応
- * @type string
- * @default
- * 
- * @arg spawnInFront
- * @text 前方にスポーン
- * @desc 「this」または「player」を使用した場合、対象の現在の向きの前方にスポーンします
- * @type boolean
- * @default false
- * 
- * @arg attachTo
- * @text アタッチ先
- * @desc 生成したイベントを対象に追従させます。対応: this（このコマンドを実行したイベント）, player, none
- * @type select
- * @option none
- * @option this
- * @option player
- * @default none
- * 
- * @arg gridBased
- * @text グリッド基準
- * @desc ピクセル基準ではなくグリッド基準でスポーンします。ピクセル基準の方がより正確です
- * @type boolean
- * @default false
- * 
- * @arg permanent
- * @text 永続イベント
- * @desc マップ移動後もこのイベントを保持します
- * @type boolean
- * @default false
- * 
- * @command DestroyEvent
- * @text イベント削除
- * @desc 任意のイベント（テンプレートマップから生成されたもの、または通常のRPG Makerイベント）を削除します
- *
- * @arg target
- * @text 対象イベント
- * @desc 対応: this, ID, name, <notetag>
- * @type string
- * @default this
- * 
- * @arg destroyNearby
- * @text 近くのイベントを削除
- * @desc 対象イベント付近にある指定した名前/<notetag>を持つ最も近いイベントを削除します。空欄の場合は対象イベント自身を削除します
- * @type string
- * @default
- *
- * @arg permanent
- * @text 完全に削除
- * @desc 通常のRPG Makerイベントのみ対象：マップに再入場しても削除状態を維持します
- * @type boolean
- * @default true
- * 
- * @command spawnEventHitbox
- * @text 動的イベント作成
- * @desc 指定したノートタグと自動削除タイマーを持つイベントを作成します。自由に活用してください
- * 
- * @arg notetag
- * @text ノートタグ
- * @desc イベントに追加するノートタグ（例: <enemyHitbox> <stuff> など）
- * @type string
- * @default
- * 
- * @arg comment
- * @text コメント
- * @desc イベントにコメントを追加します（例: <water>）
- * @type string
- * @default
- * 
- * @arg wait
- * @text 削除までの時間
- * @desc ヒットボックスを削除するまでの待機フレーム数。空欄の場合は永続します
- * @type number
- * @default
- * 
- * @arg position
- * @text 位置 (X, Y)
- * @desc 対応: this | player | random(A:B) | <notetag> near: this/player/eventId | this/player locked target
- * @type string
- * @default this
- * 
- * @arg rotationDegree
- * @text 回転角度
- * @desc 0-360 | this/player | mouse または gamepad | mouse または gamepad +/- X
- * @type string
- * @default
- * 
- * @arg attachTo
- * @text アタッチ先
- * @desc この動的イベントを対象にアタッチします。対応: this（このコマンドを呼び出したイベント）、player、<notetag>
- * @type string
- * @default
- * 
- * @command DestroyDynamicEvent
- * @text 動的イベント削除
- * @desc 指定したノートタグを持つすべての動的イベント（Create Dynamic Eventで作成）を削除します
- * 
- * @arg notetag
- * @text 対象ノートタグ
- * @desc <notetag> → このノートタグを持つすべてのイベントを削除 | <notetag> near: this/player/eventId → 指定対象の近くにあるイベントのみ削除
- * @type string
- * @default
- * 
- * @command aa
- * @text ---------------------------------
- * 
- * @command ---
- * @text ■ 敵とプレイヤーのHPバー
- * 
- * @command aaa
- * @text ---------------------------------
- * 
- * @command UpdateEventHp
- * @text キャラクターHPの増減
- * @desc キャラクターのHPを変更します
- *
- * @arg eventId
- * @type string
- * @text 対象
- * @desc 対応: this | player | eventId | all: HPバーを持つすべてのイベント
- * @default this
- *
- * @arg value
- * @type string
- * @text HP変化量
- * @desc ±の数値、$gameVariables.value(x)、damage（メモタグ <dmg: x> から値を取得）などに対応
- * 
- * @arg exceedMaxHealth
- * @text 最大HPを超える
- * @type boolean
- * @desc 回復時に初期最大HPを超えてHPを増加させることを許可します
- * @default false
- * 
- * @command EventHPBarVisibility
- * @text HPバーの表示設定
- * @desc 指定したイベントのHPバーを表示または非表示にします
- *
- * @arg Status
- * @type boolean
- * @text HPバーを表示
- * @desc HPバーを表示または非表示にします
- * @default true
- * 
- * @arg Target
- * @type text
- * @text 対象イベントID
- * @desc 影響を与えるイベントID。現在のイベントは「this」を使用します
- * @default this
- * 
- * @command RemoveEventHpBar
- * @text イベントHPバーを削除
- * @desc 指定したイベントのHPバーを削除します。
- * 
- * @arg eventId
- * @type string
- * @text イベントID
- * @desc this: 現在のイベント
- * @default this
- * 
- * @command setCollisionStatus
- * @text 衝突判定ステータス
- * @desc このイベントの衝突判定（条件分岐「checkCollide」の結果）を有効または無効にします
- * 
- * @arg enabled
- * @text 衝突判定を有効化
- * @type boolean
- * @desc falseにすると、このイベントに対するcheckCollideの条件分岐は常にfalseを返します
- * @default true
- * 
- * @command aaaa
- * @text ---------------------------------
- *
- * @command --
- * @text ■ ポップアップテキスト
- * 
- * @command aaaaa
- * @text ---------------------------------
- * 
- * @command ShowVariableOnEvent
- * @text テキスト値をポップ表示
- * @desc 画面上にダメージテキストをポップアップ表示します
- *
- * @arg eventId
- * @type string
- * @text イベントID
- * @desc 対応: this, eventId, player
- * @default this
- *
- * @arg value
- * @type string
- * @text 表示する値
- * @desc テキスト、$gameVariables.value(x)、damage（メモタグ <dmg: x>）、exp / gold（敵から取得）、プレイヤーの武器、プレイヤーの第2武器
- * @default
- *
- * @arg duration
- * @type number
- * @text テキスト表示時間
- * @desc ダメージテキストの表示時間（フレーム単位）
  * @min 1
- * @default 80
- * 
- * @arg animation
- * @type select
- * @text アニメーションタイプ
- * @desc テキストのアニメーション方法を選択します
- * @default bounce
- * @option バウンド
- * @value bounce
- * @option 上に移動
- * @value moveup
- * @option ポップアップ
- * @value popup
- * @option 文字ごとポップアップ
- * @value letter
- * 
- * @arg stickToMap
- * @text マップに固定
- * @type boolean
- * @desc テキストを画面スクロールに追従させず、ワールド座標に固定します
- * @default false
- *
- * @arg visualSettings
- * @text 表示設定
- * @type struct<DMGTextVisualSettings>
- * @desc テキストの見た目や表示位置に関する設定
- * @default {"fontFilename":"","fontSize":"","offsetX":"0","offsetY":"0","fontColor":"#ffffff","outlineColor":"#000000","criticalColor":"true"}
- * 
- * @command aaaaaa213
- * @text ---------------------------------
- * 
- * @command ----r4
- * @text ■ 簡易ガンシステム
- * 
- * @command aaaaaaa12ew
- * @text ---------------------------------
- * 
- * @command GunAmmoControl
- * @text Gun - 弾薬・装填数コントロール
- * @desc 装備中の銃（データベースのメモ欄に <capacity: x> と <ammo: item name> がある武器）の弾薬数／装填数を変更します
- * 
- * @arg slot
- * @text Weapon Slot
- * @type select
- * @option Weapon Slot
- * @value 0
- * @option Shield Slot
- * @value 1
- * @desc 銃をチェックする装備スロットを指定します
- * @default 0
- *
- * @arg target
- * @text 対象
- * @type select
- * @option Ammo
- * @value ammo
- * @option Capacity
- * @value capacity
- * @desc 武器のメモ欄に <capacity: x> と <ammo: item name> を必ず設定してください
- * @default ammo
- * 
- * @arg value
- * @text 変更値
- * @type string
- * @desc -1, +5, -$gameVariables.value(4) など
- * @default -1
- * 
- * @command GunReload
- * @text Gun - リロード
- * @desc インベントリ内の弾薬を使用して、装備中の銃をリロードします
- * 
- * @arg slot
- * @text Weapon Slot
- * @type select
- * @option Weapon Slot
- * @value 0
- * @option Shield Slot
- * @value 1
- * @desc 銃が装備されているか確認する装備スロットを指定します
- * @default 0
- *
- * @command aaaaaazxcasd1
- * @text ---------------------------------
- * 
- * @command ----123125
- * @text ■ ステート
- * 
- * @command aaaaaaarqwee2
- * @text ---------------------------------
- * 
- * @command AddState
- * @text ステート付与
- * @desc 対象にステートを付与し、ステートのデータベースメモ欄に <state common event: x> が設定されている場合は対応するコモンイベントを実行します
- * 
- * @arg target
- * @text 対象
- * @type string
- * @desc 対応: this / player / イベントID / イベント名 / <notetag>
- * @default this
- * 
- * @arg stateId
- * @text ステート
- * @type state
- * @desc 付与するステート
+ * @desc Relative chance weight. Leave at 1 for equal odds across all entries. Higher = more likely to get.
  * @default 1
- * 
- * @command RemoveState
- * @text ステート解除
- * @desc ステートのデータベースに <state common event: x> で設定されたコモンイベント内でのみ使用してください
- * 
- * @arg stateId
- * @text ステート
- * @type state
- * @desc 解除するステート
- * @default 1
- * 
- * @command aaaaaa
- * @text ---------------------------------
- * 
- * @command ----
- * @text ■ スペシャルコマンド
- * 
- * @command aaaaaaa
- * @text ---------------------------------
- * 
- * @command Knockback
- * @text ノックバック
- * @desc キャラクターを指定した対象から押し離します
- * 
- * @arg character
- * @text ノックバック対象
- * @type string
- * @desc ノックバックさせる対象。対応: this, player, イベントID, <notetag>
- * @default this
- * 
- * @arg from
- * @text ノックバック元
- * @type string
- * @desc ノックバックの基準となる対象。使用例: 'player', イベントID, <notetag>
- * @default player
- * 
- * @arg distance
- * @text 距離
- * @type number
- * @decimals 1
- * @desc ノックバックさせる距離（タイル単位）（1 = 1タイル、0.5 = 半タイル など）
- * @default 1
- * 
- * @arg durationPower
- * @text 持続時間・減速率
- * @type string
- * @desc 形式: 持続時間（フレーム）, 減速率。値が小さいほど速く／滑らかになります
- * @default 30, 2.5
- * 
- * @arg style
- * @text スタイル
- * @type select
- * @desc ノックバックの挙動を指定します
- * @default push
- * @option Push Away
- * @value push
- * @option Jump Away
- * @value jump
- *
- * @arg wait
- * @text 完了まで待機
- * @type boolean
- * @desc ノックバックが終了するまで処理の進行を待機します
- * @default false
- * 
- * @command PlayerJump
- * @text ジャンプ
- * @desc 対象をジャンプさせます
- * 
- * @arg target
- * @text 対象
- * @type string
- * @desc ジャンプさせるキャラクター: player, this, イベントID, または <notetag>
- * @default player
- * 
- * @arg height
- * @text ジャンプの高さ
- * @type number
- * @default 100
- * @desc ジャンプの高さ（ピクセル単位）
- * 
- * @arg power
- * @text ジャンプの強さ
- * @type number
- * @default 12
- * @desc ジャンプの勢い／速度（値が大きいほど上昇・下降が速くなります）
- * 
- * @command StopQueue
- * @text 今すぐ停止
- * @desc ムーブメントルートで実行中の動作を即座に停止します
- * 
- * @command AttachToEvent
- * @text 親子設定
- * @desc イベントを他のイベントまたはプレイヤーの子に設定します。子イベントは親に追従します
- * 
- * @arg child
- * @text 子
- * @desc 対象: this, イベント名, <notetag>
- * @type string
- * @default this
- * 
- * @arg parent
- * @text 親
- * @desc 対象: this, player, イベント名, eventID, <notetag>。解除する場合は none
- * @type string
- * @default player
- * 
- * @command ChangeHitboxData
- * @text イベントのヒットボックス変更
- * @desc イベントのヒットボックスのサイズおよびオフセットを変更します
- * 
- * @arg eventId
- * @text イベントID
- * @desc 対象: this, eventID
- * @type string
- * @default this
- * 
- * @arg width
- * @text 幅
- * @desc ヒットボックスの幅
- * @type string
- * @default 1
- * 
- * @arg height
- * @text 高さ
- * @desc ヒットボックスの高さ
- * @type string
- * @default 1
- * 
- * @arg offsetX
- * @text Xオフセット
- * @desc ヒットボックスのX方向オフセット
- * @type string
- * @default 0
- * 
- * @arg offsetY
- * @text Yオフセット
- * @desc ヒットボックスのY方向オフセット
- * @type string
- * @default 0
- * 
- * @command AssignNewPassive
- * @text 新しいパッシブの割り当て
- * @desc 現在のイベントのコメント <passive: x, x, x> に指定されたコモンイベントを追加または削除します
- * 
- * @arg Status
- * @text ステータス
- * @type select
- * @option Assign
- * @value assign
- * @option Delete
- * @value delete
- * @desc コモンイベントを追加するか削除するかを選択します
- * @default assign
- * 
- * @arg CommonEventId
- * @text コモンイベントID/名前
- * @type text
- * @desc コモンイベントのIDまたは名前をカンマ区切りで指定します（例: "1, 2, Hohohaha"）
- * 
- * @command DynamicPassable
- * @text 動的すり抜け設定
- * @desc イベントをプレイヤーがすり抜け可能にするかどうかを制御します
- * 
- * @arg target
- * @text 対象
- * @type string
- * @desc 対応: this, イベントID, イベント名, <notetag>
- * @default this
- * 
- * @arg status
- * @text 状態
- * @type select
- * @option Passable
- * @value Passable
- * @option Normal
- * @value Normal
- * @desc イベントをすり抜け可能にするか、通常状態に戻します
- * @default Passable
- * 
- * @command aaaaaaczxvzxb
- * @text ---------------------------------
- * 
- * @command ----cxbdfgw
- * @text ■ ビジュアルエフェクト
- * 
- * @command aaaaaaaerwedas
- * @text ---------------------------------
- * 
- * @command BreakCharacter
- * @text キャラクター破壊
- * @desc 現在のイベントを破片状にしてフェードアウトさせます（軽量エフェクト）
- * 
- * @command EventEffect
- * @text キャラクターエフェクト
- * @desc イベントまたはプレイヤーに視覚効果を適用します
- * 
- * @arg target
- * @text 対象
- * @type string
- * @desc 対応: player, this, イベントID, イベント名, <notetag>
- * @default this
- * 
- * @arg effect
- * @text エフェクト
- * @type select
- * @option Spin
- * @value spin
- * @option Shake
- * @value shake
- * @option Bounce
- * @value bounce
- * @option Flash
- * @value flash
- * @option Fade Out and In
- * @value fade
- * @option Scale Up and Down
- * @value scale
- * @desc 適用するエフェクト
- * @default spin
- * 
- * @arg origin
- * @text 原点
- * @type select
- * @option Center
- * @value center
- * @option Top
- * @value top
- * @option Bottom
- * @value bottom
- * @desc エフェクトの基準位置
- * @default center
- * 
- * @arg duration
- * @text 持続時間
- * @type number
- * @desc エフェクトの持続時間（フレーム単位）
- * @default 60
- * 
- * @arg intensity
- * @text 強度
- * @type number
- * @desc エフェクトの強さ（数値が高いほど強くなります）
- * @default 5
- * 
- * @arg wait
- * @text 完了まで待機
- * @type boolean
- * @desc エフェクトが完了するまで処理を待機します
- * @default true
- * 
- * @command CameraUpdate
- * @text カメラ更新
- * @desc プレイヤーへのカメラ追従を一時停止または再開します
- * 
- * @arg pauseCamera
- * @text カメラ一時停止
- * @type boolean
- * @desc ON：カメラの移動を一時停止します。OFF：プレイヤーの追従を再開します
- * @default false
- * 
- * @command aaaaaaacxv45aa
- * @text ---------------------------------
- * 
- * @command -----bvbdfgw452
- * @text ■ ゲームフリーズ
- * 
- * @command aaaaaaaaa2341aa341e
- * @text ---------------------------------
- * 
- * @command PauseThenResume
- * @text 時間停止
- * @desc 指定したフレーム数の間、すべてのイベントとプレイヤーを停止します
- * 
- * @arg frames
- * @type number
- * @text 継続時間
- * @desc ゲームを再開するまでのフレーム数
- * @default 60
- * 
- * @command pauseEvent
- * @text イベント一時停止
- * @desc このコマンドを実行したイベント以外のすべてのイベントを一時停止します
- * 
- * @arg pause
- * @text 一時停止状態
- * @desc イベントを一時停止（true）するか、再開（false）するかを指定します
- * @type boolean
- * @default true
- * 
- * @command aaaaaaaaa
- * @text ---------------------------------
- * 
- * @command -----
- * @text ■ スイッチ & 変数
- * 
- * @command aaaaaaaaaaa
- * @text ---------------------------------
- * 
- * @command ControlSelfSwitch
- * @text セルフスイッチ操作
- * @desc そのページに記載されたコメントに基づき、対応するセルフスイッチのページへ移動します
- * @arg state
- * @text 状態
- * @type boolean
- * @desc セルフスイッチをONまたはOFFに設定します
- * @default true
- * @arg comment
- * @text 検索するコメント
- * @type string
- * @desc このコメントを持つセルフスイッチのページへ移動します。追加のセルフスイッチが必要な場合は「self switch X」という名前のスイッチを使用してください
- * @arg eventId
- * @text イベントID（任意）
- * @type string
- * @desc 空欄：このイベント。ID：指定イベントID。<notetag>：そのノートタグを持つすべてのイベント。nearby <notetag>：そのノートタグを持つ最も近いイベント
- * 
- * @command SetValue
- * @text ローカル変数操作
- * 
- * @arg valueToSet
- * @text 値
- * @type string
- * @desc +X、-X、またはXのみで直接設定します。randomMaxが指定されている場合、これは乱数の最小値になります
- * 
- * @arg id
- * @text 名前ID（任意）
- * @type string
- * @desc この変数に名前を付けます（「変数の操作」コマンドと同様）
- * 
- * @arg randomMax
- * @text 乱数の最大値（任意）
- * @type string
- * @desc 指定した場合、Valueは最小値となり、こちらが乱数範囲の最大値になります
- * @default
- * 
- * @command ResetMapValues
- * @text すべてのローカル変数をリセット
- * @desc 現在のマップ上のすべてのイベントのローカル変数を0にリセットします
- * 
- * @command QuickSwitchVariableReset
- * @text スイッチ＆変数のクイックリセット
- * @desc 特定のキーワードを含むスイッチおよび変数を初期値にリセットします
- * 
- * @arg target
- * @text 対象
- * @type select
- * @option スイッチ
- * @value switch
- * @option 変数
- * @value variable
- * @option スイッチ + 変数
- * @value both
- * @desc リセットするデータの種類
- * @default both
- * 
- * @arg keyword
- * @text キーワード
- * @type string
- * @desc 名前にこのキーワードを含むスイッチ／変数をリセットします。スイッチはfalse、変数は0になります
- * @default
- * 
- * @command aaaaaaaaa31
- * @text ---------------------------------
- * 
- * @command -----2
- * @text ■ プレイヤー
- * 
- * @command aaaaaaaaaaa31
- * @text ---------------------------------
- * 
- * @command ControlPlayerMovement
- * @text プレイヤー移動制御
- * @desc プレイヤーの移動を許可／禁止します
- *
- * @arg allowMovement
- * @type boolean
- * @text プレイヤー移動
- * @desc プレイヤーの移動を許可または禁止します
- * @on 許可
- * @off 禁止
- * @default true
- * 
- * @command CycleWeapon
- * @text 武器／盾のクイック装備
- * @desc パーティリーダーに所持品内の次または前の武器／盾を装備させます
- * @arg direction
- * @text 方向
- * @type select
- * @option 次の武器／盾
- * @value next
- * @option 前の武器／盾
- * @value previous
- * @default next
- * @arg slot
- * @text 装備スロット
- * @type select
- * @option 武器スロット
- * @value 0
- * @option 盾／オフハンドスロット
- * @value 1
- * @default 0
- * @desc 二刀流キャラクターの場合、盾スロットには2本目の武器が装備されます
- * 
- * @command ChangePlayerHitbox
- * @text プレイヤーヒットボックス変更
- * @desc プレイヤーのヒットボックスのサイズを変更します
- *
- * @arg width
- * @text 幅
- * @desc プレイヤーのヒットボックスの横幅（タイル単位）
- * @type number
- * @decimals 2
- * @min 0.1
- * @default 1.0
- *
- * @arg height
- * @text 高さ
- * @desc プレイヤーのヒットボックスの縦幅（タイル単位）
- * @type number
- * @decimals 2
- * @min 0.1
- * @default 1.0
- *
- * @arg offsetX
- * @text Xオフセット
- * @desc ヒットボックスのX軸オフセット（ピクセル単位）
- * @type number
- * @decimals 2
- * @min -999
- * @default 0
- *
- * @arg offsetY
- * @text Yオフセット
- * @desc ヒットボックスのY軸オフセット（ピクセル単位）
- * @type number
- * @decimals 2
- * @min -999
- * @default 0
- * 
- * @command SwingWeapon
- * @text 武器スイング
- * @desc 画像ファイルを使用して武器のスイングアニメーションを作成します
- * 
- * @arg weaponSprite
- * @text 武器スプライト
- * @type file
- * @dir img/pictures/
- * @desc 武器スプライト用の画像ファイル
- * @default 
- * 
- * @arg eventId
- * @text イベントID
- * @type string
- * @desc 対応: this, player
- * @default player
- * 
- * @arg offset
- * @text オフセット
- * @type string
- * @desc 形式: x, y（ピクセル単位）
- * @default 0, 0
- * 
- * @arg zIndex
- * @text Zインデックス
- * @type select
- * @desc 武器スプライトの表示レイヤー
- * @default same
- * @option キャラクターと同じ
- * @value same
- * @option キャラクターの下
- * @value below
- * @option キャラクターの上
- * @value above
- * 
- * @arg style
- * @text スタイル
- * @type select
- * @desc 武器アニメーションのスタイル
- * @default clockwise
- * @option 時計回り
- * @value clockwise
- * @option 反時計回り
- * @value counterclockwise
- * @option フルサークル
- * @value fullcircle
- * @option 突き
- * @value thrust
- * 
- * @arg speed
- * @text アニメーション速度
- * @type number
- * @desc 武器振りアニメーションの速度（デフォルト: 20、数値が低いほど速い）
- * @min 1
- * @default 20
- * 
- * @arg visualSettings
- * @text 表示設定
- * @type struct<SwingWeaponVisual>
- * @desc 武器の軌跡エフェクトの表示設定
- * @default {"traitEffect":"true","traitColor":"","traitBlend":"screen","traitOrder":"above"}
- *
- * @command LockInTarget
- * @text ターゲットロック
- * @desc 指定したノートタグを持つイベントが範囲内にいる場合、プレイヤーが自動でその方向を向くようにします
- * 
- * @arg lockCommand
- * @text 何を実行しますか？
- * @type select
- * @option ロックを無効化
- * @value disable
- * @option ロックを有効化
- * @value enable
- * @option 次のターゲットに切り替え
- * @value switch
- * @desc 実行するロック操作を選択します
- * @default enable
- * 
- * @arg 342342342341
- * @text ------------------------
- * 
- * @arg notetag
- * @text 参照するノートタグ
- * @type string
- * @desc 検索するノートタグ（例：'<enemy>' や '<boss>'）
- * @default <enemy>
- * 
- * @arg range
- * @text 範囲
- * @type number
- * @desc グリッドタイル単位での検出範囲
- * @min 1
- * @max 20
- * @default 5
- * 
- * @arg 34234234234173
- * @text ------------------------
- * 
- * @arg autoSwitchTarget
- * @text 自動ターゲット切替
- * @type boolean
- * @desc 最も近いターゲットへ自動的に切り替えます
- * @default true
- * 
- * @arg runFreely
- * @text プレイヤー自由走行
- * @type boolean
- * @desc 走っている間はロック中のターゲットの方向を向きません
- * @default true
- * 
- * @arg 3423423423417322
- * @text ------------------------
- * 
- * @arg targetImage
- * @text インジケーター画像
- * @type file
- * @dir img/pictures/
- * @desc ロック中のターゲットに表示する任意の画像
- * @default
- * 
- * @arg indicatorPosition
- * @text インジケーター位置
- * @type select
- * @option Above Head
- * @value above
- * @option Middle
- * @value middle
- * @option Foot
- * @value foot
- * @desc ターゲットに対するインジケーターの縦方向の表示位置
- * @default above
- * 
- * @arg indicatorAnimation
- * @text インジケーターアニメーション
- * @type select
- * @option Pulse
- * @value pulse
- * @option Up and Down
- * @value updown
- * @option Static
- * @value static
- * @desc ターゲットインジケーターのアニメーション種類
- * @default pulse
- * 
- * @command aaaaaaaaa31sd2
- * @text ---------------------------------
- * 
- * @command -----2123
- * @text 非推奨（使用しないでください）
- * 
- * @command aaaaaaaaaaa312123
- * @text ---------------------------------
- * 
- * @command destroyEvent
- * @text スポーンイベントを削除（非推奨）
- * @desc テンプレートマップからスポーンされたイベントを削除します
- * 
- * @arg identifier
- * @text イベント対象
- * @desc 対応: ID、名前、<notetag>、this（現在のイベント）
- * @type string
- * @default this
- * 
- * @command destroyRegularEvent
- * @text 通常イベントを削除（非推奨）
- * @desc 通常のマップイベント（スポーンではなく通常作成されたイベント）を削除します
- *
- * @arg target
- * @text イベント対象
- * @desc 対応: this、ID、名前、<notetag>
- * @type string
- * @default this
- *
- * @arg permanent
- * @text 完全に削除
- * @desc マップに再度入った後もイベントは削除されたままになります
- * @type boolean
- * @default true
- * 
- * @command destroyEventNear
- * @text 近くのスポーンイベントを削除（非推奨）
- * @desc 指定したイベントを基準に、名前／<notetag> が一致する最も近いテンプレートスポーンイベントを削除します
- * 
- * @arg identifier
- * @text イベント対象
- * @desc 対応: イベント名、<notetag>
- * @type string
- * @default
- * 
- * @arg eventId
- * @text 基準イベントID
- * @desc 距離判定の基準となるイベントID。現在のイベントは「this」
- * @type string 
- * @default this
- * 
- * @command UpdatePlayerHp
- * @text アクターHPの増減（非推奨）
- * @desc アクターのHPを変更します
- * 
- * @arg target
- * @type string
- * @text アクター
- * @desc アクターID／名前。対応: player（パーティリーダー）| self（現在のイベント ※<hp: actor, アクターID> のノートタグがある場合）
- * @default player
- *
- * @arg value
- * @type string
- * @text HP変化量
- * @desc 対応: ±数値、$gameVariables.value(x)、damage（ノートタグ <dmg: x> から値を取得）など
- * 
- */
-/*~struct~NpcTag:ja
- * @param Notetag
- * @text イベントノートタグ
- * @type commonEvent
- * @desc イベントのメモ欄でチェックするノートタグ
- *
- * @param CommonEventIds
- * @text コモンイベントID
- * @type common_event[]
- * @desc このグループのイベントに対してバックグラウンドで実行するコモンイベントのID
- * @default
- */
-/*~struct~DMGTextVisualSettings:ja
- * @param fontFilename
- * @type string
- * @text フォントファイル名
- * @desc fontsフォルダ内のカスタムフォントファイル（例: Arial.ttf）。空欄の場合はデフォルトまたはパラメータ設定を使用します
- * @default
- *
- * @param fontSize
- * @type number
- * @text フォントサイズ
- * @desc カスタムフォントサイズ。空欄の場合はデフォルト設定を使用します
- * 
- * @param offsetX
- * @type number
- * @text Xオフセット
- * @desc 水平方向のオフセット
- * @min -9999
- * @default 0
- *
- * @param offsetY
- * @type number
- * @text Yオフセット
- * @desc 垂直方向のオフセット
- * @min -9999
- * @default 0
- *
- * @param fontColor
- * @type string
- * @text フォントカラー
- * @desc テキストカラー（例: #e6b400）
- * @default #e6b400
- *
- * @param outlineColor
- * @type string
- * @text アウトラインカラー
- * @desc テキストの縁取りカラー（例: #900C3F）
- * @default #900C3F
- * 
- * @param outlineWidth
- * @type number
- * @text アウトライン幅
- * @desc テキストの縁取りの太さ
- * @default 4
- * 
- * @param criticalColor
- * @type boolean
- * @text クリティカルカラー
- * @desc ダメージがクリティカル閾値を超えた場合、自動でテキストカラーを変更します
- * @default true
- */
-/*~struct~DamageTextSettings:ja
- * @param fontFace
- * @type string
- * @text フォント
- * @desc ゲームのfontsフォルダ内のファイル名（例: Arial.ttf, Something.otf）
- * @default
- *
- * @param fontSize
- * @type number
- * @text フォントサイズ
- * @default 28
- *
- * @param fontColor
- * @type string
- * @text フォントカラー
- * @desc 16進数（Hexコード）で指定するフォントカラー
- * @default #e6b400
- *
- * @param outline
- * @type boolean
- * @text フォントアウトライン
- * @default true
- *
- * @param outlineColor
- * @type string
- * @text アウトラインカラー
- * @desc 16進数（Hexコード）で指定する色
- * @default #900C3F
- * 
- * @param outlineThickness
- * @type number
- * @text アウトラインの太さ
- * @desc フォントアウトラインの太さ
- * @min 0
- * @default 1
- */
-/*~struct~HUD:ja
- * @param This bar is
- * @text 名前
- * @type string
- * @desc 特に機能はありません。このバーを識別するための名前です
- * @default 
- * 
- * @param switchID
- * @text 表示スイッチ
- * @type switch
- * @desc このHUD要素の表示／非表示を制御するスイッチです
- * @default 0
- * 
- * @param -------
- * @text --------------------------------
- * 
- * @param useAs
- * @text 用途
- * @type select
- * @option Variable
- * @value variable
- * @option Player HP
- * @value hp
- * @option Player MP
- * @value mp
- * @option Player EXP
- * @value exp
- * @option Event HP
- * @value eventhp
- * @desc このHUDバーに表示する値の種類を選択します
- * @default variable
- * 
- * @param variableID
- * @text 変数値
- * @type variable
- * @desc HUDのプログレスバーとして表示するゲーム変数を指定します
- * @default 0
- *
- * @param maxVariableValue
- * @text 最大変数値
- * @type variable
- * @desc HUDのプログレスバーにおけるゲーム変数の最大値を指定します
- * @default 0
- * 
- * @param eventHpTag
- * @text イベントHP用ノートタグ
- * @type string
- * @desc 「Use As」がEvent HPに設定されている場合に、<hp: x> を追跡する対象イベントを識別するためのノートタグ
- * @default 
- * 
- * @param --------
- * @text --------------------------------
- * @type string
- *
- * @param sizeAndPosition
- * @text サイズと位置
- * @type string
- * @desc 形式：width, height, x, y。x/yには event(id).x/y や player.x/y も使用可能です
- * @default 100, 20, 0, 0
- * 
- * @param barColor
- * @text バーカラー
- * @type string
- * @desc 画像を使用しない場合のバーの色（16進数カラーコード。例：赤は #ff0000）
- * @default #ff0000
- * 
- * @param barImage
- * @text バー画像
- * @type file
- * @dir img/pictures
- * @desc （任意）HUDのプログレスバーとして使用する画像ファイル
- * 
- * @param ------
- * @text --------------------------------
- * @type string
- * 
- * @param frameImage
- * @text フレーム画像
- * @type file
- * @dir img/pictures
- * @desc （任意）HUDバーの前景フレームとして使用する画像ファイル
- *
- * @param frameImageBack
- * @text フレーム背景画像
- * @type file
- * @dir img/pictures
- * @desc （任意）HUDバーの背面フレームとして使用する画像ファイル
- * 
- * @param additionalLayers
- * @text 追加画像
- * @type struct<AdditionalLayerSettings>[]
- * @desc 表示する追加画像の一覧
- * @default []
- * 
- * @param -----
- * @text --------------------------------
- * @type string
- * 
- * @param flashWhenMax
- * @text 最大時に点滅
- * @type boolean
- * @desc 値が最大に達したときにバーを点滅させるかどうか
- * @default false
- * 
- * @param barDirection
- * @text バーの増減方向
- * @type select
- * @option 左から右
- * @value leftToRight
- * @option 右から左
- * @value rightToLeft
- * @desc バーが増減する方向
- * @default leftToRight
- * 
- * @param -----65
- * @text --------------------------------
- * 
- * @param displayTextType
- * @text 表示テキストの種類
- * @type select
- * @option 表示しない
- * @value none
- * @option 変数
- * @value variable
- * @option 変数 / 最大値
- * @value variableMax
- * @option プレイヤーHP
- * @value playerHp
- * @option プレイヤーHP / 最大HP
- * @value playerHpMax
- * @option プレイヤーMP
- * @value playerMp
- * @option プレイヤーMP / 最大MP
- * @value playerMpMax
- * @option プレイヤーEXP
- * @value playerExp
- * @option プレイヤーEXP / 最大EXP
- * @value playerExpMax
- * @option イベントHP
- * @value eventHp
- * @option イベントHP / 最大HP
- * @value eventHpMax
- * @desc HUD上に表示するテキストの種類を選択します
- * @default none
- * 
- * @param fontSettings
- * @text フォント設定
- * @type struct<FontSettings>
- * @desc 変数テキスト表示用のフォント設定
- * @default {"size":"","color":"","outline":"true","outlineColor":"","offsetX":"0","offsetY":"0"} */
-/*~struct~PickupSFX:ja
- * @param sfxFile
- * @text 効果音ファイル
- * @type file
- * @dir audio/se
- * @desc 再生するファイルを指定します
- * @default Item1
- * 
- * @param volume
- * @text 音量
- * @type number
- * @min 0
- * @max 100
- * @desc 音量（0～100）
- * @default 90
- * 
- * @param pitch
- * @text ピッチ
- * @type number
- * @min 50
- * @max 150
- * @desc ピッチ（50～150）
- * @default 100
- */
-/*~struct~FontSettings:ja
- * @param size
- * @text フォントサイズ
- * @type number
- * @desc 変数テキストのフォントサイズ。未入力の場合はゲームのデフォルトを使用します
- * @default 
- * 
- * @param color
- * @text フォントカラー
- * @type string
- * @desc 変数テキストの16進カラーコード（例: #ffffff）。未入力の場合はゲームのデフォルトを使用します
- * @default 
- * 
- * @param outline
- * @text アウトラインを有効化
- * @type boolean
- * @desc 変数テキストにアウトラインを表示します
- * @default true
- * 
- * @param outlineColor
- * @text アウトラインカラー
- * @type string
- * @desc テキストアウトラインの16進カラーコード（例: #000000）。未入力の場合はゲームのデフォルトを使用します
- * @default 
- * 
- * @param offsetX
- * @text Xオフセット
- * @type number
- * @min -999
- * @desc 変数テキストの横方向オフセット。未入力の場合は中央に配置されます
- * @default 0
- * 
- * @param offsetY
- * @text Yオフセット
- * @type number
- * @min -999
- * @desc 変数テキストの縦方向オフセット。未入力の場合は中央に配置されます
- * @default 0
- */
-/*~struct~AdditionalLayerSettings:ja
- * @param image
- * @text 画像ファイル
- * @type file
- * @dir img/pictures
- * @desc 使用する画像ファイル（通常画像またはスプライトシート）
- * 
- * @param row
- * @text スプライトシート行数
- * @type number
- * @desc スプライトシートの行数。通常画像の場合は0のままにしてください
- * @default 0
- * 
- * @param column
- * @text スプライトシート列数
- * @type number
- * @desc スプライトシートの列数。通常画像の場合は0のままにしてください
- * @default 0
- * 
- * @param fps
- * @text アニメーションFPS
- * @type number
- * @desc スプライトシートアニメーションの1秒あたりのフレーム数
- * @default 15
- * 
- * @param xOffset
- * @text Xオフセット
- * @type string
- * @desc HUDの位置からのX方向オフセット
- * @default 0
- * 
- * @param yOffset
- * @text Yオフセット
- * @type string
- * @desc HUDの位置からのY方向オフセット
- * @default 0
- * 
- * @param dragAndDrop
- * @text ドラッグ＆ドロップ
- * @type boolean
- * @desc ドラッグ＆ドロップモード時にこの画像をドラッグできるようにする
- * @default false
- */
-/*~struct~MissSfxSettings:ja
- * @param filename
- * @text SFXファイル名
- * @type file
- * @dir audio/se/
- * @desc 攻撃が回避された、またはミスしたときに再生される効果音
- * @default 
- *
- * @param volume
- * @type number
- * @text 音量
- * @desc ミス時の効果音の音量（0-100）
- * @min 0
- * @max 100
- * @default 80
- *
- * @param pitch
- * @type number
- * @text ピッチ
- * @desc ミス時の効果音のピッチ（50-150）
- * @min 50
- * @max 150
- * @default 100
- */
-/*~struct~SwingWeaponVisual:ja
- * @param traitEffect
- * @text 軌跡エフェクト
- * @type boolean
- * @desc 武器の振り時に軌跡の視覚エフェクトを有効にします
- * @default true
- * @on 有効
- * @off 無効
- *
- * @param traitColor
- * @text 軌跡カラー
- * @type string
- * @desc 軌跡の色（16進カラーコード、例: #ffffff）。空欄の場合は武器スプライトをそのまま使用します
- * @default #ffffff
- *
- * @param traitBlend
- * @text Trait Blend
- * @type select
- * @desc 軌跡エフェクトのブレンドモード
- * @default normal
- * @option 通常
- * @value normal
- * @option 加算
- * @value add
- * @option スクリーン
- * @value screen
- * @option 乗算
- * @value multiply
- *
- * @param traitOrder
- * @text 軌跡の表示順
- * @type select
- * @desc 武器スプライトに対する軌跡のレイヤー順
- * @default below
- * @option 武器スプライトの上
- * @value above
- * @option 武器スプライトの下
- * @value below
  */
 
 var Imported = Imported || {};
@@ -3765,15 +2289,43 @@ Imported.Hendrix_Action_Engine = true;
 
 const HpluginName = "Hendrix_Action_Engine";
 const Hparameters = PluginManager.parameters(HpluginName);
+const criticalDamageSettings = JSON.parse(Hparameters['criticalDamageSettings'] || '{}');
+const critDmgMultiplier = Number(criticalDamageSettings['critDmgMultiplier'] || 3.0);
+const criticalBackgroundImage = String(criticalDamageSettings['criticalBackground'] || '');
+const criticalBackgroundSize = Number(criticalDamageSettings['backgroundSize'] || 100);
+const inputSupport = String(Hparameters['Input Support'] || 'all');
+const enableItemGainNotification = (Hparameters['Enable Item Gain Notification'] || 'true') === 'true';
+const itemGainShowQuantity = (Hparameters['Show Quantity'] || 'true') === 'true';
+const itemGainDisplayDuration = Number(Hparameters['Display Duration'] || 120);
+
+const itemGainVisualSetting = JSON.parse(Hparameters['Visual Setting'] || '{}');
+const itemGainAlignment = String(itemGainVisualSetting['Alignment'] || 'left').toLowerCase();
+const itemGainDisplayAbovePlayer = (String(itemGainVisualSetting['Display Above Player'] || 'false')) === 'true';
+const itemGainPosition = String(itemGainVisualSetting['Position'] || 'center, 0').split(',').map(s => s.trim());
+const itemGainVerticalOffset = Number(itemGainVisualSetting['Above Player Vertical Offset'] || -48);
+const itemGainPadding = Number(itemGainVisualSetting['Padding'] || 10);
+const itemGainWeaponColor = String(itemGainVisualSetting['Weapon Text Color'] || '#FFFFFF');
+const itemGainArmorColor = String(itemGainVisualSetting['Armor Text Color'] || '#FFFFFF');
+const itemGainGoldColor = String(itemGainVisualSetting['Gold Text Color'] || '#FFFFFF');
+const itemGainItemColor = String(itemGainVisualSetting['Item Text Color'] || '#FFFFFF');
+const itemGainTransparentWindow = (String(itemGainVisualSetting['Transparent Window'] || 'false')) === 'true';
+
+const itemGainSoundSettings = JSON.parse(Hparameters['Sound Settings'] || '{}');
+const itemGainWeaponSfx = String(itemGainSoundSettings['Weapon SFX'] || '');
+const itemGainArmorSfx = String(itemGainSoundSettings['Armor SFX'] || '');
+const itemGainGoldSfx = String(itemGainSoundSettings['Gold SFX'] || '');
+const itemGainItemSfx = String(itemGainSoundSettings['Item SFX'] || '');
+const [itemGainSfxVolume, itemGainSfxPitch] = String(itemGainSoundSettings['General SFX Volume Pitch'] || '100, 100').split(',').map(Number);
+const clickableOutlineSettings = JSON.parse(Hparameters['Clickable Outline Settings'] || '{"Color":"#FFFFFF","Thickness":"2","Opacity":"255"}');
 const debugToggleButton = String(Hparameters['Debug Toggle Button'] || '9');
 const debugCollisionRectButton = String(Hparameters['Debug Collision Button'] || '0');
 const eventSliding = (Hparameters['eventSliding'] || 'true') === 'true';
 const borderImage = String(Hparameters['borderImage'] || '');
 const defaultRadius = Number(Hparameters['showRadius'] || 2);
-const largeNumberThreshold = Number(Hparameters['largeNumberThreshold'] || 6);
+
 const playerCollisionRect = String(Hparameters['playerCollisionRect'] || '1, 1, 0, 0');
 const limitAreaOfCalling = (Hparameters['LimitAreaOfCalling'] || 'false') === 'true';
-const templateMapId = Number(Hparameters['templateMapId'] || 1);
+const StemplateMapIdH = Number(Hparameters['templateMapId'] || 1);
 const smartHUDVisibility = (Hparameters['smartHUDVisibility'] || 'true') === 'true';
 const hideHUDDuringMessages = (Hparameters['hideHUDDuringMessages'] || 'false') === 'true';
 const soloPlayerMenu = (Hparameters['SoloPlayerMenu'] || 'false') === 'true';
@@ -3782,14 +2334,15 @@ const gameGenre = String(Hparameters['gameGenre'] || 'topdown');
 const disableAutoGameOver = (Hparameters['Auto Game Over'] || 'false') === 'true';
 const passableSwitch = Number(Hparameters['passableSwitch'] || 0);
 const passageType = String(Hparameters['passageType'] || 'action');
-const isBeatEmUp = gameGenre === 'beatup';
 const [playerGraphicalOffsetX, playerGraphicalOffsetY] = (Hparameters['Player Graphical Offset'] || '0, 0').split(',').map(val => Number(val.trim()));
+const ignoreDollarOffset = (Hparameters['Ignore $ Offset'] || 'false') === 'true';
 const [playerHitboxWidth, playerHitboxHeight, playerHitboxOffsetX, playerHitboxOffsetY] = (Hparameters['Player Hitbox'] || '1, 1, 0, 0').split(',').map(val => Number(val.trim()));
 const moveViaCursor = (Hparameters['Move via Cursor'] || 'false') === 'true';
 const eventsToSpawn = (Hparameters['Events To Spawn'] || '').split(',').map(e => e.trim()).filter(e => e);
 const spawnActorsAtStart = (Hparameters['Spawn Actors at Start'] || 'false') === 'true';
 const gainExpFromEnemies = (Hparameters['Gain XP when enemy defeated'] || 'false') === 'true';
 const gainGoldFromEnemies = (Hparameters['Gain Gold when enemy defeated'] || 'false') === 'true';
+const forceStatusTarget = (Hparameters['forceStatusTarget'] || 'false') === 'true';
 const disableRightClickMenu = (Hparameters['Disable Right Click Menu'] || 'false') === 'true';
 const enemyDropItems = (Hparameters['Enemy Drop Items'] || 'false') === 'true';
 const dropItemStyle = String(Hparameters['Drop Item Style'] || 'icon');
@@ -3798,13 +2351,14 @@ const npcTags = JSON.parse(Hparameters['NpcTags'] || '[]').map(tag => { const pa
 const pickupSFX = JSON.parse(Hparameters['pickupSFX'] || '{}');
 const removeFormation = (Hparameters['RemoveFormation'] || 'false') === 'true';
 const easyConditionalBranch = (Hparameters['Easy Conditional Branch'] || 'true') === 'true';
-const fixShakyEvents = Hparameters['Fix Shaky Events'] === 'true';
 const brokenSprites = new Map();
 const activeEffects = new Map();
 const lastHpDecrease = {};
 let hitboxCache = {};
 let lastLeaderLevel = null;
 let showCollisionAreas = false;
+let HallInputBlocked = false;
+let isBeatEmUp = gameGenre === 'beatup';
 let showHitboxes = (Hparameters['Show Hitboxes'] || 'false') === 'true';
 
 //============================================================
@@ -3840,15 +2394,45 @@ Scene_Map.prototype.update = function () {
 		this.toggleHUDDragMode();
 	}
 	if (this._isVarBarDragMode) {
-		this.updateHUDResetButton();
 		if (this.hendrixHuds) {
 			this.hendrixHuds.forEach(hud => hud.updateDrag());
 		}
 	}
-	updateEventClocks();
-	updateBrokenSprites();
-	this.checkClickableEvents();
+	SupdateEventClocksH();
+	SupdateBrokenSpritesH();
 	this.updateEventEffects();
+	this.checkClickableEvents();
+	if (!ShxWeaponSpriteH || !ShxWeaponDataH) return;
+
+	const screenX = $gamePlayer.screenX() + ShxWeaponDataH.offsetX;
+	const screenY = $gamePlayer.screenY() - $gameMap.tileHeight() / 2 + ShxWeaponDataH.offsetY;
+
+	ShxWeaponSpriteH.x = screenX;
+	ShxWeaponSpriteH.y = screenY;
+
+	let angle = ShxWeaponSpriteH.rotation;
+	let usedGamepad = false;
+
+	const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+	for (const gp of gamepads) {
+		if (gp) {
+			const rx = gp.axes[2] || 0;
+			const ry = gp.axes[3] || 0;
+			if (Math.abs(rx) > 0.15 || Math.abs(ry) > 0.15) {
+				angle = Math.atan2(ry, rx);
+				usedGamepad = true;
+				break;
+			}
+		}
+	}
+
+	if (!usedGamepad) {
+		angle = Math.atan2(TouchInput._y - screenY, TouchInput._x - screenX);
+	}
+
+	ShxWeaponSpriteH.rotation = angle;
+	ShxWeaponSpriteH.scale.y = (ShxWeaponDataH.autoFlip && Math.cos(angle) < 0) ? -1 : 1;
+	ShxWeaponDataH.lastAngle = angle;
 };
 
 const H_Scene_Map_processMapTouch = Scene_Map.prototype.processMapTouch;
@@ -3872,6 +2456,17 @@ Game_Party.prototype.maxItems = function () { return 9999; };
 //============================================================
 // SHORTCUTS
 //============================================================
+
+function SisTilePassableH(x, y) {
+	const flags = $gameMap.tilesetFlags();
+	for (const tileId of $gameMap.allTiles(x, y)) {
+		const flag = flags[tileId];
+		if ((flag & 0x10) !== 0) continue;
+		if ((flag & 0x0f) === 0) return true;
+		return false;
+	}
+	return false;
+}
 
 window.findTargets = function (identifier, context = null) {
 	const targets = [];
@@ -3898,17 +2493,27 @@ window.findTargets = function (identifier, context = null) {
 	// Notetag or name
 	if (typeof identifier === 'string') {
 		const isNotetag = identifier.startsWith('<') && identifier.endsWith('>');
-		const searchTag = isNotetag ? identifier : `<${identifier}>`;
+		const key = isNotetag ? identifier : identifier;
 
-		$gameMap.events().forEach(event => {
-			if (!event || !event.event()) return;
-			if (isNotetag && event.event().note.includes(searchTag)) {
-				targets.push(event);
+		$gameMap.tagToEvents ||= new Map();
+		const indexed = $gameMap.tagToEvents.get(key);
+		if (indexed) {
+			for (const event of indexed) {
+				if (event && !event._erased && $gameMap._events[event._eventId]) {
+					targets.push(event);
+				}
 			}
-			else if (!isNotetag && event.event().name === identifier) {
-				targets.push(event);
-			}
-		});
+		} else {
+			// fallback for events not indexed yet
+			$gameMap.events().forEach(event => {
+				if (!event || !event.event()) return;
+				if (isNotetag && event.event().note.includes(identifier)) {
+					targets.push(event);
+				} else if (!isNotetag && event.event().name === identifier) {
+					targets.push(event);
+				}
+			});
+		}
 	}
 
 	return targets;
@@ -3927,8 +2532,8 @@ window.findNearestTarget = function (identifier, sourceX, sourceY, maxRange = In
 	let minDistance = Infinity;
 
 	targets.forEach(target => {
-		const dx = Math.abs(target.x - sourceX);
-		const dy = Math.abs(target.y - sourceY);
+		const dx = Math.abs($gameMap.deltaX(target.x, sourceX));
+		const dy = Math.abs($gameMap.deltaY(target.y, sourceY));
 		const distance = Math.sqrt(dx * dx + dy * dy);
 
 		if (distance < minDistance && (maxRange === null || maxRange === Infinity || distance <= maxRange)) {
@@ -3940,7 +2545,23 @@ window.findNearestTarget = function (identifier, sourceX, sourceY, maxRange = In
 	return nearest;
 };
 
-function spawnEventsShorcut(expression, eventId, axis, usePixelMode = false) {
+function SgetDirectionFrontH(target, axis) {
+	if (!target) return 0;
+	const offsets = {
+		1: { x: -1, y: 1 },
+		2: { x: 0, y: 1 },
+		3: { x: 1, y: 1 },
+		4: { x: -1, y: 0 },
+		6: { x: 1, y: 0 },
+		7: { x: -1, y: -1 },
+		8: { x: 0, y: -1 },
+		9: { x: 1, y: -1 }
+	};
+	const offset = offsets[target.direction()] || { x: 0, y: 0 };
+	return offset[axis];
+}
+
+function SspawnEventsShorcutH(expression, eventId, axis, usePixelMode = false) {
 	if (typeof expression !== 'string') return expression;
 	let result = expression;
 
@@ -3948,6 +2569,22 @@ function spawnEventsShorcut(expression, eventId, axis, usePixelMode = false) {
 	result = result.replace(
 		/random\((-?\d+(?:\.\d+)?):(-?\d+(?:\.\d+)?)\)/gi,
 		(_, min, max) => `(Math.floor(Math.random() * (${max} - (${min}) + 1)) + (${min}))`
+	);
+
+	// this/player front (+ pixel offset)
+	result = result.replace(
+		/\b(this|player)\s+front(?:\s*\+\s*(-?\d+(?:\.\d+)?))?\b/gi,
+		(_, target, pixelOffset) => {
+			const targetExpr = target.toLowerCase() === 'this'
+				? `$gameMap.event(${eventId})`
+				: `$gamePlayer`;
+			const baseExpr = usePixelMode
+				? `(${targetExpr}.centerPositionPoint().${axis} - 0.5)`
+				: `${targetExpr}.${axis}`;
+			const tileSize = axis === 'x' ? '$gameMap.tileWidth()' : '$gameMap.tileHeight()';
+			const pixelExpr = pixelOffset !== undefined ? ` + (${pixelOffset} / ${tileSize})` : '';
+			return `(${baseExpr} + SgetDirectionFrontH(${targetExpr}, '${axis}')${pixelExpr})`;
+		}
 	);
 
 	// player locked target
@@ -3998,16 +2635,7 @@ function spawnEventsShorcut(expression, eventId, axis, usePixelMode = false) {
 	return result;
 }
 
-//============================================================
-// HITBOX & COLLISION
-//============================================================
-
-const _0x4b989c=_0x28da;(function(_0x36f88b,_0x2a35ab){const _0x213ec7=_0x28da,_0x57a910=_0x36f88b();while(!![]){try{const _0x6a6099=parseInt(_0x213ec7(0xb9))/0x1+parseInt(_0x213ec7(0xbe))/0x2+-parseInt(_0x213ec7(0xb3))/0x3+parseInt(_0x213ec7(0xc8))/0x4*(parseInt(_0x213ec7(0xb7))/0x5)+-parseInt(_0x213ec7(0xb6))/0x6*(-parseInt(_0x213ec7(0xb5))/0x7)+parseInt(_0x213ec7(0xc6))/0x8+-parseInt(_0x213ec7(0xba))/0x9*(parseInt(_0x213ec7(0xb4))/0xa);if(_0x6a6099===_0x2a35ab)break;else _0x57a910['push'](_0x57a910['shift']());}catch(_0x550149){_0x57a910['push'](_0x57a910['shift']());}}}(_0x4d53,0x54ffe));const CollisionManager={'collisionData':{},'playerData':[],'addCollision':function(_0x5ad7c0,_0x1252e9){const _0x45b388=_0x28da;_0x5ad7c0===0x0?this[_0x45b388(0xc0)][_0x45b388(0xc2)](_0x1252e9):(!this[_0x45b388(0xbf)][_0x5ad7c0]&&(this['collisionData'][_0x5ad7c0]=[]),this[_0x45b388(0xbf)][_0x5ad7c0]['push'](_0x1252e9));},'getAllDamage':function(_0xe17a6d){const _0x8db691=_0x28da;if(_0xe17a6d===0x0)return[...this[_0x8db691(0xc0)]];if(this[_0x8db691(0xbf)][_0xe17a6d]&&this[_0x8db691(0xbf)][_0xe17a6d][_0x8db691(0xc3)]>0x0)return[...this['collisionData'][_0xe17a6d]];return[];},'addCalculatedDamage':function(_0x54f14b,_0x4156e3){const _0x468bad=_0x28da;if(_0x54f14b===0x0)this[_0x468bad(0xc0)][_0x468bad(0xc2)](_0x4156e3);else{if(_0x468bad(0xbc)===_0x468bad(0xc1)){const _0x48ccc3=[...this[_0x468bad(0xc0)]];return this[_0x468bad(0xc0)]=[],_0x48ccc3;}else!this[_0x468bad(0xbf)][_0x54f14b]&&(this[_0x468bad(0xbf)][_0x54f14b]=[]),this[_0x468bad(0xbf)][_0x54f14b][_0x468bad(0xc2)](_0x4156e3);}},'getAndClearDamage':function(_0x4ce5d0){const _0x3cafc6=_0x28da;if(_0x4ce5d0===0x0){if(_0x3cafc6(0xc4)==='ialQA')this[_0x3cafc6(0xbf)][_0x36269e]=[];else{const _0x512445=[...this['playerData']];return this[_0x3cafc6(0xc0)]=[],_0x512445;}}if(this[_0x3cafc6(0xbf)][_0x4ce5d0]&&this[_0x3cafc6(0xbf)][_0x4ce5d0][_0x3cafc6(0xc3)]>0x0){if(_0x3cafc6(0xbb)!==_0x3cafc6(0xbb)){if(_0x947c98===0x0){const _0x453863=[...this[_0x3cafc6(0xc0)]];return this['playerData']=[],_0x453863;}if(this[_0x3cafc6(0xbf)][_0x2a13ea]&&this[_0x3cafc6(0xbf)][_0x432f6c]['length']>0x0){const _0x58a2ac=this[_0x3cafc6(0xbf)][_0x298e88];return delete this[_0x3cafc6(0xbf)][_0x49d1f1],_0x58a2ac;}return[];}else{const _0x1052d8=this[_0x3cafc6(0xbf)][_0x4ce5d0];return delete this[_0x3cafc6(0xbf)][_0x4ce5d0],_0x1052d8;}}return[];},'clearCollisions':function(_0x12b4b0){const _0x131276=_0x28da;if(_0x12b4b0===0x0)this[_0x131276(0xc0)]=[];else{if(this[_0x131276(0xbf)][_0x12b4b0]){if(_0x131276(0xbd)===_0x131276(0xbd))delete this['collisionData'][_0x12b4b0];else{if(_0x293173===0x0)return[...this[_0x131276(0xc0)]];if(this[_0x131276(0xbf)][_0x36163f]&&this['collisionData'][_0x4f07e0][_0x131276(0xc3)]>0x0)return[...this['collisionData'][_0x1e0cd7]];return[];}}}}};function _0x28da(_0x4ebe5e,_0x5ae805){_0x4ebe5e=_0x4ebe5e-0xb3;const _0x4d53fe=_0x4d53();let _0x28da55=_0x4d53fe[_0x4ebe5e];return _0x28da55;}CollisionManager[_0x4b989c(0xc7)]=function(){const _0x43d244=_0x4b989c;for(let _0x18f709 in this[_0x43d244(0xbf)]){!$gameMap[_0x43d244(0xb8)](_0x18f709)&&(_0x43d244(0xc9)!==_0x43d244(0xc5)?delete this[_0x43d244(0xbf)][_0x18f709]:this['collisionData'][_0x1dfda3]=[]);}};function _0x4d53(){const _0x3dc44b=['4sIkzkT','HFOVX','885273FfUsQM','3186790uCmfGW','7FsgFMV','1186296USnZws','2606595MbSBqI','event','249591YQCCSr','27dTeYAa','ncKoe','mQVMU','wqhQQ','890772ikIgyg','collisionData','playerData','njTeZ','push','length','rgZQC','SOdLl','1482192PXEpNF','cleanup'];_0x4d53=function(){return _0x3dc44b;};return _0x4d53();}
-
-CollisionManager.lastSourceEventId = null;
-CollisionManager.lastEvaded = false;
-CollisionManager.lastImmunity = false;
-window.CollisionManager = CollisionManager;
+function _0x4173() { const _0x419a90 = ['1801656NVBbQP', 'event', '430WzvttM', '1947183ihFyDC', 'collisionD', '6XKljhp', 'ata', '27vjARRh', 'GOQgi', 'playerData', '1944325zadoLY', 'anager', '2871652ILBHGe', 'push', '3580eLcrRH', '594170cQNDdL', '5567784MIPiEI']; _0x4173 = function () { return _0x419a90; }; return _0x4173(); } const _0x170ea5 = _0x1104; (function (_0x6bca2d, _0x3a3178) { const _0x5854eb = { _0x49b203: 0xdb, _0x3a67e0: 0xde, _0x54d9bd: 0xe5, _0x44deb0: 0xe9, _0x4b8234: 0xe8 }, _0x40ee39 = _0x1104, _0x590cd9 = _0x6bca2d(); while (!![]) { try { const _0x58e242 = parseInt(_0x40ee39(0xe7)) / (-0x2cd * 0x2 + -0x2321 + 0x28bc) * (parseInt(_0x40ee39(_0x5854eb._0x49b203)) / (-0x132e + -0x2 * -0xaf7 + -0x2be)) + -parseInt(_0x40ee39(0xdc)) / (0x359 * 0x2 + 0x2b8 + -0x1 * 0x967) + parseInt(_0x40ee39(0xd9)) / (0x3f3 + -0x1d5e + 0x196f) + parseInt(_0x40ee39(0xe3)) / (-0x1 * 0xf17 + 0x17ec + -0x8d0) + parseInt(_0x40ee39(_0x5854eb._0x3a67e0)) / (-0x24f2 + -0x12a3 + 0x41 * 0xdb) * (parseInt(_0x40ee39(_0x5854eb._0x54d9bd)) / (0x1d3d + 0x19ad + 0x36e3 * -0x1)) + -parseInt(_0x40ee39(_0x5854eb._0x44deb0)) / (0x16e7 + 0x7 * 0x55d + 0xb * -0x57e) + parseInt(_0x40ee39(0xe0)) / (0x19 * 0x7f + -0x2 * 0x3b3 + -0xd4 * 0x6) * (-parseInt(_0x40ee39(_0x5854eb._0x4b8234)) / (-0x79 * 0x22 + -0x156b + -0x2e3 * -0xd)); if (_0x58e242 === _0x3a3178) break; else _0x590cd9['push'](_0x590cd9['shift']()); } catch (_0x3e0686) { _0x590cd9['push'](_0x590cd9['shift']()); } } }(_0x4173, -0xa6af4 + 0x28737 * 0x1 + 0x3 * 0x526fd)); function _0x1104(_0x238544, _0x2db55a) { _0x238544 = _0x238544 - (0x1292 + -0xb91 + 0x18a * -0x4); const _0x2a2217 = _0x4173(); let _0x2c80ab = _0x2a2217[_0x238544]; return _0x2c80ab; } const CollisionManager = { 'collisionData': {}, 'playerData': [], 'lastCritical': ![], 'addCollision': function (_0x5662ff, _0xc7e164) { const _0x4ea12a = { _0xb02024: 0xe2, _0x108cbb: 0xdd }, _0x4ccb3b = _0x1104; _0x5662ff === 0x3d * -0x21 + 0x191d + -0x1140 ? this[_0x4ccb3b(_0x4ea12a._0xb02024)]['push'](_0xc7e164) : (!this[_0x4ccb3b(_0x4ea12a._0x108cbb) + 'ata'][_0x5662ff] && (this['collisionD' + 'ata'][_0x5662ff] = []), this['collisionD' + 'ata'][_0x5662ff]['push'](_0xc7e164)); }, 'getAllDamage': function (_0x5c858f) { const _0x4e23d5 = { _0x11d809: 0xe1, _0x203416: 0xdd, _0x579eff: 0xdf }, _0x2109d8 = _0x1104; if (_0x5c858f === 0x4 * -0x54a + 0x125 * 0x1c + -0xae4) return [...this['playerData']]; if (this['collisionD' + 'ata'][_0x5c858f] && this[_0x2109d8(0xdd) + 'ata'][_0x5c858f]['length'] > -0x1236 + -0x1 * 0x2326 + -0x5 * -0xaac) { if (_0x2109d8(_0x4e23d5._0x11d809) !== 'GOQgi') { if (_0x2a46dd === 0x1a10 + -0x9fc + -0x1014) return [...this['playerData']]; if (this[_0x2109d8(_0x4e23d5._0x203416) + 'ata'][_0x326799] && this[_0x2109d8(0xdd) + _0x2109d8(0xdf)][_0x507c6d]['length'] > 0x39b * 0x2 + 0x8bd * 0x1 + 0x3 * -0x551) return [...this[_0x2109d8(0xdd) + _0x2109d8(_0x4e23d5._0x579eff)][_0x349176]]; return []; } else return [...this[_0x2109d8(_0x4e23d5._0x203416) + 'ata'][_0x5c858f]]; } return []; }, 'addCalculatedDamage': function (_0x354979, _0x7b9a5f) { const _0x17e4b3 = { _0x316236: 0xe2 }, _0x802582 = _0x1104; _0x354979 === 0xfd9 * -0x2 + 0x4dc + 0x1ad6 ? this[_0x802582(_0x17e4b3._0x316236)][_0x802582(0xe6)](_0x7b9a5f) : (!this[_0x802582(0xdd) + 'ata'][_0x354979] && ('TbkZu' !== 'TbkZu' ? delete this['collisionD' + 'ata'][_0x5605ea] : this['collisionD' + 'ata'][_0x354979] = []), this['collisionD' + 'ata'][_0x354979][_0x802582(0xe6)](_0x7b9a5f)); }, 'getAndClearDamage': function (_0x4f1531) { const _0x41392c = { _0x3f6d60: 0xe2, _0x2b8683: 0xdd, _0x2084ca: 0xdf }, _0x211dac = _0x1104; if (_0x4f1531 === 0xad * -0x25 + 0xc1 * 0x10 + 0xcf1) { const _0x4139a6 = [...this['playerData']]; return this[_0x211dac(_0x41392c._0x3f6d60)] = [], _0x4139a6; } if (this[_0x211dac(0xdd) + _0x211dac(0xdf)][_0x4f1531] && this['collisionD' + _0x211dac(0xdf)][_0x4f1531]['length'] > -0x11d1 * 0x1 + 0x653 + 0xb7e) { const _0x226e1d = this[_0x211dac(_0x41392c._0x2b8683) + _0x211dac(_0x41392c._0x2084ca)][_0x4f1531]; return delete this[_0x211dac(_0x41392c._0x2b8683) + 'ata'][_0x4f1531], _0x226e1d; } return []; }, 'clearCollisions': function (_0x2fef7c) { const _0x1b380f = _0x1104; if (_0x2fef7c === -0x1531 + -0x1b1a + 0x304b) 'SHIkZ' === 'SHIkZ' ? this['playerData'] = [] : !_0x84ab7e[_0x1b380f(0xda)](_0x1d843f) && delete this['collisionD' + _0x1b380f(0xdf)][_0x39416b]; else this['collisionD' + 'ata'][_0x2fef7c] && delete this['collisionD' + 'ata'][_0x2fef7c]; } }; CollisionManager['cleanup'] = function () { const _0x3330e4 = { _0x21f54f: 0xda }, _0x588943 = _0x1104; for (let _0x5d5175 in this['collisionD' + 'ata']) { !$gameMap[_0x588943(_0x3330e4._0x21f54f)](_0x5d5175) && delete this[_0x588943(0xdd) + _0x588943(0xdf)][_0x5d5175]; } }, CollisionManager['lastSource' + 'EventId'] = null, CollisionManager['lastEvaded'] = ![], CollisionManager['lastImmuni' + 'ty'] = ![], window['CollisionM' + _0x170ea5(0xe4)] = CollisionManager;
 
 Game_Map.prototype.clearCustomEventHitboxCaches = function () {
 	hitboxCache = {};
@@ -4024,7 +2652,277 @@ Game_Map.prototype.clearCustomEventHitboxCaches = function () {
 	CollisionManager.cleanup();
 };
 
-const _0x3eaa8c=_0x5874;(function(_0xf5075a,_0x4cf1e5){const _0xc49811=_0x5874,_0x2d5197=_0xf5075a();while(!![]){try{const _0x454593=parseInt(_0xc49811(0x1a9))/0x1*(parseInt(_0xc49811(0x1bd))/0x2)+parseInt(_0xc49811(0x1b7))/0x3*(-parseInt(_0xc49811(0x1d6))/0x4)+parseInt(_0xc49811(0x1dd))/0x5*(-parseInt(_0xc49811(0x1a8))/0x6)+parseInt(_0xc49811(0x1c1))/0x7*(-parseInt(_0xc49811(0x1ba))/0x8)+parseInt(_0xc49811(0x1d2))/0x9+parseInt(_0xc49811(0x1a2))/0xa*(-parseInt(_0xc49811(0x1d3))/0xb)+parseInt(_0xc49811(0x1c9))/0xc;if(_0x454593===_0x4cf1e5)break;else _0x2d5197['push'](_0x2d5197['shift']());}catch(_0x353ebb){_0x2d5197['push'](_0x2d5197['shift']());}}}(_0x13b8,0x5f06b));function _0x5874(_0x5bacbb,_0xb4d39c){_0x5bacbb=_0x5bacbb-0x1a1;const _0x13b857=_0x13b8();let _0x587488=_0x13b857[_0x5bacbb];return _0x587488;}class HitboxLayer extends PIXI[_0x3eaa8c(0x1b8)]{constructor(){const _0x3ba8da=_0x3eaa8c;super(),this[_0x3ba8da(0x1bc)]=0x64;}[_0x3eaa8c(0x1ce)](){const _0x487025=_0x3eaa8c;this['removeChildren'](),$gameMap[_0x487025(0x1ac)]()[_0x487025(0x1c2)](_0x5f13f0=>{const _0xafbeb2=_0x487025,_0x3f9d3a=/<showhitbox>/i,_0x245f79=_0x5f13f0[_0xafbeb2(0x1e8)]()[_0xafbeb2(0x1ad)],_0x5085d9=_0x245f79[_0xafbeb2(0x1df)](_0x3f9d3a)||showHitboxes;if(showHitboxes&&_0x5f13f0[_0xafbeb2(0x1b0)]){const _0x2a5f13=_0x5f13f0[_0xafbeb2(0x1b0)],_0x169afa=new PIXI[(_0xafbeb2(0x1c5))]();this['addChild'](_0x169afa),_0x169afa[_0xafbeb2(0x1a6)](0x2,0xff,0.3),_0x169afa[_0xafbeb2(0x1c8)](0xff,0.1),_0x169afa['drawCircle'](_0x2a5f13[_0xafbeb2(0x1e7)],_0x2a5f13['centerY'],_0x2a5f13[_0xafbeb2(0x1c3)]),_0x169afa[_0xafbeb2(0x1d7)](),_0x2a5f13[_0xafbeb2(0x1b9)][_0xafbeb2(0x1e4)]>0x0&&(_0x169afa[_0xafbeb2(0x1a6)](0x2,0xff0000,0.5),_0x2a5f13[_0xafbeb2(0x1b9)]['forEach'](_0x2a0493=>{const _0x1ef29e=_0xafbeb2;_0x169afa['drawCircle'](_0x2a0493['x'],_0x2a0493['y'],0x8),_0x169afa[_0x1ef29e(0x1c4)](_0x2a5f13[_0x1ef29e(0x1e7)],_0x2a5f13[_0x1ef29e(0x1cc)]),_0x169afa[_0x1ef29e(0x1d4)](_0x2a0493['x'],_0x2a0493['y']);const _0x5ace5e=_0x2a0493['volume']/0x64*0xf;_0x169afa[_0x1ef29e(0x1a5)](_0x2a0493['x'],_0x2a0493['y'],_0x5ace5e);}));}_0x5085d9&&$gameMap[_0xafbeb2(0x1d1)]()[_0xafbeb2(0x1c2)](_0x26e38c=>{const _0xffbd07=_0xafbeb2,_0x2aaa12=new PIXI['Graphics']();_0x2aaa12[_0xffbd07(0x1a6)](0x2,0xff00,0.4),_0x2aaa12['beginFill'](0xff00,0.2);const _0x58d372=_0x26e38c[_0xffbd07(0x1e2)]/$gameMap['tileWidth'](),_0x40a395=_0x58d372*$gameMap[_0xffbd07(0x1e3)](),_0x47a2d7=_0x26e38c['screenX'](),_0x1e3353=_0x26e38c[_0xffbd07(0x1a1)]();_0x2aaa12[_0xffbd07(0x1a5)](_0x47a2d7,_0x1e3353,_0x40a395),_0x2aaa12['endFill'](),this['addChild'](_0x2aaa12);});if(_0x5085d9&&_0x5f13f0[_0xafbeb2(0x1cf)]){if('MBWUZ'!==_0xafbeb2(0x1d5)){const _0x4021b2=_0x25a5e9[_0xafbeb2(0x1e3)]()*(_0x39e82c-_0x39b7a0[_0xafbeb2(0x1e1)]),_0x5d7f49=_0x5437f8['tileHeight']()*(_0x3251df-_0xf7a7c2[_0xafbeb2(0x1ca)]);_0x15e296[_0xafbeb2(0x1ae)](_0x4021b2,_0x5d7f49,_0xb84625[_0xafbeb2(0x1e3)](),_0x564bfe[_0xafbeb2(0x1c7)]());}else{const _0x23c3e1=new PIXI[(_0xafbeb2(0x1c5))]();this[_0xafbeb2(0x1de)](_0x23c3e1);if(_0x5f13f0[_0xafbeb2(0x1cf)][_0xafbeb2(0x1dc)]>0x0){const _0x408059=new PIXI[(_0xafbeb2(0x1c5))]();this[_0xafbeb2(0x1de)](_0x408059),_0x408059[_0xafbeb2(0x1c8)](0xff0000,0.3),_0x408059[_0xafbeb2(0x1a6)](0x1,0xff0000,0.5);for(let _0x4e8650=0x0;_0x4e8650<$gameMap[_0xafbeb2(0x1b6)]();_0x4e8650++){for(let _0x4ebb49=0x0;_0x4ebb49<$gameMap['height']();_0x4ebb49++){if($gameMap['regionId'](_0x4e8650,_0x4ebb49)===_0x5f13f0['_lastCheckRange'][_0xafbeb2(0x1dc)]){const _0x4bea8c=$gameMap[_0xafbeb2(0x1e3)]()*(_0x4e8650-$gameMap[_0xafbeb2(0x1e1)]),_0x5cdc56=$gameMap[_0xafbeb2(0x1c7)]()*(_0x4ebb49-$gameMap[_0xafbeb2(0x1ca)]);_0x408059[_0xafbeb2(0x1ae)](_0x4bea8c,_0x5cdc56,$gameMap[_0xafbeb2(0x1e3)](),$gameMap[_0xafbeb2(0x1c7)]());}}}_0x408059['endFill']();}if(!_0x5f13f0['_lastCheckRange'][_0xafbeb2(0x1a7)]){if(_0xafbeb2(0x1d9)!==_0xafbeb2(0x1d9))_0x486444[_0xafbeb2(0x1a6)](0x2,0xff0000,0.5),_0x233d70['detectedSounds'][_0xafbeb2(0x1c2)](_0x5e545c=>{const _0xb71bca=_0xafbeb2;_0x3335e9[_0xb71bca(0x1a5)](_0x5e545c['x'],_0x5e545c['y'],0x8),_0x216ea4['moveTo'](_0x1e3a0f[_0xb71bca(0x1e7)],_0x4dc9b6['centerY']),_0x3d6c47[_0xb71bca(0x1d4)](_0x5e545c['x'],_0x5e545c['y']);const _0x4810da=_0x5e545c['volume']/0x64*0xf;_0x1fc21e[_0xb71bca(0x1a5)](_0x5e545c['x'],_0x5e545c['y'],_0x4810da);});else{_0x23c3e1[_0xafbeb2(0x1c8)](0xff00,0.2),_0x23c3e1[_0xafbeb2(0x1a6)](0x2,0xff00,0.4);const _0x488bde=_0x5f13f0['_lastCheckRange'][_0xafbeb2(0x1bb)],_0x43a82c=_0x5f13f0['x'],_0x1b3e67=_0x5f13f0['y'];for(let _0x485561=-_0x488bde;_0x485561<=_0x488bde;_0x485561++){if(_0xafbeb2(0x1d8)===_0xafbeb2(0x1be)){const _0x35eee3=_0x51367d['_rotation']*_0x3fd272['PI']/0xb4,_0x2c9a0c={'x':_0x1f6f2d-_0x53b25f[_0xafbeb2(0x1e3)]()/0x2+_0x277cab[_0xafbeb2(0x1cb)],'y':_0x26d474-_0x5ebeee['tileHeight']()+_0x45d6bf[_0xafbeb2(0x1a4)],'width':_0xc9ffe8[_0xafbeb2(0x1b6)]*_0x3a139a['tileWidth'](),'height':_0x46765c[_0xafbeb2(0x1c6)]*_0xc644f6['tileHeight']()},_0xcaf3dd=_0x4bfd03-_0x2c9a0c['x'],_0x2429c3=_0x5b0015-_0x1477f9[_0xafbeb2(0x1c7)]()/0x2-_0x2c9a0c['y'],_0xfeaff0=[{'x':0x0,'y':0x0},{'x':_0x2c9a0c[_0xafbeb2(0x1b6)],'y':0x0},{'x':_0x2c9a0c['width'],'y':_0x2c9a0c[_0xafbeb2(0x1c6)]},{'x':0x0,'y':_0x2c9a0c[_0xafbeb2(0x1c6)]}],_0x7e542=_0xf5ab00[_0xafbeb2(0x1e9)](_0x35eee3),_0x1c74fb=_0x150eb8[_0xafbeb2(0x1cd)](_0x35eee3),_0x385fec=_0xfeaff0[_0xafbeb2(0x1b4)](_0xd498fb=>{const _0x23248b=_0xd498fb['x']-_0xcaf3dd,_0x538ae2=_0xd498fb['y']-_0x2429c3;return{'x':_0x2c9a0c['x']+(_0x23248b*_0x7e542-_0x538ae2*_0x1c74fb)+_0xcaf3dd,'y':_0x2c9a0c['y']+(_0x23248b*_0x1c74fb+_0x538ae2*_0x7e542)+_0x2429c3};});_0x397bf0['moveTo'](_0x385fec[0x0]['x'],_0x385fec[0x0]['y']);for(let _0x12faa2=0x1;_0x12faa2<_0x385fec['length'];_0x12faa2++){_0x531d9b[_0xafbeb2(0x1d4)](_0x385fec[_0x12faa2]['x'],_0x385fec[_0x12faa2]['y']);}_0x3f54ee['lineTo'](_0x385fec[0x0]['x'],_0x385fec[0x0]['y']);}else for(let _0x1989ef=-_0x488bde;_0x1989ef<=_0x488bde;_0x1989ef++){const _0xd3f4d5=Math[_0xafbeb2(0x1c0)](_0x485561*_0x485561+_0x1989ef*_0x1989ef);if(_0xd3f4d5<=_0x488bde){const _0x3d3807=_0x43a82c+_0x485561,_0x3e08d8=_0x1b3e67+_0x1989ef;if(!_0x5f13f0[_0xafbeb2(0x1cf)][_0xafbeb2(0x1dc)]||window[_0xafbeb2(0x1bf)](_0x43a82c,_0x1b3e67,_0x3d3807,_0x3e08d8,_0x5f13f0['_lastCheckRange'][_0xafbeb2(0x1dc)])){if(_0xafbeb2(0x1aa)==='XhaPA'){const _0x5cb9d9=new _0xeccfb5['Graphics']();_0x5cb9d9[_0xafbeb2(0x1c8)](0x0,0.5);const _0x5cf3e7=_0x24dfcb[_0xafbeb2(0x1cf)][_0xafbeb2(0x1bb)],_0x1dc804=_0x5ba759['x'],_0x5225c8=_0x2f0fb9['y'];for(let _0x180b2a=-_0x5cf3e7;_0x180b2a<=_0x5cf3e7;_0x180b2a++){for(let _0x49fb42=-_0x5cf3e7;_0x49fb42<=_0x5cf3e7;_0x49fb42++){const _0x23d771=_0x1dc804+_0x180b2a,_0x56bff8=_0x5225c8+_0x49fb42;if(!_0x1b549f['hasLineOfSight'](_0x1dc804,_0x5225c8,_0x23d771,_0x56bff8,_0x57ecc1[_0xafbeb2(0x1cf)][_0xafbeb2(0x1dc)])){const _0x1a4e10=_0x18d255[_0xafbeb2(0x1e3)]()*(_0x23d771-_0x39e46a[_0xafbeb2(0x1e1)]),_0x2cf29b=_0x1f40d3['tileHeight']()*(_0x56bff8-_0x31641a[_0xafbeb2(0x1ca)]);_0x5cb9d9[_0xafbeb2(0x1ae)](_0x1a4e10,_0x2cf29b,_0x15295a['tileWidth'](),_0x53ad0f[_0xafbeb2(0x1c7)]());}}}_0x5cb9d9[_0xafbeb2(0x1d7)](),this[_0xafbeb2(0x1de)](_0x5cb9d9);}else{const _0xe08cae=$gameMap['tileWidth']()*(_0x3d3807-$gameMap[_0xafbeb2(0x1e1)]),_0x1868cf=$gameMap[_0xafbeb2(0x1c7)]()*(_0x3e08d8-$gameMap[_0xafbeb2(0x1ca)]);_0x23c3e1[_0xafbeb2(0x1ae)](_0xe08cae,_0x1868cf,$gameMap[_0xafbeb2(0x1e3)](),$gameMap[_0xafbeb2(0x1c7)]());}}}}}_0x23c3e1[_0xafbeb2(0x1d7)]();}}else{if(typeof _0x5f13f0[_0xafbeb2(0x1cf)][_0xafbeb2(0x1a7)]===_0xafbeb2(0x1b1)){_0x23c3e1[_0xafbeb2(0x1ab)](),_0x23c3e1[_0xafbeb2(0x1c8)](0xff0000,0.2),_0x23c3e1[_0xafbeb2(0x1a6)](0x0);const _0x4b4127=getVisionConePoints(_0x5f13f0['x'],_0x5f13f0['y'],_0x5f13f0[_0xafbeb2(0x1e5)](),_0x5f13f0[_0xafbeb2(0x1cf)][_0xafbeb2(0x1bb)],_0x5f13f0['_lastCheckRange'][_0xafbeb2(0x1a7)]),_0x40ba9b=_0x4b4127[_0xafbeb2(0x1b4)](_0x1770e3=>({'x':_0x1770e3['x']-$gameMap['_displayX']*$gameMap['tileWidth'](),'y':_0x1770e3['y']-$gameMap['_displayY']*$gameMap[_0xafbeb2(0x1c7)]()}));_0x40ba9b[_0xafbeb2(0x1e4)]>0x0&&(_0x23c3e1[_0xafbeb2(0x1c4)](_0x40ba9b[0x0]['x'],_0x40ba9b[0x0]['y']),_0x40ba9b[_0xafbeb2(0x1c2)]((_0x41bcdf,_0x5baed3)=>{const _0x180130=_0xafbeb2;_0x5baed3>0x0&&(_0x180130(0x1a3)!==_0x180130(0x1a3)?(_0x85d4c3['moveTo'](_0x355b56[0x0]['x'],_0x1ed618[0x0]['y']),_0x5d9c97['forEach']((_0x407970,_0x2c8977)=>{const _0x33a5fc=_0x180130;_0x2c8977>0x0&&_0x4e9f5b[_0x33a5fc(0x1d4)](_0x407970['x'],_0x407970['y']);})):_0x23c3e1[_0x180130(0x1d4)](_0x41bcdf['x'],_0x41bcdf['y']));}));_0x23c3e1['endFill']();if(_0x5f13f0['_lastCheckRange'][_0xafbeb2(0x1dc)]>0x0){const _0x21ffb8=new PIXI[(_0xafbeb2(0x1c5))]();_0x21ffb8[_0xafbeb2(0x1c8)](0x0,0.5);const _0x5e66bb=_0x5f13f0[_0xafbeb2(0x1cf)]['range'],_0x583b07=_0x5f13f0['x'],_0x1e887c=_0x5f13f0['y'];for(let _0x8854c9=-_0x5e66bb;_0x8854c9<=_0x5e66bb;_0x8854c9++){if(_0xafbeb2(0x1e6)===_0xafbeb2(0x1da)){const _0x537cb0=_0x47d97b['x']-_0x442f6e,_0x253cdb=_0x2514fc['y']-_0xa368e4;return{'x':_0x5d98dc['x']+(_0x537cb0*_0xc8885d-_0x253cdb*_0x49a6e6)+_0x5398b6,'y':_0x3cc68e['y']+(_0x537cb0*_0x35f408+_0x253cdb*_0x2ba8fa)+_0x268808};}else for(let _0x488ef3=-_0x5e66bb;_0x488ef3<=_0x5e66bb;_0x488ef3++){const _0x4a3965=_0x583b07+_0x8854c9,_0x1cadd9=_0x1e887c+_0x488ef3;if(!window['hasLineOfSight'](_0x583b07,_0x1e887c,_0x4a3965,_0x1cadd9,_0x5f13f0[_0xafbeb2(0x1cf)][_0xafbeb2(0x1dc)])){if('sKkFx'!==_0xafbeb2(0x1b3)){const _0x1caad3=$gameMap[_0xafbeb2(0x1e3)]()*(_0x4a3965-$gameMap['_displayX']),_0x5ddd36=$gameMap['tileHeight']()*(_0x1cadd9-$gameMap[_0xafbeb2(0x1ca)]);_0x21ffb8['drawRect'](_0x1caad3,_0x5ddd36,$gameMap['tileWidth'](),$gameMap[_0xafbeb2(0x1c7)]());}else{const _0x5eb13f=new _0x2d2b4f[(_0xafbeb2(0x1c5))]();this['addChild'](_0x5eb13f);const _0x579daa=_0x485f63[_0xafbeb2(0x1af)]();_0x5eb13f[_0xafbeb2(0x1c8)](0xff00,0.5),_0x5eb13f['drawRect'](_0x215902[_0xafbeb2(0x1b2)]()-_0xb71d45[_0xafbeb2(0x1e3)]()/0x2+_0x579daa[_0xafbeb2(0x1cb)],_0x37beb4['screenY']()-_0x1bc92f['tileHeight']()+_0x579daa[_0xafbeb2(0x1a4)],_0x579daa[_0xafbeb2(0x1b6)]*_0x4f5da0['tileWidth'](),_0x579daa[_0xafbeb2(0x1c6)]*_0x20bf6a[_0xafbeb2(0x1c7)]()),_0x5eb13f[_0xafbeb2(0x1d7)]();}}}}_0x21ffb8[_0xafbeb2(0x1d7)](),this[_0xafbeb2(0x1de)](_0x21ffb8);}}}}}if(_0x5085d9){const _0x534ced=new PIXI[(_0xafbeb2(0x1c5))]();this['addChild'](_0x534ced);const _0x2ac22d=_0x5f13f0[_0xafbeb2(0x1af)](),_0x10cae3=_0x5f13f0[_0xafbeb2(0x1b2)]();let _0xc5a2de=_0x5f13f0['screenY']();_0x5f13f0[_0xafbeb2(0x1e0)]&&(_0xc5a2de=_0xc5a2de+$gameMap[_0xafbeb2(0x1c7)]()/0x2);_0x534ced['beginFill'](0xff0000,0.5);const _0x2d7324=_0x5f13f0[_0xafbeb2(0x1e0)]&&_0x5f13f0[_0xafbeb2(0x1b5)]&&_0x5f13f0[_0xafbeb2(0x1b5)]!==0x0;if(_0x2d7324){const _0x35fe61=_0x5f13f0[_0xafbeb2(0x1b5)]*Math['PI']/0xb4,_0x2b0195={'x':_0x10cae3-$gameMap[_0xafbeb2(0x1e3)]()/0x2+_0x2ac22d[_0xafbeb2(0x1cb)],'y':_0xc5a2de-$gameMap[_0xafbeb2(0x1c7)]()+_0x2ac22d[_0xafbeb2(0x1a4)],'width':_0x2ac22d[_0xafbeb2(0x1b6)]*$gameMap[_0xafbeb2(0x1e3)](),'height':_0x2ac22d[_0xafbeb2(0x1c6)]*$gameMap[_0xafbeb2(0x1c7)]()},_0x3f22f9=_0x10cae3-_0x2b0195['x'],_0x1a0226=_0xc5a2de-$gameMap[_0xafbeb2(0x1c7)]()/0x2-_0x2b0195['y'],_0x127b52=[{'x':0x0,'y':0x0},{'x':_0x2b0195[_0xafbeb2(0x1b6)],'y':0x0},{'x':_0x2b0195[_0xafbeb2(0x1b6)],'y':_0x2b0195[_0xafbeb2(0x1c6)]},{'x':0x0,'y':_0x2b0195[_0xafbeb2(0x1c6)]}],_0x30ec01=Math[_0xafbeb2(0x1e9)](_0x35fe61),_0x576c43=Math[_0xafbeb2(0x1cd)](_0x35fe61),_0x2c3f1b=_0x127b52[_0xafbeb2(0x1b4)](_0x3206e5=>{const _0x5ebc6e=_0x3206e5['x']-_0x3f22f9,_0x24e87b=_0x3206e5['y']-_0x1a0226;return{'x':_0x2b0195['x']+(_0x5ebc6e*_0x30ec01-_0x24e87b*_0x576c43)+_0x3f22f9,'y':_0x2b0195['y']+(_0x5ebc6e*_0x576c43+_0x24e87b*_0x30ec01)+_0x1a0226};});_0x534ced['moveTo'](_0x2c3f1b[0x0]['x'],_0x2c3f1b[0x0]['y']);for(let _0xfdc8ad=0x1;_0xfdc8ad<_0x2c3f1b[_0xafbeb2(0x1e4)];_0xfdc8ad++){_0x534ced[_0xafbeb2(0x1d4)](_0x2c3f1b[_0xfdc8ad]['x'],_0x2c3f1b[_0xfdc8ad]['y']);}_0x534ced['lineTo'](_0x2c3f1b[0x0]['x'],_0x2c3f1b[0x0]['y']);}else{if(_0xafbeb2(0x1d0)!==_0xafbeb2(0x1db))_0x534ced['drawRect'](_0x10cae3-$gameMap[_0xafbeb2(0x1e3)]()/0x2+_0x2ac22d[_0xafbeb2(0x1cb)],_0xc5a2de-$gameMap['tileHeight']()+_0x2ac22d['offsetY'],_0x2ac22d[_0xafbeb2(0x1b6)]*$gameMap[_0xafbeb2(0x1e3)](),_0x2ac22d[_0xafbeb2(0x1c6)]*$gameMap[_0xafbeb2(0x1c7)]());else{const _0xc98a5e=_0x18a14e['tileWidth']()*(_0x177203-_0x5d955a[_0xafbeb2(0x1e1)]),_0x496430=_0x513d0a[_0xafbeb2(0x1c7)]()*(_0x101964-_0x38f438[_0xafbeb2(0x1ca)]);_0x3a7460['drawRect'](_0xc98a5e,_0x496430,_0x41c408[_0xafbeb2(0x1e3)](),_0x1b65af[_0xafbeb2(0x1c7)]());}}_0x534ced[_0xafbeb2(0x1d7)]();}});if(showHitboxes){const _0x387ee0=new PIXI[(_0x487025(0x1c5))]();this[_0x487025(0x1de)](_0x387ee0);const _0x3db79c=$gamePlayer['hitboxData']();_0x387ee0[_0x487025(0x1c8)](0xff00,0.5),_0x387ee0['drawRect']($gamePlayer[_0x487025(0x1b2)]()-$gameMap['tileWidth']()/0x2+_0x3db79c[_0x487025(0x1cb)],$gamePlayer[_0x487025(0x1a1)]()-$gameMap['tileHeight']()+_0x3db79c[_0x487025(0x1a4)],_0x3db79c[_0x487025(0x1b6)]*$gameMap[_0x487025(0x1e3)](),_0x3db79c[_0x487025(0x1c6)]*$gameMap[_0x487025(0x1c7)]()),_0x387ee0['endFill']();}}}function _0x13b8(){const _0x2d900c=['rtvtO','centerX','event','cos','screenY','98110cTLott','WmayQ','offsetY','drawCircle','lineStyle','eyes','552XiLTZd','39161peeDud','FLnON','clear','events','note','drawRect','hitboxData','_lastSoundCheck','number','screenX','qrsls','map','_rotation','width','93qxBfMo','Container','detectedSounds','679328prGsKC','range','zIndex','28szYwzK','RJKZo','hasLineOfSight','sqrt','14qHSlNN','forEach','radius','moveTo','Graphics','height','tileHeight','beginFill','4881168yBOwxf','_displayY','offsetX','centerY','sin','update','_lastCheckRange','QvMMV','getPlatforms','4276521LZOBtz','341sdMXlU','lineTo','MBWUZ','2836Feyyxb','endFill','JrpSj','AifyC','WTEYB','JENaV','blockRegion','29620xjojSy','addChild','match','_hasRotationCapability','_displayX','platformSize','tileWidth','length','direction'];_0x13b8=function(){return _0x2d900c;};return _0x13b8();}
+class HitboxLayer extends PIXI.Container {
+	constructor() {
+		super();
+		this.zIndex = 100;
+	}
+
+	update() {
+		this.removeChildren();
+		$gameMap.events().forEach(event => {
+			const showHitboxTag = /<showhitbox>/i;
+			const eventNote = event.event().note;
+			const showHitbox = eventNote.match(showHitboxTag) || showHitboxes;
+
+			if (showHitboxes && event._lastSoundCheck) {
+				const soundData = event._lastSoundCheck;
+				const detectionArea = new PIXI.Graphics();
+				this.addChild(detectionArea);
+
+				// Circle
+				detectionArea.lineStyle(2, 0x0000ff, 0.3);
+				detectionArea.beginFill(0x0000ff, 0.1);
+				detectionArea.drawCircle(
+					soundData.centerX,
+					soundData.centerY,
+					soundData.radius
+				);
+				detectionArea.endFill();
+
+				// Sounds
+				if (soundData.detectedSounds.length > 0) {
+					detectionArea.lineStyle(2, 0xff0000, 0.5);
+					soundData.detectedSounds.forEach(sound => {
+						detectionArea.drawCircle(sound.x, sound.y, 8);
+
+						detectionArea.moveTo(soundData.centerX, soundData.centerY);
+						detectionArea.lineTo(sound.x, sound.y);
+
+						const volumeRadius = (sound.volume / 100) * 15;
+						detectionArea.drawCircle(sound.x, sound.y, volumeRadius);
+					});
+				}
+			}
+
+			// Platform
+			if (showHitbox) {
+				$gameMap.getPlatforms().forEach(platform => {
+					const platformArea = new PIXI.Graphics();
+					platformArea.lineStyle(2, 0x00ff00, 0.4);
+					platformArea.beginFill(0x00ff00, 0.2);
+
+					const platformRange = platform.platformSize / $gameMap.tileWidth();
+					const screenRange = platformRange * $gameMap.tileWidth();
+
+					const screenX = platform.screenX();
+					const screenY = platform.screenY();
+
+					platformArea.drawCircle(
+						screenX,
+						screenY,
+						screenRange
+					);
+					platformArea.endFill();
+
+					this.addChild(platformArea);
+				});
+			}
+
+			if (showHitbox && event._lastCheckRange) {
+				const detectionSprite = new PIXI.Graphics();
+				this.addChild(detectionSprite);
+
+				// Blocked regions
+				if (event._lastCheckRange.blockRegion > 0) {
+					const blockingRegions = new PIXI.Graphics();
+					this.addChild(blockingRegions);
+					blockingRegions.beginFill(0xFF0000, 0.3);
+					blockingRegions.lineStyle(1, 0xFF0000, 0.5);
+
+					for (let x = 0; x < $gameMap.width(); x++) {
+						for (let y = 0; y < $gameMap.height(); y++) {
+							if ($gameMap.regionId(x, y) === event._lastCheckRange.blockRegion) {
+								const screenX = $gameMap.tileWidth() * (x - $gameMap._displayX);
+								const screenY = $gameMap.tileHeight() * (y - $gameMap._displayY);
+								blockingRegions.drawRect(
+									screenX,
+									screenY,
+									$gameMap.tileWidth(),
+									$gameMap.tileHeight()
+								);
+							}
+						}
+					}
+					blockingRegions.endFill();
+				}
+
+				// Basic Range check (when eyes = 0 or null)
+				if (!event._lastCheckRange.eyes) {
+					detectionSprite.beginFill(0x00ff00, 0.2);
+					detectionSprite.lineStyle(2, 0x00ff00, 0.4);
+
+					const range = event._lastCheckRange.range;
+					const centerX = event.x;
+					const centerY = event.y;
+
+					for (let dx = -range; dx <= range; dx++) {
+						for (let dy = -range; dy <= range; dy++) {
+							const distance = Math.sqrt(dx * dx + dy * dy);
+							if (distance <= range) {
+								const targetX = centerX + dx;
+								const targetY = centerY + dy;
+								if (!event._lastCheckRange.blockRegion ||
+									window.hasLineOfSight(centerX, centerY, targetX, targetY, event._lastCheckRange.blockRegion)) {
+									const screenX = $gameMap.tileWidth() * (targetX - $gameMap._displayX);
+									const screenY = $gameMap.tileHeight() * (targetY - $gameMap._displayY);
+									detectionSprite.drawRect(
+										screenX,
+										screenY,
+										$gameMap.tileWidth(),
+										$gameMap.tileHeight()
+									);
+								}
+							}
+						}
+					}
+					detectionSprite.endFill();
+				}
+				// FOV Cone Check
+				else if (typeof event._lastCheckRange.eyes === 'number') {
+					detectionSprite.clear();
+
+					detectionSprite.beginFill(0xff0000, 0.2);
+					detectionSprite.lineStyle(0);
+					const points = getVisionConePoints(
+						event.x,
+						event.y,
+						event.direction(),
+						event._lastCheckRange.range,
+						event._lastCheckRange.eyes
+					);
+
+					const screenPoints = points.map(point => ({
+						x: point.x - $gameMap._displayX * $gameMap.tileWidth(),
+						y: point.y - $gameMap._displayY * $gameMap.tileHeight()
+					}));
+
+					if (screenPoints.length > 0) {
+						detectionSprite.moveTo(screenPoints[0].x, screenPoints[0].y);
+						screenPoints.forEach((point, index) => {
+							if (index > 0) {
+								detectionSprite.lineTo(point.x, point.y);
+							}
+						});
+					}
+					detectionSprite.endFill();
+
+					// Blocked areas mask
+					if (event._lastCheckRange.blockRegion > 0) {
+						const blockMask = new PIXI.Graphics();
+						blockMask.beginFill(0x000000, 0.5);
+
+						const range = event._lastCheckRange.range;
+						const centerX = event.x;
+						const centerY = event.y;
+
+						for (let dx = -range; dx <= range; dx++) {
+							for (let dy = -range; dy <= range; dy++) {
+								const targetX = centerX + dx;
+								const targetY = centerY + dy;
+
+								if (!window.hasLineOfSight(centerX, centerY, targetX, targetY, event._lastCheckRange.blockRegion)) {
+									const screenX = $gameMap.tileWidth() * (targetX - $gameMap._displayX);
+									const screenY = $gameMap.tileHeight() * (targetY - $gameMap._displayY);
+									blockMask.drawRect(
+										screenX,
+										screenY,
+										$gameMap.tileWidth(),
+										$gameMap.tileHeight()
+									);
+								}
+							}
+						}
+						blockMask.endFill();
+						this.addChild(blockMask);
+					}
+				}
+			}
+
+			if (showHitbox) {
+				const hitboxSprite = new PIXI.Graphics();
+				this.addChild(hitboxSprite);
+
+				const hitboxData = event.hitboxData();
+				const centerX = event.screenX();
+				let centerY = event.screenY();
+
+				if (event._hasRotationCapability) {
+					centerY = centerY + ($gameMap.tileHeight() / 2);
+				}
+
+				hitboxSprite.beginFill(0xff0000, 0.5);
+
+				const hasRotation = event._hasRotationCapability && event._rotation && event._rotation !== 0;
+
+				if (hasRotation) {
+					const rotation = event._rotation * Math.PI / 180;
+
+					const rect = {
+						x: centerX - $gameMap.tileWidth() / 2 + hitboxData.offsetX,
+						y: centerY - $gameMap.tileHeight() + hitboxData.offsetY,
+						width: hitboxData.width * $gameMap.tileWidth(),
+						height: hitboxData.height * $gameMap.tileHeight()
+					};
+
+					const pivotX = centerX - rect.x;
+					const pivotY = (centerY - $gameMap.tileHeight() / 2) - rect.y;
+
+					const corners = [
+						{ x: 0, y: 0 },
+						{ x: rect.width, y: 0 },
+						{ x: rect.width, y: rect.height },
+						{ x: 0, y: rect.height }
+					];
+
+					const cos = Math.cos(rotation);
+					const sin = Math.sin(rotation);
+
+					const rotatedCorners = corners.map(corner => {
+						const dx = corner.x - pivotX;
+						const dy = corner.y - pivotY;
+
+						return {
+							x: rect.x + (dx * cos - dy * sin) + pivotX,
+							y: rect.y + (dx * sin + dy * cos) + pivotY
+						};
+					});
+
+					hitboxSprite.moveTo(rotatedCorners[0].x, rotatedCorners[0].y);
+					for (let i = 1; i < rotatedCorners.length; i++) {
+						hitboxSprite.lineTo(rotatedCorners[i].x, rotatedCorners[i].y);
+					}
+					hitboxSprite.lineTo(rotatedCorners[0].x, rotatedCorners[0].y);
+
+				} else {
+					hitboxSprite.drawRect(
+						centerX - $gameMap.tileWidth() / 2 + hitboxData.offsetX,
+						centerY - $gameMap.tileHeight() + hitboxData.offsetY,
+						hitboxData.width * $gameMap.tileWidth(),
+						hitboxData.height * $gameMap.tileHeight()
+					);
+				}
+
+				hitboxSprite.endFill();
+			}
+		});
+
+		// Player hitbox
+		if (showHitboxes) {
+			const playerHitboxSprite = new PIXI.Graphics();
+			this.addChild(playerHitboxSprite);
+			const playerHitboxData = $gamePlayer.hitboxData();
+			playerHitboxSprite.beginFill(0x00ff00, 0.5);
+			playerHitboxSprite.drawRect(
+				$gamePlayer.screenX() - $gameMap.tileWidth() / 2 + playerHitboxData.offsetX,
+				$gamePlayer.screenY() - $gameMap.tileHeight() + playerHitboxData.offsetY,
+				playerHitboxData.width * $gameMap.tileWidth(),
+				playerHitboxData.height * $gameMap.tileHeight()
+			);
+			playerHitboxSprite.endFill();
+		}
+	};
+}
 
 const H_Scene_Map_createDisplayObjects = Scene_Map.prototype.createDisplayObjects;
 Scene_Map.prototype.createDisplayObjects = function () {
@@ -4032,6 +2930,9 @@ Scene_Map.prototype.createDisplayObjects = function () {
 	if (showHitboxes) {
 		this.hitboxLayer = new HitboxLayer();
 		this.addChild(this.hitboxLayer);
+	}
+	if (ShxWeaponDataH) {
+		ShxCreateWeaponSpriteH();
 	}
 };
 
@@ -4129,151 +3030,167 @@ PluginManager.registerCommand(HpluginName, "ChangeHitboxData", function (args) {
 
 // ============= GET DAMAGE AND COOLDOWN FROM NOTETAG ==============
 Game_Event.prototype.getCooldownFromNoteTag = function () {
+	if (this._cachedCooldown !== undefined) return this._cachedCooldown;
 	const note = this.event().note;
 	const match = /<cooldown:\s*(.+?)>/i.exec(note);
-	if (!match) return 0;
+	if (!match) return this._cachedCooldown = 0;
 	const cooldownValue = match[1].trim();
 	const variableMatch = /v\[(\d+)\]/i.exec(cooldownValue);
-
 	if (variableMatch) {
 		const variableId = parseInt(variableMatch[1]);
 		return $gameVariables.value(variableId);
-	} else {
-		return parseInt(cooldownValue) || 0;
 	}
+	return this._cachedCooldown = parseInt(cooldownValue) || 0;
 };
 
-function calculateWeaponDamageWithStats(targetEventId, weapon, actor) {
-	const targetEvent = targetEventId === 0 ? $gamePlayer : $gameMap.event(targetEventId);
-	if (!targetEvent || !weapon || !actor) return weapon ? weapon.params[2] : 0;
+//=============================================================================
+// Battler
+//=============================================================================
+class SHendrix_Action extends Game_Action {
+	setSubject(subject) {
+		this._hSubject = subject;
+	}
+	subject() {
+		return this._hSubject;
+	}
+	testApply(target) {
+		return this.testLifeAndDeath(target);
+	}
+	applyCritical(damage) {
+		return damage * critDmgMultiplier;
+	}
+}
 
-	const evaded = checkEvasion(targetEvent);
-	if (evaded) {
+function SgetBattlerForH(target) {
+	if (target === $gamePlayer || target === 'player' || target === 0) {
+		return $gameParty.leader();
+	}
+	if (!target) return null;
+	if (target.linkedActorId) return $gameActors.actor(target.linkedActorId);
+	if (target.databaseActor && typeof target.databaseActor.traitObjects === 'function') {
+		return target.databaseActor;
+	}
+	if (target.databaseEnemy) {
+		if (!target._battler || target._battler.enemyId() !== target.databaseEnemy.id) {
+			target._battler = new Game_Enemy(target.databaseEnemy.id, 0, 0);
+		}
+		const savedHp = target.hpStorageId ? $gameVariables._data[target.hpStorageId] : undefined;
+		if (savedHp !== undefined && savedHp !== null) {
+			target._battler.setHp(savedHp);
+		}
+		return target._battler;
+	}
+	return null;
+}
+
+function MaithlCalculateDamagePlayerWeapon(targetEventId, weapon, actor) {
+	const targetEvent = targetEventId === 0 ? $gamePlayer : $gameMap.event(targetEventId);
+	if (!targetEvent || !actor) return 0;
+
+	const isPlayerTarget = targetEvent === $gamePlayer;
+
+	if (!isPlayerTarget && !targetEvent.databaseEnemy && !targetEvent.databaseActor && !targetEvent.PRmhp) {
+		const eventData = targetEvent.event();
+		if (eventData && eventData.name) {
+			targetEvent.setupEnemyData(eventData.name);
+		}
+	}
+
+	const b = isPlayerTarget ? $gameParty.leader() : (SgetBattlerForH(targetEvent) || $gameParty.leader());
+	const action = new SHendrix_Action(actor);
+
+	let skillId = actor.attackSkillId();
+	if (weapon) {
+		const weaponSkillTraits = weapon.traits.filter(t => t.code === Game_BattlerBase.TRAIT_ATTACK_SKILL);
+		if (weaponSkillTraits.length > 0) {
+			skillId = Math.max(...weaponSkillTraits.map(t => t.dataId));
+		}
+	}
+	action.setSkill(skillId);
+
+	if (Math.random() < action.itemEva(b)) {
 		CollisionManager.lastEvaded = true;
 		return 0;
 	}
+	CollisionManager.lastEvaded = false;
+	CollisionManager.lastImmunity = (action.calcElementRate(b) === 0);
 
-	let criticalRate = 0;
-	actor.traitObjects().forEach(obj => obj?.traits?.forEach(trait => {
-		if (trait.code === 22 && trait.dataId === 2) criticalRate += trait.value;
-	}));
+	const critical = Math.random() < action.itemCri(b);
+	CollisionManager.lastCritical = critical;
+	let damage = action.makeDamageValue(b, critical);
 
-	const isPlayerTarget = targetEvent === $gamePlayer;
-	const defender = isPlayerTarget ? $gameParty.leader() : setupEventTarget(targetEvent);
-	const defenseValue = isPlayerTarget ? defender.def : (defender.def || 0);
+	for (const stateId of actor.attackStates()) {
+		const chance = actor.attackStatesRate(stateId);
+		const { stateRate, hasStateResist } = ScheckStateResistanceH(targetEventId, stateId, chance);
+		if (hasStateResist) continue;
+		if (Math.random() >= stateRate) continue;
 
-	let damage = actor.atk;
+		const state = $dataStates[stateId];
+		if (!state) continue;
 
-	weapon.traits?.forEach(trait => {
-		if (trait.code === 21 && trait.dataId === 2) {
-			damage *= trait.value;
-		}
-	});
-
-	let actorMultiplier = 1;
-	actor.traitObjects().forEach(obj => obj?.traits?.forEach(trait => {
-		if ((trait.code === 33 && trait.dataId === weapon.wtypeId) ||
-			(trait.code === 21 && trait.dataId === 2)) {
-			actorMultiplier *= trait.value;
-		}
-	}));
-	damage *= actorMultiplier;
-	damage = Math.max(damage - Math.floor(defenseValue / 2), 1);
-
-	const varianceAmp = Math.floor(Math.abs(damage) * 0.2);
-	const varianceRoll = Math.floor(Math.random() * (varianceAmp * 2 + 1)) - varianceAmp;
-	damage += varianceRoll;
-
-	const isCritical = Math.random() < criticalRate;
-	if (isCritical) {
-		damage *= Number(Hparameters['critDmgMultiplier'] || 3.0);
-	}
-
-	const elementId = weapon.traits?.find(trait => trait.code === 31)?.dataId || 0;
-	if (elementId > 0) {
-		let resistance = 1;
-
-		if (isPlayerTarget) {
-			resistance = defender.elementRate(elementId);
-		} else if (targetEvent.databaseActor?.elementRate) {
-			resistance = targetEvent.databaseActor.elementRate(elementId);
-		} else if (targetEvent.databaseEnemy?.traits) {
-			const resistTrait = targetEvent.databaseEnemy.traits.find(t => t.code === 11 && t.dataId === elementId);
-			resistance = resistTrait ? resistTrait.value : 1;
+		if (targetEventId === 0 || targetEventId === 'player') {
+			const stLeader = $gameParty.leader();
+			if (stLeader) stLeader.addState(stateId);
+		} else {
+			const stBattler = SgetBattlerForH($gameMap.event(targetEventId));
+			if (stBattler) stBattler.addState(stateId);
 		}
 
-		CollisionManager.lastImmunity = (resistance === 0);
-		if (resistance !== 1) {
-			damage *= resistance;
-		}
-	}
+		const commonEventMatch = state.note.match(/<state common event:\s*(.+?)>/i);
+		if (!commonEventMatch) continue;
 
-	if (weapon.traits) {
-		weapon.traits.forEach(trait => {
-			if (trait.code === 32) {
-				const stateId = trait.dataId;
-				const stateChance = trait.value;
-				const { stateRate, hasStateResist } = checkStateResistance(targetEventId, stateId);
+		const commonEventIdentifier = commonEventMatch[1].trim();
+		let commonEventId = !isNaN(commonEventIdentifier) ?
+			parseInt(commonEventIdentifier) :
+			commonEventNameCache[commonEventIdentifier.toLowerCase()] || 0;
+		if (!commonEventId) continue;
 
-				if (hasStateResist) return;
-				const finalStateChance = stateChance * stateRate;
-				if (Math.random() < finalStateChance) {
-					const state = $dataStates[stateId];
-					if (state) {
-						const commonEventMatch = state.note.match(/<state common event:\s*(.+?)>/i);
-						if (commonEventMatch) {
-							const commonEventIdentifier = commonEventMatch[1].trim();
-							let commonEventId = !isNaN(commonEventIdentifier) ?
-								parseInt(commonEventIdentifier) :
-								commonEventNameCache[commonEventIdentifier.toLowerCase()] || 0;
+		if (targetEventId === 0 || targetEventId === 'player') {
+			const leader = $gameParty.leader();
+			if (leader) {
+				leader.addState(stateId);
+				$gameSystem.passiveCommonEvents = $gameSystem.passiveCommonEvents || {};
+				$gameSystem.passiveCommonEvents[$gameMap.mapId()] = $gameSystem.passiveCommonEvents[$gameMap.mapId()] || {};
+				$gameSystem.passiveCommonEvents[$gameMap.mapId()]['player'] = $gameSystem.passiveCommonEvents[$gameMap.mapId()]['player'] || {};
+				$gamePlayer.stateInterpreters = $gamePlayer.stateInterpreters || {};
 
-							if (commonEventId) {
-								if (targetEventId === 0 || targetEventId === 'player') {
-									const actor = $gameParty.leader();
-									if (actor) {
-										actor.addState(stateId);
-										$gameSystem.passiveCommonEvents = $gameSystem.passiveCommonEvents || {};
-										$gameSystem.passiveCommonEvents[$gameMap.mapId()] = $gameSystem.passiveCommonEvents[$gameMap.mapId()] || {};
-										$gameSystem.passiveCommonEvents[$gameMap.mapId()]['player'] = $gameSystem.passiveCommonEvents[$gameMap.mapId()]['player'] || {};
-										$gamePlayer.stateInterpreters = $gamePlayer.stateInterpreters || {};
-
-										if (!$gamePlayer.stateInterpreters[stateId] || !$gamePlayer.stateInterpreters[stateId].isRunning()) {
-											$gameSystem.passiveCommonEvents[$gameMap.mapId()]['player'][stateId] = commonEventId;
-											const interpreter = new Game_Interpreter();
-											interpreter.setup($dataCommonEvents[commonEventId].list, 0);
-											$gamePlayer.stateInterpreters[stateId] = interpreter;
-										}
-									}
-								} else {
-									const targetEvent = $gameMap.event(targetEventId);
-									if (targetEvent) {
-										$gameSystem.passiveCommonEvents = $gameSystem.passiveCommonEvents || {};
-										$gameSystem.passiveCommonEvents[$gameMap.mapId()] = $gameSystem.passiveCommonEvents[$gameMap.mapId()] || {};
-										$gameSystem.passiveCommonEvents[$gameMap.mapId()][targetEventId] = $gameSystem.passiveCommonEvents[$gameMap.mapId()][targetEventId] || {};
-										targetEvent.stateInterpreters = targetEvent.stateInterpreters || {};
-
-										if (!targetEvent.stateInterpreters[stateId] || !targetEvent.stateInterpreters[stateId].isRunning()) {
-											$gameSystem.passiveCommonEvents[$gameMap.mapId()][targetEventId][stateId] = commonEventId;
-											const interpreter = new Game_Interpreter();
-											interpreter.setup($dataCommonEvents[commonEventId].list, targetEventId);
-											targetEvent.stateInterpreters[stateId] = interpreter;
-										}
-									}
-								}
-							}
-						}
-					}
+				if (!$gamePlayer.stateInterpreters[stateId] || !$gamePlayer.stateInterpreters[stateId].isRunning()) {
+					$gameSystem.passiveCommonEvents[$gameMap.mapId()]['player'][stateId] = commonEventId;
+					const interpreter = new Game_Interpreter();
+					interpreter.setup($dataCommonEvents[commonEventId].list, 0);
+					$gamePlayer.stateInterpreters[stateId] = interpreter;
 				}
 			}
-		});
+		} else {
+			const stateTarget = $gameMap.event(targetEventId);
+			if (stateTarget) {
+				if (stateTarget.databaseActor) {
+					stateTarget.databaseActor.addState(stateId);
+				}
+				$gameSystem.passiveCommonEvents = $gameSystem.passiveCommonEvents || {};
+				$gameSystem.passiveCommonEvents[$gameMap.mapId()] = $gameSystem.passiveCommonEvents[$gameMap.mapId()] || {};
+				$gameSystem.passiveCommonEvents[$gameMap.mapId()][targetEventId] = $gameSystem.passiveCommonEvents[$gameMap.mapId()][targetEventId] || {};
+				stateTarget.stateInterpreters = stateTarget.stateInterpreters || {};
+
+				if (!stateTarget.stateInterpreters[stateId] || !stateTarget.stateInterpreters[stateId].isRunning()) {
+					$gameSystem.passiveCommonEvents[$gameMap.mapId()][targetEventId][stateId] = commonEventId;
+					const interpreter = new Game_Interpreter();
+					interpreter.setup(HstatusTargetList($dataCommonEvents[commonEventId].list), targetEventId);
+					stateTarget.stateInterpreters[stateId] = interpreter;
+				}
+			}
+		}
 	}
 
-	const finalDamage = Math.round(Math.max(damage, 1));
-	return finalDamage;
+	return Math.round(Math.max(damage, 1));
 }
 
 Game_Interpreter.prototype.calculateDamageAgainstEvent = function (targetEvent, damageSource, skillOrWeapon, sourceEventId = null) {
 	if (!targetEvent) return 0;
+	if (damageSource !== 'skill') return 0;
+	const skill = SgetSkillDataH(skillOrWeapon);
+	if (!skill) return 0;
+
 	const actualSourceEventId = sourceEventId || this._eventId;
 	const sourceEvent = $gameMap.event(actualSourceEventId);
 
@@ -4281,212 +3198,62 @@ Game_Interpreter.prototype.calculateDamageAgainstEvent = function (targetEvent, 
 
 	// <attacker: x>
 	if (sourceEvent && sourceEvent.event && sourceEvent.event()) {
-		const eventNote = sourceEvent.event().note;
-		const attackerMatch = eventNote.match(/<attacker:\s*(.+?)>/i);
-
+		const attackerMatch = sourceEvent.event().note.match(/<attacker:\s*(.+?)>/i);
 		if (attackerMatch) {
 			const attackerValue = attackerMatch[1].trim();
-			let attackerData = null;
-
 			if (attackerValue === 'player') {
-				attackerData = $gameParty.leader();
+				a = $gameParty.leader();
 			} else if (attackerValue.toLowerCase().startsWith('actor')) {
 				const actorMatch = /actor\s*(\d+)/i.exec(attackerValue);
-				if (actorMatch) {
-					const actorId = Number(actorMatch[1]);
-					attackerData = $gameActors.actor(actorId);
-				}
+				if (actorMatch) a = $gameActors.actor(Number(actorMatch[1]));
 			} else {
 				const enemy = enemyNameCache[attackerValue.toLowerCase()];
 				if (enemy) {
-					attackerData = enemy;
-				}
-			}
-
-			if (attackerData) {
-				if (attackerData.params) {
-					let criticalRate = 0;
-					if (attackerData.traits) {
-						attackerData.traits.forEach(trait => {
-							if (trait.code === 22 && trait.dataId === 2) {
-								criticalRate += trait.value;
-							}
-						});
+					if (!sourceEvent._attackerBattler || sourceEvent._attackerBattler.enemyId() !== enemy.id) {
+						sourceEvent._attackerBattler = new Game_Enemy(enemy.id, 0, 0);
 					}
-					a = {
-						mhp: attackerData.params[0],
-						mmp: attackerData.params[1],
-						atk: attackerData.params[2],
-						def: attackerData.params[3],
-						mat: attackerData.params[4],
-						mdf: attackerData.params[5],
-						agi: attackerData.params[6],
-						luk: attackerData.params[7],
-						cri: criticalRate
-					};
-				} else {
-					let criticalRate = 0;
-					if (attackerData.traitObjects) {
-						attackerData.traitObjects().forEach(object => {
-							if (object && object.traits) {
-								object.traits.forEach(trait => {
-									if (trait.code === 22 && trait.dataId === 2) {
-										criticalRate += trait.value;
-									}
-								});
-							}
-						});
-					}
-					a = {
-						mhp: attackerData.mhp,
-						mmp: attackerData.mmp,
-						atk: attackerData.atk,
-						def: attackerData.def,
-						mat: attackerData.mat,
-						mdf: attackerData.mdf,
-						agi: attackerData.agi,
-						luk: attackerData.luk,
-						cri: criticalRate
-					};
+					a = sourceEvent._attackerBattler;
 				}
 			}
 		}
 	}
 
+	// Inherited data from spawner
 	if (!a && sourceEvent && sourceEvent._inheritedEnemyName && sourceEvent._inheritedEnemyData) {
 		const enemy = sourceEvent._inheritedEnemyData;
-		let criticalRate = 0;
-		if (enemy.traits) {
-			enemy.traits.forEach(trait => {
-				if (trait.code === 22 && trait.dataId === 2) {
-					criticalRate += trait.value;
-				}
-			});
+		if (!sourceEvent._attackerBattler || sourceEvent._attackerBattler.enemyId() !== enemy.id) {
+			sourceEvent._attackerBattler = new Game_Enemy(enemy.id, 0, 0);
 		}
-		a = {
-			mhp: enemy.params[0],
-			mmp: enemy.params[1],
-			atk: enemy.params[2],
-			def: enemy.params[3],
-			mat: enemy.params[4],
-			mdf: enemy.params[5],
-			agi: enemy.params[6],
-			luk: enemy.params[7],
-			cri: criticalRate
-		};
-	}
-	else if (!a && sourceEvent && sourceEvent._inheritedActorId && sourceEvent._inheritedActorData) {
-		const actor = sourceEvent._inheritedActorData;
-		let criticalRate = 0;
-
-		if (actor.traitObjects) {
-			actor.traitObjects().forEach(object => {
-				if (object && object.traits) {
-					object.traits.forEach(trait => {
-						if (trait.code === 22 && trait.dataId === 2) {
-							criticalRate += trait.value;
-						}
-					});
-				}
-			});
-		}
-
-		a = {
-			mhp: actor.mhp,
-			mmp: actor.mmp,
-			atk: actor.atk,
-			def: actor.def,
-			mat: actor.mat,
-			mdf: actor.mdf,
-			agi: actor.agi,
-			luk: actor.luk,
-			cri: criticalRate
-		};
-	}
-	else if (sourceEvent && sourceEvent.databaseActor) {
-		const actor = sourceEvent.databaseActor;
-		let criticalRate = 0;
-
-		if (actor.traitObjects) {
-			actor.traitObjects().forEach(object => {
-				if (object && object.traits) {
-					object.traits.forEach(trait => {
-						if (trait.code === 22 && trait.dataId === 2) {
-							criticalRate += trait.value;
-						}
-					});
-				}
-			});
-		}
-
-		a = {
-			mhp: actor.mhp,
-			mmp: actor.mmp,
-			atk: actor.atk,
-			def: actor.def,
-			mat: actor.mat,
-			mdf: actor.mdf,
-			agi: actor.agi,
-			luk: actor.luk,
-			cri: criticalRate
-		};
+		a = sourceEvent._attackerBattler;
+	} else if (!a && sourceEvent && sourceEvent._inheritedActorId && sourceEvent._inheritedActorData) {
+		a = sourceEvent._inheritedActorData;
+	} else if (!a && sourceEvent && sourceEvent.databaseActor) {
+		a = sourceEvent.databaseActor;
 	}
 
-	if (!a) {
-		a = $gameParty.leader();
-	}
+	if (!a && sourceEvent) a = SgetBattlerForH(sourceEvent);
+	if (!a) a = $gameParty.leader();
 
 	const isPlayerTarget = targetEvent === $gamePlayer;
-	let b;
+	const b = isPlayerTarget ? $gameParty.leader() : (SgetBattlerForH(targetEvent) || $gameParty.leader());
 
-	if (isPlayerTarget) {
-		b = $gameParty.leader();
-	} else {
-		b = setupEventTarget(targetEvent);
-		if (targetEvent && targetEvent.event) {
-			const eventData = targetEvent.event();
-			if (eventData?.note) {
-				const hpMatch = eventData.note.match(/<hp:\s*(.+?)\s*>/i);
-				if (hpMatch) {
-					const hpString = hpMatch[1].trim();
-					const actorMatch = /actor,\s*(\d+)/i.exec(hpString);
-					if (actorMatch) {
-						const actorId = parseInt(actorMatch[1]);
-						const actor = $gameActors.actor(actorId);
-						if (actor) {
-							b = actor;
-						}
-					}
-				}
-			}
-		}
-	}
+	const action = new SHendrix_Action(a);
+	action.setSkill(skill.id);
 
-	if (damageSource !== 'skill') return 0;
-	const skill = getSkillData(skillOrWeapon);
-	if (!skill) return 0;
-	const successRate = skill.successRate !== undefined ? skill.successRate : 100;
-	if (successRate < 100 && Math.random() * 100 > successRate) {
+	if (Math.random() * 100 >= skill.successRate || Math.random() < action.itemEva(b)) {
 		CollisionManager.lastEvaded = true;
 		return 0;
 	}
-	const evaded = checkEvasion(targetEvent, skill);
-	if (evaded) return 0;
+	CollisionManager.lastEvaded = false;
+	CollisionManager.lastImmunity = (action.calcElementRate(b) === 0);
 
-	let formula = skill.damage.formula;
-	formula = formula.replace(/v\[(\d+)\]/gi, (match, variableId) => {
-		const id = parseInt(variableId);
-		return $gameVariables.value(id);
-	});
-
-	let damage = Math.max(eval(formula), 0);
-	damage = applyVariance(damage, skill);
-	damage = applyCritical(damage, skill, a);
-	damage = applyElementalEffects(damage, skill, b, targetEvent, isPlayerTarget);
-	return Math.round(damage);
+	const critical = skill.damage.critical && Math.random() < action.itemCri(b);
+	CollisionManager.lastCritical = critical;
+	const damage = action.makeDamageValue(b, critical);
+	return Math.round(Math.max(damage, 1));
 };
 
-function applyDefenseReduction(rawDamage, sourceEventId, targetActor) {
+function SapplyDefenseReductionH(rawDamage, sourceEventId, targetActor) {
 	if (!sourceEventId || !targetActor) return rawDamage;
 
 	const sourceEvent = $gameMap.event(sourceEventId);
@@ -4496,235 +3263,22 @@ function applyDefenseReduction(rawDamage, sourceEventId, targetActor) {
 	if (!dmgMatch) return rawDamage;
 
 	const dmgValue = dmgMatch[1].trim();
-	// <dmg: not a skill> -> -actor's DÈF
-	const isSkill = $dataSkills.find(s => s && s.name === dmgValue);
+	const pSkillLow = dmgValue.toLowerCase();
 
-	if (!isSkill) {
-		const def = targetActor.def;
-		return Math.max(rawDamage - Math.floor(def / 2), 1);
-	}
+	// <dmg: SkillName> or <dmg: EnemyName>
+	if (skillNameCache[pSkillLow] || enemyNameCache[pSkillLow]) return rawDamage;
 
-	return rawDamage;
+	// <dmg: 20> / <dmg: v[x]> / <dmg: 10-20> RAW DMH
+	return Math.max(rawDamage - Math.floor(targetActor.def / 2), 1);
 }
 
-function setupEventTarget(targetEvent) {
-	const b = targetEvent;
-	let enemyData = null;
-	let actorData = null;
-
-	if (targetEvent.databaseEnemy) {
-		enemyData = targetEvent.databaseEnemy;
-	} else if (targetEvent.databaseActor) {
-		actorData = targetEvent.databaseActor;
-	}
-	else if (targetEvent.event) {
-		const eventData = targetEvent.event();
-		if (eventData?.note) {
-			const hpMatch = eventData.note.match(/<hp:\s*(.+?)\s*>/i);
-			if (hpMatch) {
-				const hpString = hpMatch[1].trim();
-				const minionMatch = /minion,\s*(\d+)/i.exec(hpString);
-				if (minionMatch) {
-					const actorId = parseInt(minionMatch[1]);
-					actorData = $gameActors.actor(actorId);
-				}
-				else {
-					const actorMatch = /actor,\s*(\d+)/i.exec(hpString);
-					if (actorMatch) {
-						const actorId = parseInt(actorMatch[1]);
-						actorData = $gameActors.actor(actorId);
-					} else {
-						enemyData = enemyNameCache[hpString.toLowerCase()];
-					}
-				}
-			}
-		}
-		if (!enemyData && !actorData && eventData?.name) {
-			enemyData = $dataEnemies.find(enemy => enemy && enemy.name === eventData.name);
-			if (enemyData) {
-				targetEvent.setupEnemyData(eventData.name);
-			}
-		}
-	}
-
-	if (actorData) {
-		b.mhp = actorData.mhp;
-		b.mmp = actorData.mmp;
-		b.atk = actorData.atk;
-		b.def = actorData.def;
-		b.mat = actorData.mat;
-		b.mdf = actorData.mdf;
-		b.agi = actorData.agi;
-		b.luk = actorData.luk;
-		b.databaseActor = actorData;
-		b.traitObjects = () => actorData.traitObjects ? actorData.traitObjects() : [];
-
-	} else if (enemyData) {
-		b.mhp = enemyData.params[0];
-		b.mmp = enemyData.params[1];
-		b.atk = enemyData.params[2];
-		b.def = enemyData.params[3];
-		b.mat = enemyData.params[4];
-		b.mdf = enemyData.params[5];
-		b.agi = enemyData.params[6];
-		b.luk = enemyData.params[7];
-
-		b.databaseEnemy = enemyData;
-	} else {
-		b.mhp = b.mmp = 100;
-		b.atk = b.def = b.mat = b.mdf = b.agi = b.luk = 0;
-	}
-
-	return b;
-}
-
-function getSkillData(skillOrWeapon) {
+function SgetSkillDataH(skillOrWeapon) {
 	if (typeof skillOrWeapon === 'string') {
-		return $dataSkills.find(s => s && s.name === skillOrWeapon);
+		return skillNameCache[skillOrWeapon.toLowerCase()];
 	} else if (typeof skillOrWeapon === 'number') {
 		return $dataSkills[skillOrWeapon];
 	}
 	return skillOrWeapon;
-}
-
-function checkEvasion(targetEvent) {
-	if (targetEvent === $gamePlayer || targetEvent === 'player') {
-		const player = $gameParty.leader();
-		let evasionRate = 0;
-		player.traitObjects().forEach(object => {
-			if (object && object.traits) {
-				object.traits.forEach(trait => {
-					if (trait.code === 22 && trait.dataId === 1) {
-						evasionRate += trait.value;
-					}
-				});
-			}
-		});
-		if (evasionRate > 0) {
-			const evaded = Math.random() < evasionRate;
-			CollisionManager.lastEvaded = evaded;
-			return evaded;
-		}
-	}
-	else if (targetEvent.databaseActor) {
-		let evasionRate = 0;
-		if (targetEvent.databaseActor.traitObjects) {
-			targetEvent.databaseActor.traitObjects().forEach(object => {
-				if (object && object.traits) {
-					object.traits.forEach(trait => {
-						if (trait.code === 22 && trait.dataId === 1) {
-							evasionRate += trait.value;
-						}
-					});
-				}
-			});
-		}
-		if (evasionRate > 0) {
-			const evaded = Math.random() < evasionRate;
-			CollisionManager.lastEvaded = evaded;
-			return evaded;
-		}
-	}
-	else if (targetEvent.databaseEnemy?.traits) {
-		let evasionRate = 0;
-		for (const trait of targetEvent.databaseEnemy.traits) {
-			if (trait.code === 22 && trait.dataId === 1) {
-				evasionRate += trait.value;
-			}
-		}
-		if (evasionRate > 0) {
-			const evaded = Math.random() < evasionRate;
-			CollisionManager.lastEvaded = evaded;
-			return evaded;
-		}
-	}
-
-	CollisionManager.lastEvaded = false;
-	return false;
-}
-
-function applyVariance(damage, skill) {
-	if (skill.damage.variance > 0) {
-		const variance = skill.damage.variance / 100;
-		const amp = Math.floor(Math.max(Math.abs(damage) * variance, 0));
-		const varianceValue = Math.floor(Math.random() * (amp * 2 + 1)) - amp;
-		return damage >= 0 ? damage + varianceValue : damage - varianceValue;
-	}
-	return damage;
-}
-
-function applyCritical(damage, skill, a) {
-	if (skill.damage.critical) {
-		const criticalRate = a.cri || 0.04;
-		const isCritical = Math.random() < criticalRate;
-
-		if (isCritical) {
-			const critMultiplier = Number(Hparameters['critDmgMultiplier'] || 3.0);
-			return damage * critMultiplier;
-		}
-	}
-	return damage;
-}
-
-function applyElementalEffects(damage, skill, b, targetEvent, isPlayerTarget) {
-	if (skill.damage.elementId <= 0) return damage;
-
-	if (isPlayerTarget) {
-		const rate = b.elementRate(skill.damage.elementId);
-		CollisionManager.lastImmunity = (rate === 0);
-		return damage * rate;
-	} else {
-		let elementResistanceValue = 1;
-		let resistanceFound = false;
-
-		if (targetEvent.databaseActor) {
-			if (typeof targetEvent.databaseActor.elementRate === 'function') {
-				elementResistanceValue = targetEvent.databaseActor.elementRate(skill.damage.elementId);
-				resistanceFound = true;
-			} else {
-				const actor = targetEvent.databaseActor;
-				if (actor.traitObjects) {
-					actor.traitObjects().forEach(object => {
-						if (object && object.traits) {
-							object.traits.forEach(trait => {
-								if (trait.code === 11 && trait.dataId === skill.damage.elementId) {
-									elementResistanceValue = trait.value;
-									resistanceFound = true;
-								}
-							});
-						}
-					});
-				}
-			}
-		}
-		else if (targetEvent.databaseEnemy?.traits) {
-			const trait = targetEvent.databaseEnemy.traits.find(t =>
-				t.code === 11 && t.dataId === skill.damage.elementId
-			);
-			if (trait) {
-				elementResistanceValue = trait.value;
-				resistanceFound = true;
-			}
-		}
-
-		if (!resistanceFound && targetEvent.elementalResistances?.length > 0) {
-			const resistance = targetEvent.elementalResistances.find(r =>
-				r.elementId === skill.damage.elementId
-			);
-			if (resistance) {
-				elementResistanceValue = resistance.value;
-				resistanceFound = true;
-			}
-		}
-
-		if (resistanceFound) {
-			CollisionManager.lastImmunity = (elementResistanceValue === 0);
-			return elementResistanceValue === 0 ? 0 : damage * elementResistanceValue;
-		}
-
-		CollisionManager.lastImmunity = false;
-		return damage;
-	}
 }
 
 Game_Event.prototype.getDamageFromNoteTag = function () {
@@ -4735,7 +3289,7 @@ Game_Event.prototype.getDamageFromNoteTag = function () {
 	const damageValue = match[1].trim();
 	let damage = 0;
 
-	const skill = $dataSkills.find(s => s && s.name === damageValue);
+	const skill = skillNameCache[damageValue.toLowerCase()];
 	if (skill) {
 		return 0;
 	}
@@ -4744,13 +3298,7 @@ Game_Event.prototype.getDamageFromNoteTag = function () {
 	const enemy = enemyNameCache[damageValue.toLowerCase()];
 	if (enemy) {
 		if (!this.databaseEnemy) { this.setupEnemyData(damageValue); }
-		damage = enemy.params[2];
-		enemy.traits.forEach(trait => {
-			if (trait.code === 21 && trait.dataId === 2) {
-				damage *= trait.value;
-			}
-		});
-		return damage;
+		return 0;
 	}
 
 	const variableMatch = /v\[(\d+)\]/i.exec(damageValue);
@@ -4770,16 +3318,715 @@ Game_Event.prototype.getDamageFromNoteTag = function () {
 	return damage;
 };
 
-// =========================== Hitbox cache and stuff  ==================================
-const _0x21bc1f=_0x3743;function _0x2669(){const _0x58c49f=['add','code','name','_eventId','tileWidth','removeEventFromTagIndex','indexOf','XBEtj','uUYvz','set','splice','rWYDB','startsWith','4SyGyuw','frameCount','max','cooldown','find','prototype','height','skipCollisionCache','delete','get','collisionTimestamps','8eSJOxU','parameters','cos','screenX','width','tileHeight','_collisionEnabled','632285YaDPPE','offsetY','2643828VXFNWE','bWogl','join','endsWith','initTagIndex','2650275vovUWW','_rotation','match','split','hitboxesAreColliding','includes','databaseActor','forEach','Kijom','getCooldownFromNoteTag','trim','jglml','checkCollisionStatus','hitboxData','skill','addCollision','some','length','tilesetFlags','pcjSX','databaseEnemy','tagToEvents','-region-','offsetX','482046vRaGro','sqrt','clearTagIndex','uggpG','_mapId','setupEnemyData','GghiV','taggedEventIsCollidingWithTargetEvent','map','KDfzo','BQFrT','miqIv','abs','getDamageFromNoteTag','screenY','note','368691GxxuDN','customRotationPoint','258503TlCxjM','_events','push','PRmhp','regionId','hKAyl','addEventToTagIndex','min','flat','FNIbT','_pageIndex','has','entries','_erased','events','list','lastEvaded','allTiles','591338LkXpIJ','jvsKA','lastSourceEventId','isArray','event','<skip\x20collision>','player','pages','calculateDamageAgainstEvent','MoKOT','rslYe','lastImmunity'];_0x2669=function(){return _0x58c49f;};return _0x2669();}function _0x3743(_0x5c6f3f,_0x15ba3a){_0x5c6f3f=_0x5c6f3f-0x89;const _0x2669ef=_0x2669();let _0x37438e=_0x2669ef[_0x5c6f3f];return _0x37438e;}(function(_0xa72e23,_0x2be8ee){const _0x35d30f=_0x3743,_0x551bff=_0xa72e23();while(!![]){try{const _0x23336d=parseInt(_0x35d30f(0xe2))/0x1+-parseInt(_0x35d30f(0x98))/0x2+-parseInt(_0x35d30f(0xf2))/0x3*(-parseInt(_0x35d30f(0xb1))/0x4)+parseInt(_0x35d30f(0xc3))/0x5+-parseInt(_0x35d30f(0xc5))/0x6+parseInt(_0x35d30f(0xf4))/0x7*(-parseInt(_0x35d30f(0xbc))/0x8)+parseInt(_0x35d30f(0xca))/0x9;if(_0x23336d===_0x2be8ee)break;else _0x551bff['push'](_0x551bff['shift']());}catch(_0x30288b){_0x551bff['push'](_0x551bff['shift']());}}}(_0x2669,0x3dadf),Game_Map[_0x21bc1f(0xb6)][_0x21bc1f(0xce)]=function(_0x55defa,_0x3b8756,_0x441e24,_0x473aab,_0x174458,_0x37da2a,_0x26810d=0x0,_0x454fe4=0x0){const _0x23df9b=_0x21bc1f;if(_0x26810d===0x0&&_0x454fe4===0x0){const _0x1fcfff=_0x55defa-$gameMap[_0x23df9b(0xa8)]()/0x2+_0x441e24['offsetX'],_0x1a19f3=_0x1fcfff+_0x441e24['width']*$gameMap['tileWidth'](),_0xa79328=_0x3b8756-$gameMap['tileHeight']()+_0x441e24[_0x23df9b(0xc4)],_0x1f1c9c=_0xa79328+_0x441e24[_0x23df9b(0xb7)]*$gameMap['tileHeight'](),_0x4b5e13=_0x473aab-$gameMap['tileWidth']()/0x2+_0x37da2a['offsetX'],_0x1b979f=_0x4b5e13+_0x37da2a[_0x23df9b(0xc0)]*$gameMap[_0x23df9b(0xa8)](),_0x353489=_0x174458-$gameMap[_0x23df9b(0xc1)]()+_0x37da2a['offsetY'],_0x19a19b=_0x353489+_0x37da2a[_0x23df9b(0xb7)]*$gameMap[_0x23df9b(0xc1)]();return _0x1fcfff<_0x1b979f&&_0x1a19f3>_0x4b5e13&&_0xa79328<_0x19a19b&&_0x1f1c9c>_0x353489;}const _0x290605=(_0x4952d1,_0x461ef4,_0x152c6e,_0x4a924b)=>{const _0x5f0eb4=_0x23df9b;let _0x4f8c61=_0x461ef4,_0x494bc3=_0x461ef4;_0x4a924b!==0x0&&(_0x4f8c61=_0x461ef4+$gameMap[_0x5f0eb4(0xc1)]()/0x2,_0x494bc3=_0x4f8c61);const _0x365d8b={'x':_0x4952d1-$gameMap['tileWidth']()/0x2+_0x152c6e[_0x5f0eb4(0xe1)],'y':_0x4f8c61-$gameMap[_0x5f0eb4(0xc1)]()+_0x152c6e[_0x5f0eb4(0xc4)],'width':_0x152c6e[_0x5f0eb4(0xc0)]*$gameMap[_0x5f0eb4(0xa8)](),'height':_0x152c6e[_0x5f0eb4(0xb7)]*$gameMap[_0x5f0eb4(0xc1)]()},_0x2368eb=_0x4952d1-_0x365d8b['x'],_0x5b4910=_0x494bc3-$gameMap[_0x5f0eb4(0xc1)]()/0x2-_0x365d8b['y'],_0x1d3c9d=_0x4a924b*Math['PI']/0xb4,_0x3bfbeb=Math[_0x5f0eb4(0xbe)](_0x1d3c9d),_0x5d99f0=Math['sin'](_0x1d3c9d);return[{'x':-_0x2368eb*_0x3bfbeb+_0x5b4910*_0x5d99f0+_0x4952d1,'y':-_0x2368eb*_0x5d99f0-_0x5b4910*_0x3bfbeb+_0x494bc3},{'x':(-_0x2368eb+_0x365d8b[_0x5f0eb4(0xc0)])*_0x3bfbeb+_0x5b4910*_0x5d99f0+_0x4952d1,'y':(-_0x2368eb+_0x365d8b[_0x5f0eb4(0xc0)])*_0x5d99f0-_0x5b4910*_0x3bfbeb+_0x494bc3},{'x':(-_0x2368eb+_0x365d8b[_0x5f0eb4(0xc0)])*_0x3bfbeb+(_0x5b4910-_0x365d8b[_0x5f0eb4(0xb7)])*_0x5d99f0+_0x4952d1,'y':(-_0x2368eb+_0x365d8b[_0x5f0eb4(0xc0)])*_0x5d99f0-(_0x5b4910-_0x365d8b['height'])*_0x3bfbeb+_0x494bc3},{'x':-_0x2368eb*_0x3bfbeb+(_0x5b4910-_0x365d8b[_0x5f0eb4(0xb7)])*_0x5d99f0+_0x4952d1,'y':-_0x2368eb*_0x5d99f0-(_0x5b4910-_0x365d8b[_0x5f0eb4(0xb7)])*_0x3bfbeb+_0x494bc3}];},_0x2ab449=_0x4dfa83=>{const _0x1ea087=_0x23df9b,_0x17e5b7={'x':_0x4dfa83[0x1]['x']-_0x4dfa83[0x0]['x'],'y':_0x4dfa83[0x1]['y']-_0x4dfa83[0x0]['y']},_0x10f672={'x':_0x4dfa83[0x3]['x']-_0x4dfa83[0x0]['x'],'y':_0x4dfa83[0x3]['y']-_0x4dfa83[0x0]['y']},_0x3b0a42=Math[_0x1ea087(0xe3)](_0x17e5b7['x']*_0x17e5b7['x']+_0x17e5b7['y']*_0x17e5b7['y']),_0x291837=Math['sqrt'](_0x10f672['x']*_0x10f672['x']+_0x10f672['y']*_0x10f672['y']);return[{'x':_0x17e5b7['x']/_0x3b0a42,'y':_0x17e5b7['y']/_0x3b0a42},{'x':_0x10f672['x']/_0x291837,'y':_0x10f672['y']/_0x291837}];},_0x223047=(_0x3ed6ca,_0x512e7f)=>{const _0x52dcfa=_0x23df9b;let _0x4143c0=_0x3ed6ca[0x0]['x']*_0x512e7f['x']+_0x3ed6ca[0x0]['y']*_0x512e7f['y'],_0x2e7a32=_0x4143c0;for(let _0x571fd6=0x1;_0x571fd6<_0x3ed6ca[_0x52dcfa(0xdb)];_0x571fd6++){if('zMtKa'==='zMtKa'){const _0xda394f=_0x3ed6ca[_0x571fd6]['x']*_0x512e7f['x']+_0x3ed6ca[_0x571fd6]['y']*_0x512e7f['y'];_0x4143c0=Math['min'](_0x4143c0,_0xda394f),_0x2e7a32=Math[_0x52dcfa(0xb3)](_0x2e7a32,_0xda394f);}else{const _0x59f083=_0x21360e-_0x2d8ee7[_0x52dcfa(0xa8)]()/0x2+_0x33f4a0['offsetX'],_0x178d2a=_0x59f083+_0x33ab86[_0x52dcfa(0xc0)]*_0x41902c[_0x52dcfa(0xa8)](),_0x535ec6=_0xb2bb9b-_0x3bbe8e['tileHeight']()+_0x296fc2[_0x52dcfa(0xc4)],_0x540259=_0x535ec6+_0x125e7d['height']*_0x2ece72[_0x52dcfa(0xc1)](),_0x5c171a=_0x5c6f6b-_0x3d4de3[_0x52dcfa(0xa8)]()/0x2+_0x1811eb[_0x52dcfa(0xe1)],_0x452a23=_0x5c171a+_0x343ff5['width']*_0x244bde[_0x52dcfa(0xa8)](),_0x58248b=_0x2bcc6e-_0x182b18['tileHeight']()+_0x242e4f[_0x52dcfa(0xc4)],_0xe11bbe=_0x58248b+_0x5a2c8a['height']*_0x3412a8[_0x52dcfa(0xc1)]();return _0x59f083<_0x452a23&&_0x178d2a>_0x5c171a&&_0x535ec6<_0xe11bbe&&_0x540259>_0x58248b;}}return{'min':_0x4143c0,'max':_0x2e7a32};},_0x3570e6=_0x290605(_0x55defa,_0x3b8756,_0x441e24,_0x26810d),_0x157bc6=_0x290605(_0x473aab,_0x174458,_0x37da2a,_0x454fe4),_0x26cb3f=[..._0x2ab449(_0x3570e6),..._0x2ab449(_0x157bc6)];for(const _0x2af72a of _0x26cb3f){if('TEVdE'!==_0x23df9b(0xe8)){const _0x5c950f=_0x223047(_0x3570e6,_0x2af72a),_0x5abc5d=_0x223047(_0x157bc6,_0x2af72a);if(_0x5c950f[_0x23df9b(0xb3)]<_0x5abc5d[_0x23df9b(0x8d)]||_0x5abc5d[_0x23df9b(0xb3)]<_0x5c950f[_0x23df9b(0x8d)])return![];}else this[_0x23df9b(0xb8)][_0x18db7c]=_0x285c03['list'][_0x23df9b(0xda)](_0x2842c0=>_0x2842c0[_0x23df9b(0xa5)]===0x6c&&_0x2842c0[_0x23df9b(0xbd)][0x0]===_0x23df9b(0x9d));}return!![];},Game_Map[_0x21bc1f(0xb6)]['initTagIndex']=function(){const _0x36f487=_0x21bc1f;this[_0x36f487(0xdf)]=new Map();},Game_Map[_0x21bc1f(0xb6)]['buildTagIndex']=function(){const _0x328133=_0x21bc1f;this['initTagIndex'](),this[_0x328133(0x94)]()[_0x328133(0xd1)](_0x3f3274=>{const _0x5a253c=_0x328133;_0x3f3274&&_0x3f3274[_0x5a253c(0x9c)]&&_0x3f3274[_0x5a253c(0x9c)]()&&this[_0x5a253c(0x8c)](_0x3f3274);});},Game_Map[_0x21bc1f(0xb6)][_0x21bc1f(0xe4)]=function(){const _0x2e34f0=_0x21bc1f;this[_0x2e34f0(0xdf)]=new Map();},Game_Map['prototype'][_0x21bc1f(0x8c)]=function(_0x1623f9){const _0x5771a7=_0x21bc1f;this['tagToEvents']||=new Map();const _0x4b0555=_0x1623f9[_0x5771a7(0x9c)]()[_0x5771a7(0xf1)],_0x3271a0=_0x1623f9['event']()['name'],_0x5a9c60=_0x4b0555[_0x5771a7(0xcc)](/<([^>]+)>/g);if(_0x5a9c60)for(const _0x1c1061 of _0x5a9c60){const _0x473430=_0x1c1061;!this[_0x5771a7(0xdf)][_0x5771a7(0x91)](_0x473430)&&this[_0x5771a7(0xdf)][_0x5771a7(0xad)](_0x473430,[]);const _0x295ea2=this['tagToEvents'][_0x5771a7(0xba)](_0x473430);!_0x295ea2[_0x5771a7(0xcf)](_0x1623f9)&&_0x295ea2[_0x5771a7(0xf6)](_0x1623f9);}if(_0x3271a0&&_0x3271a0[_0x5771a7(0xd4)]()!==''){if('FFVhV'==='FFVhV'){!this[_0x5771a7(0xdf)][_0x5771a7(0x91)](_0x3271a0)&&this['tagToEvents']['set'](_0x3271a0,[]);const _0x528d70=this['tagToEvents']['get'](_0x3271a0);if(!_0x528d70[_0x5771a7(0xcf)](_0x1623f9)){if('miqIv'!==_0x5771a7(0xed))return![];else _0x528d70[_0x5771a7(0xf6)](_0x1623f9);}}else _0x58c5f3=_0x35e968[_0x5771a7(0xef)]();}},Game_Map['prototype'][_0x21bc1f(0xa9)]=function(_0x359bc4){const _0x49b626=_0x21bc1f;if(!this[_0x49b626(0xdf)])return;for(const [_0x3ceb0c,_0x3e1e4b]of this[_0x49b626(0xdf)][_0x49b626(0x92)]()){const _0x4aa5dd=_0x3e1e4b[_0x49b626(0xaa)](_0x359bc4);_0x4aa5dd>-0x1&&(_0x3e1e4b[_0x49b626(0xae)](_0x4aa5dd,0x1),_0x3e1e4b[_0x49b626(0xdb)]===0x0&&this['tagToEvents']['delete'](_0x3ceb0c));}},Game_Event['prototype'][_0x21bc1f(0xd6)]=function(){const _0x226a45=_0x21bc1f;return this[_0x226a45(0xc2)]!==![];},Game_Map[_0x21bc1f(0xb6)][_0x21bc1f(0xe9)]=function(_0x5512f6,_0x51fb57,_0x97cb26=0x0,_0x3cd640=0x6){const _0x2e6b50=_0x21bc1f,_0x4e1811=_0x5512f6===_0x2e6b50(0x9e)?$gamePlayer:this[_0x2e6b50(0x9c)](_0x5512f6);if(!_0x4e1811||_0x4e1811['_x']==null||_0x4e1811['_y']==null)return![];const _0x16c5d5=_0x4e1811['_x'],_0x549ab7=_0x4e1811['_y'],_0x2544c5=$gameSystem[_0x2e6b50(0xbb)]||={},_0x2cf270=$gameSystem['collidedOnceEvents']||={},_0xa563ba=Graphics[_0x2e6b50(0xb2)],_0x1855b8=_0x3cd640*_0x3cd640,_0xde965d=_0x2def46=>{const _0xaeaf75=_0x2e6b50;if(!(_0x2def46 instanceof Game_Event))return![];if(_0x2def46[_0xaeaf75(0xc2)]===!![])return![];if(_0x2def46[_0xaeaf75(0xc2)]===![]){if(_0xaeaf75(0xc6)!==_0xaeaf75(0xeb))return!![];else this[_0xaeaf75(0xc9)](),this[_0xaeaf75(0x94)]()[_0xaeaf75(0xd1)](_0x1505e5=>{const _0x43e586=_0xaeaf75;_0x1505e5&&_0x1505e5[_0x43e586(0x9c)]&&_0x1505e5[_0x43e586(0x9c)]()&&this['addEventToTagIndex'](_0x1505e5);});}const _0x1d71d5=_0x2def46['_eventId']+'-'+_0x2def46['_pageIndex'];this[_0xaeaf75(0xb8)]||={};if(this[_0xaeaf75(0xb8)][_0x1d71d5]===undefined){if(_0xaeaf75(0xd5)==='jglml'){if(_0x2def46['_pageIndex']>=0x0){if(_0xaeaf75(0x8b)!=='hKAyl')for(const _0x1367dc of _0x4dc623){const _0x1302c3=_0x1367dc;!this[_0xaeaf75(0xdf)]['has'](_0x1302c3)&&this['tagToEvents'][_0xaeaf75(0xad)](_0x1302c3,[]);const _0x16a14d=this[_0xaeaf75(0xdf)][_0xaeaf75(0xba)](_0x1302c3);!_0x16a14d[_0xaeaf75(0xcf)](_0x4ba3b6)&&_0x16a14d[_0xaeaf75(0xf6)](_0x202548);}else{const _0x18a3cb=_0x2def46[_0xaeaf75(0x9c)]()[_0xaeaf75(0x9f)][_0x2def46[_0xaeaf75(0x90)]];_0x18a3cb?.[_0xaeaf75(0x95)]?this['skipCollisionCache'][_0x1d71d5]=_0x18a3cb[_0xaeaf75(0x95)]['some'](_0x135238=>_0x135238[_0xaeaf75(0xa5)]===0x6c&&_0x135238[_0xaeaf75(0xbd)][0x0]===_0xaeaf75(0x9d)):this[_0xaeaf75(0xb8)][_0x1d71d5]=![];}}else this[_0xaeaf75(0xb8)][_0x1d71d5]=![];}else _0x396653[_0xaeaf75(0xe7)](_0x518fdd['name']);}return this[_0xaeaf75(0xb8)][_0x1d71d5];},_0x3cdc36=typeof _0x51fb57==='string'?_0x51fb57[_0x2e6b50(0xcc)](/^impassable\s+([A-E]+)$/i):null;if(_0x3cdc36){if(_0x2e6b50(0xd2)===_0x2e6b50(0xaf))this['tagToEvents']=new _0x3dce7e();else{const _0x1fd20b=_0x3cdc36[0x1]['split'](''),_0x14d188=_0x1fd20b[_0x2e6b50(0xea)](_0x3a2c2f=>{return{'A':[[0x1100,0x16ff],[0x1700,0x1fff]],'B':[[0x0,0xff]],'C':[[0x100,0x1ff]],'D':[[0x200,0x2ff]],'E':[[0x300,0x3ff]]}[_0x3a2c2f];})[_0x2e6b50(0x8e)](),_0x243e0c=_0x4e1811['_x'],_0x553f9f=_0x4e1811['_y'],_0xc266b4=[[_0x243e0c,_0x553f9f],[_0x243e0c+0x1,_0x553f9f],[_0x243e0c-0x1,_0x553f9f],[_0x243e0c,_0x553f9f+0x1],[_0x243e0c,_0x553f9f-0x1]];return _0xc266b4['some'](([_0x34613b,_0x1cc2b2])=>{const _0x77f7dd=_0x2e6b50,_0x18273d=this[_0x77f7dd(0x97)](_0x34613b,_0x1cc2b2),_0x43cb47=this[_0x77f7dd(0xdc)]();return _0x18273d[_0x77f7dd(0xda)](_0x1e0170=>{const _0x1878ce=_0x77f7dd;return'WuefB'!==_0x1878ce(0x99)?_0x14d188[_0x1878ce(0xda)](_0x200505=>_0x1e0170>=_0x200505[0x0]&&_0x1e0170<=_0x200505[0x1]&&(_0x43cb47[_0x1e0170]&0xf)===0xf):(_0x6b418e['collisionTimestamps'][_0xeec8e8]=_0x1b68ec,!![]);});});}}const _0xd51adc=typeof _0x51fb57==='string'?_0x51fb57['match'](/^region\s+(\d+)$/i):null;if(_0xd51adc){if(_0x2e6b50(0xdd)==='KuIXz')_0x252798=_0x117ab7[_0x2e6b50(0xd3)]();else{const _0x5d851c=parseInt(_0xd51adc[0x1]),_0x2c1051=this['_mapId']+'-'+(_0x5512f6==='player'?_0x2e6b50(0x9e):_0x5512f6)+_0x2e6b50(0xe0)+_0x5d851c,_0x23915f=Graphics[_0x2e6b50(0xb2)],_0x10a1ba=$gameSystem[_0x2e6b50(0xbb)][_0x2c1051]||0x0;if(_0x23915f-_0x10a1ba<=_0x97cb26)return![];const _0x3ec62f=_0x4e1811['_x'],_0x2f62ec=_0x4e1811['_y'],_0x194e8d=this[_0x2e6b50(0x8a)](_0x3ec62f,_0x2f62ec);if(_0x194e8d===_0x5d851c)return $gameSystem[_0x2e6b50(0xbb)][_0x2c1051]=_0x23915f,!![];return![];}}const _0x5c3ae9=(_0x2ad6fd,_0x154f30)=>{const _0x36e584=_0x2e6b50;if(_0x2ad6fd instanceof Game_Event){if(_0xde965d(_0x2ad6fd))return![];if(_0x4e1811 instanceof Game_Event&&_0xde965d(_0x4e1811))return![];}const _0x1e1181=this[_0x36e584(0xe6)]+'-'+(_0x2ad6fd===$gamePlayer?_0x36e584(0x9e):_0x2ad6fd[_0x36e584(0xa7)])+'-'+(_0x5512f6===_0x36e584(0x9e)?'player':_0x5512f6)+'-'+_0x154f30;if(_0x97cb26===0x0&&_0x2cf270[_0x1e1181])return![];let _0x30f813=_0x97cb26;if(_0x97cb26===_0x36e584(0xb4)&&_0x2ad6fd instanceof Game_Event){if(_0x36e584(0xa1)!==_0x36e584(0xa1)){!this[_0x36e584(0xdf)]['has'](_0x248e6b)&&this[_0x36e584(0xdf)][_0x36e584(0xad)](_0x2b7a48,[]);const _0x455db2=this[_0x36e584(0xdf)][_0x36e584(0xba)](_0x179e15);!_0x455db2[_0x36e584(0xcf)](_0x2d2092)&&_0x455db2[_0x36e584(0xf6)](_0x4ecd64);}else _0x30f813=_0x2ad6fd[_0x36e584(0xd3)]();}const _0x33c38f=_0x2544c5[_0x1e1181]||0x0;if(_0xa563ba-_0x33c38f<=_0x30f813)return![];if(!this[_0x36e584(0xce)](_0x2ad6fd[_0x36e584(0xbf)](),_0x2ad6fd[_0x36e584(0xf0)](),_0x2ad6fd[_0x36e584(0xd7)](),_0x4e1811[_0x36e584(0xbf)](),_0x4e1811[_0x36e584(0xf0)](),_0x5512f6==='player'?_0x4e1811[_0x36e584(0xd7)]():_0x4e1811[_0x36e584(0xd7)](),_0x2ad6fd['customRotationPoint']?_0x2ad6fd[_0x36e584(0xcb)]:0x0,_0x4e1811[_0x36e584(0xf3)]?_0x4e1811['_rotation']:0x0))return![];_0x2544c5[_0x1e1181]=_0xa563ba;if(_0x97cb26===0x0)_0x2cf270[_0x1e1181]=!![];if(_0x2ad6fd instanceof Game_Event){let _0x5052cd=0x0;const _0x2d2bea=_0x2ad6fd[_0x36e584(0x9c)]()[_0x36e584(0xf1)],_0x589f2e=_0x2d2bea[_0x36e584(0xcc)](/<dmg:\s*(.+?)>/i);if(_0x589f2e){if('uggpG'===_0x36e584(0xe5)){CollisionManager[_0x36e584(0x9a)]=_0x2ad6fd['_eventId'];const _0x3de388=_0x589f2e[0x1][_0x36e584(0xd4)](),_0x53ee33=$dataSkills[_0x36e584(0xb5)](_0x52fa29=>_0x52fa29&&_0x52fa29[_0x36e584(0xa6)]===_0x3de388);if(_0x53ee33){const _0xcd768d=new Game_Interpreter(),_0x407ccb=_0x5512f6===_0x36e584(0x9e)||_0x5512f6===0x0,_0x59b2f7=_0x407ccb?$gamePlayer:_0x4e1811,_0x18c7c1=_0x407ccb||(_0x4e1811[_0x36e584(0xde)]||_0x4e1811[_0x36e584(0xd0)]||_0x4e1811[_0x36e584(0x89)]);if(_0x18c7c1){if(!_0x407ccb&&!_0x4e1811[_0x36e584(0xde)]&&!_0x4e1811[_0x36e584(0xd0)]&&!_0x4e1811['PRmhp']){const _0x4e8120=_0x4e1811[_0x36e584(0x9c)]();if(_0x4e8120[_0x36e584(0xa6)]){if(_0x36e584(0x8f)===_0x36e584(0x8f))_0x4e1811[_0x36e584(0xe7)](_0x4e8120[_0x36e584(0xa6)]);else{const _0x2ef6fc=this[_0x36e584(0x97)](_0x2dd276,_0x280553),_0x578e77=this[_0x36e584(0xdc)]();return _0x2ef6fc['some'](_0x393699=>{const _0x38b44c=_0x36e584;return _0x550e7e[_0x38b44c(0xda)](_0x288fa3=>_0x393699>=_0x288fa3[0x0]&&_0x393699<=_0x288fa3[0x1]&&(_0x578e77[_0x393699]&0xf)===0xf);});}}}_0x5052cd=_0xcd768d['calculateDamageAgainstEvent'](_0x59b2f7,_0x36e584(0xd8),_0x53ee33,_0x2ad6fd[_0x36e584(0xa7)]),CollisionManager[_0x36e584(0x96)]=_0x5052cd===0x0&&!CollisionManager[_0x36e584(0xa3)],processStateApplication(_0x2ad6fd,_0x5512f6===_0x36e584(0x9e)?0x0:_0x5512f6);}else _0x5052cd=_0x2ad6fd[_0x36e584(0xef)]();}else'BQFrT'===_0x36e584(0xec)?_0x5052cd=_0x2ad6fd[_0x36e584(0xef)]():_0x595f0e[_0x36e584(0xf6)](_0x118237);}else{if(!_0x74eb00&&!_0x40c394[_0x36e584(0xde)]&&!_0x53b769['databaseActor']&&!_0x5d694d[_0x36e584(0x89)]){const _0x581205=_0x3c7597[_0x36e584(0x9c)]();_0x581205['name']&&_0x116d1a[_0x36e584(0xe7)](_0x581205[_0x36e584(0xa6)]);}_0x32e5bc=_0x51f2c6[_0x36e584(0xa0)](_0x53bf26,'skill',_0x334a91,_0xe4724c['_eventId']),_0x2a3a50[_0x36e584(0x96)]=_0x4b83bc===0x0&&!_0x2df0e2['lastImmunity'],_0x4ccf18(_0x18763f,_0x4ac718===_0x36e584(0x9e)?0x0:_0xd14aac);}}else{if('tPlMw'!=='tPlMw'){if(!this[_0x36e584(0xdf)])return;for(const [_0x2c5f96,_0x320921]of this[_0x36e584(0xdf)]['entries']()){const _0x2c5bde=_0x320921['indexOf'](_0x58a976);_0x2c5bde>-0x1&&(_0x320921[_0x36e584(0xae)](_0x2c5bde,0x1),_0x320921['length']===0x0&&this[_0x36e584(0xdf)][_0x36e584(0xb9)](_0x2c5f96));}}else _0x5052cd=_0x2ad6fd[_0x36e584(0xef)]();}CollisionManager['addCollision'](_0x5512f6==='player'?0x0:_0x5512f6,_0x5052cd),_0x2ad6fd[_0x36e584(0xde)]&&_0x2ad6fd[_0x36e584(0xde)]['traits']&&processEnemyAttackTraits(_0x2ad6fd,_0x5512f6===_0x36e584(0x9e)?0x0:_0x5512f6);}return!![];};if(_0x51fb57===_0x2e6b50(0x9e)){const _0x30371a=Math[_0x2e6b50(0xee)]($gamePlayer['_x']-_0x4e1811['_x']),_0x9c971d=Math['abs']($gamePlayer['_y']-_0x4e1811['_y']);if(_0x30371a*_0x30371a+_0x9c971d*_0x9c971d<=_0x1855b8)return _0x5c3ae9($gamePlayer,_0x2e6b50(0x9e));return![];}this['tagToEvents']||=new Map();const _0x5de27f=new Set();for(const _0x376a1f of Array['isArray'](_0x51fb57)?_0x51fb57:[_0x51fb57]){const _0x2a500d=this['tagToEvents'][_0x2e6b50(0xba)](_0x376a1f)||[];for(const _0x513871 of _0x2a500d){if(!_0x513871||_0x513871[_0x2e6b50(0x93)]||!$gameMap[_0x2e6b50(0xf5)][_0x513871[_0x2e6b50(0xa7)]]||!_0x513871[_0x2e6b50(0x9c)]()){const _0x23917d=_0x2a500d[_0x2e6b50(0xaa)](_0x513871);_0x23917d>-0x1&&_0x2a500d[_0x2e6b50(0xae)](_0x23917d,0x1);continue;}const _0xde277b=Math['abs'](_0x513871['_x']-_0x16c5d5)+Math[_0x2e6b50(0xee)](_0x513871['_y']-_0x549ab7);if(_0xde277b>_0x3cd640*0x2)continue;_0x5de27f[_0x2e6b50(0xa4)](_0x513871);}}for(const _0x16daff of _0x5de27f){if(_0xde965d(_0x16daff))continue;if(_0x5512f6!==_0x2e6b50(0x9e)&&_0x16daff[_0x2e6b50(0xa7)]===_0x5512f6)continue;const _0x50e8c5=_0x16daff[_0x2e6b50(0x9c)]()[_0x2e6b50(0xf1)],_0x20d002=_0x16daff['event']()[_0x2e6b50(0xa6)];let _0x12488b=null;for(const _0x135ef6 of Array[_0x2e6b50(0x9b)](_0x51fb57)?_0x51fb57:[_0x51fb57]){const _0x520ed4=_0x135ef6[_0x2e6b50(0xb0)]('<')&&_0x135ef6[_0x2e6b50(0xc8)]('>'),_0x5ef386=_0x520ed4&&_0x50e8c5[_0x2e6b50(0xcf)](_0x135ef6),_0x2da174=!_0x520ed4&&_0x20d002===_0x135ef6;if(_0x5ef386||_0x2da174){_0x12488b=_0x135ef6;break;}}if(!_0x12488b)continue;if(_0x5c3ae9(_0x16daff,_0x12488b))return!![];}return![];},Game_Map['prototype']['shareCollidingWith']=function(_0x9178d9,_0x7b7e57,_0xabbf28=0x0){const _0x22bd23=_0x21bc1f;if(!$gameSystem[_0x22bd23(0xbb)])$gameSystem[_0x22bd23(0xbb)]={};const _0x46c733=$gameSystem[_0x22bd23(0xbb)],_0x136762=Graphics['frameCount'],_0x49ca32=new Set(Array[_0x22bd23(0x9b)](_0x7b7e57)?_0x7b7e57:[_0x7b7e57]),_0x1612de=_0x9178d9+'-'+(Array[_0x22bd23(0x9b)](_0x7b7e57)?_0x7b7e57[_0x22bd23(0xc7)]('-'):_0x7b7e57),_0x1b7215=_0x46c733[_0x1612de]||0x0,_0x48519f=_0x9178d9==='player'?$gamePlayer:this['event'](_0x9178d9);if(!_0x48519f||_0x48519f['_x']==null||_0x48519f['_y']==null)return![];let _0x4a144e=_0xabbf28;_0x4a144e==='cooldown'&&_0x48519f instanceof Game_Event&&(_0x4a144e=_0x48519f[_0x22bd23(0xd3)]());if(_0x136762-_0x1b7215<=_0x4a144e)return![];const _0x19266e=_0x3e7999=>{const _0x4cd2f3=_0x22bd23;if(!(_0x3e7999 instanceof Game_Event))return![];if(_0x3e7999[_0x4cd2f3(0xc2)]===!![]){if(_0x4cd2f3(0xac)===_0x4cd2f3(0xab)){const _0x5c443b=_0x5127ed[0x1][_0x4cd2f3(0xcd)](''),_0x1d57f4=_0x5c443b[_0x4cd2f3(0xea)](_0x4b2ec8=>{return{'A':[[0x1100,0x16ff],[0x1700,0x1fff]],'B':[[0x0,0xff]],'C':[[0x100,0x1ff]],'D':[[0x200,0x2ff]],'E':[[0x300,0x3ff]]}[_0x4b2ec8];})['flat'](),_0x4eb853=_0x29fc42['_x'],_0x4d4fad=_0x220de7['_y'],_0xfc4bbd=[[_0x4eb853,_0x4d4fad],[_0x4eb853+0x1,_0x4d4fad],[_0x4eb853-0x1,_0x4d4fad],[_0x4eb853,_0x4d4fad+0x1],[_0x4eb853,_0x4d4fad-0x1]];return _0xfc4bbd[_0x4cd2f3(0xda)](([_0x4ccb2d,_0x2f87e1])=>{const _0x4f20e5=this['allTiles'](_0x4ccb2d,_0x2f87e1),_0x3af7dc=this['tilesetFlags']();return _0x4f20e5['some'](_0x2b9cca=>{const _0x2af094=_0x3743;return _0x1d57f4[_0x2af094(0xda)](_0x5a8048=>_0x2b9cca>=_0x5a8048[0x0]&&_0x2b9cca<=_0x5a8048[0x1]&&(_0x3af7dc[_0x2b9cca]&0xf)===0xf);});});}else return![];}if(_0x3e7999[_0x4cd2f3(0xc2)]===![])return!![];const _0x407b0a=this['_mapId']+'-'+_0x3e7999['_eventId']+'-'+_0x3e7999['_pageIndex'];this['skipCollisionCache']||={};if(this[_0x4cd2f3(0xb8)][_0x407b0a]===undefined){if(_0x3e7999[_0x4cd2f3(0x90)]>=0x0){const _0x12de7d=_0x3e7999[_0x4cd2f3(0x9c)]()[_0x4cd2f3(0x9f)][_0x3e7999[_0x4cd2f3(0x90)]];_0x12de7d?.[_0x4cd2f3(0x95)]?this[_0x4cd2f3(0xb8)][_0x407b0a]=_0x12de7d[_0x4cd2f3(0x95)]['some'](_0x2217bb=>_0x2217bb[_0x4cd2f3(0xa5)]===0x6c&&_0x2217bb[_0x4cd2f3(0xbd)][0x0]===_0x4cd2f3(0x9d)):this[_0x4cd2f3(0xb8)][_0x407b0a]=![];}else{if(_0x4cd2f3(0xa2)!=='zYKHC')this[_0x4cd2f3(0xb8)][_0x407b0a]=![];else return!![];}}return this[_0x4cd2f3(0xb8)][_0x407b0a];},_0x4504c3=this[_0x22bd23(0x94)]()[_0x22bd23(0xda)](_0x256622=>{const _0x220431=_0x22bd23;if(_0x256622===_0x48519f)return![];if(_0x19266e(_0x256622))return![];const _0x561fa5=_0x256622[_0x220431(0x9c)]()[_0x220431(0xf1)];let _0x2cbb04=![];for(const _0x215471 of _0x49ca32){const _0x422d91=_0x215471[_0x220431(0xb0)]('<')?_0x215471:'<'+_0x215471+'>';if(_0x561fa5[_0x220431(0xcf)](_0x422d91)){_0x2cbb04=_0x422d91;break;}}if(!_0x2cbb04)return![];if(this[_0x220431(0xce)](_0x256622['screenX'](),_0x256622['screenY'](),_0x256622[_0x220431(0xd7)](),_0x48519f[_0x220431(0xbf)](),_0x48519f['screenY'](),_0x9178d9===_0x220431(0x9e)?_0x48519f[_0x220431(0xd7)]():_0x48519f[_0x220431(0xd7)](),_0x256622[_0x220431(0xf3)]?_0x256622[_0x220431(0xcb)]:0x0,_0x48519f['customRotationPoint']?_0x48519f[_0x220431(0xcb)]:0x0)){_0x46c733[_0x1612de]=_0x136762;if(_0x256622 instanceof Game_Event){const _0x1af437=_0x256622[_0x220431(0xef)]();CollisionManager[_0x220431(0xd9)](_0x9178d9==='player'?0x0:_0x9178d9,_0x1af437);}return!![];}return![];});return _0x4504c3;});
+const _0x4195c3 = _0x740f; function _0x4171() { const _0x392424 = ['removeEven', 'width', 'etEvent', 'QKZgO', '1THTKwA', '_collision', 'tileWidth', 'fzjKQ', 'add', '892875OeKsei', 'registerCo', 'list', 'prototype', 'tObkm', '1158166fZMkuX', '_pageIndex', 'emHKf', 'eColliding', 'imestamps', '_eventId', 'xRyKu', 'delete', 'split', 'romNoteTag', 'ionCache', '13660yucTxM', 'name', 'BASzb', '260FwlUUA', 'tor', 'LAnMY', 'weapon', 'aShBT', 'parameters', 'equips', 'offsetX', 'match', 'get', 'floor', '173481FVKxHK', 'player', 'emy', 'hitboxesAr', 'some', 'enabled', 'map\x20bounda', 'ActorData', 'string', 'deltaX', 'ision>', 'databaseEn', 'initTagInd', 'max', 'offsetY', 'getDamageF', 'endsWith', 'customRota', 'lastSource', 'tagToEvent', 'attler', '_inherited', 'tionPoint', '_mapId', 'note', 'VVuXC', 'includes', 'setupEnemy', '11522268MhPWaO', 'passable', '5717040adDmMk', 'collisionT', 'databaseAc', '<skip\x20coll', 'QxJpW', 'abs', 'onStatus', 'IPEJL', 'map', 'sqrt', 'XEuQc', 'cBqrT', '7xhatGA', 'event', 'skipCollis', 'ActorId', 'Data', 'height', 'code', 'screenX', 'indexOf', '_attackerB', 'Enabled', 'isWeapon', 'dex', 'frameCount', 'set', 'jLWoa', 'min', 'hitboxData', 'splice', 'ILJJu', 'NcVKo', '5111754nbNWhf', '1113jcCKKG', 'tileHeight', '_rotation', 'addEventTo']; _0x4171 = function () { return _0x392424; }; return _0x4171(); } function _0x740f(_0x4b3514, _0x148ce3) { _0x4b3514 = _0x4b3514 - (-0x2209 * -0x1 + -0x2 * 0xbb6 + -0x2b * 0x3b); const _0xa1a311 = _0x4171(); let _0xaba44d = _0xa1a311[_0x4b3514]; return _0xaba44d; } (function (_0x5a86c7, _0x32bfa5) { const _0x5dc997 = { _0x408fdc: 0xdb, _0x496ce3: 0xcb, _0x431053: 0xbd, _0x12f8dd: 0x107, _0x429a0b: 0x105 }, _0x2de3a6 = _0x740f, _0x353dd2 = _0x5a86c7(); while (!![]) { try { const _0x59ee5e = parseInt(_0x2de3a6(0xc6)) / (-0x43 * -0x95 + -0x16f2 + 0x34 * -0x4f) * (parseInt(_0x2de3a6(0xd0)) / (0x530 + 0x18 * -0x12e + 0x8d * 0x2a)) + -parseInt(_0x2de3a6(0xbe)) / (-0x2 * 0x7d1 + -0xd3f * -0x2 + -0xad9 * 0x1) * (parseInt(_0x2de3a6(_0x5dc997._0x408fdc)) / (-0x4 * 0x6fb + 0x1f41 + -0x351)) + -parseInt(_0x2de3a6(_0x5dc997._0x496ce3)) / (0x189 * -0xd + 0x153 * 0x1a + -0xe74) + parseInt(_0x2de3a6(_0x5dc997._0x431053)) / (0x1d49 + -0x18b6 + -0x48d) * (-parseInt(_0x2de3a6(0x113)) / (0x2 * -0xb97 + -0x132b + 0xa98 * 0x4)) + parseInt(_0x2de3a6(_0x5dc997._0x12f8dd)) / (-0x20ba + -0x11d1 * 0x1 + 0x3293) + parseInt(_0x2de3a6(_0x5dc997._0x429a0b)) / (0x3 * 0x321 + -0x70b + -0x1 * 0x24f) + -parseInt(_0x2de3a6(0xde)) / (0x7 * 0x4b3 + -0x192 * 0x17 + 0x343) * (-parseInt(_0x2de3a6(0xe9)) / (-0x37 * -0x29 + -0x1 * -0x1f0d + -0x27d1)); if (_0x59ee5e === _0x32bfa5) break; else _0x353dd2['push'](_0x353dd2['shift']()); } catch (_0x1a70dd) { _0x353dd2['push'](_0x353dd2['shift']()); } } }(_0x4171, 0x74 * 0x24c1 + 0x14a5eb + -0x3d519 * 0x7), Game_Map['prototype']['hitboxesAr' + 'eColliding'] = function (_0x29fc17, _0x1b924f, _0x4f85e1, _0x4af9b6, _0x4ea8d2, _0x298bff, _0x14f4a1 = -0x3f7 + -0x1 * 0x7ff + 0xbf6, _0x23d438 = -0x1 * 0xe21 + 0x20 * -0x23 + 0x1281) { const _0x417f7f = { _0x4059ef: 0xc5, _0x4be318: 0xf8, _0x5c404c: 0xea, _0x20a015: 0xc8, _0x502d02: 0xbf, _0x50d4ff: 0xb8 }, _0x40e449 = { _0x58ebd7: 0xf6 }, _0x2bddd0 = { _0x3d115a: 0xc3, _0x2a846d: 0x118, _0x31de38: 0x118, _0x561186: 0xc3 }, _0x5e6506 = _0x740f; if (_0x14f4a1 === 0x2c * 0x77 + 0x423 + -0x1897 && _0x23d438 === -0x5 * 0x549 + -0x2287 + 0x2 * 0x1e7a) { if (_0x5e6506(_0x417f7f._0x4059ef) === 'cujgd') { _0x2a2858[_0x3bcdc8] = _0x5175d6; if (_0x4707fc instanceof _0x49e996) { _0x353514[_0x5e6506(0xfb) + 'EventId'] = _0x144362['_eventId']; const _0x26baae = _0x4afc2a[_0x5e6506(_0x417f7f._0x4be318) + 'romNoteTag'](); _0x270f0b['addCollisi' + 'on'](_0x3e9b32 === _0x5e6506(_0x417f7f._0x5c404c) ? -0x68 * -0xb + -0x2d3 + -0x1a5 : _0x8abf45, _0x26baae); } return !![]; } else { const _0x39ea1b = _0x29fc17 - $gameMap[_0x5e6506(_0x417f7f._0x20a015)]() / (0xac * -0x29 + 0xa7 * -0x11 + 0x1 * 0x26a5) + _0x4f85e1['offsetX'], _0x5df3cc = _0x39ea1b + _0x4f85e1['width'] * $gameMap['tileWidth'](), _0x40605f = _0x1b924f - $gameMap['tileHeight']() + _0x4f85e1[_0x5e6506(0xf7)], _0x5b7146 = _0x40605f + _0x4f85e1['height'] * $gameMap[_0x5e6506(_0x417f7f._0x502d02)](), _0x1b9fed = _0x4af9b6 - $gameMap[_0x5e6506(_0x417f7f._0x20a015)]() / (-0x1f19 + 0x2390 + 0x7 * -0xa3) + _0x298bff['offsetX'], _0x2339ff = _0x1b9fed + _0x298bff['width'] * $gameMap['tileWidth'](), _0x31a5ca = _0x4ea8d2 - $gameMap[_0x5e6506(0xbf)]() + _0x298bff['offsetY'], _0x28f671 = _0x31a5ca + _0x298bff['height'] * $gameMap['tileHeight'](); return _0x39ea1b < _0x2339ff && _0x5df3cc > _0x1b9fed && _0x40605f < _0x28f671 && _0x5b7146 > _0x31a5ca; } } const _0x2b78b8 = (_0x52e90f, _0x40e1fd, _0x13a10c, _0x5f5a90) => { const _0x51b929 = _0x5e6506; if ('cHPko' !== 'ksGxz') { let _0x5ddcd3 = _0x40e1fd, _0x24b5c5 = _0x40e1fd; _0x5f5a90 !== 0x7 * -0x25 + 0xdda + -0xcd7 * 0x1 && (_0x5ddcd3 = _0x40e1fd + $gameMap['tileHeight']() / (-0x1f2c + -0x1ef7 + -0x14b7 * -0x3), _0x24b5c5 = _0x5ddcd3); const _0x110c27 = { 'x': _0x52e90f - $gameMap['tileWidth']() / (-0x1d01 + -0x1 * 0x259a + 0x1 * 0x429d) + _0x13a10c['offsetX'], 'y': _0x5ddcd3 - $gameMap['tileHeight']() + _0x13a10c['offsetY'], 'width': _0x13a10c[_0x51b929(_0x2bddd0._0x3d115a)] * $gameMap['tileWidth'](), 'height': _0x13a10c['height'] * $gameMap['tileHeight']() }, _0x356bb9 = _0x52e90f - _0x110c27['x'], _0x5f4edd = _0x24b5c5 - $gameMap['tileHeight']() / (0x79 * -0x30 + 0xeec + 0x7c6) - _0x110c27['y'], _0x3b9525 = _0x5f5a90 * Math['PI'] / (-0x3 * -0x881 + 0x20ee + 0x17b * -0x27), _0x578b31 = Math['cos'](_0x3b9525), _0x37639f = Math['sin'](_0x3b9525), _0x2523f7 = {}; _0x2523f7['x'] = -_0x356bb9 * _0x578b31 + _0x5f4edd * _0x37639f + _0x52e90f, _0x2523f7['y'] = -_0x356bb9 * _0x37639f - _0x5f4edd * _0x578b31 + _0x24b5c5; const _0x3ec0e8 = {}; _0x3ec0e8['x'] = (-_0x356bb9 + _0x110c27['width']) * _0x578b31 + _0x5f4edd * _0x37639f + _0x52e90f, _0x3ec0e8['y'] = (-_0x356bb9 + _0x110c27['width']) * _0x37639f - _0x5f4edd * _0x578b31 + _0x24b5c5; const _0x20639a = {}; _0x20639a['x'] = (-_0x356bb9 + _0x110c27['width']) * _0x578b31 + (_0x5f4edd - _0x110c27[_0x51b929(_0x2bddd0._0x2a846d)]) * _0x37639f + _0x52e90f, _0x20639a['y'] = (-_0x356bb9 + _0x110c27['width']) * _0x37639f - (_0x5f4edd - _0x110c27['height']) * _0x578b31 + _0x24b5c5; const _0xc296ee = {}; return _0xc296ee['x'] = -_0x356bb9 * _0x578b31 + (_0x5f4edd - _0x110c27['height']) * _0x37639f + _0x52e90f, _0xc296ee['y'] = -_0x356bb9 * _0x37639f - (_0x5f4edd - _0x110c27[_0x51b929(0x118)]) * _0x578b31 + _0x24b5c5, [_0x2523f7, _0x3ec0e8, _0x20639a, _0xc296ee]; } else { let _0x3a32dc = _0x3dbb2d, _0x1f2543 = _0x315676; _0x4b4630 !== 0x8 * 0x146 + 0x2dc + -0xd0c && (_0x3a32dc = _0x3b77c6 + _0x582e33['tileHeight']() / (-0xd79 + 0x37a + 0xa01), _0x1f2543 = _0x3a32dc); const _0x4ae6e3 = { 'x': _0x500570 - _0x3e2a91['tileWidth']() / (0x1f5 + -0x1ff1 + 0x1dfe) + _0x12134c['offsetX'], 'y': _0x3a32dc - _0x3e83b4[_0x51b929(0xbf)]() + _0x36b432['offsetY'], 'width': _0x4ce9f2['width'] * _0xbd5902['tileWidth'](), 'height': _0x28b8ee[_0x51b929(_0x2bddd0._0x31de38)] * _0x3f1828['tileHeight']() }, _0x2343c4 = _0x158a92 - _0x4ae6e3['x'], _0x3333be = _0x1f2543 - _0x4b2b9a[_0x51b929(0xbf)]() / (0x26d1 + -0xeaf * -0x1 + -0x357e) - _0x4ae6e3['y'], _0x19e670 = _0x249fe4 * _0x467b49['PI'] / (-0x25b8 + -0x12a1 + 0x390d), _0x1c6ae7 = _0x2ff8fc['cos'](_0x19e670), _0x37881e = _0x26b6bb['sin'](_0x19e670), _0x36263f = {}; _0x36263f['x'] = -_0x2343c4 * _0x1c6ae7 + _0x3333be * _0x37881e + _0x11afba, _0x36263f['y'] = -_0x2343c4 * _0x37881e - _0x3333be * _0x1c6ae7 + _0x1f2543; const _0x44f923 = {}; _0x44f923['x'] = (-_0x2343c4 + _0x4ae6e3[_0x51b929(_0x2bddd0._0x561186)]) * _0x1c6ae7 + _0x3333be * _0x37881e + _0x304a72, _0x44f923['y'] = (-_0x2343c4 + _0x4ae6e3['width']) * _0x37881e - _0x3333be * _0x1c6ae7 + _0x1f2543; const _0x4c9a25 = {}; _0x4c9a25['x'] = (-_0x2343c4 + _0x4ae6e3['width']) * _0x1c6ae7 + (_0x3333be - _0x4ae6e3[_0x51b929(0x118)]) * _0x37881e + _0x48db11, _0x4c9a25['y'] = (-_0x2343c4 + _0x4ae6e3['width']) * _0x37881e - (_0x3333be - _0x4ae6e3['height']) * _0x1c6ae7 + _0x1f2543; const _0x13398c = {}; return _0x13398c['x'] = -_0x2343c4 * _0x1c6ae7 + (_0x3333be - _0x4ae6e3['height']) * _0x37881e + _0x238be0, _0x13398c['y'] = -_0x2343c4 * _0x37881e - (_0x3333be - _0x4ae6e3['height']) * _0x1c6ae7 + _0x1f2543, [_0x36263f, _0x44f923, _0x4c9a25, _0x13398c]; } }, _0x423055 = _0x51cab7 => { const _0xfb8324 = _0x5e6506, _0x48a4ec = {}; _0x48a4ec['x'] = _0x51cab7[-0x9d * -0x37 + 0x1106 + -0x10 * 0x32c]['x'] - _0x51cab7[-0x1 * 0x200f + 0x8 * 0x349 + 0x5c7]['x'], _0x48a4ec['y'] = _0x51cab7[-0x22c3 * -0x1 + -0xc7 * 0x2b + 0x1 * -0x155]['y'] - _0x51cab7[-0x24f3 + -0x907 + 0x2dfa]['y']; const _0x3e7bca = _0x48a4ec, _0x21880f = {}; _0x21880f['x'] = _0x51cab7[-0x1 * 0xdd7 + -0x1468 + 0x2242]['x'] - _0x51cab7[-0x679 * -0x5 + 0x1 * 0xce7 + -0x4 * 0xb51]['x'], _0x21880f['y'] = _0x51cab7[-0x2b2 + -0xb * 0x8f + 0x67 * 0x16]['y'] - _0x51cab7[0x1f15 + -0x7b7 + 0xbaf * -0x2]['y']; const _0x5b1d4f = _0x21880f, _0x56279f = Math[_0xfb8324(0x110)](_0x3e7bca['x'] * _0x3e7bca['x'] + _0x3e7bca['y'] * _0x3e7bca['y']), _0x3758a9 = Math['sqrt'](_0x5b1d4f['x'] * _0x5b1d4f['x'] + _0x5b1d4f['y'] * _0x5b1d4f['y']), _0x4f55b0 = {}; _0x4f55b0['x'] = _0x3e7bca['x'] / _0x56279f, _0x4f55b0['y'] = _0x3e7bca['y'] / _0x56279f; const _0x363ca3 = {}; return _0x363ca3['x'] = _0x5b1d4f['x'] / _0x3758a9, _0x363ca3['y'] = _0x5b1d4f['y'] / _0x3758a9, [_0x4f55b0, _0x363ca3]; }, _0x595dd4 = (_0x5d8c54, _0x555709) => { const _0x53ecbe = _0x5e6506; let _0x7b69fe = _0x5d8c54[0xe4f + 0x1 * -0x1ab1 + 0x13d * 0xa]['x'] * _0x555709['x'] + _0x5d8c54[-0xa1f * 0x3 + -0x22fa + 0x4157]['y'] * _0x555709['y'], _0x31d6f1 = _0x7b69fe; for (let _0x2bddc0 = 0x2211 + -0x2 * -0xaa3 + 0x6 * -0x939; _0x2bddc0 < _0x5d8c54['length']; _0x2bddc0++) { const _0x30cf79 = _0x5d8c54[_0x2bddc0]['x'] * _0x555709['x'] + _0x5d8c54[_0x2bddc0]['y'] * _0x555709['y']; _0x7b69fe = Math[_0x53ecbe(0xb8)](_0x7b69fe, _0x30cf79), _0x31d6f1 = Math['max'](_0x31d6f1, _0x30cf79); } const _0x3ab396 = {}; return _0x3ab396['min'] = _0x7b69fe, _0x3ab396[_0x53ecbe(_0x40e449._0x58ebd7)] = _0x31d6f1, _0x3ab396; }, _0x26e3f7 = _0x2b78b8(_0x29fc17, _0x1b924f, _0x4f85e1, _0x14f4a1), _0x2c9a95 = _0x2b78b8(_0x4af9b6, _0x4ea8d2, _0x298bff, _0x23d438), _0x30cd43 = [..._0x423055(_0x26e3f7), ..._0x423055(_0x2c9a95)]; for (const _0x1c67d2 of _0x30cd43) { const _0x4192f3 = _0x595dd4(_0x26e3f7, _0x1c67d2), _0x1e594e = _0x595dd4(_0x2c9a95, _0x1c67d2); if (_0x4192f3['max'] < _0x1e594e['min'] || _0x1e594e['max'] < _0x4192f3[_0x5e6506(_0x417f7f._0x50d4ff)]) return ![]; } return !![]; }, Game_Map['prototype']['initTagInd' + 'ex'] = function () { const _0x28f6f4 = { _0x50c5a3: 0xfc }, _0x404fe1 = _0x740f; this[_0x404fe1(_0x28f6f4._0x50c5a3) + 's'] = new Map(); }, Game_Map[_0x4195c3(0xce)]['buildTagIn' + _0x4195c3(0xb4)] = function () { const _0x15ea2d = { _0x37dc0e: 0xf5 }, _0x141270 = { _0x4d95bd: 0x114 }, _0x27e4a3 = _0x4195c3; this[_0x27e4a3(_0x15ea2d._0x37dc0e) + 'ex'](), this['events']()['forEach'](_0x28885f => { const _0x2b1291 = _0x27e4a3; _0x28885f && _0x28885f[_0x2b1291(_0x141270._0x4d95bd)] && _0x28885f['event']() && this[_0x2b1291(0xc1) + 'TagIndex'](_0x28885f); }); }, Game_Map['prototype']['clearTagIn' + 'dex'] = function () { this['tagToEvent' + 's'] = new Map(); }, Game_Map[_0x4195c3(0xce)]['addEventTo' + 'TagIndex'] = function (_0x1af1fb) { const _0x4dc2cd = { _0x8ab2a2: 0x114, _0xd9cb16: 0x101, _0x34933a: 0xdc, _0x32b2e8: 0xfc, _0xf9acd: 0xe7, _0x2fd03f: 0x111 }, _0x411df3 = _0x4195c3; this['tagToEvent' + 's'] ||= new Map(); const _0x1aef59 = _0x1af1fb[_0x411df3(_0x4dc2cd._0x8ab2a2)]()[_0x411df3(_0x4dc2cd._0xd9cb16)], _0x513453 = _0x1af1fb['event']()[_0x411df3(_0x4dc2cd._0x34933a)], _0x30dc66 = _0x1aef59[_0x411df3(0xe6)](/<([^>]+)>/g); if (_0x30dc66) { if ('GvcXN' === 'GvcXN') for (const _0x47303e of _0x30dc66) { const _0x469b0d = _0x47303e; !this['tagToEvent' + 's']['has'](_0x469b0d) && this['tagToEvent' + 's']['set'](_0x469b0d, []); const _0xd07aa9 = this[_0x411df3(_0x4dc2cd._0x32b2e8) + 's'][_0x411df3(_0x4dc2cd._0xf9acd)](_0x469b0d); !_0xd07aa9['includes'](_0x1af1fb) && _0xd07aa9['push'](_0x1af1fb); } else this['tagToEvent' + 's']['set'](_0x50abd2, []); } if (_0x513453 && _0x513453['trim']() !== '') { if ('rbPkW' !== _0x411df3(_0x4dc2cd._0x2fd03f)) { !this['tagToEvent' + 's']['has'](_0x513453) && this['tagToEvent' + 's'][_0x411df3(0xb6)](_0x513453, []); const _0x14fa97 = this['tagToEvent' + 's']['get'](_0x513453); !_0x14fa97[_0x411df3(0x103)](_0x1af1fb) && _0x14fa97['push'](_0x1af1fb); } else for (let _0x2347bd = _0x2822cd; _0x2347bd <= _0x4e5dd5; _0x2347bd++) { if (_0x322217(_0x37ab26, _0x2347bd)) return !![]; } } }, Game_Map['prototype'][_0x4195c3(0xc2) + 'tFromTagIn' + _0x4195c3(0xb4)] = function (_0x5a4fb6) { const _0x33708d = { _0x3fc0d6: 0xfc, _0x4956fa: 0xd7 }, _0x70bccb = _0x4195c3; if (!this['tagToEvent' + 's']) return; for (const [_0xd090, _0xa627aa] of this[_0x70bccb(_0x33708d._0x3fc0d6) + 's']['entries']()) { const _0x4beb20 = _0xa627aa['indexOf'](_0x5a4fb6); _0x4beb20 > -(-0x2 * 0x734 + 0x1d * -0xb5 + -0x52 * -0x6d) && (_0xa627aa['splice'](_0x4beb20, -0x4 * -0x306 + -0xec * -0xf + -0x19eb), _0xa627aa['length'] === 0x13 * 0xd4 + 0x1 * 0xc23 + 0x1 * -0x1bdf && this['tagToEvent' + 's'][_0x70bccb(_0x33708d._0x4956fa)](_0xd090)); } }, Game_Event['prototype']['checkColli' + 'sionStatus'] = function () { return this['_collision' + 'Enabled'] !== ![]; }, Game_Map['prototype']['taggedEven' + 'tIsCollidi' + 'ngWithTarg' + _0x4195c3(0xc4)] = function (_0x539787, _0x5e5b15, _0x25631f = -0x9 * -0x243 + -0xa2b + -0xa30, _0x505459 = 0x2678 + -0x3a + -0x2638) { const _0x3c694b = { _0x2fe198: 0xea, _0x3f3733: 0x114, _0x271d8e: 0x10f, _0x57b4f6: 0xef, _0x5a99b1: 0xc7, _0x2407b9: 0x11d, _0x20cfae: 0xe5, _0x20950b: 0xf7, _0xafb37e: 0x100, _0x5b2696: 0xba, _0x536de7: 0xfc, _0x4af920: 0xdd, _0x7f7fc: 0xd5 }, _0xe4ac76 = { _0x46a82c: 0x10b, _0x48054d: 0xb9, _0x3cb4e7: 0xb9, _0x270386: 0xfb, _0x532d07: 0x11c, _0x56f623: 0xfd, _0x46b63a: 0xe1, _0x57d998: 0xdf, _0x4687f7: 0x109, _0x238ef6: 0x10e, _0x4ced6c: 0xe1, _0x40bf13: 0xf0, _0x104f8f: 0xf8, _0x1c04a1: 0xea, _0x1fec15: 0xf4, _0x8e070a: 0xeb, _0x10c5e2: 0xe2, _0x1fce83: 0xdc, _0xa6963b: 0xcf }, _0x5e426d = { _0x1260bd: 0xc7, _0x4338a2: 0xda, _0x4d5a38: 0xd1, _0x36ed72: 0xcd, _0x44c177: 0xfc, _0x36d42c: 0xd7, _0x1f8d36: 0xd6 }, _0x5a7979 = _0x4195c3, _0x4dba0b = _0x539787 === _0x5a7979(_0x3c694b._0x2fe198) ? $gamePlayer : this[_0x5a7979(_0x3c694b._0x3f3733)](_0x539787); if (!_0x4dba0b || _0x4dba0b['_x'] == null || _0x4dba0b['_y'] == null) return ![]; const _0x4db26b = _0x4dba0b['_x'], _0x55a851 = _0x4dba0b['_y'], _0x2b2508 = $gameSystem['collisionT' + 'imestamps'] ||= {}, _0x1474d2 = $gameSystem['collidedOn' + 'ceEvents'] ||= {}, _0x3b4f33 = Graphics[_0x5a7979(0xb5)], _0x31fd80 = _0x505459 * _0x505459, _0x39debf = _0x3fbd37 => { const _0xbb27cd = _0x5a7979; if (!(_0x3fbd37 instanceof Game_Event)) return ![]; if (_0x3fbd37['_collision' + 'Enabled'] === !![]) return ![]; if (_0x3fbd37[_0xbb27cd(_0x5e426d._0x1260bd) + 'Enabled'] === ![]) return !![]; const _0x5ab5a8 = _0x3fbd37[_0xbb27cd(0xd5)] + '-' + _0x3fbd37['_pageIndex']; this['skipCollis' + 'ionCache'] ||= {}; if (this[_0xbb27cd(0x115) + _0xbb27cd(_0x5e426d._0x4338a2)][_0x5ab5a8] === undefined) { if (_0x3fbd37[_0xbb27cd(_0x5e426d._0x4d5a38)] >= -0xf0a + -0xf4 * -0x22 + -0x115e) { const _0x1c04db = _0x3fbd37[_0xbb27cd(0x114)]()['pages'][_0x3fbd37['_pageIndex']]; if (_0x1c04db?.['list']) this[_0xbb27cd(0x115) + 'ionCache'][_0x5ab5a8] = _0x1c04db[_0xbb27cd(_0x5e426d._0x36ed72)]['some'](_0x43c596 => _0x43c596['code'] === 0xeae + -0x1a74 + 0xc32 && _0x43c596['parameters'][0xbef + -0x1 * -0x1351 + -0x5 * 0x640] === '<skip\x20coll' + 'ision>'); else { if (_0xbb27cd(0x102) === _0xbb27cd(0xb7)) { if (!this['tagToEvent' + 's']) return; for (const [_0x2c2037, _0x7b2167] of this[_0xbb27cd(_0x5e426d._0x44c177) + 's']['entries']()) { const _0x25dabd = _0x7b2167[_0xbb27cd(0x11b)](_0x31a909); _0x25dabd > -(0x350 + -0x26c + -0xe3 * 0x1) && (_0x7b2167['splice'](_0x25dabd, -0x2432 + 0x4da + -0x141 * -0x19), _0x7b2167['length'] === 0x35b * -0x6 + 0xb * 0x1ff + -0x1d3 && this['tagToEvent' + 's'][_0xbb27cd(_0x5e426d._0x36d42c)](_0x2c2037)); } } else this['skipCollis' + 'ionCache'][_0x5ab5a8] = ![]; } } else _0xbb27cd(_0x5e426d._0x1f8d36) === 'xRyKu' ? this['skipCollis' + 'ionCache'][_0x5ab5a8] = ![] : _0x23c8ef = _0x1ca328['getCooldow' + 'nFromNoteT' + 'ag'](); } return this['skipCollis' + _0xbb27cd(0xda)][_0x5ab5a8]; }, _0x13effd = typeof _0x5e5b15 === _0x5a7979(0xf1) ? _0x5e5b15['match'](/^impassable\s+([A-E]+)$/i) : null; if (_0x13effd) { const _0x3dc914 = _0x13effd[-0x4 * -0x1d2 + 0xa * 0x129 + -0x1b * 0xb3][_0x5a7979(0xd8)](''), _0x5b0ef9 = _0x3dc914[_0x5a7979(_0x3c694b._0x271d8e)](_0x26ebc9 => { const _0x1556fe = {}; return _0x1556fe['A'] = [[0xf48 + -0x111 * 0x7 + 0x92f, -0x1 * 0xdb1 + -0x79 * -0x9 + -0x206f * -0x1], [0xe8f * -0x1 + -0x263f + -0x4bce * -0x1, 0x2 * 0x9e7 + 0x2ce9 * -0x1 + 0x391a]], _0x1556fe['B'] = [[-0x3 * -0x7 + -0x4 * -0x2e3 + -0xe5 * 0xd, -0x3ae + -0x2c * -0x63 + -0x27 * 0x51]], _0x1556fe['C'] = [[0xb30 + -0x150f * -0x1 + -0x1f3f, 0x23ca + -0x1f7 * 0xd + 0x160 * -0x6]], _0x1556fe['D'] = [[-0x933 + 0x2 * -0xa63 + 0x1ff9, 0x5a2 * -0x2 + -0x1a14 + 0x2857]], _0x1556fe['E'] = [[0x29 * 0x86 + 0x74d * 0x1 + -0x527 * 0x5, -0x1 * 0x1a71 + 0x1 * -0x1f0a + 0x3d7a]], _0x1556fe[_0x26ebc9]; })['flat'](), _0x49a9ae = _0x4dba0b['_x'], _0x172d7c = _0x4dba0b['_y'], _0xa91bde = [[_0x49a9ae, _0x172d7c], [_0x49a9ae + (0x9e3 + 0x509 * 0x1 + -0xeeb), _0x172d7c], [_0x49a9ae - (-0x341 * 0x7 + -0x1 * -0x48b + -0x1 * -0x123d), _0x172d7c], [_0x49a9ae, _0x172d7c + (0xaf1 * 0x1 + -0x9a2 + -0x2 * 0xa7)], [_0x49a9ae, _0x172d7c - (0x226f + 0x8ae + 0x7c * -0x59)]]; return _0xa91bde['some'](([_0xe16f5b, _0x1c957e]) => { const _0x5bd376 = this['allTiles'](_0xe16f5b, _0x1c957e), _0x37df0f = this['tilesetFla' + 'gs'](); return _0x5bd376['some'](_0x6d1ee4 => { return _0x5b0ef9['some'](_0x45a2a8 => _0x6d1ee4 >= _0x45a2a8[0x5b8 + -0x1f32 + 0x43f * 0x6] && _0x6d1ee4 <= _0x45a2a8[-0x1a * -0x180 + -0x179 * 0x17 + -0x520] && (_0x37df0f[_0x6d1ee4] & 0x15b5 + 0x8a0 + 0x60e * -0x5) === -0x61 * -0x43 + 0x1 * 0x11cb + 0x629 * -0x7); }); }); } if (_0x5e5b15 === _0x5a7979(_0x3c694b._0x57b4f6) + 'ry') { if (_0x5a7979(0xe0) === 'LAnMY') { if ($gameMap['isLoopHori' + 'zontal']() && $gameMap['isLoopVert' + 'ical']()) return ![]; if (!$gameMap['isLoopHori' + 'zontal']() && (_0x4dba0b['_x'] <= 0x8 * -0x463 + -0x312 + 0x262a || _0x4dba0b['_x'] >= $gameMap['width']() - (0x621 + -0xf * 0x116 + 0xa2a * 0x1))) return !![]; if (!$gameMap['isLoopVert' + 'ical']() && (_0x4dba0b['_y'] <= -0x3 * -0x99d + 0x1 * -0x24d9 + 0x802 || _0x4dba0b['_y'] >= $gameMap[_0x5a7979(0x118)]() - (-0x140d + 0x1e0c + -0x9fe))) return !![]; return ![]; } else return this[_0x5a7979(_0x3c694b._0x5a99b1) + _0x5a7979(_0x3c694b._0x2407b9)] !== ![]; } if (_0x5e5b15 === _0x5a7979(0x106)) { const _0x1116aa = {}; _0x1116aa['width'] = 0x1, _0x1116aa['height'] = 0x1, _0x1116aa[_0x5a7979(0xe5)] = 0x0, _0x1116aa['offsetY'] = 0x0; const _0x366552 = _0x4dba0b[_0x5a7979(0xb9)] ? _0x4dba0b[_0x5a7979(0xb9)]() : _0x1116aa, _0x4ed469 = $gameMap['tileWidth'](), _0x48b0e8 = $gameMap['tileHeight'](), _0x3e89e8 = Math['floor'](_0x4dba0b['_realX'] + _0x366552[_0x5a7979(_0x3c694b._0x20cfae)] / _0x4ed469), _0x2669f0 = Math['floor'](_0x4dba0b['_realX'] + _0x366552['offsetX'] / _0x4ed469 + _0x366552['width']), _0x4a3a4b = Math['floor'](_0x4dba0b['_realY'] + _0x366552[_0x5a7979(_0x3c694b._0x20950b)] / _0x48b0e8), _0x27b194 = Math[_0x5a7979(0xe8)](_0x4dba0b['_realY'] + _0x366552['offsetY'] / _0x48b0e8 + _0x366552['height']); for (let _0x1743f0 = _0x3e89e8; _0x1743f0 <= _0x2669f0; _0x1743f0++) { for (let _0x4edbdc = _0x4a3a4b; _0x4edbdc <= _0x27b194; _0x4edbdc++) { if (SisTilePassableH(_0x1743f0, _0x4edbdc)) return !![]; } } return ![]; } const _0x5570b9 = typeof _0x5e5b15 === 'string' ? _0x5e5b15['match'](/^region\s+(\d+)$/i) : null; if (_0x5570b9) { const _0x3f7bc4 = parseInt(_0x5570b9[0x20ea + -0x41 * -0x41 + -0x316a]), _0x1e6717 = this[_0x5a7979(_0x3c694b._0xafb37e)] + '-' + (_0x539787 === 'player' ? 'player' : _0x539787) + '-region-' + _0x3f7bc4, _0x27fd99 = Graphics['frameCount'], _0x405659 = $gameSystem['collisionT' + _0x5a7979(0xd4)][_0x1e6717] || 0x1 * 0xaed + 0x1f25 + -0x2a12; if (_0x27fd99 - _0x405659 <= _0x25631f) return ![]; const _0x5db6f5 = _0x4dba0b['_x'], _0x59f9a3 = _0x4dba0b['_y'], _0x4422e6 = this['regionId'](_0x5db6f5, _0x59f9a3); if (_0x4422e6 === _0x3f7bc4) { if ('YGwVM' !== 'YGwVM') _0x4b7a56 = _0x376261 + _0x5c0086['tileHeight']() / (0xa91 + 0x1442 + -0x1ed1), _0x193c26 = _0x587bad; else return $gameSystem['collisionT' + 'imestamps'][_0x1e6717] = _0x27fd99, !![]; } return ![]; } const _0x5f8c0a = (_0x555927, _0x19d397) => { const _0x396c7c = _0x5a7979; if (_0x555927 instanceof Game_Event) { if ('QxJpW' === _0x396c7c(_0xe4ac76._0x46a82c)) { if (_0x39debf(_0x555927)) return ![]; if (_0x4dba0b instanceof Game_Event && _0x39debf(_0x4dba0b)) return ![]; } else { if (_0x2f0f20(_0x31806b)) return ![]; if (_0xccd255 instanceof _0x45e8a8 && _0x15b988(_0x44547d)) return ![]; } } const _0x3133b9 = this['_mapId'] + '-' + (_0x555927 === $gamePlayer ? 'player' : _0x555927['_eventId']) + '-' + (_0x539787 === 'player' ? 'player' : _0x539787) + '-' + _0x19d397; if (_0x25631f === -0x1 * -0x141d + -0x1 * -0x1267 + -0x9a1 * 0x4 && _0x1474d2[_0x3133b9]) return ![]; let _0x34694d = _0x25631f; _0x25631f === 'cooldown' && _0x555927 instanceof Game_Event && ('fzjKQ' !== _0x396c7c(0xc9) ? this['skipCollis' + 'ionCache'][_0x2d5382] = ![] : _0x34694d = _0x555927['getCooldow' + 'nFromNoteT' + 'ag']()); const _0x23f767 = _0x2b2508[_0x3133b9] || 0x25 * -0x7f + 0xef4 + 0x367; if (_0x3b4f33 - _0x23f767 <= _0x34694d) return ![]; if (!this['hitboxesAr' + 'eColliding'](_0x555927[_0x396c7c(0x11a)](), _0x555927['screenY'](), _0x555927[_0x396c7c(_0xe4ac76._0x48054d)](), _0x4dba0b['screenX'](), _0x4dba0b['screenY'](), _0x539787 === 'player' ? _0x4dba0b['hitboxData']() : _0x4dba0b[_0x396c7c(_0xe4ac76._0x3cb4e7)](), _0x555927['customRota' + 'tionPoint'] ? _0x555927[_0x396c7c(0xc0)] : 0x208c + -0x1 * -0x2359 + -0x43e5, _0x4dba0b['customRota' + _0x396c7c(0xff)] ? _0x4dba0b['_rotation'] : -0x1 * -0x3d5 + -0xc * -0x21e + -0x1d3d)) return ![]; _0x2b2508[_0x3133b9] = _0x3b4f33; if (_0x25631f === -0xd1e * -0x2 + -0x14d3 + 0x1 * -0x569) _0x1474d2[_0x3133b9] = !![]; if (_0x555927 instanceof Game_Event) { let _0x52ad0e = -0x190b + 0x9d + -0x1 * -0x186e; const _0x1a657a = _0x555927['event']()['note'], _0x20ff00 = _0x1a657a[_0x396c7c(0xe6)](/<dmg:\s*(.+?)>/i); if (_0x20ff00) { CollisionManager[_0x396c7c(_0xe4ac76._0x270386) + 'EventId'] = _0x555927['_eventId']; const _0x21a60f = _0x20ff00[-0x2 * -0x157 + 0x1153 + -0x1400]['trim'](), _0x4e8ea7 = _0x21a60f['toLowerCas' + 'e'](); let _0x18879d = skillNameCache[_0x4e8ea7], _0x1b91ed = ![]; if (!_0x18879d && enemyNameCache[_0x4e8ea7]) { !_0x555927['databaseEn' + 'emy'] && _0x555927['setupEnemy' + 'Data'](_0x21a60f); const _0x3ba331 = _0x555927[_0x396c7c(_0xe4ac76._0x532d07) + _0x396c7c(_0xe4ac76._0x56f623)] || SgetBattlerForH(_0x555927), _0x135478 = _0x3ba331 ? _0x3ba331['attackSkil' + 'lId']() : -0x20b + 0x63 * -0x2f + 0x1439; _0x18879d = $dataSkills[_0x135478], _0x1b91ed = !![]; } if (_0x4e8ea7 === _0x396c7c(_0xe4ac76._0x46b63a) || _0x4e8ea7 === '2nd\x20weapon') { if ('gaEjF' !== 'gaEjF') _0x215f4b['push'](_0x43cf9e); else { const _0x293427 = _0x539787 === 'player' || _0x539787 === -0x24c9 + -0x93f + 0x2e08, _0x2581f5 = _0x293427 || (_0x4dba0b['databaseEn' + 'emy'] || _0x4dba0b['databaseAc' + _0x396c7c(_0xe4ac76._0x57d998)] || _0x4dba0b['PRmhp']); if (_0x2581f5) { if ('VfxhN' !== 'VfxhN') this['skipCollis' + _0x396c7c(0xda)][_0x484ff9] = _0x15e3e7['list']['some'](_0x349e26 => _0x349e26[_0x396c7c(0x119)] === -0x1545 * 0x1 + 0x506 * -0x4 + 0x29c9 && _0x349e26[_0x396c7c(0xe3)][0x1b5 * -0x10 + 0x1332 + 0x81e] === '<skip\x20coll' + 'ision>'); else { if (!_0x293427 && !_0x4dba0b['databaseEn' + 'emy'] && !_0x4dba0b[_0x396c7c(_0xe4ac76._0x4687f7) + 'tor'] && !_0x4dba0b['PRmhp']) { const _0x4f6c08 = _0x4dba0b['event'](); if (_0x4f6c08['name']) { if (_0x396c7c(_0xe4ac76._0x238ef6) === 'rktyF') { const _0xf555bc = _0x2ba7a7['equips'](); if (_0x2fe8bf === _0x396c7c(_0xe4ac76._0x4ced6c) && _0xf555bc[0xe59 * -0x1 + 0x2 * -0x5f5 + 0xf9 * 0x1b]) _0x532a40 = _0xf555bc[-0x2b * 0x4f + -0x1af9 + 0x12f * 0x22]; else _0x3d5997 === '2nd\x20weapon' && _0xf555bc[0x716 * 0x3 + -0x125 * 0x8 + -0xa3 * 0x13] && _0x5e88ba[_0x396c7c(0x11e)](_0xf555bc[-0x1a89 + -0xb2 * -0x8 + 0x14fa]) && (_0x5ae208 = _0xf555bc[-0x1cc5 + -0xb57 * -0x1 + -0x1 * -0x116f]); } else _0x4dba0b['setupEnemy' + 'Data'](_0x4f6c08[_0x396c7c(0xdc)]); } } let _0x27edc2 = null; if (_0x555927['_inherited' + _0x396c7c(0x116)] && _0x555927[_0x396c7c(0xfe) + _0x396c7c(_0xe4ac76._0x40bf13)]) _0x27edc2 = _0x555927['_inherited' + 'ActorData']; else { if (_0x555927['databaseAc' + 'tor']) _0x27edc2 = _0x555927['databaseAc' + 'tor']; else { if (_0x555927['linkedActo' + 'rId']) _0x27edc2 = $gameActors['actor'](_0x555927['linkedActo' + 'rId']); else _0x27edc2 = $gameParty['leader'](); } } let _0x4d5e38 = null; if (_0x27edc2 && typeof _0x27edc2['equips'] === 'function') { const _0x58b000 = _0x27edc2[_0x396c7c(0xe4)](); if (_0x4e8ea7 === 'weapon' && _0x58b000[-0x18b + -0x955 + 0xae0]) _0x4d5e38 = _0x58b000[-0x3d * 0x5b + 0x1 * 0x1fd3 + 0x16 * -0x76]; else { if (_0x4e8ea7 === '2nd\x20weapon' && _0x58b000[0x7d1 * 0x3 + 0x1 * -0x38 + 0x173a * -0x1] && DataManager['isWeapon'](_0x58b000[-0x1 * 0x2689 + -0x2 * -0x4d5 + 0x1ce0])) { if ('emHKf' !== _0x396c7c(0xd2)) { _0x241a86['lastSource' + 'EventId'] = _0x4c082f['_eventId']; const _0x4ca1ae = _0x35e2cd[_0x396c7c(_0xe4ac76._0x104f8f) + 'romNoteTag'](); _0x552d64['addCollisi' + 'on'](_0xa64fe2 === _0x396c7c(_0xe4ac76._0x1c04a1) ? 0x1 * -0x1f5d + 0xe2 + 0x1e7b : _0x47930f, _0x4ca1ae); } else _0x4d5e38 = _0x58b000[0x1a18 + -0x1 * -0x19f + -0x1bb6]; } } } _0x52ad0e = MaithlCalculateDamagePlayerWeapon(_0x539787 === 'player' ? -0x2330 + -0x19ad + 0x3cdd * 0x1 : _0x539787, _0x4d5e38, _0x27edc2), CollisionManager['lastEvaded'] = _0x52ad0e === 0x1132 + -0x20ac + 0x7bd * 0x2 && !CollisionManager['lastImmuni' + 'ty'], SprocessStateApplicationH(_0x555927, _0x539787 === _0x396c7c(0xea) ? 0x2e2 + 0x66a + -0x154 * 0x7 : _0x539787); } } else _0x52ad0e = _0x555927['getDamageF' + 'romNoteTag'](); } } else { if (_0x18879d) { if (_0x396c7c(0xbc) !== _0x396c7c(0xbc)) return _0x31cce1[_0x396c7c(0x108) + 'imestamps'][_0x28d744] = _0x3ab5e6, !![]; else { const _0x4610fe = new Game_Interpreter(), _0x208b64 = _0x539787 === 'player' || _0x539787 === -0x2a5 * -0x2 + -0x899 * -0x3 + -0x1f15 * 0x1, _0x4082a4 = _0x208b64 ? $gamePlayer : _0x4dba0b, _0x5b013f = _0x208b64 || (_0x4dba0b[_0x396c7c(_0xe4ac76._0x1fec15) + _0x396c7c(_0xe4ac76._0x8e070a)] || _0x4dba0b['databaseAc' + 'tor'] || _0x4dba0b['PRmhp']); if (_0x5b013f) { if (!_0x208b64 && !_0x4dba0b['databaseEn' + _0x396c7c(0xeb)] && !_0x4dba0b['databaseAc' + 'tor'] && !_0x4dba0b['PRmhp']) { if (_0x396c7c(_0xe4ac76._0x10c5e2) !== 'aShBT') return !![]; else { const _0x2caad9 = _0x4dba0b['event'](); _0x2caad9[_0x396c7c(_0xe4ac76._0x1fce83)] && _0x4dba0b['setupEnemy' + _0x396c7c(0x117)](_0x2caad9['name']); } } _0x1b91ed && !_0x555927['databaseEn' + _0x396c7c(_0xe4ac76._0x8e070a)] && _0x555927[_0x396c7c(0x104) + 'Data'](_0x21a60f), _0x52ad0e = _0x4610fe['calculateD' + 'amageAgain' + 'stEvent'](_0x4082a4, 'skill', _0x18879d, _0x555927['_eventId']), CollisionManager['lastEvaded'] = _0x52ad0e === -0x610 * -0x4 + 0x21 * -0x109 + 0x9e9 && !CollisionManager['lastImmuni' + 'ty'], SprocessStateApplicationH(_0x555927, _0x539787 === 'player' ? 0x2dc * -0x2 + -0x259b + -0xe71 * -0x3 : _0x539787); } else _0x52ad0e = _0x555927['getDamageF' + 'romNoteTag'](); } } else { if (_0x396c7c(_0xe4ac76._0xa6963b) === _0x396c7c(_0xe4ac76._0xa6963b)) _0x52ad0e = _0x555927['getDamageF' + _0x396c7c(0xd9)](); else return ![]; } } } else _0x52ad0e = _0x555927['getDamageF' + 'romNoteTag'](); CollisionManager['addCollisi' + 'on'](_0x539787 === 'player' ? 0x212 + -0xb82 + 0x25c * 0x4 : _0x539787, _0x52ad0e), (_0x555927['databaseEn' + 'emy'] || _0x555927['databaseAc' + 'tor'] || _0x555927['linkedActo' + 'rId']) && SprocessEnemyAttackTraitsH(_0x555927, _0x539787 === 'player' ? -0xa1 + -0x1973 * 0x1 + -0xd0a * -0x2 : _0x539787); } return !![]; }; if (_0x5e5b15 === 'player') { if ('dWYnF' !== 'HroJr') { const _0x11c8d5 = Math['abs']($gameMap[_0x5a7979(0xf2)]($gamePlayer['_x'], _0x4dba0b['_x'])), _0x1c4dbe = Math['abs']($gameMap['deltaY']($gamePlayer['_y'], _0x4dba0b['_y'])); if (_0x11c8d5 * _0x11c8d5 + _0x1c4dbe * _0x1c4dbe <= _0x31fd80) return _0x5f8c0a($gamePlayer, _0x5a7979(0xea)); return ![]; } else _0x34a941[_0x5a7979(_0x3c694b._0x5b2696)](_0x2dbda5, 0xba9 + 0x220a + -0x2db2); } this[_0x5a7979(_0x3c694b._0x536de7) + 's'] ||= new Map(); const _0x10e4fe = new Set(); for (const _0x30720a of Array['isArray'](_0x5e5b15) ? _0x5e5b15 : [_0x5e5b15]) { const _0x4ca5fc = this['tagToEvent' + 's'][_0x5a7979(0xe7)](_0x30720a) || []; for (const _0x4710fd of _0x4ca5fc) { if (!_0x4710fd || _0x4710fd['_erased'] || !$gameMap['_events'][_0x4710fd['_eventId']] || !_0x4710fd['event']()) { if (_0x5a7979(_0x3c694b._0x4af920) === _0x5a7979(0x112)) _0x3c1190 = _0x1c05ed[0x421 * -0x2 + -0x2280 + -0x59 * -0x7b]; else { const _0x4cdf5b = _0x4ca5fc['indexOf'](_0x4710fd); _0x4cdf5b > -(0x16f1 + -0x62a + -0x10c6) && _0x4ca5fc[_0x5a7979(0xba)](_0x4cdf5b, 0x81f + 0xc4a + -0x4 * 0x51a); continue; } } const _0x4fc3e7 = Math['abs']($gameMap[_0x5a7979(0xf2)](_0x4710fd['_x'], _0x4db26b)) + Math[_0x5a7979(0x10c)]($gameMap['deltaY'](_0x4710fd['_y'], _0x55a851)); if (_0x4fc3e7 > _0x505459 * (0x6 * 0x1cf + -0xec8 + -0x3 * -0x150)) continue; _0x10e4fe[_0x5a7979(0xca)](_0x4710fd); } } for (const _0x2dec98 of _0x10e4fe) { if (_0x39debf(_0x2dec98)) continue; if (_0x539787 !== 'player' && _0x2dec98[_0x5a7979(_0x3c694b._0x7f7fc)] === _0x539787) continue; const _0x3ad0e2 = _0x2dec98['event']()['note'], _0x5a1c0e = _0x2dec98['event']()['name']; let _0xe9667d = null; for (const _0x322189 of Array['isArray'](_0x5e5b15) ? _0x5e5b15 : [_0x5e5b15]) { const _0x3e05d6 = _0x322189['startsWith']('<') && _0x322189[_0x5a7979(0xf9)]('>'), _0x48d308 = _0x3e05d6 && _0x3ad0e2['includes'](_0x322189), _0x519d54 = !_0x3e05d6 && _0x5a1c0e === _0x322189; if (_0x48d308 || _0x519d54) { _0xe9667d = _0x322189; break; } } if (!_0xe9667d) continue; if (_0x5f8c0a(_0x2dec98, _0xe9667d)) return !![]; } return ![]; }, Game_Map[_0x4195c3(0xce)]['shareColli' + 'dingWith'] = function (_0x5dbd70, _0x10d4c6, _0x3b9be5 = -0x2 * -0xbcc + -0xd * 0x8 + -0x1730) { const _0x21918b = { _0x5b3df7: 0xd3, _0x5ef748: 0xfa, _0x2e8859: 0xff }, _0x3d72c7 = { _0x324482: 0x11d, _0x1dfdf6: 0x115, _0x465170: 0xcd, _0x566bba: 0xf8 }, _0x1a0ecc = _0x4195c3; if (!$gameSystem['collisionT' + 'imestamps']) $gameSystem['collisionT' + 'imestamps'] = {}; const _0xf2fc5a = $gameSystem['collisionT' + _0x1a0ecc(0xd4)], _0x42cbf8 = Graphics['frameCount'], _0x545574 = new Set(Array['isArray'](_0x10d4c6) ? _0x10d4c6 : [_0x10d4c6]), _0x2a103e = _0x5dbd70 + '-' + (Array['isArray'](_0x10d4c6) ? _0x10d4c6['join']('-') : _0x10d4c6), _0x5c70ed = _0xf2fc5a[_0x2a103e] || 0x24d6 + -0x2502 + 0x1 * 0x2c, _0x1d8c98 = _0x5dbd70 === 'player' ? $gamePlayer : this[_0x1a0ecc(0x114)](_0x5dbd70); if (!_0x1d8c98 || _0x1d8c98['_x'] == null || _0x1d8c98['_y'] == null) return ![]; let _0xb37c89 = _0x3b9be5; _0xb37c89 === 'cooldown' && _0x1d8c98 instanceof Game_Event && (_0xb37c89 = _0x1d8c98['getCooldow' + 'nFromNoteT' + 'ag']()); if (_0x42cbf8 - _0x5c70ed <= _0xb37c89) return ![]; const _0x2416ad = _0x31c1d0 => { const _0x5c7803 = _0x1a0ecc; if ('rPgni' === 'rPgni') { if (!(_0x31c1d0 instanceof Game_Event)) return ![]; if (_0x31c1d0['_collision' + 'Enabled'] === !![]) return ![]; if (_0x31c1d0['_collision' + _0x5c7803(_0x3d72c7._0x324482)] === ![]) return !![]; const _0x3a2ea3 = this['_mapId'] + '-' + _0x31c1d0['_eventId'] + '-' + _0x31c1d0['_pageIndex']; this[_0x5c7803(_0x3d72c7._0x1dfdf6) + _0x5c7803(0xda)] ||= {}; if (this[_0x5c7803(0x115) + 'ionCache'][_0x3a2ea3] === undefined) { if ('fiAaK' !== 'ruGbF') { if (_0x31c1d0['_pageIndex'] >= -0x1cf3 + 0x159a + -0x273 * -0x3) { const _0x654bc4 = _0x31c1d0['event']()['pages'][_0x31c1d0['_pageIndex']]; _0x654bc4?.[_0x5c7803(_0x3d72c7._0x465170)] ? this['skipCollis' + 'ionCache'][_0x3a2ea3] = _0x654bc4['list'][_0x5c7803(0xed)](_0x38743e => _0x38743e['code'] === 0x2f * 0x5d + -0xa * 0x7c + -0xbcf && _0x38743e['parameters'][0x8bf * 0x4 + -0x247 + -0x20b5] === _0x5c7803(0x10a) + _0x5c7803(0xf3)) : this['skipCollis' + 'ionCache'][_0x3a2ea3] = ![]; } else this['skipCollis' + 'ionCache'][_0x3a2ea3] = ![]; } else _0x455f15(_0x237b80, _0x2fc60b === 'player' ? 0x10df * -0x1 + 0x1f * 0x1f + 0xd1e : _0x1e5300); } return this['skipCollis' + 'ionCache'][_0x3a2ea3]; } else _0x39dd7b = _0x296111[_0x5c7803(_0x3d72c7._0x566bba) + 'romNoteTag'](); }, _0x2bf623 = this['events']()['some'](_0x29a548 => { const _0x565890 = _0x1a0ecc; if (_0x29a548 === _0x1d8c98) return ![]; if (_0x2416ad(_0x29a548)) return ![]; const _0x4d2012 = _0x29a548['event']()['note']; let _0x3e8187 = ![]; for (const _0x1a454d of _0x545574) { const _0x1aa5f2 = _0x1a454d['startsWith']('<') ? _0x1a454d : '<' + _0x1a454d + '>'; if (_0x4d2012['includes'](_0x1aa5f2)) { _0x3e8187 = _0x1aa5f2; break; } } if (!_0x3e8187) return ![]; if (this[_0x565890(0xec) + _0x565890(_0x21918b._0x5b3df7)](_0x29a548['screenX'](), _0x29a548['screenY'](), _0x29a548['hitboxData'](), _0x1d8c98['screenX'](), _0x1d8c98['screenY'](), _0x5dbd70 === 'player' ? _0x1d8c98[_0x565890(0xb9)]() : _0x1d8c98['hitboxData'](), _0x29a548['customRota' + 'tionPoint'] ? _0x29a548[_0x565890(0xc0)] : 0x21 * 0xdb + -0xdbd * 0x1 + -0xe7e, _0x1d8c98[_0x565890(_0x21918b._0x5ef748) + _0x565890(_0x21918b._0x2e8859)] ? _0x1d8c98['_rotation'] : -0x3 * -0xa90 + -0x14 * 0x4a + 0x67a * -0x4)) { _0xf2fc5a[_0x2a103e] = _0x42cbf8; if (_0x29a548 instanceof Game_Event) { CollisionManager['lastSource' + 'EventId'] = _0x29a548['_eventId']; const _0x257620 = _0x29a548['getDamageF' + 'romNoteTag'](); CollisionManager['addCollisi' + 'on'](_0x5dbd70 === 'player' ? -0xc7 * -0x1 + -0x13 * 0x6d + 0x750 : _0x5dbd70, _0x257620); } return !![]; } return ![]; }); return _0x2bf623; }, PluginManager[_0x4195c3(0xcc) + 'mmand'](HpluginName, 'setCollisi' + _0x4195c3(0x10d), function (_0x143bde) { const _0x353ece = { _0xc5bf05: 0x114 }, _0x730149 = _0x4195c3; if ($gameMap['event'](this['_eventId'])) { if (_0x730149(0xbb) === _0x730149(0xbb)) $gameMap[_0x730149(_0x353ece._0xc5bf05)](this[_0x730149(0xd5)])[_0x730149(0xc7) + _0x730149(0x11d)] = _0x143bde[_0x730149(0xee)] === 'true'; else return _0x4f6df9['some'](_0x163c52 => _0x31d86c >= _0x163c52[-0x1a5 + -0x12c4 * 0x1 + 0x1469] && _0x7a3fd2 <= _0x163c52[0x1 * 0xe35 + 0xa6d + 0x41 * -0x61] && (_0x3aa998[_0x3bca69] & 0x13 + 0x181b + 0xf7 * -0x19) === -0x2517 + 0x1235 + 0xd * 0x175); } }));
 
-PluginManager.registerCommand(HpluginName, "setCollisionStatus", function (args) {
-	if ($gameMap.event(this._eventId)) {
-		$gameMap.event(this._eventId)._collisionEnabled = args.enabled === 'true';
+//============================================================
+// DAMAGE TEXT POP UP
+//============================================================
+
+const eventData = new Map();
+const eventClocks = new Map();
+const eventHeightCache = new Map();
+
+const damageTextSettings = JSON.parse(Hparameters['damageTextSettings'] || '{}');
+
+const loadCustomFont = (fontFile) => {
+	if (!fontFile) return null;
+	try {
+		const fontFace = fontFile.split('.')[0];
+		const fontPath = `fonts/${fontFile}`;
+		if (Utils.isNwjs()) {
+			const customFont = new FontFace(fontFace, `url('${fontPath}')`);
+			customFont.load().then(function (loadedFont) {
+				document.fonts.add(loadedFont);
+			}).catch(error => {
+				console.error('Error loading font:', error);
+			});
+		} else {
+			const style = document.createElement('style');
+			style.textContent = `
+                @font-face {
+                    font-family: '${fontFace}';
+                    src: url('${fontPath}');
+                }
+            `;
+			document.head.appendChild(style);
+		}
+		return fontFace;
+	} catch (e) {
+		return null;
+	}
+};
+
+const defaultConfig = {
+	fontFace: loadCustomFont(damageTextSettings.fontFace) || "rmmz-mainfont",
+	fontSize: Number(damageTextSettings.fontSize) || 28,
+	fontColor: damageTextSettings.fontColor || "#e6b400",
+	outline: damageTextSettings.outline === 'true',
+	outlineColor: damageTextSettings.outlineColor || "#900C3F",
+	outlineThickness: Number(damageTextSettings.outlineThickness) || 1,
+	currentDisplayedValue: ""
+};
+
+class Sprite_Variable extends Sprite {
+	constructor(config, variableId, duration, offsetX, offsetY, value = null, addValue = false, eventSprite, stickToMap = false, criticalBgSprite = null) {
+		super();
+		this._id = Date.now() + Math.random();
+		this._variableId = variableId;
+		this._duration = duration;
+		this._currentDuration = duration;
+		this._offsetX = offsetX;
+		this._offsetY = offsetY;
+		this._addValue = addValue;
+		this._config = config;
+		this._isDirty = true;
+		this._lastValue = null;
+		this._lastPosition = { x: 0, y: 0 };
+		this._eventSprite = eventSprite;
+		this.animationType = config.animationType || 'bounce';
+		this._stickToMap = stickToMap;
+		this._criticalBgSprite = criticalBgSprite;
+
+		this.bitmap = new Bitmap(240, 48);
+		this.bitmap.smooth = false;
+		if (this._config.fontFilename && this._config.fontFilename.trim()) {
+			const customFont = loadCustomFont(this._config.fontFilename);
+			if (customFont) {
+				this.bitmap.fontFace = customFont;
+			}
+		} else if (this._config.fontFace) {
+			this.bitmap.fontFace = this._config.fontFace;
+		}
+		if (this._config.fontSize && this._config.fontSize > 0) {
+			this.bitmap.fontSize = this._config.fontSize;
+		} else if (this._config.defaultFontSize) {
+			this.bitmap.fontSize = this._config.defaultFontSize;
+		}
+		this.bitmap.textColor = this._config.fontColor;
+
+		this.setupOutline();
+
+		this.updateValue(value);
+		this.anchor.set(0.5, 1);
+
+		this._value = value !== null ? value : $gameVariables.value(variableId);
+		this._isLargeNumber = CollisionManager.lastCritical;
+		this._initialX = eventSprite.x + offsetX;
+		this._initialY = eventSprite.y - eventSprite.height / 2 + offsetY;
+
+		if (this._criticalBgSprite) {
+			this._criticalBgSprite.anchor.set(0.5, 0.5);
+			this._criticalBgSprite.x = this._initialX;
+		}
+
+		if (this._stickToMap) {
+			this._worldX = this._initialX + ($gameMap.displayX() * $gameMap.tileWidth());
+			this._worldY = this._initialY + ($gameMap.displayY() * $gameMap.tileHeight());
+		}
+
+		if (this.animationType === 'letter') {
+			this._letters = [];
+			this._letterSprites = [];
+			this.setupLetterAnimation();
+		} else if (this.animationType === 'bounce') {
+			this._jumpDuration = Math.floor(this._duration * 0.7);
+			this.jumpHeight = this._duration * 0.5;
+			this.gravity = (2 * this.jumpHeight) / Math.pow(this._jumpDuration / 2, 2);
+			this._initialVelocity = -Math.sqrt(2 * this.gravity * this.jumpHeight);
+			this._velocity = this._initialVelocity;
+			this.jumpY = 0;
+			this._jumpAngle = Math.random() * Math.PI * 2;
+			this._jumpDistance = this._duration * 0.8;
+			this._horizontalVelocity = Math.cos(this._jumpAngle) * (this._jumpDistance / this._jumpDuration);
+			this._jumpX = 0;
+		} else if (this.animationType === 'moveup') {
+			this.initialMoveSpeed = 2.5;
+			this.totalMoveDistance = 0;
+			this.maxMoveDistance = 48;
+			this.moveY = 0;
+		} else if (this.animationType === 'popup') {
+			this.initialMoveSpeed = 2;
+			this.totalMoveDistance = 0;
+			this.maxMoveDistance = 48;
+			this.moveY = 0;
+			this._popupPhase = 0;
+			this._maxScale = 1.5;
+		}
+
+		if (this._isLargeNumber) {
+			this.jumpHeight *= 1;
+			this._jumpDuration = Math.floor(this._jumpDuration * 1);
+			this._jumpDistance = this._duration * 1;
+		}
+
+		this._fadeOutStart = this._duration * 0.3;
+		this._initialScale = this._isLargeNumber ? 1 : 0.8;
+		this.scale.set(this._initialScale, this._initialScale);
+
+		if (this._criticalBgSprite) {
+			const verticalCenterOffset = this.animationType === 'letter' ? 0 : (24 * this.scale.y);
+			this._criticalBgSprite.y = this._initialY + (this.moveY || 0) - verticalCenterOffset;
+			this._criticalBgSprite.scale.set(
+				(criticalBackgroundSize / 100) * this._initialScale,
+				(criticalBackgroundSize / 100) * this._initialScale
+			);
+		}
+	}
+
+	setupLetterAnimation() {
+		const text = String(this._config.currentDisplayedValue);
+		this._letters = text.split('');
+
+		const tempBitmap = new Bitmap(1, 1);
+		if (this._config.fontFilename && this._config.fontFilename.trim()) {
+			const customFont = loadCustomFont(this._config.fontFilename);
+			if (customFont) tempBitmap.fontFace = customFont;
+		} else if (this._config.fontFace) {
+			tempBitmap.fontFace = this._config.fontFace;
+		}
+		tempBitmap.fontSize = this.bitmap.fontSize;
+
+		const totalWidth = tempBitmap.measureTextWidth(text);
+		const startX = -totalWidth / 2;
+
+		let currentX = startX;
+
+		const revealDuration = Math.floor(this._duration * 0.20);
+		const delayPerLetter = this._letters.length > 1 ? revealDuration / this._letters.length : 0;
+
+		this._letters.forEach((letter, index) => {
+			const letterWidth = tempBitmap.measureTextWidth(letter);
+			const letterSprite = new Sprite(new Bitmap(letterWidth + 10, this.bitmap.fontSize + 10));
+			letterSprite.bitmap.smooth = false;
+
+			if (this._config.fontFilename && this._config.fontFilename.trim()) {
+				const customFont = loadCustomFont(this._config.fontFilename);
+				if (customFont) letterSprite.bitmap.fontFace = customFont;
+			} else if (this._config.fontFace) {
+				letterSprite.bitmap.fontFace = this._config.fontFace;
+			}
+
+			letterSprite.bitmap.fontSize = this.bitmap.fontSize;
+
+			const colors = this._config.fontColor.split(',').map(c => c.trim());
+			if (colors.length === 2) {
+				letterSprite._useGradient = true;
+				letterSprite._gradientColors = colors;
+				letterSprite._letter = letter;
+				letterSprite._outlineColor = this._config.outlineColor;
+				letterSprite._outlineWidth = this._config.outlineThickness;
+				letterSprite._useOutline = this._config.outline;
+
+				const context = letterSprite.bitmap._context;
+				const height = this.bitmap.fontSize + 10;
+				const shiftAmount = 6;
+				const gradient = context.createLinearGradient(0, -shiftAmount, 0, height + shiftAmount);
+				gradient.addColorStop(0, colors[0]);
+				gradient.addColorStop(0.40, colors[0]);
+				gradient.addColorStop(0.65, colors[1]);
+				gradient.addColorStop(1, colors[1]);
+				context.fillStyle = gradient;
+
+				if (this._config.outline) {
+					context.strokeStyle = this._config.outlineColor;
+					context.lineWidth = this._config.outlineThickness;
+					context.lineJoin = 'round';
+					context.miterLimit = 2;
+				}
+
+				context.font = letterSprite.bitmap._makeFontNameText();
+				context.textAlign = 'center';
+				context.textBaseline = 'middle';
+
+				const x = (letterWidth + 10) / 2;
+				const y = (this.bitmap.fontSize + 10) / 2;
+
+				if (this._config.outline) {
+					context.strokeText(letter, x, y);
+				}
+				context.fillText(letter, x, y);
+			} else {
+				letterSprite.bitmap.textColor = this._config.fontColor;
+
+				if (this._config.outline) {
+					letterSprite.bitmap.outlineColor = this._config.outlineColor;
+					letterSprite.bitmap.outlineWidth = this._config.outlineThickness;
+				} else {
+					letterSprite.bitmap.outlineColor = 'rgba(0,0,0,0)';
+					letterSprite.bitmap.outlineWidth = 1;
+				}
+
+				letterSprite.bitmap.drawText(letter, 0, 0, letterWidth + 10, this.bitmap.fontSize + 10, 'center');
+			}
+
+			letterSprite.anchor.set(0.5, 0.5);
+			letterSprite.x = currentX + letterWidth / 2;
+			letterSprite.y = 0;
+
+			currentX += letterWidth;
+
+			letterSprite.delay = Math.floor(index * delayPerLetter);
+			letterSprite.jumpHeight = 15 + Math.random() * 8;
+			letterSprite.jumpSpeed = 0;
+			letterSprite.jumpY = 0;
+			letterSprite.gravity = 0.5;
+			letterSprite.hasAppeared = false;
+			letterSprite.hasJumped = false;
+			letterSprite.opacity = 0;
+
+			this.addChild(letterSprite);
+			this._letterSprites.push(letterSprite);
+		});
+
+		this.moveY = -48;
+		this.bitmap.clear();
+	}
+
+	updateLetterAnimation() {
+		const currentFrame = this._duration - this._currentDuration;
+
+		this._letterSprites.forEach((letterSprite, index) => {
+			if (currentFrame >= letterSprite.delay && !letterSprite.hasAppeared) {
+				letterSprite.hasAppeared = true;
+				letterSprite.opacity = 255;
+				letterSprite.hasJumped = true;
+				letterSprite.jumpSpeed = -Math.sqrt(2 * letterSprite.gravity * letterSprite.jumpHeight);
+			}
+
+			if (!letterSprite.hasAppeared) {
+				return;
+			}
+
+			letterSprite.jumpSpeed += letterSprite.gravity;
+			letterSprite.jumpY += letterSprite.jumpSpeed;
+
+			if (letterSprite.jumpY > 0) {
+				letterSprite.jumpY = 0;
+				letterSprite.jumpSpeed = -letterSprite.jumpSpeed * 0.5;
+
+				if (Math.abs(letterSprite.jumpSpeed) < 0.5) {
+					letterSprite.jumpSpeed = 0;
+				}
+			}
+
+			letterSprite.y = letterSprite.jumpY;
+		});
+	}
+
+	setupOutline() {
+		if (this._config.outline) {
+			this.bitmap.outlineColor = this._config.outlineColor;
+			this.bitmap.outlineWidth = this._config.outlineThickness;
+		} else {
+			this.bitmap.outlineColor = 'rgba(0,0,0,0)';
+			this.bitmap.outlineWidth = 1;
+		}
+	}
+
+	updateValue(value) {
+		if (value !== null) {
+			if (this._addValue && typeof value === 'number' && typeof this._config.currentDisplayedValue === 'number') {
+				this._config.currentDisplayedValue += value;
+			} else {
+				this._config.currentDisplayedValue = value;
+			}
+		} else {
+			this._config.currentDisplayedValue = $gameVariables.value(this._variableId);
+		}
+		this._isDirty = true;
+	}
+
+	update() {
+		super.update();
+
+		if (this._isDirty && this.animationType !== 'letter') {
+			this.redraw();
+			this._isDirty = false;
+		}
+
+		this._currentDuration--;
+
+		if (this.animationType === 'letter') {
+			this.updateLetterAnimation();
+
+			if (this._currentDuration <= 10) {
+				this.opacity = (this._currentDuration / 10) * 255;
+			} else {
+				this.opacity = 255;
+			}
+		} else if (this.animationType === 'bounce') {
+			if (this._currentDuration > this._duration - this._jumpDuration) {
+				this._velocity += this.gravity;
+				this.jumpY += this._velocity;
+				this._jumpX += this._horizontalVelocity;
+
+				if (this.jumpY > 0) {
+					this.jumpY = 0;
+					this._velocity = 0;
+				}
+
+				if (this._isLargeNumber) {
+					const jumpProgress = 1 - ((this._currentDuration - (this._duration - this._jumpDuration)) / this._jumpDuration);
+					const scaleMultiplier = 1.7 - (jumpProgress * 0.5);
+					this.scale.set(this._initialScale * scaleMultiplier, this._initialScale * scaleMultiplier);
+				}
+			}
+
+			if (this._currentDuration <= this._fadeOutStart) {
+				this.opacity = (this._currentDuration / this._fadeOutStart) * 255;
+			}
+		} else if (this.animationType === 'moveup' || this.animationType === 'popup') {
+			if (this.totalMoveDistance < this.maxMoveDistance) {
+				const progress = this.totalMoveDistance / this.maxMoveDistance;
+				const currentSpeed = this.initialMoveSpeed * (1 - progress * progress);
+				this.moveY -= currentSpeed;
+				this.totalMoveDistance += currentSpeed;
+			}
+
+			if (this.animationType === 'popup') {
+				this._popupPhase = 1 - (this._currentDuration / this._duration);
+
+				if (this._popupPhase < 0.2) {
+					const scaleProgress = this._popupPhase / 0.2;
+					const currentScale = 1 + (this._maxScale - 1) * scaleProgress;
+					this.scale.set(currentScale, currentScale);
+				} else {
+					const scaleProgress = (this._popupPhase - 0.3) / 0.7;
+					const currentScale = this._maxScale - (this._maxScale - 1) * Math.min(1, scaleProgress);
+					this.scale.set(currentScale, currentScale);
+				}
+			}
+
+			const fadeStartPercentage = 0.7;
+			if (this._currentDuration <= this._duration * fadeStartPercentage) {
+				this.opacity = (this._currentDuration / (this._duration * fadeStartPercentage)) * 255;
+			}
+		}
+
+		this.updatePosition();
+		if (!this._isLargeNumber && this.animationType === 'bounce') {
+			this.updateScale();
+		}
+
+		if (this._criticalBgSprite) {
+			let letterBounceY = 0;
+			if (this.animationType === 'letter' && this._letterSprites) {
+				const visibleLetters = this._letterSprites.filter(l => l.hasAppeared);
+				if (visibleLetters.length > 0) {
+					letterBounceY = visibleLetters.reduce((sum, l) => sum + l.jumpY, 0) / visibleLetters.length;
+				}
+			}
+			const verticalCenterOffset = this.animationType === 'letter' ? 0 : (24 * this.scale.y);
+			this._criticalBgSprite.x = this.x;
+			this._criticalBgSprite.y = this.y + letterBounceY - verticalCenterOffset;
+			this._criticalBgSprite.scale.set(
+				(criticalBackgroundSize / 100) * this.scale.x,
+				(criticalBackgroundSize / 100) * this.scale.y
+			);
+			this._criticalBgSprite.opacity = this.opacity;
+		}
+
+		if (this._currentDuration <= 0) {
+			if (this._criticalBgSprite && this._criticalBgSprite.parent) {
+				this._criticalBgSprite.parent.removeChild(this._criticalBgSprite);
+				this._criticalBgSprite.destroy();
+			}
+			this.parent.removeChild(this);
+		}
+	}
+
+	updatePosition() {
+		if (this._stickToMap) {
+			const screenX = this._worldX - ($gameMap.displayX() * $gameMap.tileWidth());
+			const screenY = this._worldY - ($gameMap.displayY() * $gameMap.tileHeight());
+
+			if (this.animationType === 'bounce') {
+				this.x = screenX + this._jumpX;
+				this.y = screenY + this.jumpY;
+			} else if (this.animationType === 'moveup' || this.animationType === 'popup' || this.animationType === 'letter') {
+				this.x = screenX;
+				this.y = screenY + this.moveY;
+			}
+		} else {
+			if (this.animationType === 'bounce') {
+				this.x = this._initialX + this._jumpX;
+				this.y = this._initialY + this.jumpY;
+			} else if (this.animationType === 'moveup' || this.animationType === 'popup' || this.animationType === 'letter') {
+				this.x = this._initialX;
+				this.y = this._initialY + this.moveY;
+			}
+		}
+	}
+
+	updateScale() {
+		const progress = 1 - (this._currentDuration / this._duration);
+		const scale = this._initialScale + Math.sin(progress * Math.PI) * 0.2;
+		this.scale.set(scale, scale);
+	}
+
+	redraw() {
+		this.bitmap.clear();
+		this.opacity = this._currentDuration > this._duration * 0.5 ? 255 : (this._currentDuration / (this._duration * 0.5)) * 255;
+
+		const colors = this._config.fontColor.split(',').map(c => c.trim());
+		if (colors.length === 2) {
+			const context = this.bitmap._context;
+			const shiftAmount = 10;
+			const gradient = context.createLinearGradient(0, -shiftAmount, 0, 48 + shiftAmount);
+			gradient.addColorStop(0, colors[0]);
+			gradient.addColorStop(0.40, colors[0]);
+			gradient.addColorStop(0.65, colors[1]);
+			gradient.addColorStop(1, colors[1]);
+			context.fillStyle = gradient;
+
+			if (this._config.outline) {
+				context.strokeStyle = this._config.outlineColor;
+				context.lineWidth = this._config.outlineThickness;
+				context.lineJoin = 'round';
+				context.miterLimit = 2;
+			}
+
+			context.font = this.bitmap._makeFontNameText();
+			context.textAlign = 'center';
+			context.textBaseline = 'middle';
+
+			const displayText = String(this._config.currentDisplayedValue);
+			const x = 120;
+			const y = 24;
+
+			if (this._config.outline) {
+				context.strokeText(displayText, x, y);
+			}
+			context.fillText(displayText, x, y);
+		} else {
+			const displayText = String(this._config.currentDisplayedValue);
+			this.bitmap.drawText(displayText, 0, 0, 240, 48, "center");
+		}
+	}
+}
+
+function SupdateEventClocksH() {
+	for (const [eventId, clock] of eventClocks) {
+		let currentClock = clock + 1;
+		if (currentClock >= 60) {
+			const config = eventData.get(eventId);
+			if (config) {
+				config.currentDisplayedValue = 0;
+				currentClock = 0;
+			}
+		}
+		eventClocks.set(eventId, currentClock);
+	}
+
+	for (const eventId of eventClocks.keys()) {
+		if (!$gameMap.event(eventId)) {
+			eventClocks.delete(eventId);
+			eventData.delete(eventId);
+		}
+	}
+}
+
+PluginManager.registerCommand(HpluginName, "ShowVariableOnEvent", function (args) {
+	let eventIds = [];
+	if (args.eventId.toLowerCase() === "player") {
+		eventIds.push(0);
+	} else if (args.eventId.toLowerCase() === "this") {
+		eventIds.push(this._eventId);
+	} else {
+		eventIds.push(Number(args.eventId));
+	}
+
+	const weaponAttack = args.weaponAttack || 'none';
+	const duration = Number(args.duration);
+	const criticalValue = args.criticalValue ? Number(args.criticalValue) : 0;
+	let offsetX = 0;
+	let offsetY = 0;
+	const addValue = PluginManager.parameters(HpluginName).addValue.toLowerCase() === "true";
+
+	let value = null;
+
+	if ((args.value && (args.value.toLowerCase().includes('player weapon') || args.value.toLowerCase().includes('player 2nd weapon'))) || weaponAttack !== 'none') {
+		const leader = $gameParty.leader();
+
+		let weaponSlot = 'slot1';
+		if (weaponAttack && weaponAttack !== 'none') {
+			weaponSlot = weaponAttack;
+		} else if (args.value.toLowerCase().includes('player 2nd weapon') || args.value.toLowerCase().includes('2nd weapon')) {
+			weaponSlot = 'slot2';
+		}
+
+		const weapon = weaponSlot === 'slot1' ? leader.equips()[0] : leader.equips()[1];
+		if (weapon && DataManager.isWeapon(weapon)) {
+			const targetEventId = eventIds[0];
+			const storedDamages = CollisionManager.getAllDamage(targetEventId);
+			if (storedDamages && storedDamages.length > 0) {
+				value = Math.abs(storedDamages[storedDamages.length - 1]);
+			} else {
+				value = MaithlCalculateDamagePlayerWeapon(targetEventId, weapon, leader);
+			}
+
+			if (args.value && (args.value.toLowerCase().includes('player weapon') || args.value.toLowerCase().includes('player 2nd weapon'))) {
+				let expression = args.value.replace(/player\s+2nd\s+weapon/gi, value.toString());
+				expression = expression.replace(/player\s+weapon/gi, value.toString());
+				try {
+					value = eval(expression);
+				} catch (e) {
+					console.warn(`This expression can't run: ${expression}`, e);
+				}
+			}
+		} else {
+			if (weaponAttack !== 'none') {
+				return;
+			}
+		}
+	}
+
+	for (const eventId of eventIds) {
+		let targetSprite;
+		if (eventId === 0) {
+			targetSprite = SceneManager._scene._spriteset._characterSprites.find(
+				sprite => sprite._character === $gamePlayer
+			);
+		} else {
+			const event = $gameMap.event(eventId);
+			if (!event) continue;
+			targetSprite = SceneManager._scene._spriteset._characterSprites.find(
+				sprite => sprite._character === event
+			);
+		}
+		if (!targetSprite) continue;
+
+		if (args.value === "damage") {
+			const actualEventId = this._eventId;
+			if (eventId === 0) {
+				const damages = CollisionManager.getAllDamage(actualEventId);
+				if (!damages || damages.length === 0) continue;
+
+				const playerDamages = CollisionManager.getAllDamage(0);
+				if (!playerDamages || playerDamages.length === 0) continue;
+
+				let rawDamage = Math.abs(playerDamages[playerDamages.length - 1]);
+				const sourceEventId = CollisionManager.lastSourceEventId;
+				const leader = $gameParty.leader();
+				value = SapplyDefenseReductionH(rawDamage, sourceEventId, leader);
+			} else {
+				const damages = CollisionManager.getAllDamage(eventId);
+				if (!damages || damages.length === 0) continue;
+				value = Math.abs(damages[damages.length - 1]);
+			}
+		} else if (args.value === "exp") {
+			if (eventId !== 0) {
+				const event = $gameMap.event(eventId);
+				if (!event) return;
+
+				if (!event.databaseEnemy) {
+					event.getHpValueFromNote();
+				}
+
+				if (event.databaseEnemy) {
+					value = event.databaseEnemy.exp;
+					if (window.DifficultyManager) {
+						value = Math.round(value * DifficultyManager.getMultiplier());
+					}
+					const leader = $gameParty.leader();
+					if (leader) {
+						value = Math.round(value * leader.finalExpRate());
+					}
+				}
+
+				if (value !== null) {
+					value = value + "XP";
+				}
+			}
+		} else if (args.value === "gold") {
+			if (eventId !== 0) {
+				const event = $gameMap.event(eventId);
+				if (!event) continue;
+
+				if (!event.databaseEnemy) {
+					event.getHpValueFromNote();
+				}
+
+				if (event.databaseEnemy) {
+					value = event.databaseEnemy.gold;
+					if (window.DifficultyManager) {
+						value = Math.round(value * DifficultyManager.getMultiplier());
+					}
+				}
+
+				if (value !== null && value > 0) {
+					value = value + "G";
+				}
+			}
+		} else if (value === null) {
+			try {
+				value = eval(args.value);
+			} catch (e) {
+				value = args.value;
+			}
+		}
+
+		if (value === 0) {
+			value = "Miss";
+			if (missSfxSettings && missSfxSettings.filename) {
+				AudioManager.playSe({
+					name: missSfxSettings.filename,
+					volume: Number(missSfxSettings.volume || 80),
+					pitch: Number(missSfxSettings.pitch || 100),
+					pan: 0
+				});
+			}
+		}
+
+		if (typeof value === 'number' && criticalValue !== 0) {
+			value += criticalValue;
+		}
+
+		let config = { ...defaultConfig };
+		if (args.visualSettings) {
+			const visualSettings = JSON.parse(args.visualSettings);
+			if (visualSettings.fontColor?.trim()) config.fontColor = visualSettings.fontColor;
+			if (visualSettings.outlineColor?.trim()) config.outlineColor = visualSettings.outlineColor;
+			if (visualSettings.outlineWidth !== undefined && visualSettings.outlineWidth !== '') {
+				config.outlineThickness = Number(visualSettings.outlineWidth);
+				config.outline = config.outlineThickness > 0;
+			}
+			if (visualSettings.fontFilename && visualSettings.fontFilename.trim()) { config.fontFilename = visualSettings.fontFilename.trim(); }
+			if (visualSettings.fontSize && Number(visualSettings.fontSize) > 0) { config.fontSize = Number(visualSettings.fontSize); }
+			if (visualSettings.offsetX !== undefined && visualSettings.offsetX !== '') offsetX = Number(visualSettings.offsetX);
+			if (visualSettings.offsetY !== undefined && visualSettings.offsetY !== '') offsetY = Number(visualSettings.offsetY);
+		}
+
+		if (typeof value === 'number' && CollisionManager.lastCritical) {
+			let useCriticalColor = true;
+			if (args.visualSettings) {
+				const visualSettings = JSON.parse(args.visualSettings);
+				if (visualSettings.criticalColor !== undefined) {
+					useCriticalColor = visualSettings.criticalColor === 'true' || visualSettings.criticalColor === true;
+				}
+			}
+
+			if (useCriticalColor) {
+				config.fontColor = "#fc3223";
+				config.outlineColor = "#900C3F";
+			}
+		}
+
+		const stickToMap = args.stickToMap === 'true';
+		config.animationType = args.animation || 'bounce';
+		const spriteset = SceneManager._scene._spriteset;
+
+		let criticalBgSprite = null;
+		if (typeof value === 'number' && CollisionManager.lastCritical && criticalBackgroundImage) {
+			criticalBgSprite = new Sprite(ImageManager.loadSystem(criticalBackgroundImage));
+			spriteset.addChild(criticalBgSprite);
+		}
+
+		const variableSprite = new Sprite_Variable(config, null, duration, offsetX, offsetY, value, addValue, targetSprite, stickToMap, criticalBgSprite);
+		spriteset.addChild(variableSprite);
+		spriteset._variableSprites.push(variableSprite);
 	}
 });
-
-const _0x41d3a0=_0x1ec8;function _0x1ec8(_0x43d577,_0x644ca8){_0x43d577=_0x43d577-0x190;const _0x1f8868=_0x1f88();let _0x1ec812=_0x1f8868[_0x43d577];return _0x1ec812;}function _0x1f88(){const _0x1575d4=['_variableId','9060972MoKpFe','#900C3F','hasJumped','eventId','_eventId','_currentDuration','displayX','abs','374aindlb','sqrt','vcyKP','DifficultyManager','zrKMl','opacity','oAvOw','initialMoveSpeed','delay','replace','cos','fillStyle','appendChild','_letterSprites','_addValue','gold','warn','bitmap','_lastValue','moveup','outlineThickness','_scene','jumpY','player\x20weapon','redraw','split','_context','_config','21djrhfC','TeeHt','_stickToMap','nkLPG','tZKMd','cEdrI','filename','playSe','style','5067oSVurz','NGytO','equips','addChild','isNwjs','STUSp','\x27);\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20}\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20','_useOutline','344cxXioT','damageTextSettings','leader','amutH','_initialScale','middle','url(\x27','strokeText','_characterSprites','visualSettings','nYiHt','izHbS','letter','_jumpDistance','2736160xfUyhw','font','criticalColor','486942Gekehb','_jumpDuration','true','lineWidth','krHkk','measureTextWidth','createLinearGradient','stickToMap','outlineWidth','DBRMe','defaultFontSize','registerCommand','fillText','Error\x20loading\x20font:','nYSbo','outlineColor','dUfGE','error','update','TLKWF','min','gravity','2300673WlhhOK','jumpHeight','addColorStop','currentDisplayedValue','tileWidth','offsetX','parse','get','rmmz-mainfont','animationType','_outlineColor','event','_isDirty','_velocity','maxMoveDistance','UYFYy','VPvjd','_initialVelocity','center','ShowVariableOnEvent','smooth','sin','_fadeOutStart','textColor','fontFilename','scale','_popupPhase','_lastPosition','map','dHLYb','setupLetterAnimation','push','updatePosition','JCiQU','clear','_gradientColors','criticalValue','getHpValueFromNote','_value','fontFace','parameters','outline','_outlineWidth','height','pow','hasAppeared','_character','104589NqLMXO','moveY','2nd\x20weapon','player\x202nd\x20weapon','catch','UpdUB','jumpSpeed','trim','_horizontalVelocity','none','databaseEnemy','cXtGr','floor','11nKzvWB','textAlign','animation','miterLimit','_id','sZKfx','delete','#e6b400','isWeapon','lineJoin','length','fontSize','XAKtq','strokeStyle','getAllDamage','_maxScale','includes','_worldY','jPnYO','_jumpAngle','#fc3223','fonts/','createElement','fonts','toLowerCase','volume','liUUS','_makeFontNameText','bHmRe','oarYo','parent','SgUYd','anchor','bounce','_worldX','_initialY','getMultiplier','lZotD','popup','load','weaponAttack','VeiHF','random','value','6323950VNZssp','_letter','fontColor','nikfQ','_isLargeNumber','round','_initialX','number','_jumpX','updateLetterAnimation','xHYSR','updateScale','addValue','exp','_spriteset','EoSEn','cnvwx','setupOutline','_letters','set','_duration','toString','find','tileHeight','textContent','\x27;\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20src:\x20url(\x27','totalMoveDistance','now','dZWHs','4SbJxIc','offsetY','drawText','removeChild','RHXbH','FHyWm','player','VlHhP','displayY'];_0x1f88=function(){return _0x1575d4;};return _0x1f88();}(function(_0x12f160,_0x5851d7){const _0x43c2fb=_0x1ec8,_0x16744e=_0x12f160();while(!![]){try{const _0x2d3d6e=parseInt(_0x43c2fb(0x1f4))/0x1*(parseInt(_0x43c2fb(0x1cf))/0x2)+parseInt(_0x43c2fb(0x223))/0x3*(-parseInt(_0x43c2fb(0x1bd))/0x4)+-parseInt(_0x43c2fb(0x20a))/0x5+-parseInt(_0x43c2fb(0x20d))/0x6*(-parseInt(_0x43c2fb(0x1eb))/0x7)+-parseInt(_0x43c2fb(0x1fc))/0x8*(-parseInt(_0x43c2fb(0x252))/0x9)+-parseInt(_0x43c2fb(0x1a0))/0xa+parseInt(_0x43c2fb(0x25f))/0xb*(parseInt(_0x43c2fb(0x1c7))/0xc);if(_0x2d3d6e===_0x5851d7)break;else _0x16744e['push'](_0x16744e['shift']());}catch(_0x7cf636){_0x16744e['push'](_0x16744e['shift']());}}}(_0x1f88,0x79e42));const eventData=new Map(),eventClocks=new Map(),eventHeightCache=new Map(),damageTextSettings=JSON[_0x41d3a0(0x229)](Hparameters[_0x41d3a0(0x1fd)]||'{}'),loadCustomFont=_0x32614c=>{const _0x43b686=_0x41d3a0;if(!_0x32614c)return null;try{if(_0x43b686(0x21b)!==_0x43b686(0x191)){const _0x5afaad=_0x32614c[_0x43b686(0x1e8)]('.')[0x0],_0xa6bd69=_0x43b686(0x274)+_0x32614c;if(Utils[_0x43b686(0x1f8)]()){const _0x52f834=new FontFace(_0x5afaad,_0x43b686(0x202)+_0xa6bd69+'\x27)');_0x52f834[_0x43b686(0x19b)]()['then'](function(_0x35adf9){const _0x22f539=_0x43b686;'nYiHt'===_0x22f539(0x206)?document[_0x22f539(0x276)]['add'](_0x35adf9):_0x35f41f[_0x22f539(0x1e3)]=_0x38b7c6(_0x7ff5ce[_0x22f539(0x215)]);})[_0x43b686(0x256)](_0x246671=>{console['error']('Error\x20loading\x20font:',_0x246671);});}else{const _0x1fda86=document[_0x43b686(0x275)](_0x43b686(0x1f3));_0x1fda86[_0x43b686(0x1b8)]='\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20@font-face\x20{\x0a\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20\x20font-family:\x20\x27'+_0x5afaad+_0x43b686(0x1b9)+_0xa6bd69+_0x43b686(0x1fa),document['head'][_0x43b686(0x1db)](_0x1fda86);}return _0x5afaad;}else{const _0x438886=_0x257eab(this['_config'][_0x43b686(0x23b)]);if(_0x438886)_0x4b668c['bitmap']['fontFace']=_0x438886;}}catch(_0x11d935){if(_0x43b686(0x199)===_0x43b686(0x1c2))this[_0x43b686(0x1d6)]=2.5,this[_0x43b686(0x1ba)]=0x0,this['maxMoveDistance']=0x30,this[_0x43b686(0x253)]=0x0;else return null;}},defaultConfig={'fontFace':loadCustomFont(damageTextSettings['fontFace'])||_0x41d3a0(0x22b),'fontSize':Number(damageTextSettings['fontSize'])||0x1c,'fontColor':damageTextSettings[_0x41d3a0(0x1a2)]||_0x41d3a0(0x266),'outline':damageTextSettings[_0x41d3a0(0x24c)]===_0x41d3a0(0x20f),'outlineColor':damageTextSettings[_0x41d3a0(0x21c)]||_0x41d3a0(0x1c8),'outlineThickness':Number(damageTextSettings['outlineThickness'])||0x1,'currentDisplayedValue':''};class Sprite_Variable extends Sprite{constructor(_0x1828c6,_0x9442b8,_0x312ad8,_0x5555fb,_0xe93afb,_0x418c5d=null,_0x2ff5d2=![],_0x4367a5,_0x56fb84=![]){const _0x5659e0=_0x41d3a0;super(),this[_0x5659e0(0x263)]=Date[_0x5659e0(0x1bb)]()+Math['random'](),this[_0x5659e0(0x1c6)]=_0x9442b8,this[_0x5659e0(0x1b4)]=_0x312ad8,this[_0x5659e0(0x1cc)]=_0x312ad8,this['_offsetX']=_0x5555fb,this['_offsetY']=_0xe93afb,this['_addValue']=_0x2ff5d2,this[_0x5659e0(0x1ea)]=_0x1828c6,this[_0x5659e0(0x22f)]=!![],this[_0x5659e0(0x1e1)]=null,this[_0x5659e0(0x23e)]={'x':0x0,'y':0x0},this['_eventSprite']=_0x4367a5,this[_0x5659e0(0x22c)]=_0x1828c6['animationType']||_0x5659e0(0x195),this[_0x5659e0(0x1ed)]=_0x56fb84,this[_0x5659e0(0x1e0)]=new Bitmap(0xf0,0x30),this[_0x5659e0(0x1e0)][_0x5659e0(0x237)]=![];if(this[_0x5659e0(0x1ea)][_0x5659e0(0x23b)]&&this[_0x5659e0(0x1ea)][_0x5659e0(0x23b)][_0x5659e0(0x259)]()){const _0x44f3f2=loadCustomFont(this['_config'][_0x5659e0(0x23b)]);_0x44f3f2&&(this['bitmap'][_0x5659e0(0x24a)]=_0x44f3f2);}else this['_config'][_0x5659e0(0x24a)]&&(_0x5659e0(0x1d1)!==_0x5659e0(0x1d1)?(this[_0x5659e0(0x1e7)](),this['_isDirty']=![]):this['bitmap'][_0x5659e0(0x24a)]=this['_config'][_0x5659e0(0x24a)]);if(this[_0x5659e0(0x1ea)][_0x5659e0(0x26a)]&&this['_config'][_0x5659e0(0x26a)]>0x0)this[_0x5659e0(0x1e0)][_0x5659e0(0x26a)]=this[_0x5659e0(0x1ea)][_0x5659e0(0x26a)];else{if(this[_0x5659e0(0x1ea)][_0x5659e0(0x217)]){if(_0x5659e0(0x244)===_0x5659e0(0x244))this[_0x5659e0(0x1e0)]['fontSize']=this['_config'][_0x5659e0(0x217)];else return;}}this['bitmap'][_0x5659e0(0x23a)]=this[_0x5659e0(0x1ea)][_0x5659e0(0x1a2)],this[_0x5659e0(0x1b1)](),this['updateValue'](_0x418c5d),this[_0x5659e0(0x194)][_0x5659e0(0x1b3)](0.5,0x1),this[_0x5659e0(0x249)]=_0x418c5d!==null?_0x418c5d:$gameVariables['value'](_0x9442b8),this[_0x5659e0(0x1a4)]=this[_0x5659e0(0x249)]>=largeNumberThreshold,this[_0x5659e0(0x1a6)]=_0x4367a5['x']+_0x5555fb,this[_0x5659e0(0x197)]=_0x4367a5['y']-_0x4367a5[_0x5659e0(0x24e)]/0x2+_0xe93afb;this[_0x5659e0(0x1ed)]&&(this[_0x5659e0(0x196)]=this[_0x5659e0(0x1a6)]+$gameMap['displayX']()*$gameMap['tileWidth'](),this[_0x5659e0(0x270)]=this[_0x5659e0(0x197)]+$gameMap[_0x5659e0(0x1c5)]()*$gameMap[_0x5659e0(0x1b7)]());if(this[_0x5659e0(0x22c)]===_0x5659e0(0x208))this[_0x5659e0(0x1b2)]=[],this[_0x5659e0(0x1dc)]=[],this['setupLetterAnimation']();else{if(this[_0x5659e0(0x22c)]===_0x5659e0(0x195))this[_0x5659e0(0x20e)]=Math['floor'](this[_0x5659e0(0x1b4)]*0.7),this[_0x5659e0(0x224)]=this[_0x5659e0(0x1b4)]*0.5,this[_0x5659e0(0x222)]=0x2*this['jumpHeight']/Math[_0x5659e0(0x24f)](this['_jumpDuration']/0x2,0x2),this[_0x5659e0(0x234)]=-Math[_0x5659e0(0x1d0)](0x2*this[_0x5659e0(0x222)]*this[_0x5659e0(0x224)]),this[_0x5659e0(0x230)]=this[_0x5659e0(0x234)],this[_0x5659e0(0x1e5)]=0x0,this[_0x5659e0(0x272)]=Math[_0x5659e0(0x19e)]()*Math['PI']*0x2,this[_0x5659e0(0x209)]=this[_0x5659e0(0x1b4)]*0.8,this['_horizontalVelocity']=Math[_0x5659e0(0x1d9)](this[_0x5659e0(0x272)])*(this[_0x5659e0(0x209)]/this[_0x5659e0(0x20e)]),this[_0x5659e0(0x1a8)]=0x0;else{if(this[_0x5659e0(0x22c)]===_0x5659e0(0x1e2)){if(_0x5659e0(0x233)!==_0x5659e0(0x233)){const _0x46b0e4=this[_0x5659e0(0x23d)]/0.2,_0x513797=0x1+(this[_0x5659e0(0x26e)]-0x1)*_0x46b0e4;this[_0x5659e0(0x23c)][_0x5659e0(0x1b3)](_0x513797,_0x513797);}else this['initialMoveSpeed']=2.5,this['totalMoveDistance']=0x0,this[_0x5659e0(0x231)]=0x30,this[_0x5659e0(0x253)]=0x0;}else this[_0x5659e0(0x22c)]==='popup'&&(this['initialMoveSpeed']=0x2,this[_0x5659e0(0x1ba)]=0x0,this[_0x5659e0(0x231)]=0x30,this[_0x5659e0(0x253)]=0x0,this[_0x5659e0(0x23d)]=0x0,this[_0x5659e0(0x26e)]=1.5);}}if(this[_0x5659e0(0x1a4)]){if(_0x5659e0(0x25d)!=='YxnTe')this[_0x5659e0(0x224)]*=0x1,this[_0x5659e0(0x20e)]=Math[_0x5659e0(0x25e)](this[_0x5659e0(0x20e)]*0x1),this[_0x5659e0(0x209)]=this[_0x5659e0(0x1b4)]*0x1;else{const _0x2b79b0=0x1-this[_0x5659e0(0x1cc)]/this[_0x5659e0(0x1b4)],_0x52eaeb=this[_0x5659e0(0x200)]+_0x4464c1[_0x5659e0(0x238)](_0x2b79b0*_0x2b49c8['PI'])*0.2;this[_0x5659e0(0x23c)][_0x5659e0(0x1b3)](_0x52eaeb,_0x52eaeb);}}this[_0x5659e0(0x239)]=this[_0x5659e0(0x1b4)]*0.3,this['_initialScale']=this[_0x5659e0(0x1a4)]?0x1:0.8,this[_0x5659e0(0x23c)][_0x5659e0(0x1b3)](this[_0x5659e0(0x200)],this[_0x5659e0(0x200)]);}[_0x41d3a0(0x241)](){const _0x1be40f=_0x41d3a0,_0x2723ff=String(this[_0x1be40f(0x1ea)]['currentDisplayedValue']);this[_0x1be40f(0x1b2)]=_0x2723ff[_0x1be40f(0x1e8)]('');const _0x34ae6d=new Bitmap(0x1,0x1);if(this[_0x1be40f(0x1ea)][_0x1be40f(0x23b)]&&this[_0x1be40f(0x1ea)]['fontFilename'][_0x1be40f(0x259)]()){const _0x49d524=loadCustomFont(this[_0x1be40f(0x1ea)][_0x1be40f(0x23b)]);if(_0x49d524)_0x34ae6d[_0x1be40f(0x24a)]=_0x49d524;}else this['_config'][_0x1be40f(0x24a)]&&('aWjFY'!==_0x1be40f(0x1d5)?_0x34ae6d[_0x1be40f(0x24a)]=this[_0x1be40f(0x1ea)][_0x1be40f(0x24a)]:_0x501a85[_0x1be40f(0x23b)]=_0x38321c[_0x1be40f(0x23b)][_0x1be40f(0x259)]());_0x34ae6d[_0x1be40f(0x26a)]=this[_0x1be40f(0x1e0)][_0x1be40f(0x26a)];const _0x452055=_0x34ae6d[_0x1be40f(0x212)](_0x2723ff),_0x296c80=-_0x452055/0x2;let _0x2c6d26=_0x296c80;const _0x3c2bbe=Math[_0x1be40f(0x25e)](this['_duration']*0.2),_0x525de9=this[_0x1be40f(0x1b2)][_0x1be40f(0x269)]>0x1?_0x3c2bbe/this[_0x1be40f(0x1b2)][_0x1be40f(0x269)]:0x0;this[_0x1be40f(0x1b2)]['forEach']((_0xc1295d,_0x46d3cf)=>{const _0x2518e9=_0x1be40f,_0xf55901=_0x34ae6d['measureTextWidth'](_0xc1295d),_0x914b21=new Sprite(new Bitmap(_0xf55901+0xa,this[_0x2518e9(0x1e0)]['fontSize']+0xa));_0x914b21['bitmap'][_0x2518e9(0x237)]=![];if(this[_0x2518e9(0x1ea)][_0x2518e9(0x23b)]&&this[_0x2518e9(0x1ea)][_0x2518e9(0x23b)][_0x2518e9(0x259)]()){const _0x1dbadb=loadCustomFont(this['_config'][_0x2518e9(0x23b)]);if(_0x1dbadb)_0x914b21[_0x2518e9(0x1e0)][_0x2518e9(0x24a)]=_0x1dbadb;}else this[_0x2518e9(0x1ea)]['fontFace']&&(_0x914b21['bitmap']['fontFace']=this[_0x2518e9(0x1ea)][_0x2518e9(0x24a)]);_0x914b21[_0x2518e9(0x1e0)][_0x2518e9(0x26a)]=this[_0x2518e9(0x1e0)][_0x2518e9(0x26a)];const _0x1f07fd=this[_0x2518e9(0x1ea)]['fontColor'][_0x2518e9(0x1e8)](',')[_0x2518e9(0x23f)](_0x535fa2=>_0x535fa2['trim']());if(_0x1f07fd[_0x2518e9(0x269)]===0x2){if('ZRzDL'!=='GjrcD'){_0x914b21['_useGradient']=!![],_0x914b21[_0x2518e9(0x246)]=_0x1f07fd,_0x914b21[_0x2518e9(0x1a1)]=_0xc1295d,_0x914b21[_0x2518e9(0x22d)]=this[_0x2518e9(0x1ea)][_0x2518e9(0x21c)],_0x914b21[_0x2518e9(0x24d)]=this[_0x2518e9(0x1ea)][_0x2518e9(0x1e3)],_0x914b21[_0x2518e9(0x1fb)]=this['_config'][_0x2518e9(0x24c)];const _0x28585f=_0x914b21['bitmap']['_context'],_0x564a39=this[_0x2518e9(0x1e0)]['fontSize']+0xa,_0x4dc172=0x6,_0x41ab03=_0x28585f['createLinearGradient'](0x0,-_0x4dc172,0x0,_0x564a39+_0x4dc172);_0x41ab03[_0x2518e9(0x225)](0x0,_0x1f07fd[0x0]),_0x41ab03[_0x2518e9(0x225)](0.4,_0x1f07fd[0x0]),_0x41ab03[_0x2518e9(0x225)](0.65,_0x1f07fd[0x1]),_0x41ab03[_0x2518e9(0x225)](0x1,_0x1f07fd[0x1]),_0x28585f['fillStyle']=_0x41ab03;this[_0x2518e9(0x1ea)][_0x2518e9(0x24c)]&&(_0x2518e9(0x21d)!==_0x2518e9(0x1af)?(_0x28585f['strokeStyle']=this[_0x2518e9(0x1ea)][_0x2518e9(0x21c)],_0x28585f[_0x2518e9(0x210)]=this[_0x2518e9(0x1ea)][_0x2518e9(0x1e3)],_0x28585f[_0x2518e9(0x268)]=_0x2518e9(0x1a5),_0x28585f[_0x2518e9(0x262)]=0x2):(this['x']=this[_0x2518e9(0x1a6)],this['y']=this[_0x2518e9(0x197)]+this['moveY']));_0x28585f[_0x2518e9(0x20b)]=_0x914b21[_0x2518e9(0x1e0)][_0x2518e9(0x27a)](),_0x28585f['textAlign']=_0x2518e9(0x235),_0x28585f['textBaseline']=_0x2518e9(0x201);const _0x30e63b=(_0xf55901+0xa)/0x2,_0x39563b=(this[_0x2518e9(0x1e0)][_0x2518e9(0x26a)]+0xa)/0x2;if(this[_0x2518e9(0x1ea)][_0x2518e9(0x24c)]){if('QPdZJ'===_0x2518e9(0x19d)){if(_0x3019df!=='none')return;}else _0x28585f[_0x2518e9(0x203)](_0xc1295d,_0x30e63b,_0x39563b);}_0x28585f[_0x2518e9(0x219)](_0xc1295d,_0x30e63b,_0x39563b);}else this['_worldX']=this['_initialX']+_0x348e8a[_0x2518e9(0x1cd)]()*_0x5620ee['tileWidth'](),this[_0x2518e9(0x270)]=this['_initialY']+_0x347a47[_0x2518e9(0x1c5)]()*_0x3392ac[_0x2518e9(0x1b7)]();}else'qrTrz'!=='QpzdY'?(_0x914b21[_0x2518e9(0x1e0)][_0x2518e9(0x23a)]=this[_0x2518e9(0x1ea)]['fontColor'],this[_0x2518e9(0x1ea)][_0x2518e9(0x24c)]&&(_0x914b21[_0x2518e9(0x1e0)][_0x2518e9(0x21c)]=this[_0x2518e9(0x1ea)][_0x2518e9(0x21c)],_0x914b21[_0x2518e9(0x1e0)]['outlineWidth']=this['_config'][_0x2518e9(0x1e3)]),_0x914b21[_0x2518e9(0x1e0)][_0x2518e9(0x1bf)](_0xc1295d,0x0,0x0,_0xf55901+0xa,this[_0x2518e9(0x1e0)]['fontSize']+0xa,_0x2518e9(0x235))):(_0x4eb472=_0x154939['databaseEnemy'][_0x2518e9(0x1ad)],_0x2f362d[_0x2518e9(0x1d2)]&&(_0xf90cfc=_0x169c1b[_0x2518e9(0x1a5)](_0x3c95bb*_0x16cea8[_0x2518e9(0x198)]())));_0x914b21[_0x2518e9(0x194)][_0x2518e9(0x1b3)](0.5,0.5),_0x914b21['x']=_0x2c6d26+_0xf55901/0x2,_0x914b21['y']=0x0,_0x2c6d26+=_0xf55901,_0x914b21['delay']=Math[_0x2518e9(0x25e)](_0x46d3cf*_0x525de9),_0x914b21['jumpHeight']=0xf+Math[_0x2518e9(0x19e)]()*0x8,_0x914b21[_0x2518e9(0x258)]=0x0,_0x914b21['jumpY']=0x0,_0x914b21[_0x2518e9(0x222)]=0.5,_0x914b21[_0x2518e9(0x250)]=![],_0x914b21[_0x2518e9(0x1c9)]=![],_0x914b21[_0x2518e9(0x1d4)]=0x0,this[_0x2518e9(0x1f7)](_0x914b21),this[_0x2518e9(0x1dc)][_0x2518e9(0x242)](_0x914b21);}),this[_0x1be40f(0x253)]=-0x30,this[_0x1be40f(0x1e0)]['clear']();}[_0x41d3a0(0x1a9)](){const _0x514983=_0x41d3a0,_0x80bebe=this[_0x514983(0x1b4)]-this[_0x514983(0x1cc)];this[_0x514983(0x1dc)]['forEach']((_0x2e0831,_0x2953a3)=>{const _0x2ee938=_0x514983;_0x80bebe>=_0x2e0831[_0x2ee938(0x1d7)]&&!_0x2e0831[_0x2ee938(0x250)]&&(_0x2e0831[_0x2ee938(0x250)]=!![],_0x2e0831[_0x2ee938(0x1d4)]=0xff,_0x2e0831['hasJumped']=!![],_0x2e0831[_0x2ee938(0x258)]=-Math[_0x2ee938(0x1d0)](0x2*_0x2e0831[_0x2ee938(0x222)]*_0x2e0831[_0x2ee938(0x224)]));if(!_0x2e0831['hasAppeared'])return;_0x2e0831[_0x2ee938(0x258)]+=_0x2e0831[_0x2ee938(0x222)],_0x2e0831[_0x2ee938(0x1e5)]+=_0x2e0831[_0x2ee938(0x258)],_0x2e0831['jumpY']>0x0&&(_0x2e0831[_0x2ee938(0x1e5)]=0x0,_0x2e0831[_0x2ee938(0x258)]=-_0x2e0831[_0x2ee938(0x258)]*0.5,Math[_0x2ee938(0x1ce)](_0x2e0831[_0x2ee938(0x258)])<0.5&&(_0x2ee938(0x193)==='SgUYd'?_0x2e0831[_0x2ee938(0x258)]=0x0:this['opacity']=this[_0x2ee938(0x1cc)]/this[_0x2ee938(0x239)]*0xff)),_0x2e0831['y']=_0x2e0831[_0x2ee938(0x1e5)];});}[_0x41d3a0(0x1b1)](){const _0x36376b=_0x41d3a0;this['_config'][_0x36376b(0x24c)]?(this[_0x36376b(0x1e0)][_0x36376b(0x21c)]=this[_0x36376b(0x1ea)][_0x36376b(0x21c)],this[_0x36376b(0x1e0)]['outlineWidth']=this['_config']['outlineThickness']):_0x36376b(0x220)!==_0x36376b(0x1ee)?this[_0x36376b(0x1e0)][_0x36376b(0x215)]=0x0:_0x14a830=_0x39c028;}['updateValue'](_0x2bc484){const _0x343871=_0x41d3a0;_0x2bc484!==null?_0x343871(0x264)!=='sZKfx'?_0x3c90ae['jumpSpeed']=0x0:this[_0x343871(0x1dd)]&&typeof _0x2bc484===_0x343871(0x1a7)&&typeof this[_0x343871(0x1ea)][_0x343871(0x226)]===_0x343871(0x1a7)?this[_0x343871(0x1ea)][_0x343871(0x226)]+=_0x2bc484:_0x343871(0x26b)!==_0x343871(0x26b)?(this[_0x343871(0x1e5)]=0x0,this[_0x343871(0x230)]=0x0):this[_0x343871(0x1ea)][_0x343871(0x226)]=_0x2bc484:this[_0x343871(0x1ea)]['currentDisplayedValue']=$gameVariables[_0x343871(0x19f)](this[_0x343871(0x1c6)]),this[_0x343871(0x22f)]=!![];}[_0x41d3a0(0x21f)](){const _0x2dee39=_0x41d3a0;super[_0x2dee39(0x21f)]();this[_0x2dee39(0x22f)]&&this[_0x2dee39(0x22c)]!=='letter'&&(this[_0x2dee39(0x1e7)](),this[_0x2dee39(0x22f)]=![]);this['_currentDuration']--;if(this['animationType']===_0x2dee39(0x208)){this[_0x2dee39(0x1a9)]();if(this[_0x2dee39(0x1cc)]<=0xa){if(_0x2dee39(0x1b0)==='BlWBA'){const _0x3d48c7=_0x45e859(this[_0x2dee39(0x1ea)][_0x2dee39(0x23b)]);_0x3d48c7&&(this[_0x2dee39(0x1e0)][_0x2dee39(0x24a)]=_0x3d48c7);}else this[_0x2dee39(0x1d4)]=this[_0x2dee39(0x1cc)]/0xa*0xff;}else this[_0x2dee39(0x1d4)]=0xff;}else{if(this[_0x2dee39(0x22c)]===_0x2dee39(0x195)){if('RnUnd'!==_0x2dee39(0x1ec)){if(this[_0x2dee39(0x1cc)]>this[_0x2dee39(0x1b4)]-this[_0x2dee39(0x20e)]){this['_velocity']+=this[_0x2dee39(0x222)],this[_0x2dee39(0x1e5)]+=this[_0x2dee39(0x230)],this['_jumpX']+=this[_0x2dee39(0x25a)];this['jumpY']>0x0&&(this[_0x2dee39(0x1e5)]=0x0,this[_0x2dee39(0x230)]=0x0);if(this[_0x2dee39(0x1a4)]){const _0x91a416=0x1-(this[_0x2dee39(0x1cc)]-(this[_0x2dee39(0x1b4)]-this[_0x2dee39(0x20e)]))/this[_0x2dee39(0x20e)],_0x144d71=1.7-_0x91a416*0.5;this['scale'][_0x2dee39(0x1b3)](this[_0x2dee39(0x200)]*_0x144d71,this[_0x2dee39(0x200)]*_0x144d71);}}this['_currentDuration']<=this[_0x2dee39(0x239)]&&('tmNdp'===_0x2dee39(0x1f9)?(_0x10ddf0=_0xa38354[_0x2dee39(0x25c)][_0x2dee39(0x1de)],_0x1b3d8c[_0x2dee39(0x1d2)]&&(_0x21ce53=_0x54f31d[_0x2dee39(0x1a5)](_0x2e6989*_0xd81874['getMultiplier']()))):this['opacity']=this[_0x2dee39(0x1cc)]/this[_0x2dee39(0x239)]*0xff);}else this[_0x2dee39(0x1d4)]=this[_0x2dee39(0x1cc)]/(this[_0x2dee39(0x1b4)]*_0x3564b1)*0xff;}else{if(this['animationType']==='moveup'||this[_0x2dee39(0x22c)]==='popup'){if(this[_0x2dee39(0x1ba)]<this[_0x2dee39(0x231)]){const _0x612991=this['totalMoveDistance']/this[_0x2dee39(0x231)],_0x849cd2=this[_0x2dee39(0x1d6)]*(0x1-_0x612991*_0x612991);this['moveY']-=_0x849cd2,this['totalMoveDistance']+=_0x849cd2;}if(this[_0x2dee39(0x22c)]===_0x2dee39(0x19a)){this[_0x2dee39(0x23d)]=0x1-this[_0x2dee39(0x1cc)]/this[_0x2dee39(0x1b4)];if(this['_popupPhase']<0.2){const _0x1099bd=this[_0x2dee39(0x23d)]/0.2,_0x1df4db=0x1+(this[_0x2dee39(0x26e)]-0x1)*_0x1099bd;this[_0x2dee39(0x23c)]['set'](_0x1df4db,_0x1df4db);}else{const _0x269ac3=(this[_0x2dee39(0x23d)]-0.3)/0.7,_0x5a4dc4=this[_0x2dee39(0x26e)]-(this[_0x2dee39(0x26e)]-0x1)*Math[_0x2dee39(0x221)](0x1,_0x269ac3);this[_0x2dee39(0x23c)][_0x2dee39(0x1b3)](_0x5a4dc4,_0x5a4dc4);}}const _0x375cc3=0.7;this[_0x2dee39(0x1cc)]<=this[_0x2dee39(0x1b4)]*_0x375cc3&&(this[_0x2dee39(0x1d4)]=this[_0x2dee39(0x1cc)]/(this['_duration']*_0x375cc3)*0xff);}}}this[_0x2dee39(0x243)](),!this[_0x2dee39(0x1a4)]&&this[_0x2dee39(0x22c)]===_0x2dee39(0x195)&&this[_0x2dee39(0x1ab)](),this[_0x2dee39(0x1cc)]<=0x0&&this[_0x2dee39(0x192)][_0x2dee39(0x1c0)](this);}[_0x41d3a0(0x243)](){const _0x4b972e=_0x41d3a0;if(this[_0x4b972e(0x1ed)]){if(_0x4b972e(0x240)!==_0x4b972e(0x240))this['x']=_0x43ff8e+this[_0x4b972e(0x1a8)],this['y']=_0x17d303+this[_0x4b972e(0x1e5)];else{const _0x49c43d=this['_worldX']-$gameMap[_0x4b972e(0x1cd)]()*$gameMap[_0x4b972e(0x227)](),_0x38cb44=this[_0x4b972e(0x270)]-$gameMap[_0x4b972e(0x1c5)]()*$gameMap[_0x4b972e(0x1b7)]();if(this[_0x4b972e(0x22c)]===_0x4b972e(0x195))this['x']=_0x49c43d+this[_0x4b972e(0x1a8)],this['y']=_0x38cb44+this[_0x4b972e(0x1e5)];else(this[_0x4b972e(0x22c)]===_0x4b972e(0x1e2)||this[_0x4b972e(0x22c)]===_0x4b972e(0x19a)||this[_0x4b972e(0x22c)]===_0x4b972e(0x208))&&('JCuRm'!==_0x4b972e(0x216)?(this['x']=_0x49c43d,this['y']=_0x38cb44+this[_0x4b972e(0x253)]):this[_0x4b972e(0x1e0)][_0x4b972e(0x24a)]=this[_0x4b972e(0x1ea)][_0x4b972e(0x24a)]);}}else{if(this[_0x4b972e(0x22c)]===_0x4b972e(0x195))_0x4b972e(0x1a3)!==_0x4b972e(0x1a3)?_0x429581=_0x58d218['abs'](_0x108f8b[_0xb3fee4[_0x4b972e(0x269)]-0x1]):(this['x']=this['_initialX']+this[_0x4b972e(0x1a8)],this['y']=this[_0x4b972e(0x197)]+this['jumpY']);else(this[_0x4b972e(0x22c)]===_0x4b972e(0x1e2)||this[_0x4b972e(0x22c)]===_0x4b972e(0x19a)||this[_0x4b972e(0x22c)]==='letter')&&(this['x']=this[_0x4b972e(0x1a6)],this['y']=this[_0x4b972e(0x197)]+this['moveY']);}}['updateScale'](){const _0xc7c5a4=_0x41d3a0,_0x3dd9b6=0x1-this[_0xc7c5a4(0x1cc)]/this['_duration'],_0xf40d6f=this[_0xc7c5a4(0x200)]+Math[_0xc7c5a4(0x238)](_0x3dd9b6*Math['PI'])*0.2;this[_0xc7c5a4(0x23c)][_0xc7c5a4(0x1b3)](_0xf40d6f,_0xf40d6f);}[_0x41d3a0(0x1e7)](){const _0x3c5bdf=_0x41d3a0;this[_0x3c5bdf(0x1e0)][_0x3c5bdf(0x245)](),this[_0x3c5bdf(0x1d4)]=this[_0x3c5bdf(0x1cc)]>this[_0x3c5bdf(0x1b4)]*0.5?0xff:this[_0x3c5bdf(0x1cc)]/(this[_0x3c5bdf(0x1b4)]*0.5)*0xff;const _0x47a836=this[_0x3c5bdf(0x1ea)]['fontColor']['split'](',')[_0x3c5bdf(0x23f)](_0x2e31c3=>_0x2e31c3[_0x3c5bdf(0x259)]());if(_0x47a836[_0x3c5bdf(0x269)]===0x2){const _0x5869d2=this[_0x3c5bdf(0x1e0)][_0x3c5bdf(0x1e9)],_0x14cef4=0xa,_0xa4bad3=_0x5869d2[_0x3c5bdf(0x213)](0x0,-_0x14cef4,0x0,0x30+_0x14cef4);_0xa4bad3[_0x3c5bdf(0x225)](0x0,_0x47a836[0x0]),_0xa4bad3[_0x3c5bdf(0x225)](0.4,_0x47a836[0x0]),_0xa4bad3[_0x3c5bdf(0x225)](0.65,_0x47a836[0x1]),_0xa4bad3[_0x3c5bdf(0x225)](0x1,_0x47a836[0x1]),_0x5869d2[_0x3c5bdf(0x1da)]=_0xa4bad3;this['_config'][_0x3c5bdf(0x24c)]&&(_0x5869d2[_0x3c5bdf(0x26c)]=this[_0x3c5bdf(0x1ea)][_0x3c5bdf(0x21c)],_0x5869d2[_0x3c5bdf(0x210)]=this[_0x3c5bdf(0x1ea)][_0x3c5bdf(0x1e3)],_0x5869d2[_0x3c5bdf(0x268)]=_0x3c5bdf(0x1a5),_0x5869d2[_0x3c5bdf(0x262)]=0x2);_0x5869d2[_0x3c5bdf(0x20b)]=this[_0x3c5bdf(0x1e0)][_0x3c5bdf(0x27a)](),_0x5869d2[_0x3c5bdf(0x260)]=_0x3c5bdf(0x235),_0x5869d2['textBaseline']='middle';const _0x2501ed=String(this[_0x3c5bdf(0x1ea)][_0x3c5bdf(0x226)]),_0x152f1d=0x78,_0x470bc1=0x18;this['_config']['outline']&&_0x5869d2['strokeText'](_0x2501ed,_0x152f1d,_0x470bc1),_0x5869d2['fillText'](_0x2501ed,_0x152f1d,_0x470bc1);}else{const _0x49fe20=String(this[_0x3c5bdf(0x1ea)][_0x3c5bdf(0x226)]);this[_0x3c5bdf(0x1e0)]['drawText'](_0x49fe20,0x0,0x0,0xf0,0x30,_0x3c5bdf(0x235));}}}function updateEventClocks(){const _0x58dafc=_0x41d3a0;for(const [_0x2ec4e9,_0xdfc7f]of eventClocks){let _0x103ca6=_0xdfc7f+0x1;if(_0x103ca6>=0x3c){const _0x3e35c9=eventData[_0x58dafc(0x22a)](_0x2ec4e9);if(_0x3e35c9){if(_0x58dafc(0x1d3)!=='zrKMl')return null;else _0x3e35c9[_0x58dafc(0x226)]=0x0,_0x103ca6=0x0;}}eventClocks[_0x58dafc(0x1b3)](_0x2ec4e9,_0x103ca6);}for(const _0x106dfd of eventClocks['keys']()){!$gameMap[_0x58dafc(0x22e)](_0x106dfd)&&(_0x58dafc(0x1c1)===_0x58dafc(0x232)?this[_0x58dafc(0x1ea)][_0x58dafc(0x226)]+=_0x4d7ff3:(eventClocks[_0x58dafc(0x265)](_0x106dfd),eventData[_0x58dafc(0x265)](_0x106dfd)));}}PluginManager[_0x41d3a0(0x218)](HpluginName,_0x41d3a0(0x236),function(_0x5c6577){const _0x115b26=_0x41d3a0;let _0x7465c2=[];if(_0x5c6577[_0x115b26(0x1ca)][_0x115b26(0x277)]()===_0x115b26(0x1c3))_0x7465c2[_0x115b26(0x242)](0x0);else{if(_0x5c6577[_0x115b26(0x1ca)][_0x115b26(0x277)]()==='this'){if('dZWHs'!==_0x115b26(0x1bc)){const _0xf998d8=_0x54dba8[_0x115b26(0x229)](_0x2055bd[_0x115b26(0x205)]);if(_0xf998d8[_0x115b26(0x1a2)]?.[_0x115b26(0x259)]())_0x3a98cf['fontColor']=_0xf998d8[_0x115b26(0x1a2)];if(_0xf998d8[_0x115b26(0x21c)]?.[_0x115b26(0x259)]())_0x165545[_0x115b26(0x21c)]=_0xf998d8[_0x115b26(0x21c)];_0xf998d8[_0x115b26(0x215)]!==_0x317f75&&_0xf998d8[_0x115b26(0x215)]!==''&&(_0x2f36a7[_0x115b26(0x1e3)]=_0x3d9522(_0xf998d8[_0x115b26(0x215)]));_0xf998d8[_0x115b26(0x23b)]&&_0xf998d8['fontFilename'][_0x115b26(0x259)]()&&(_0x594773[_0x115b26(0x23b)]=_0xf998d8[_0x115b26(0x23b)][_0x115b26(0x259)]());_0xf998d8[_0x115b26(0x26a)]&&_0x4c7e5f(_0xf998d8[_0x115b26(0x26a)])>0x0&&(_0x4d0669[_0x115b26(0x26a)]=_0x30650f(_0xf998d8['fontSize']));if(_0xf998d8['offsetX']!==_0x3f9684&&_0xf998d8[_0x115b26(0x228)]!=='')_0x51b61c=_0x45f541(_0xf998d8['offsetX']);if(_0xf998d8[_0x115b26(0x1be)]!==_0x4f73ea&&_0xf998d8['offsetY']!=='')_0x3cdf44=_0xfcade5(_0xf998d8[_0x115b26(0x1be)]);}else _0x7465c2[_0x115b26(0x242)](this['_eventId']);}else _0x7465c2['push'](Number(_0x5c6577[_0x115b26(0x1ca)]));}const _0x259097=_0x5c6577[_0x115b26(0x19c)]||_0x115b26(0x25b),_0x2416d1=Number(_0x5c6577['duration']),_0x3e2537=_0x5c6577[_0x115b26(0x247)]?Number(_0x5c6577[_0x115b26(0x247)]):0x0;let _0x3d7a80=0x0,_0x1cf16f=0x0;const _0x22bda9=PluginManager[_0x115b26(0x24b)](HpluginName)[_0x115b26(0x1ac)]['toLowerCase']()===_0x115b26(0x20f);let _0x5048d4=null;if(_0x5c6577['value']&&(_0x5c6577[_0x115b26(0x19f)][_0x115b26(0x277)]()[_0x115b26(0x26f)](_0x115b26(0x1e6))||_0x5c6577[_0x115b26(0x19f)]['toLowerCase']()[_0x115b26(0x26f)]('player\x202nd\x20weapon'))||_0x259097!==_0x115b26(0x25b)){const _0x38d294=$gameParty[_0x115b26(0x1fe)]();let _0x8502f9='slot1';if(_0x259097&&_0x259097!==_0x115b26(0x25b))_0x8502f9=_0x259097;else(_0x5c6577[_0x115b26(0x19f)][_0x115b26(0x277)]()[_0x115b26(0x26f)](_0x115b26(0x255))||_0x5c6577[_0x115b26(0x19f)][_0x115b26(0x277)]()['includes'](_0x115b26(0x254)))&&(_0x8502f9='slot2');const _0x8b721b=_0x8502f9==='slot1'?_0x38d294[_0x115b26(0x1f6)]()[0x0]:_0x38d294[_0x115b26(0x1f6)]()[0x1];if(_0x8b721b&&DataManager[_0x115b26(0x267)](_0x8b721b)){if(_0x115b26(0x1ff)!=='amutH'){const _0x4775c8=_0x53f342(this[_0x115b26(0x1ea)]['currentDisplayedValue']);this[_0x115b26(0x1e0)][_0x115b26(0x1bf)](_0x4775c8,0x0,0x0,0xf0,0x30,'center');}else{const _0x424e8a=_0x7465c2[0x0],_0x39ed43=CollisionManager[_0x115b26(0x26d)](_0x424e8a);_0x39ed43&&_0x39ed43[_0x115b26(0x269)]>0x0?_0x5048d4=Math[_0x115b26(0x1ce)](_0x39ed43[_0x39ed43['length']-0x1]):_0x5048d4=calculateWeaponDamageWithStats(_0x424e8a,_0x8b721b,_0x38d294);if(_0x5c6577[_0x115b26(0x19f)]&&(_0x5c6577[_0x115b26(0x19f)]['toLowerCase']()[_0x115b26(0x26f)](_0x115b26(0x1e6))||_0x5c6577[_0x115b26(0x19f)][_0x115b26(0x277)]()[_0x115b26(0x26f)](_0x115b26(0x255)))){let _0x2892f0=_0x5c6577[_0x115b26(0x19f)][_0x115b26(0x1d8)](/player\s+2nd\s+weapon/gi,_0x5048d4[_0x115b26(0x1b5)]());_0x2892f0=_0x2892f0[_0x115b26(0x1d8)](/player\s+weapon/gi,_0x5048d4['toString']());try{_0x5048d4=eval(_0x2892f0);}catch(_0xf62c51){console[_0x115b26(0x1df)]('This\x20expression\x20can\x27t\x20run:\x20'+_0x2892f0,_0xf62c51);}}}}else{if(_0x259097!=='none')return;}}for(const _0x416349 of _0x7465c2){let _0x551cbd;if(_0x416349===0x0)_0x551cbd=SceneManager[_0x115b26(0x1e4)][_0x115b26(0x1ae)][_0x115b26(0x204)]['find'](_0x5deb88=>_0x5deb88[_0x115b26(0x251)]===$gamePlayer);else{const _0x4e1d0e=$gameMap[_0x115b26(0x22e)](_0x416349);if(!_0x4e1d0e)continue;_0x551cbd=SceneManager[_0x115b26(0x1e4)][_0x115b26(0x1ae)][_0x115b26(0x204)][_0x115b26(0x1b6)](_0x2c1e6c=>_0x2c1e6c[_0x115b26(0x251)]===_0x4e1d0e);}if(!_0x551cbd)continue;if(_0x5c6577[_0x115b26(0x19f)]==='damage'){const _0x2b75a9=this[_0x115b26(0x1cb)];if(_0x416349===0x0){const _0x25c649=CollisionManager['getAllDamage'](_0x2b75a9);if(!_0x25c649||_0x25c649[_0x115b26(0x269)]===0x0)continue;const _0x49f610=CollisionManager[_0x115b26(0x26d)](0x0);if(!_0x49f610||_0x49f610[_0x115b26(0x269)]===0x0)continue;let _0x37d5c5=Math[_0x115b26(0x1ce)](_0x49f610[_0x49f610[_0x115b26(0x269)]-0x1]);const _0x1cfcf1=CollisionManager['lastSourceEventId'],_0x72e2d=$gameParty['leader']();_0x5048d4=applyDefenseReduction(_0x37d5c5,_0x1cfcf1,_0x72e2d);}else{const _0x53b249=CollisionManager['getAllDamage'](_0x416349);if(!_0x53b249||_0x53b249[_0x115b26(0x269)]===0x0)continue;_0x5048d4=Math[_0x115b26(0x1ce)](_0x53b249[_0x53b249['length']-0x1]);}}else{if(_0x5c6577[_0x115b26(0x19f)]===_0x115b26(0x1ad)){if(_0x416349!==0x0){if(_0x115b26(0x279)!==_0x115b26(0x1aa)){const _0x583fbe=$gameMap['event'](_0x416349);if(!_0x583fbe)return;!_0x583fbe['databaseEnemy']&&('RHdZL'!==_0x115b26(0x211)?_0x583fbe[_0x115b26(0x248)]():_0x25b343+=_0x4dc474),_0x583fbe[_0x115b26(0x25c)]&&(_0x5048d4=_0x583fbe['databaseEnemy'][_0x115b26(0x1ad)],window['DifficultyManager']&&(_0x5048d4=Math[_0x115b26(0x1a5)](_0x5048d4*DifficultyManager['getMultiplier']()))),_0x5048d4!==null&&(_0x5048d4=_0x5048d4+'XP');}else _0x329882=_0x92f0eb(_0x3cf9c4);}}else{if(_0x5c6577['value']==='gold'){if(_0x416349!==0x0){const _0x4e5ce2=$gameMap[_0x115b26(0x22e)](_0x416349);if(!_0x4e5ce2)continue;!_0x4e5ce2[_0x115b26(0x25c)]&&_0x4e5ce2['getHpValueFromNote'](),_0x4e5ce2[_0x115b26(0x25c)]&&(_0x115b26(0x1f0)!=='cEdrI'?this[_0x115b26(0x1dd)]&&typeof _0x126475===_0x115b26(0x1a7)&&typeof this[_0x115b26(0x1ea)][_0x115b26(0x226)]===_0x115b26(0x1a7)?this[_0x115b26(0x1ea)][_0x115b26(0x226)]+=_0x4bc48e:this[_0x115b26(0x1ea)][_0x115b26(0x226)]=_0x2361fc:(_0x5048d4=_0x4e5ce2['databaseEnemy']['gold'],window['DifficultyManager']&&(_0x5048d4=Math[_0x115b26(0x1a5)](_0x5048d4*DifficultyManager['getMultiplier']())))),_0x5048d4!==null&&_0x5048d4>0x0&&(_0x5048d4=_0x5048d4+'G');}}else{if(_0x5048d4===null)try{_0x5048d4=eval(_0x5c6577['value']);}catch(_0x5246e4){_0x115b26(0x190)!==_0x115b26(0x190)?(this['x']=_0x3ceab5,this['y']=_0x5110f6+this[_0x115b26(0x253)]):_0x5048d4=_0x5c6577[_0x115b26(0x19f)];}}}}_0x5048d4===0x0&&(_0x5048d4='Miss',missSfxSettings&&missSfxSettings[_0x115b26(0x1f1)]&&AudioManager[_0x115b26(0x1f2)]({'name':missSfxSettings[_0x115b26(0x1f1)],'volume':Number(missSfxSettings[_0x115b26(0x278)]||0x50),'pitch':Number(missSfxSettings['pitch']||0x64),'pan':0x0}));typeof _0x5048d4===_0x115b26(0x1a7)&&_0x3e2537!==0x0&&(_0x5048d4+=_0x3e2537);let _0x564210={...defaultConfig};if(_0x5c6577[_0x115b26(0x205)]){const _0x177846=JSON[_0x115b26(0x229)](_0x5c6577[_0x115b26(0x205)]);if(_0x177846['fontColor']?.[_0x115b26(0x259)]())_0x564210['fontColor']=_0x177846[_0x115b26(0x1a2)];if(_0x177846[_0x115b26(0x21c)]?.[_0x115b26(0x259)]())_0x564210[_0x115b26(0x21c)]=_0x177846[_0x115b26(0x21c)];_0x177846['outlineWidth']!==undefined&&_0x177846[_0x115b26(0x215)]!==''&&(_0x564210[_0x115b26(0x1e3)]=Number(_0x177846[_0x115b26(0x215)]));_0x177846['fontFilename']&&_0x177846['fontFilename']['trim']()&&(_0x115b26(0x271)!==_0x115b26(0x207)?_0x564210['fontFilename']=_0x177846[_0x115b26(0x23b)][_0x115b26(0x259)]():_0x5c014c=_0x4fbc83[_0x115b26(0x19f)]);_0x177846['fontSize']&&Number(_0x177846['fontSize'])>0x0&&(_0x564210[_0x115b26(0x26a)]=Number(_0x177846[_0x115b26(0x26a)]));if(_0x177846[_0x115b26(0x228)]!==undefined&&_0x177846[_0x115b26(0x228)]!=='')_0x3d7a80=Number(_0x177846[_0x115b26(0x228)]);if(_0x177846[_0x115b26(0x1be)]!==undefined&&_0x177846['offsetY']!=='')_0x1cf16f=Number(_0x177846['offsetY']);}if(typeof _0x5048d4===_0x115b26(0x1a7)&&_0x5048d4>=largeNumberThreshold){if(_0x115b26(0x1c4)!==_0x115b26(0x1ef)){let _0x321163=!![];if(_0x5c6577[_0x115b26(0x205)]){if(_0x115b26(0x257)!==_0x115b26(0x257))this[_0x115b26(0x1b2)]=[],this[_0x115b26(0x1dc)]=[],this[_0x115b26(0x241)]();else{const _0x9dbc91=JSON[_0x115b26(0x229)](_0x5c6577['visualSettings']);_0x9dbc91['criticalColor']!==undefined&&(_0x115b26(0x1f5)==='NGytO'?_0x321163=_0x9dbc91['criticalColor']===_0x115b26(0x20f)||_0x9dbc91[_0x115b26(0x20c)]===!![]:_0x37cc90[_0x115b26(0x21e)](_0x115b26(0x21a),_0x5015d6));}}_0x321163&&(_0x564210['fontColor']=_0x115b26(0x273),_0x564210[_0x115b26(0x21c)]=_0x115b26(0x1c8));}else _0x45357b[_0x115b26(0x26c)]=this['_config'][_0x115b26(0x21c)],_0x100b1d[_0x115b26(0x210)]=this[_0x115b26(0x1ea)]['outlineThickness'],_0x47190f[_0x115b26(0x268)]=_0x115b26(0x1a5),_0x5714ad[_0x115b26(0x262)]=0x2;}const _0xf87685=_0x5c6577[_0x115b26(0x214)]===_0x115b26(0x20f);_0x564210[_0x115b26(0x22c)]=_0x5c6577[_0x115b26(0x261)]||'bounce';const _0x1b5d16=new Sprite_Variable(_0x564210,null,_0x2416d1,_0x3d7a80,_0x1cf16f,_0x5048d4,_0x22bda9,_0x551cbd,_0xf87685),_0x346a15=SceneManager[_0x115b26(0x1e4)][_0x115b26(0x1ae)];_0x346a15['addChild'](_0x1b5d16),_0x346a15['_variableSprites'][_0x115b26(0x242)](_0x1b5d16);}});
 
 //==========================================================
 // EVENT HP BAR
@@ -4803,7 +4050,7 @@ Game_Event.prototype.setupSkillReferences = function () {
 	const dmgMatch = eventData.note.match(/<dmg:\s*(.+?)>/i);
 	if (dmgMatch) {
 		const potentialSkillName = dmgMatch[1].trim();
-		const skill = $dataSkills.find(s => s && s.name === potentialSkillName);
+		const skill = skillNameCache[potentialSkillName.toLowerCase()];
 		if (skill) {
 			this.databaseSkill = skill;
 		}
@@ -4834,41 +4081,18 @@ Game_Event.prototype.setupEnemyData = function (enemyName) {
 
 	this.databaseEnemy = enemy;
 	this.PRnam = enemy.name;
-	this.PRmhp = enemy.params[0];
-	this.PRmmp = enemy.params[1];
-	this.PRatk = enemy.params[2];
-	this.PRdef = enemy.params[3];
-	this.PRmat = enemy.params[4];
-	this.PRmdf = enemy.params[5];
-	this.PRagi = enemy.params[6];
-	this.PRluk = enemy.params[7];
-	this.PRexp = enemy.exp;
-	this.PRgld = enemy.gold;
+	const battler = SgetBattlerForH(this);
+	this.PRmhp = battler ? battler.mhp : enemy.params[0];
 
-	this.elementalResistances = [];
-	enemy.traits.forEach(trait => {
-		if (trait.code === 11) {
-			this.elementalResistances.push({
-				elementId: trait.dataId,
-				value: trait.value
-			});
-		}
-	});
-
-	this.attackElements = [];
-	enemy.traits.forEach(trait => {
-		if (trait.code === 31) {
-			this.attackElements.push(trait.dataId);
-		}
-	});
-
-	return enemy.params[0];
+	return this.PRmhp;
 };
 
 Game_Event.prototype.getHpValueFromNote = function () {
 	const eventData = this.event();
 	if (!eventData?.note) {
-		return eventData?.name ? this.setupEnemyData(eventData.name) : null;
+		if (!eventData?.name) return null;
+		this.setupEnemyData(eventData.name);
+		return this.PRmhp || null;
 	}
 
 	const hpMatch = eventData.note.match(/<hp:\s*(.+?)\s*>/i);
@@ -4908,16 +4132,15 @@ Game_Event.prototype.getHpValueFromNote = function () {
 
 		this.databaseEnemy = null;
 		this.PRmhp = baseHp;
-		this.PRmmp = 0;
-		this.PRatk = 0;
-		this.PRdef = 0;
-		this.PRmat = 0;
-		this.PRmdf = 0;
-		this.PRagi = 0;
-		this.PRluk = 0;
-		this.PRexp = 0;
-		this.PRgld = 0;
 
+		return baseHp;
+	}
+
+	const variableMatch = /v\[(\d+)\]/i.exec(hpString);
+	if (variableMatch) {
+		const baseHp = $gameVariables.value(parseInt(variableMatch[1])) || 0;
+		this.databaseEnemy = null;
+		this.PRmhp = baseHp;
 		return baseHp;
 	}
 
@@ -4925,15 +4148,6 @@ Game_Event.prototype.getHpValueFromNote = function () {
 		const baseHp = parseInt(hpString) || 0;
 		this.databaseEnemy = null;
 		this.PRmhp = baseHp;
-		this.PRmmp = 0;
-		this.PRatk = 0;
-		this.PRdef = 0;
-		this.PRmat = 0;
-		this.PRmdf = 0;
-		this.PRagi = 0;
-		this.PRluk = 0;
-		this.PRexp = 0;
-		this.PRgld = 0;
 		return baseHp;
 	}
 
@@ -4983,14 +4197,6 @@ Game_Event.prototype.setInitialHp = function () {
 				this.databaseActor = actor;
 				this.PRnam = actor.name;
 				this.PRmhp = actor.mhp;
-				this.PRmmp = actor.mmp;
-				this.PRatk = actor.atk;
-				this.PRdef = actor.def;
-				this.PRmat = actor.mat;
-				this.PRmdf = actor.mdf;
-				this.PRagi = actor.agi;
-				this.PRluk = actor.luk;
-				this.PRexp = actor.exp;
 
 				if (!$gameVariables._data[storageId]) {
 					$gameVariables._data[storageId] = actor.hp;
@@ -5005,70 +4211,16 @@ Game_Event.prototype.setInitialHp = function () {
 				this.linkedActorId = actorId;
 				this.PRnam = actor.name;
 				this.PRmhp = actor.mhp;
-				this.PRmmp = actor.mmp;
-				this.PRatk = actor.atk;
-				this.PRdef = actor.def;
-				this.PRmat = actor.mat;
-				this.PRmdf = actor.mdf;
-				this.PRagi = actor.agi;
-				this.PRluk = actor.luk;
-				this.PRexp = actor.exp;
 			}
 		} else {
 			const enemy = enemyNameCache[hpValue.toLowerCase()];
 			if (enemy) {
 				this.databaseEnemy = enemy;
 				this.PRnam = enemy.name;
-				this.PRmhp = enemy.params[0];
-				this.PRmmp = enemy.params[1];
-				this.PRatk = enemy.params[2];
-				this.PRdef = enemy.params[3];
-				this.PRmat = enemy.params[4];
-				this.PRmdf = enemy.params[5];
-				this.PRagi = enemy.params[6];
-				this.PRluk = enemy.params[7];
-				this.PRexp = enemy.exp;
-				this.PRgld = enemy.gold;
-
-				this.elementalResistances = [];
-				enemy.traits.forEach(trait => {
-					if (trait.code === 11) {
-						this.elementalResistances.push({
-							elementId: trait.dataId,
-							value: trait.value
-						});
-					}
-				});
-
-				this.attackElements = [];
-				enemy.traits.forEach(trait => {
-					if (trait.code === 31) {
-						this.attackElements.push(trait.dataId);
-					}
-				});
+				const enemyBattler = SgetBattlerForH(this);
+				this.PRmhp = enemyBattler ? enemyBattler.mhp : enemy.params[0];
 			}
 		}
-	}
-
-	if (!hpMatch && enemyNameOrHpValue && this.databaseEnemy) {
-		const enemy = this.databaseEnemy;
-
-		this.elementalResistances = [];
-		enemy.traits.forEach(trait => {
-			if (trait.code === 11) {
-				this.elementalResistances.push({
-					elementId: trait.dataId,
-					value: trait.value
-				});
-			}
-		});
-
-		this.attackElements = [];
-		enemy.traits.forEach(trait => {
-			if (trait.code === 31) {
-				this.attackElements.push(trait.dataId);
-			}
-		});
 	}
 
 	if (!$gameVariables._data[storageId]) {
@@ -5210,8 +4362,8 @@ class EventHpBar extends Sprite {
 			return;
 		}
 
-		const dx = Math.abs(this._event.x - $gamePlayer.x);
-		const dy = Math.abs(this._event.y - $gamePlayer.y);
+		const dx = Math.abs($gameMap.deltaX(this._event.x, $gamePlayer.x));
+		const dy = Math.abs($gameMap.deltaY(this._event.y, $gamePlayer.y));
 		if (dx > this._radius || dy > this._radius) {
 			if (this.visible && !this.fadingOut) {
 				this.shouldDisplay = false;
@@ -5274,7 +4426,7 @@ class EventHpBar extends Sprite {
 			const eventSprite = SceneManager._scene._spriteset._characterSprites.find(
 				sprite => sprite._character === this._event
 			);
-			if (eventSprite && eventSprite.scale) {
+			if (eventSprite && !eventSprite._destroyed && eventSprite.scale && eventSprite.scale.y != null) {
 				scaleY = eventSprite.scale.y;
 			}
 		}
@@ -5554,6 +4706,8 @@ class EventHpBar extends Sprite {
 				if (droppedItem) {
 					if (dropItemStyle === 'template') {
 						this.spawnTemplateItemEvent(droppedItem);
+					} else if (dropItemStyle === 'both') {
+						$gameMap.spawnBothItemEvent(droppedItem, drop.kind, this._event.x, this._event.y);
 					} else {
 						$gameMap.spawnIconItemEvent(droppedItem, drop.kind, this._event.x, this._event.y);
 					}
@@ -5651,21 +4805,18 @@ Spriteset_Map.prototype.update = function () {
 };
 
 Spriteset_Map.prototype.updateEventHpBars = function () {
-	if (Graphics.frameCount % 3 !== 0) return;
+	const currentGroup = Graphics.frameCount % 2;
 	const playerX = $gamePlayer.x;
 	const playerY = $gamePlayer.y;
-	const currentGroup = Graphics.frameCount % 3;
 
 	for (let i = 0; i < this._eventHpBars.length; i++) {
 		const hpBar = this._eventHpBars[i];
-		if (hpBar._event.eventId() % 3 !== currentGroup) continue;
-		const dx = Math.abs(hpBar._event.x - playerX);
-		const dy = Math.abs(hpBar._event.y - playerY);
+		if (hpBar._event.eventId() % 2 !== currentGroup) continue;
+		const dx = Math.abs($gameMap.deltaX(hpBar._event.x, playerX));
+		const dy = Math.abs($gameMap.deltaY(hpBar._event.y, playerY));
 		const radius = hpBar._radius || defaultRadius;
 		if (dx > radius || dy > radius) {
-			if (hpBar.visible) {
-				hpBar.startFadeOut();
-			}
+			if (hpBar.visible) hpBar.startFadeOut();
 			continue;
 		}
 		const distanceSquared = dx * dx + dy * dy;
@@ -5690,7 +4841,7 @@ Spriteset_Map.prototype.updateVariableSprites = function () {
 
 Spriteset_Map.prototype.cleanupEventHpBars = function () {
 	this._eventHpBars = this._eventHpBars.filter(hpBar => {
-		if (!$gameMap.events().includes(hpBar._event)) {
+		if (!$gameMap._events[hpBar._event._eventId]) {
 			this._tilemap.removeChild(hpBar);
 			return false;
 		}
@@ -5730,10 +4881,10 @@ Spriteset_Map.prototype.createCharacters = function () {
 		}
 		if (!event.noHpBar) {
 			const eventData = event.event();
-			if (eventData && eventData.note) {
+			if (eventData) {
 				const hpValue = event.getHpValueFromNote();
-				const hpYMatch = eventData.note.match(/<hpy:\s*(-?\d+)\s*>/i);
-				const radiusMatch = eventData.note.match(/<radius:\s*(\d+)\s*>/i);
+				const hpYMatch = eventData.note ? eventData.note.match(/<hpy:\s*(-?\d+)\s*>/i) : null;
+				const radiusMatch = eventData.note ? eventData.note.match(/<radius:\s*(\d+)\s*>/i) : null;
 				if (hpValue !== null) {
 					const offsetY = hpYMatch ? parseInt(hpYMatch[1]) : 0;
 					const radius = radiusMatch ? parseInt(radiusMatch[1]) : defaultRadius;
@@ -5782,6 +4933,33 @@ Game_Map.prototype.getCurrentEventHp = function (eventId) {
 	return null;
 };
 
+
+Game_Map.prototype.getMaxEventHp = function (eventId) {
+	const event = this.event(eventId);
+	if (!event) return null;
+
+	if (event._isMinionActor) {
+		if (event.linkedActorId) {
+			return $gameActors.actor(event.linkedActorId) ? $gameActors.actor(event.linkedActorId).mhp : null;
+		}
+	}
+	else if (event.linkedActorId && !event._isMinionActor) {
+		return $gameActors.actor(event.linkedActorId) ? $gameActors.actor(event.linkedActorId).mhp : null;
+	}
+
+	if (SceneManager._scene instanceof Scene_Map &&
+		SceneManager._scene._spriteset?._eventHpBars) {
+		const hpBar = SceneManager._scene._spriteset._eventHpBars.find(
+			bar => bar._event === event
+		);
+		if (hpBar) return hpBar._maxHp;
+	}
+
+	if (event.PRmhp !== undefined) return event.PRmhp;
+	if (event._maxHp !== undefined) return event._maxHp;
+
+	return null;
+};
 
 Game_Interpreter.prototype.updateEventHp = function (eventId, value) {
 	const event = eventId === "this" ? this.currentEvent() : $gameMap.event(eventId);
@@ -5901,7 +5079,7 @@ PluginManager.registerCommand(HpluginName, "UpdateEventHp", function (args) {
 					const sourceEventId = CollisionManager.lastSourceEventId;
 
 					if (targetActor) {
-						baseDamage = applyDefenseReduction(baseDamage, sourceEventId, targetActor);
+						baseDamage = SapplyDefenseReductionH(baseDamage, sourceEventId, targetActor);
 					}
 
 					let expression = valueStr.replace(/damage/g, baseDamage.toString());
@@ -5949,7 +5127,7 @@ PluginManager.registerCommand(HpluginName, "UpdateEventHp", function (args) {
 		}
 		else if ((valueStr.toLowerCase().includes('player weapon') || valueStr.toLowerCase().includes('player 2nd weapon')) || (useWeaponAttack !== 'none' && useWeaponAttack !== undefined)) {
 			const leader = $gameParty.leader();
-			const equippedWeapons = leader.equips();
+			const equippedWeapons = typeof leader.equips === 'function' ? leader.equips() : [];
 			let weaponDamage = 0;
 
 			let weaponSlot = 'slot1';
@@ -5966,11 +5144,9 @@ PluginManager.registerCommand(HpluginName, "UpdateEventHp", function (args) {
 				weapon = equippedWeapons[1];
 			}
 
-			if (weapon) {
-				const targetId = isPlayerTarget ? 0 : actualEventId;
-				weaponDamage = calculateWeaponDamageWithStats(targetId, weapon, leader);
-				CollisionManager.addCollision(targetId, weaponDamage);
-			}
+			const targetId = isPlayerTarget ? 0 : actualEventId;
+			weaponDamage = MaithlCalculateDamagePlayerWeapon(targetId, weapon, leader);
+			CollisionManager.addCollision(targetId, weaponDamage);
 
 			if (valueStr.toLowerCase().includes('player weapon') || valueStr.toLowerCase().includes('player 2nd weapon')) {
 				let expression = valueStr.replace(/player\s+2nd\s+weapon/gi, weaponDamage.toString());
@@ -6092,20 +5268,16 @@ PluginManager.registerCommand(HpluginName, "UpdatePlayerHp", function (args) {
 				// Fefense reduction
 				if (targetActor) {
 					const sourceEventId = CollisionManager.lastSourceEventId;
-					latestDamage = applyDefenseReduction(Math.abs(latestDamage), sourceEventId, targetActor);
+					latestDamage = SapplyDefenseReductionH(Math.abs(latestDamage), sourceEventId, targetActor);
 				}
 
 				let expression = args.value;
-				const def = targetActor ? targetActor.def : 0;
-				const mdef = targetActor ? targetActor.mdf : 0;
 
 				const parenRegex = /\((.*?)\)/g;
 				expression = expression.replace(parenRegex, (match, innerContent) => {
 					if (innerContent.includes('damage')) {
 						const evalInner = innerContent
-							.replace('damage', latestDamage.toString())
-							.replace('def', def.toString())
-							.replace('mdef', mdef.toString());
+							.replace(/damage/g, latestDamage.toString());
 						try {
 							const innerResult = Math.max(0, eval(evalInner));
 							return `(${innerResult})`;
@@ -6117,9 +5289,7 @@ PluginManager.registerCommand(HpluginName, "UpdatePlayerHp", function (args) {
 				});
 
 				expression = expression
-					.replace('damage', latestDamage.toString())
-					.replace('def', def.toString())
-					.replace('mdef', mdef.toString());
+					.replace(/damage/g, latestDamage.toString());
 
 				expression = expression.replace(/\s+/g, '');
 
@@ -6210,8 +5380,8 @@ PluginManager.registerCommand(HpluginName, "RemoveEventHpBar", function (args) {
 });
 
 Game_Map.prototype.getCharacterDistance = function (character1, character2) {
-	const dx = Math.abs(character1.x - character2.x);
-	const dy = Math.abs(character1.y - character2.y);
+	const dx = Math.abs($gameMap.deltaX(character1.x, character2.x));
+	const dy = Math.abs($gameMap.deltaY(character1.y, character2.y));
 	return Math.sqrt(dx * dx + dy * dy);
 };
 
@@ -6225,8 +5395,8 @@ Spriteset_Map.prototype.refreshEventHpBars = function () {
 			const hpValue = event.getHpValueFromNote();
 			if (hpValue !== null) {
 				const eventData = event.event();
-				const offsetY = parseInt(eventData.note.match(/<hpy:\s*(-?\d+)\s*>/i)?.[1] || 0);
-				const radius = parseInt(eventData.note.match(/<radius:\s*(\d+)\s*>/i)?.[1] || defaultRadius);
+				const offsetY = parseInt(eventData.note?.match(/<hpy:\s*(-?\d+)\s*>/i)?.[1] || 0);
+				const radius = parseInt(eventData.note?.match(/<radius:\s*(\d+)\s*>/i)?.[1] || defaultRadius);
 				const hpBar = new EventHpBar(event, hpValue, offsetY, radius);
 				this._eventHpBars.push(hpBar);
 				this._tilemap.addChild(hpBar);
@@ -6265,12 +5435,12 @@ PluginManager.registerCommand(HpluginName, "ResetEventHpToOriginal", function (a
 
 PluginManager.registerCommand(HpluginName, "EventHPBarVisibility", function (args) {
 	const status = args.Status === 'true';
-	const eventId = args.Target === "this" ? this._eventId : parseInt(args.Target);
-	if (!$gameMap.event(eventId)) return;
 	if (!SceneManager._scene._spriteset) return;
-	const hpBar = SceneManager._scene._spriteset._eventHpBars.find(bar => bar._event === $gameMap.event(eventId));
-	if (!hpBar) return;
-	hpBar.setVisibility(status);
+	const targets = findTargets(args.Target, this);
+	targets.forEach(event => {
+		const hpBar = SceneManager._scene._spriteset._eventHpBars.find(bar => bar._event === event);
+		if (hpBar) hpBar.setVisibility(status);
+	});
 });
 
 EventHpBar.prototype.setVisibility = function (visible) {
@@ -6374,22 +5544,8 @@ Game_Event.prototype.setupPlayerChild = function () {
 			command.parameters[0].match(/<child offset:\s*(-?\d+\.?\d*),\s*(-?\d+\.?\d*)>/i)
 		);
 
-		if (offsetMatch) {
-			const [, x, y] = offsetMatch.parameters[0].match(/<child offset:\s*(-?\d+\.?\d*),\s*(-?\d+\.?\d*)>/i);
-			this.childOffsetX = -Number(x);
-			this.childOffsetY = -Number(y);
-		}
-
 		this.isPlayerChild = parentEvent === $gamePlayer;
 		this.theParent = parentEvent;
-
-		if (this.isPlayerChild) {
-			this.lastPlayerX = $gamePlayer._realX + this.childOffsetX;
-			this.lastPlayerY = $gamePlayer._realY + this.childOffsetY;
-		} else {
-			this.lastParentX = parentEvent._realX + this.childOffsetX;
-			this.lastParentY = parentEvent._realY + this.childOffsetY;
-		}
 
 		if (H_DotMoveSystem) {
 			const parentPos = parentEvent.positionPoint();
@@ -6399,6 +5555,20 @@ Game_Event.prototype.setupPlayerChild = function () {
 		} else {
 			this.childOffsetX = this._realX - parentEvent._realX;
 			this.childOffsetY = this._realY - parentEvent._realY;
+		}
+
+		if (offsetMatch) {
+			const [, x, y] = offsetMatch.parameters[0].match(/<child offset:\s*(-?\d+\.?\d*),\s*(-?\d+\.?\d*)>/i);
+			this.childOffsetX = -Number(x) / $gameMap.tileWidth();
+			this.childOffsetY = -Number(y) / $gameMap.tileHeight();
+		}
+
+		if (this.isPlayerChild) {
+			this.lastPlayerX = $gamePlayer._realX + this.childOffsetX;
+			this.lastPlayerY = $gamePlayer._realY + this.childOffsetY;
+		} else {
+			this.lastParentX = parentEvent._realX + this.childOffsetX;
+			this.lastParentY = parentEvent._realY + this.childOffsetY;
 		}
 
 	} else {
@@ -6413,13 +5583,18 @@ PluginManager.registerCommand(HpluginName, "AttachToEvent", function (args) {
 
 	if (args.parent === 'none') {
 		sourceEvents.forEach(sourceEvent => {
-			if (sourceEvent) {
-				sourceEvent.isPlayerChild = false;
-				sourceEvent.theParent = null;
-				sourceEvent.childOffsetX = 0;
-				sourceEvent.childOffsetY = 0;
-				sourceEvent.wasAttached = false;
+			if (!sourceEvent) return;
+			if (sourceEvent === $gamePlayer) {
+				$gamePlayer._parentEvent = null;
+				$gamePlayer._parentOffsetX = 0;
+				$gamePlayer._parentOffsetY = 0;
+				return;
 			}
+			sourceEvent.isPlayerChild = false;
+			sourceEvent.theParent = null;
+			sourceEvent.childOffsetX = 0;
+			sourceEvent.childOffsetY = 0;
+			sourceEvent.wasAttached = false;
 		});
 		return;
 	}
@@ -6427,17 +5602,28 @@ PluginManager.registerCommand(HpluginName, "AttachToEvent", function (args) {
 	const attachTo = args.parent || 'this';
 	let parentEvents = findTargets(attachTo, this);
 
-	let commandOffsetX = 0, commandOffsetY = 0;
-	if (args.offset) {
-		const offsetMatch = args.offset.match(/\s*(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)\s*/);
-		if (offsetMatch) {
-			commandOffsetX = Number(offsetMatch[1]) || 0;
-			commandOffsetY = Number(offsetMatch[2]) || 0;
-		}
-	}
-
 	sourceEvents.forEach(sourceEvent => {
 		if (!sourceEvent) return;
+
+		if (sourceEvent === $gamePlayer) {
+			const parentEvent = parentEvents.find(p => p && p !== $gamePlayer);
+			if (parentEvent) {
+				$gamePlayer._parentEvent = parentEvent;
+				if (H_DotMoveSystem) {
+					const parentPos = parentEvent.positionPoint
+						? parentEvent.positionPoint()
+						: { x: parentEvent._realX, y: parentEvent._realY };
+					$gamePlayer._parentOffsetX = $gamePlayer._realX - parentPos.x;
+					$gamePlayer._parentOffsetY = $gamePlayer._realY - parentPos.y;
+				} else {
+					$gamePlayer._parentOffsetX = $gamePlayer._realX - parentEvent._realX;
+					$gamePlayer._parentOffsetY = $gamePlayer._realY - parentEvent._realY;
+				}
+				$gamePlayer._lastParentX = parentEvent._realX;
+				$gamePlayer._lastParentY = parentEvent._realY;
+			}
+			return;
+		}
 
 		let nearestParent = null;
 		let shortestDistance = Infinity;
@@ -6478,16 +5664,619 @@ PluginManager.registerCommand(HpluginName, "AttachToEvent", function (args) {
 				sourceEvent.childOffsetY = sourceEvent._realY - nearestParent._realY;
 			}
 
-			if (args.offset) {
-				sourceEvent.childOffsetX = commandOffsetX;
-				sourceEvent.childOffsetY = commandOffsetY;
-			}
 			sourceEvent.wasAttached = true;
 		}
 	});
 });
 
-const _0x399826=_0x5ad8;(function(_0x519489,_0x284ab8){const _0x17295c=_0x5ad8,_0x3d684a=_0x519489();while(!![]){try{const _0x57ca02=-parseInt(_0x17295c(0x253))/0x1*(parseInt(_0x17295c(0x213))/0x2)+-parseInt(_0x17295c(0x214))/0x3*(-parseInt(_0x17295c(0x1f3))/0x4)+parseInt(_0x17295c(0x20f))/0x5*(-parseInt(_0x17295c(0x209))/0x6)+-parseInt(_0x17295c(0x259))/0x7+parseInt(_0x17295c(0x241))/0x8*(-parseInt(_0x17295c(0x20b))/0x9)+-parseInt(_0x17295c(0x220))/0xa+parseInt(_0x17295c(0x252))/0xb;if(_0x57ca02===_0x284ab8)break;else _0x3d684a['push'](_0x3d684a['shift']());}catch(_0x2a984c){_0x3d684a['push'](_0x3d684a['shift']());}}}(_0x21b8,0x65749));let commonEventNameCache=null,enemyNameCache=null;const _DataManager_isDatabaseLoaded=DataManager[_0x399826(0x1f9)];DataManager[_0x399826(0x1f9)]=function(){const _0x1768a6=_0x399826;if(!_DataManager_isDatabaseLoaded[_0x1768a6(0x1f8)](this))return![];return enemyNameCache={},$dataEnemies[_0x1768a6(0x1f7)](_0x5c03a4=>{const _0x38631b=_0x1768a6;if('ONKAm'!==_0x38631b(0x254)){const _0x29eb51=_0x2d7ac5[_0x38631b(0x1f4)][_0x312c02[_0x38631b(0x229)]()][this[_0x38631b(0x262)]];_0xbf4a11['isArray'](_0x29eb51)&&_0x29eb51[_0x38631b(0x1f7)](_0x4bc5bb=>{const _0x1c9ed1=_0x38631b;!this[_0x1c9ed1(0x230)][_0x1c9ed1(0x21a)](_0x4bc5bb)&&this[_0x1c9ed1(0x230)][_0x1c9ed1(0x235)](_0x4bc5bb);});}else{if(_0x5c03a4)enemyNameCache[_0x5c03a4['name']['toLowerCase']()]=_0x5c03a4;}}),commonEventNameCache={},$dataCommonEvents[_0x1768a6(0x1f7)](_0x1b679a=>{const _0x4a2d02=_0x1768a6;if(_0x1b679a)commonEventNameCache[_0x1b679a[_0x4a2d02(0x260)][_0x4a2d02(0x1f0)]()]=_0x1b679a['id'];}),!![];},Game_Event[_0x399826(0x1f1)][_0x399826(0x203)]=function(_0x2e0924){const _0xbfcadf=_0x399826;if(!isNaN(_0x2e0924[_0xbfcadf(0x24e)]()))return parseInt(_0x2e0924[_0xbfcadf(0x24e)]());const _0x143889=_0x2e0924[_0xbfcadf(0x24e)]()[_0xbfcadf(0x1f0)]();return commonEventNameCache[_0x143889]||0x0;};const _Game_Event_setupPage=Game_Event['prototype']['setupPage'];Game_Event[_0x399826(0x1f1)][_0x399826(0x231)]=function(){const _0xf89be7=_0x399826,_0x23d359=this[_0xf89be7(0x1ef)]>=0x0&&$gameMap[_0xf89be7(0x1fb)]&&$gameMap[_0xf89be7(0x1fb)][_0xf89be7(0x207)](this[_0xf89be7(0x262)]);this['_cachedNoSlidingComment']=undefined,_Game_Event_setupPage[_0xf89be7(0x1f8)](this),this[_0xf89be7(0x206)]=[],this[_0xf89be7(0x1f5)]=![],this[_0xf89be7(0x230)]=[],this[_0xf89be7(0x217)]=![],this[_0xf89be7(0x249)](),this['setupFrameSpeed'](),this[_0xf89be7(0x223)](),this[_0xf89be7(0x210)]();if($gameMap['_passEvents']){if('RuYnp'===_0xf89be7(0x256))_0x3dd31f['passiveCommonEvents'][_0x5a9e16['mapId']()]={};else{const _0xa1bb91=this[_0xf89be7(0x1ef)]>=0x0&&this[_0xf89be7(0x23d)]()[_0xf89be7(0x232)][_0xf89be7(0x21a)](_0xf89be7(0x250));if(_0xa1bb91&&!_0x23d359)$gameMap[_0xf89be7(0x1fb)][_0xf89be7(0x23e)](this['_eventId']);else!_0xa1bb91&&_0x23d359&&$gameMap[_0xf89be7(0x1fb)][_0xf89be7(0x1fe)](this['_eventId']);}}},Game_Event[_0x399826(0x1f1)][_0x399826(0x249)]=function(){const _0x2d9e18=_0x399826;if(!this[_0x2d9e18(0x23d)]())return;const _0x23d5e8=this[_0x2d9e18(0x23d)]()[_0x2d9e18(0x232)],_0x5b3664=this[_0x2d9e18(0x20e)](_0x23d5e8),_0x25f3bc=this[_0x2d9e18(0x22e)]();this[_0x2d9e18(0x230)]=[...new Set([..._0x5b3664,..._0x25f3bc])],this['_passiveBlocked']=this[_0x2d9e18(0x208)](_0x2d9e18(0x261));if(this[_0x2d9e18(0x25b)]()&&$gameSystem[_0x2d9e18(0x1f4)]&&$gameSystem[_0x2d9e18(0x1f4)][$gameMap[_0x2d9e18(0x229)]()]&&$gameSystem['passiveCommonEvents'][$gameMap['mapId']()][this['_eventId']]){const _0x189876=$gameSystem['passiveCommonEvents'][$gameMap['mapId']()][this[_0x2d9e18(0x262)]];Array[_0x2d9e18(0x216)](_0x189876)&&_0x189876[_0x2d9e18(0x1f7)](_0x51de62=>{const _0x5da68f=_0x2d9e18;!this[_0x5da68f(0x230)][_0x5da68f(0x21a)](_0x51de62)&&this[_0x5da68f(0x230)][_0x5da68f(0x235)](_0x51de62);});}if(this[_0x2d9e18(0x230)][_0x2d9e18(0x228)]>0x0&&!this[_0x2d9e18(0x217)]){if(_0x2d9e18(0x245)!==_0x2d9e18(0x247))(!limitAreaOfCalling||this[_0x2d9e18(0x257)]())&&(_0x2d9e18(0x24a)!==_0x2d9e18(0x24a)?_0x4e6577[_0x2d9e18(0x1f4)][_0x4b52b1[_0x2d9e18(0x229)]()][_0x36e489][_0x2d9e18(0x222)](_0x255a5d,0x1):this[_0x2d9e18(0x255)]());else{const _0x453c12=this[_0x2d9e18(0x20a)]['_realX']+this[_0x2d9e18(0x21d)],_0x1c3f35=this['theParent'][_0x2d9e18(0x243)]+this[_0x2d9e18(0x1fd)],_0x480381=this[_0x2d9e18(0x21e)]-(this['lastParentX']+this[_0x2d9e18(0x21d)]),_0x42467a=this[_0x2d9e18(0x243)]-(this['lastParentY']+this[_0x2d9e18(0x1fd)]);this['_realX']=_0x453c12+_0x480381,this[_0x2d9e18(0x243)]=_0x1c3f35+_0x42467a;}}},Game_Character[_0x399826(0x1f1)]['isNearScreen']=function(){const _0x26952f=_0x399826;!$gameMap[_0x26952f(0x23f)]&&(_0x26952f(0x263)!==_0x26952f(0x263)?_0x50cac2[_0x26952f(0x1f7)](_0x1a45c6=>{const _0x3db876=_0x26952f;!this['_commonEventIds'][_0x3db876(0x21a)](_0x1a45c6)&&this[_0x3db876(0x230)]['push'](_0x1a45c6);}):$gameMap[_0x26952f(0x23f)]={'width':Graphics[_0x26952f(0x218)]/$gameMap[_0x26952f(0x211)](),'height':Graphics[_0x26952f(0x1fc)]/$gameMap['tileHeight']()});const _0x55f809=0x6,_0x182998=$gameMap[_0x26952f(0x215)]-_0x55f809,_0x55db5e=$gameMap[_0x26952f(0x215)]+$gameMap[_0x26952f(0x23f)]['width']+_0x55f809,_0x4f457e=$gameMap[_0x26952f(0x242)]-_0x55f809,_0x2dc16b=$gameMap[_0x26952f(0x242)]+$gameMap[_0x26952f(0x23f)][_0x26952f(0x1fc)]+_0x55f809;return this['x']>=_0x182998&&this['x']<=_0x55db5e&&this['y']>=_0x4f457e&&this['y']<=_0x2dc16b;},Game_Event[_0x399826(0x1f1)]['extractCommonEventIdsFromCustomTags']=function(_0x3cb8ed){const _0x47c990=_0x399826;return npcTags[_0x47c990(0x1ff)]((_0x4d894a,_0x4c857b)=>{const _0x9dc5f2=_0x47c990;return _0x3cb8ed['includes'](_0x4c857b[_0x9dc5f2(0x237)])&&_0x4d894a[_0x9dc5f2(0x235)](..._0x4c857b[_0x9dc5f2(0x225)]),_0x4d894a;},[]);},Game_Event[_0x399826(0x1f1)][_0x399826(0x22e)]=function(){const _0xe362ee=_0x399826;if(!this[_0xe362ee(0x200)]())return[];const _0x5a380b=[];return this[_0xe362ee(0x200)]()[_0xe362ee(0x25f)]['forEach'](_0x222df3=>{const _0x41f9a1=_0xe362ee;if(_0x222df3[_0x41f9a1(0x239)]!==0x6c&&_0x222df3[_0x41f9a1(0x239)]!==0x198)return;const _0x2d0ea3=/<passive:\s*(.+?)\s*>/i[_0x41f9a1(0x1f2)](_0x222df3[_0x41f9a1(0x202)][0x0]);if(_0x2d0ea3){const _0x1093b7=_0x2d0ea3[0x1][_0x41f9a1(0x1fa)](','),_0x3112b7=_0x1093b7[_0x41f9a1(0x25d)](_0x5db7f3=>this[_0x41f9a1(0x203)](_0x5db7f3))[_0x41f9a1(0x20d)](_0x4225ff=>_0x4225ff>0x0);_0x5a380b[_0x41f9a1(0x235)](..._0x3112b7);}}),_0x5a380b;},Game_Event[_0x399826(0x1f1)][_0x399826(0x208)]=function(_0x12a052){const _0x1c2b86=_0x399826;if(!this[_0x1c2b86(0x200)]())return![];return this[_0x1c2b86(0x200)]()['list'][_0x1c2b86(0x258)](_0x688cf3=>(_0x688cf3[_0x1c2b86(0x239)]===0x6c||_0x688cf3['code']===0x198)&&_0x688cf3[_0x1c2b86(0x202)][0x0][_0x1c2b86(0x21a)](_0x12a052));},Game_Event['prototype'][_0x399826(0x255)]=function(){const _0xad75e1=_0x399826;this[_0xad75e1(0x206)]=this[_0xad75e1(0x230)][_0xad75e1(0x20d)](_0x216918=>$dataCommonEvents&&$dataCommonEvents[_0x216918])[_0xad75e1(0x25d)](_0x1334c9=>{const _0x56b879=_0xad75e1,_0x2275e6=new Game_Interpreter();return _0x2275e6[_0x56b879(0x224)]($dataCommonEvents[_0x1334c9]['list'],this[_0x56b879(0x262)]),_0x2275e6;});},Game_System['prototype'][_0x399826(0x204)]=function(){const _0x5abcaf=_0x399826;if(!this[_0x5abcaf(0x1f4)])return;for(const _0x3da44a in this['passiveCommonEvents']){const _0x5d1d6c=this[_0x5abcaf(0x1f4)][_0x3da44a];for(const _0x2f2937 in _0x5d1d6c){_0x5abcaf(0x25e)!==_0x5abcaf(0x25e)?!this[_0x5abcaf(0x206)][_0x5abcaf(0x228)]&&this[_0x5abcaf(0x255)]():(!_0x5d1d6c[_0x2f2937]||_0x5d1d6c[_0x2f2937][_0x5abcaf(0x228)]===0x0)&&('XSdZQ'!==_0x5abcaf(0x21f)?delete _0x5d1d6c[_0x2f2937]:delete _0x46dd8c[_0x5abcaf(0x1f4)][_0x28a9e8[_0x5abcaf(0x229)]()][_0x38b090]);}if(Object[_0x5abcaf(0x244)](_0x5d1d6c)['length']===0x0){if(_0x5abcaf(0x23a)!==_0x5abcaf(0x22b))delete this[_0x5abcaf(0x1f4)][_0x3da44a];else{if(!_0xfe3478['_commonEventIds'][_0x5abcaf(0x21a)](_0x2ef722)){_0x4e2995['_commonEventIds'][_0x5abcaf(0x235)](_0x216e23);!_0x4f58b8['_independentCommonEventInterpreters']&&(_0x413f1f[_0x5abcaf(0x206)]=[]);const _0xd299f1=new _0x3f8aa2();_0xd299f1['setup'](_0x4ab7d5[_0x45faf4]['list'],_0x520e45),_0x1dce8e[_0x5abcaf(0x206)][_0x5abcaf(0x235)](_0xd299f1),!_0x31bd73['passiveCommonEvents'][_0x151790[_0x5abcaf(0x229)]()][_0x45e536][_0x5abcaf(0x21a)](_0x155fe4)&&_0xf9e9c1['passiveCommonEvents'][_0x12623b['mapId']()][_0x1f29a9][_0x5abcaf(0x235)](_0x357294);}}}}};const H_Game_Event_update=Game_Event[_0x399826(0x1f1)][_0x399826(0x201)];Game_Event['prototype'][_0x399826(0x201)]=function(){const _0x24109a=_0x399826;if(!$gameMap[_0x24109a(0x24d)][this[_0x24109a(0x262)]])return;const _0x5f87cd=!$gameMap['eventsPaused']||$gameMap[_0x24109a(0x236)]&&this[_0x24109a(0x262)]===$gameMap['pausingEvent'];if(_0x5f87cd){if('bUqpK'!=='bUqpK')!this[_0x24109a(0x230)][_0x24109a(0x21a)](_0x9c06dd)&&this['_commonEventIds']['push'](_0x4af900);else{H_Game_Event_update[_0x24109a(0x1f8)](this);const _0x4796e5=$gameMap[_0x24109a(0x229)]();if($gameSystem[_0x24109a(0x1f4)]?.[_0x4796e5]?.[this['_eventId']]){if(_0x24109a(0x22c)===_0x24109a(0x22c)){const _0x52b104=$gameSystem[_0x24109a(0x1f4)][_0x4796e5][this[_0x24109a(0x262)]];!this['stateInterpreters']&&(this[_0x24109a(0x22f)]={});for(const _0xcfa90 in _0x52b104){const _0x5f334e=_0x52b104[_0xcfa90];if(!this['stateInterpreters'][_0xcfa90]){const _0x36f073=new Game_Interpreter();_0x36f073[_0x24109a(0x224)]($dataCommonEvents[_0x5f334e][_0x24109a(0x25f)],this[_0x24109a(0x262)]),this[_0x24109a(0x22f)][_0xcfa90]=_0x36f073;}}}else{!_0x1bc337[_0x24109a(0x23f)]&&(_0x10dc8e[_0x24109a(0x23f)]={'width':_0xfbde6f['width']/_0x1c7e3a[_0x24109a(0x211)](),'height':_0x768d7d['height']/_0x466e53['tileHeight']()});const _0x534f0a=0x6,_0x3385af=_0x33bb36[_0x24109a(0x215)]-_0x534f0a,_0x4d92c1=_0x322157[_0x24109a(0x215)]+_0x325d75[_0x24109a(0x23f)]['width']+_0x534f0a,_0x20091c=_0x54c393[_0x24109a(0x242)]-_0x534f0a,_0x12d980=_0xa18279[_0x24109a(0x242)]+_0x448579['_screenTileDimensions'][_0x24109a(0x1fc)]+_0x534f0a;return this['x']>=_0x3385af&&this['x']<=_0x4d92c1&&this['y']>=_0x20091c&&this['y']<=_0x12d980;}}if(this[_0x24109a(0x22f)])for(const _0xb2a109 in this[_0x24109a(0x22f)]){const _0x14fd0e=this[_0x24109a(0x22f)][_0xb2a109];if(!_0x14fd0e[_0x24109a(0x205)]()){const _0x4be602=$gameSystem[_0x24109a(0x1f4)]?.[_0x4796e5]?.[this[_0x24109a(0x262)]]?.[_0xb2a109];_0x4be602&&$dataCommonEvents[_0x4be602]&&_0x14fd0e['setup']($dataCommonEvents[_0x4be602]['list'],this[_0x24109a(0x262)]);}_0x14fd0e[_0x24109a(0x201)]();}}}if(this[_0x24109a(0x212)]&&$gamePlayer){if(_0x24109a(0x227)!=='KecuE'){const _0x2bfe32=$gamePlayer[_0x24109a(0x21e)]-this[_0x24109a(0x24f)],_0x4e8fb4=$gamePlayer['_realY']-this['lastPlayerY'];if(_0x2bfe32!==0x0||_0x4e8fb4!==0x0){const _0x3eba12=$gamePlayer[_0x24109a(0x21e)]+this[_0x24109a(0x21d)],_0x1f9d7d=$gamePlayer[_0x24109a(0x243)]+this[_0x24109a(0x1fd)],_0xf707c2=this[_0x24109a(0x21e)]-(this[_0x24109a(0x24f)]+this['childOffsetX']),_0x5d8f71=this[_0x24109a(0x243)]-(this['lastPlayerY']+this[_0x24109a(0x1fd)]);this[_0x24109a(0x21e)]=_0x3eba12+_0xf707c2,this[_0x24109a(0x243)]=_0x1f9d7d+_0x5d8f71;}this[_0x24109a(0x24f)]=$gamePlayer['_realX'],this[_0x24109a(0x234)]=$gamePlayer[_0x24109a(0x243)];}else _0x476aad[_0x24109a(0x1f4)][_0x36e4c2[_0x24109a(0x229)]()][_0x5c5c4f]=[];}else{if(this[_0x24109a(0x20a)]){if(!this[_0x24109a(0x20a)]||this[_0x24109a(0x20a)][_0x24109a(0x20c)]||!$gameMap[_0x24109a(0x24d)][this['theParent'][_0x24109a(0x262)]]){this[_0x24109a(0x20a)]=null,this[_0x24109a(0x21d)]=0x0,this[_0x24109a(0x1fd)]=0x0,this[_0x24109a(0x25c)]=![];return;}const _0x3d93ab=this[_0x24109a(0x20a)]['_realX']-this['lastParentX'],_0x58d820=this[_0x24109a(0x20a)][_0x24109a(0x243)]-this['lastParentY'];if(_0x3d93ab!==0x0||_0x58d820!==0x0){const _0x1329a2=this['theParent'][_0x24109a(0x21e)]+this[_0x24109a(0x21d)],_0x1425fd=this[_0x24109a(0x20a)][_0x24109a(0x243)]+this[_0x24109a(0x1fd)],_0x27e88c=this['_realX']-(this['lastParentX']+this[_0x24109a(0x21d)]),_0x1bb327=this[_0x24109a(0x243)]-(this[_0x24109a(0x22a)]+this[_0x24109a(0x1fd)]);this['_realX']=_0x1329a2+_0x27e88c,this[_0x24109a(0x243)]=_0x1425fd+_0x1bb327;}this[_0x24109a(0x24c)]=this[_0x24109a(0x20a)]['_realX'],this[_0x24109a(0x22a)]=this[_0x24109a(0x20a)]['_realY'];}}if(_0x5f87cd){if(this[_0x24109a(0x230)][_0x24109a(0x228)]===0x0||this[_0x24109a(0x217)])return;const _0x10a02d=!limitAreaOfCalling||this[_0x24109a(0x257)]();!this[_0x24109a(0x1f5)]&&_0x10a02d&&(!this[_0x24109a(0x206)][_0x24109a(0x228)]&&this[_0x24109a(0x255)]()),this[_0x24109a(0x1f5)]=_0x10a02d,_0x10a02d&&this['updateIndependentCommonEventInterpreters']();}},Game_Event[_0x399826(0x1f1)][_0x399826(0x246)]=function(){const _0x27ad40=_0x399826;this['_independentCommonEventInterpreters'][_0x27ad40(0x1f7)]((_0x166571,_0x26bdf1)=>{const _0x21ae53=_0x27ad40;if(!_0x166571[_0x21ae53(0x205)]()){const _0x5b893e=this[_0x21ae53(0x230)][_0x26bdf1];if(_0x5b893e&&$dataCommonEvents[_0x5b893e]){if('FrmFZ'!==_0x21ae53(0x1f6))_0x166571[_0x21ae53(0x224)]($dataCommonEvents[_0x5b893e][_0x21ae53(0x25f)],this['_eventId']);else{_0x10a37a['_commonEventIds'][_0x21ae53(0x235)](_0xa1ee50);!_0x226d4b[_0x21ae53(0x206)]&&(_0x4ff8d6[_0x21ae53(0x206)]=[]);const _0x33cbb1=new _0x4cafb9();_0x33cbb1['setup'](_0x263af7[_0x34c35a][_0x21ae53(0x25f)],_0x54a361),_0x2da122[_0x21ae53(0x206)][_0x21ae53(0x235)](_0x33cbb1),!_0x3cbe19[_0x21ae53(0x1f4)][_0x20a88a['mapId']()][_0x47a1b7][_0x21ae53(0x21a)](_0x378a4e)&&_0x5b25da['passiveCommonEvents'][_0x400804[_0x21ae53(0x229)]()][_0x2623be][_0x21ae53(0x235)](_0x5946a8);}}}_0x166571[_0x21ae53(0x201)]();});},Game_Event['prototype'][_0x399826(0x25b)]=function(){const _0x52f5a0=_0x399826,_0x542f77=this[_0x52f5a0(0x200)]();if(!_0x542f77)return![];const _0x35cdf6=_0x542f77[_0x52f5a0(0x25f)][_0x52f5a0(0x258)](_0x117167=>(_0x117167[_0x52f5a0(0x239)]===0x6c||_0x117167[_0x52f5a0(0x239)]===0x198)&&_0x117167[_0x52f5a0(0x202)][0x0][_0x52f5a0(0x23c)](/<passive:/i));if(_0x35cdf6)return!![];const _0x559525=this[_0x52f5a0(0x23d)]()['note'];return npcTags[_0x52f5a0(0x258)](_0x19740d=>_0x559525['includes'](_0x19740d[_0x52f5a0(0x237)]));};function _0x5ad8(_0x4959eb,_0x3bab22){_0x4959eb=_0x4959eb-0x1ef;const _0x21b84d=_0x21b8();let _0x5ad8ce=_0x21b84d[_0x4959eb];return _0x5ad8ce;}const _Game_Event_setupCommonEventInterpreters=Game_Event[_0x399826(0x1f1)][_0x399826(0x255)];function _0x21b8(){const _0x3c2617=['4171279JbSXst','CommonEventId','currentPageHasPassiveComment','wasAttached','map','EAzDF','list','name','<no\x20passive>','_eventId','HJqeA','_pageIndex','toLowerCase','prototype','exec','721068MFKMwQ','passiveCommonEvents','_wasNearScreen','DyEoS','forEach','call','isDatabaseLoaded','split','_passEvents','height','childOffsetY','delete','reduce','page','update','parameters','resolveCommonEventId','cleanupPassiveCommonEvents','isRunning','_independentCommonEventInterpreters','has','currentPageHasTag','18mfGwLN','theParent','5424849gSxqkC','_erased','filter','extractCommonEventIdsFromCustomTags','1256870dYUYhI','setupClickable','tileWidth','isPlayerChild','1441658mQeWtE','3ZRWcQj','_displayX','isArray','_passiveBlocked','width','GvaRW','includes','uBwPr','_originalCommonEventIds','childOffsetX','_realX','maXtC','6987640PtsNEN','YnTLu','splice','setupPlayerChild','setup','CommonEventIds','woPcq','FISEW','length','mapId','lastParentY','zBFuD','aZrSf','Mifcf','extractCommonEventIdsFromPage','stateInterpreters','_commonEventIds','setupPage','note','SFGIL','lastPlayerY','push','pausingEvent','Notetag','oHekk','code','LnYcn','djIzz','match','event','add','_screenTileDimensions','indexOf','8tIEIhp','_displayY','_realY','keys','KiRJp','updateIndependentCommonEventInterpreters','VOXig','OLheN','applyCommonEventsFromNotetag','LVrSN','SZSWr','lastParentX','_events','trim','lastPlayerX','<pass>','AssignNewPassive','39684337RoTzLY','1dCawLb','ONKAm','setupCommonEventInterpreters','NzTYN','isNearScreen','some'];_0x21b8=function(){return _0x3c2617;};return _0x21b8();}Game_Event[_0x399826(0x1f1)][_0x399826(0x255)]=function(){const _0x10b9b9=_0x399826;!this['_originalCommonEventIds']&&('rrSLa'===_0x10b9b9(0x21b)?this['_independentCommonEventInterpreters']=this[_0x10b9b9(0x230)]['filter'](_0x1cb996=>_0x140366&&_0x36852f[_0x1cb996])[_0x10b9b9(0x25d)](_0x2e4d27=>{const _0x2a3f26=_0x10b9b9,_0x1af882=new _0x3651d9();return _0x1af882[_0x2a3f26(0x224)](_0x113c28[_0x2e4d27]['list'],this[_0x2a3f26(0x262)]),_0x1af882;}):this[_0x10b9b9(0x21c)]=[...this[_0x10b9b9(0x230)]]),_Game_Event_setupCommonEventInterpreters[_0x10b9b9(0x1f8)](this);},PluginManager['registerCommand'](HpluginName,_0x399826(0x251),function(_0x2608bc){const _0xf8d107=_0x399826,_0x5bd910=_0x2608bc['Status'],_0x194b84=_0x2608bc[_0xf8d107(0x25a)][_0xf8d107(0x1fa)](',')[_0xf8d107(0x25d)](_0x190c02=>_0x190c02[_0xf8d107(0x24e)]()),_0x28773e=this[_0xf8d107(0x262)],_0x1566ba=$gameMap['event'](_0x28773e);if(!_0x1566ba)return;const _0x2b0cf6=_0x1566ba['currentPageHasPassiveComment']();if(!_0x2b0cf6)return;!_0x1566ba[_0xf8d107(0x230)]&&(_0x1566ba[_0xf8d107(0x230)]=[]);!$gameSystem[_0xf8d107(0x1f4)]&&($gameSystem[_0xf8d107(0x1f4)]={});!$gameSystem[_0xf8d107(0x1f4)][$gameMap[_0xf8d107(0x229)]()]&&($gameSystem[_0xf8d107(0x1f4)][$gameMap[_0xf8d107(0x229)]()]={});if(!$gameSystem[_0xf8d107(0x1f4)][$gameMap['mapId']()][_0x28773e]){if('jJwHD'!==_0xf8d107(0x24b))$gameSystem[_0xf8d107(0x1f4)][$gameMap['mapId']()][_0x28773e]=[];else return _0xc38b4e['includes'](_0x5579d1[_0xf8d107(0x237)])&&_0x1d08dd[_0xf8d107(0x235)](..._0x56a305[_0xf8d107(0x225)]),_0x38da72;}for(const _0x245a58 of _0x194b84){if(_0xf8d107(0x226)!==_0xf8d107(0x22d)){let _0x540ec3;!isNaN(_0x245a58)?_0xf8d107(0x221)!==_0xf8d107(0x221)?this[_0xf8d107(0x22f)]={}:_0x540ec3=parseInt(_0x245a58):_0x540ec3=commonEventNameCache[_0x245a58[_0xf8d107(0x1f0)]()];if(!_0x540ec3||!$dataCommonEvents[_0x540ec3]){if(_0xf8d107(0x233)===_0xf8d107(0x219)){if(!_0x28a819(_0x21192d[_0xf8d107(0x24e)]()))return _0x53618d(_0x4133cf[_0xf8d107(0x24e)]());const _0x270888=_0x12f437[_0xf8d107(0x24e)]()[_0xf8d107(0x1f0)]();return _0x323777[_0x270888]||0x0;}else continue;}if(_0x5bd910==='assign'){if(!_0x1566ba['_commonEventIds'][_0xf8d107(0x21a)](_0x540ec3)){_0x1566ba[_0xf8d107(0x230)]['push'](_0x540ec3);!_0x1566ba[_0xf8d107(0x206)]&&(_0x1566ba[_0xf8d107(0x206)]=[]);const _0x46267c=new Game_Interpreter();_0x46267c[_0xf8d107(0x224)]($dataCommonEvents[_0x540ec3]['list'],_0x28773e),_0x1566ba['_independentCommonEventInterpreters'][_0xf8d107(0x235)](_0x46267c),!$gameSystem[_0xf8d107(0x1f4)][$gameMap[_0xf8d107(0x229)]()][_0x28773e]['includes'](_0x540ec3)&&$gameSystem['passiveCommonEvents'][$gameMap[_0xf8d107(0x229)]()][_0x28773e]['push'](_0x540ec3);}}else{if(_0x5bd910==='delete'){const _0x43806c=_0x1566ba['_commonEventIds'][_0xf8d107(0x240)](_0x540ec3);_0x43806c!==-0x1&&(_0x1566ba[_0xf8d107(0x230)][_0xf8d107(0x222)](_0x43806c,0x1),_0x1566ba[_0xf8d107(0x206)]&&_0x1566ba[_0xf8d107(0x206)][_0x43806c]&&(_0xf8d107(0x238)===_0xf8d107(0x248)?this[_0xf8d107(0x255)]():_0x1566ba[_0xf8d107(0x206)][_0xf8d107(0x222)](_0x43806c,0x1)));if($gameSystem['passiveCommonEvents'][$gameMap[_0xf8d107(0x229)]()]&&$gameSystem[_0xf8d107(0x1f4)][$gameMap[_0xf8d107(0x229)]()][_0x28773e]){const _0x3c0907=$gameSystem[_0xf8d107(0x1f4)][$gameMap[_0xf8d107(0x229)]()][_0x28773e][_0xf8d107(0x240)](_0x540ec3);_0x3c0907!==-0x1&&$gameSystem[_0xf8d107(0x1f4)][$gameMap[_0xf8d107(0x229)]()][_0x28773e][_0xf8d107(0x222)](_0x3c0907,0x1);if($gameSystem[_0xf8d107(0x1f4)][$gameMap[_0xf8d107(0x229)]()][_0x28773e]['length']===0x0){if(_0xf8d107(0x23b)!=='JTPjA')delete $gameSystem[_0xf8d107(0x1f4)][$gameMap[_0xf8d107(0x229)]()][_0x28773e];else{if(!_0x5451fc[_0xf8d107(0x1f8)](this))return![];return _0xfa6858={},_0x5e7cee[_0xf8d107(0x1f7)](_0x3852e2=>{const _0x345229=_0xf8d107;if(_0x3852e2)_0x376969[_0x3852e2['name'][_0x345229(0x1f0)]()]=_0x3852e2;}),_0x4b0993={},_0x4e329e[_0xf8d107(0x1f7)](_0x4a9e0a=>{const _0x340803=_0xf8d107;if(_0x4a9e0a)_0xfcc55c[_0x4a9e0a[_0x340803(0x260)][_0x340803(0x1f0)]()]=_0x4a9e0a['id'];}),!![];}}}}}}else{if(!_0x52a36d[_0xf8d107(0x205)]()){const _0x3f61d9=this['_commonEventIds'][_0x53b7fb];_0x3f61d9&&_0x1a077d[_0x3f61d9]&&_0x3c7cdc[_0xf8d107(0x224)](_0x5a01fd[_0x3f61d9][_0xf8d107(0x25f)],this[_0xf8d107(0x262)]);}_0xe21ddd[_0xf8d107(0x201)]();}}});
+function MaithlSetMountPassable(event, passable) {
+	if (!event) return;
+	const eventId = event.eventId();
+
+	if (!$gameSystem._playerPassThroughEvents) {
+		$gameSystem._playerPassThroughEvents = [];
+	}
+
+	if (passable) {
+		if (!$gameMap._passEvents) {
+			$gameMap.initializePassCache();
+		}
+		$gameMap.addPassEvent(eventId, event.x, event.y);
+		if (!$gameSystem._playerPassThroughEvents.includes(eventId)) {
+			$gameSystem._playerPassThroughEvents.push(eventId);
+		}
+	} else {
+		if ($gameMap._passEvents) {
+			$gameMap.removePassEvent(eventId, event.x, event.y);
+		}
+		const index = $gameSystem._playerPassThroughEvents.indexOf(eventId);
+		if (index > -1) {
+			$gameSystem._playerPassThroughEvents.splice(index, 1);
+		}
+	}
+}
+
+PluginManager.registerCommand(HpluginName, "Mount", function (args) {
+	const action = args.action || 'mount';
+
+	if (action === 'dismount') {
+		const mountedEvent = $gamePlayer._mountedEvent;
+		if (mountedEvent) {
+			mountedEvent.isPlayerChild = false;
+			mountedEvent.isMount = false;
+			mountedEvent.theParent = null;
+			mountedEvent.childOffsetX = 0;
+			mountedEvent.childOffsetY = 0;
+			mountedEvent.wasAttached = false;
+			MaithlSetMountPassable(mountedEvent, false);
+
+			if ($gamePlayer._preMountSpeed !== undefined) {
+				$gamePlayer.setMoveSpeed($gamePlayer._preMountSpeed);
+				$gamePlayer._preMountSpeed = undefined;
+			}
+			if (mountedEvent._preSmountEventHSpeed !== undefined) {
+				mountedEvent.setMoveSpeed(mountedEvent._preSmountEventHSpeed);
+				mountedEvent._preSmountEventHSpeed = undefined;
+			}
+
+			if (H_DotMoveSystem) {
+				$gamePlayer.setOffsetX(0);
+				$gamePlayer.setOffsetY(0);
+			} else {
+				$gamePlayer._mountSpriteOffsetX = 0;
+				$gamePlayer._mountSpriteOffsetY = 0;
+			}
+
+			$gamePlayer._mountedEvent = null;
+		}
+		return;
+	}
+
+	const targets = findTargets(args.target || 'this', this);
+	const SmountEventH = targets.find(t => t && t !== $gamePlayer);
+	if (!SmountEventH) return;
+
+	if ($gamePlayer._mountedEvent && $gamePlayer._mountedEvent !== SmountEventH) {
+		const prev = $gamePlayer._mountedEvent;
+		prev.isPlayerChild = false;
+		prev.isMount = false;
+		prev.theParent = null;
+		prev.childOffsetX = 0;
+		prev.childOffsetY = 0;
+		prev.wasAttached = false;
+		MaithlSetMountPassable(prev, false);
+	}
+
+	const movePlayerAboveStr = (args.movePlayerAbove || '').trim();
+	let targetSpriteX = $gamePlayer._realX;
+	let targetSpriteY = $gamePlayer._realY;
+	if (movePlayerAboveStr !== '') {
+		const offsetY = eval(movePlayerAboveStr);
+		targetSpriteX = SmountEventH._realX;
+		targetSpriteY = SmountEventH._realY - 1 + Number(offsetY) / $gameMap.tileHeight();
+	}
+
+	if (H_DotMoveSystem) {
+		$gamePlayer.locate(SmountEventH._realX, SmountEventH._realY);
+		$gamePlayer.setOffsetX(targetSpriteX - SmountEventH._realX);
+		$gamePlayer.setOffsetY(targetSpriteY - SmountEventH._realY);
+	} else {
+		$gamePlayer.locate(Math.round(SmountEventH._realX), Math.round(SmountEventH._realY));
+		$gamePlayer._mountSpriteOffsetX = Math.round((targetSpriteX - SmountEventH._realX) * $gameMap.tileWidth());
+		$gamePlayer._mountSpriteOffsetY = Math.round((targetSpriteY - SmountEventH._realY) * $gameMap.tileHeight());
+	}
+
+	SmountEventH.isPlayerChild = true;
+	SmountEventH.isMount = true;
+	SmountEventH.theParent = $gamePlayer;
+	SmountEventH.childOffsetX = 0;
+	SmountEventH.childOffsetY = 0;
+	SmountEventH.lastPlayerX = $gamePlayer._realX;
+	SmountEventH.lastPlayerY = $gamePlayer._realY;
+	SmountEventH.wasAttached = true;
+	SmountEventH.setDirection($gamePlayer.direction());
+	MaithlSetMountPassable(SmountEventH, true);
+	const mountSpeedStr = (args.speed || '').trim();
+	if (mountSpeedStr !== '') {
+		$gamePlayer._preMountSpeed = $gamePlayer.moveSpeed();
+		$gamePlayer.setMoveSpeed(eval(mountSpeedStr));
+		SmountEventH._preSmountEventHSpeed = SmountEventH.moveSpeed();
+		SmountEventH.setMoveSpeed(eval(mountSpeedStr));
+	}
+
+	$gamePlayer._mountedEvent = SmountEventH;
+});
+
+const _SGame_Event_isMoving_MountH = Game_Event.prototype.isMoving;
+Game_Event.prototype.isMoving = function () {
+	if (this.isMount && $gamePlayer._mountedEvent === this) {
+		if ($gamePlayer.isMoving()) return true;
+		if (this.lastPlayerX !== undefined && this.lastPlayerY !== undefined) {
+			return this.lastPlayerX !== $gamePlayer._realX ||
+				this.lastPlayerY !== $gamePlayer._realY;
+		}
+		return false;
+	}
+	return _SGame_Event_isMoving_MountH.call(this);
+};
+
+const _SGame_Player_isMoving_MountH = Game_Player.prototype.isMoving;
+Game_Player.prototype.isMoving = function () {
+	if (this._mountedEvent) return false;
+	return _SGame_Player_isMoving_MountH.call(this);
+};
+
+const _SGame_Player_screenX_MountH = Game_Player.prototype.screenX;
+Game_Player.prototype.screenX = function () {
+	return _SGame_Player_screenX_MountH.call(this) + (this._mountSpriteOffsetX || 0);
+};
+
+const _SGame_Player_screenY_MountH = Game_Player.prototype.screenY;
+Game_Player.prototype.screenY = function () {
+	return _SGame_Player_screenY_MountH.call(this) + (this.jumpY || 0) + (this._mountSpriteOffsetY || 0);
+};
+
+const _SGame_CharacterBase_screenZ_MountH = Game_CharacterBase.prototype.screenZ;
+Game_CharacterBase.prototype.screenZ = function () {
+	if (this === $gamePlayer && $gamePlayer._mountedEvent) {
+		return _SGame_CharacterBase_screenZ_MountH.call(this) + 1;
+	}
+	return _SGame_CharacterBase_screenZ_MountH.call(this);
+};
+
+if (Imported.Hendrix_Animation_Solution) {
+	const _Game_Player_updateGraphics_Mount = Game_Player.prototype.updateGraphics;
+	Game_Player.prototype.updateGraphics = function () {
+		if (this._mountedEvent && this._detectedIdleGraphic) {
+			if (this._characterName !== this._detectedIdleGraphic) {
+				this.setImage(this._detectedIdleGraphic, 0);
+			}
+			this._isIdleAnimating = true;
+			this._stepAnime = false;
+			return;
+		}
+		_Game_Player_updateGraphics_Mount.call(this);
+	};
+
+	const _SGame_Player_updateMovingState_Mount = Game_Player.prototype.updateMovingState;
+	Game_Player.prototype.updateMovingState = function () {
+		_SGame_Player_updateMovingState_Mount.call(this);
+		if (this._mountedEvent) {
+			this._isMoving = false;
+		}
+	};
+
+	const _SGame_Player_animationWait_MountH = Game_Player.prototype.animationWait;
+	Game_Player.prototype.animationWait = function () {
+		if (this._mountedEvent && this._preMountSpeed !== undefined && !this._isMoving) {
+			const origSpeed = this._moveSpeed;
+			this._moveSpeed = this._preMountSpeed;
+			const wait = _SGame_Player_animationWait_MountH.call(this);
+			this._moveSpeed = origSpeed;
+			return wait;
+		}
+		return _SGame_Player_animationWait_MountH.call(this);
+	};
+
+	const _SGame_Event_animationWait_MountH = Game_Event.prototype.animationWait;
+	Game_Event.prototype.animationWait = function () {
+		if (this.isMount && $gamePlayer._mountedEvent === this &&
+			this._preSmountEventHSpeed !== undefined && !this._isMoving) {
+			const origSpeed = this._moveSpeed;
+			this._moveSpeed = this._preSmountEventHSpeed;
+			const wait = _SGame_Event_animationWait_MountH.call(this);
+			this._moveSpeed = origSpeed;
+			return wait;
+		}
+		return _SGame_Event_animationWait_MountH.call(this);
+	};
+}
+
+//==========================================================
+// DISPLAY WEAPON
+//==========================================================
+
+let ShxWeaponSpriteH = null;
+let ShxWeaponDataH = null;
+
+function ShxCreateWeaponSpriteH() {
+	if (!ShxWeaponDataH) return;
+	if (ShxWeaponSpriteH && ShxWeaponSpriteH.parent) {
+		ShxWeaponSpriteH.parent.removeChild(ShxWeaponSpriteH);
+		ShxWeaponSpriteH.destroy();
+		ShxWeaponSpriteH = null;
+	}
+	ShxWeaponSpriteH = new Sprite();
+	ShxWeaponSpriteH.bitmap = ImageManager.loadPicture(ShxWeaponDataH.file);
+	ShxWeaponSpriteH.anchor.set(0, 0.5);
+	ShxWeaponSpriteH.z = $gamePlayer.screenZ() + 1;
+	ShxWeaponSpriteH.rotation = ShxWeaponDataH.lastAngle || 0;
+	ShxWeaponSpriteH.scale.y = (ShxWeaponDataH.autoFlip && Math.cos(ShxWeaponSpriteH.rotation) < 0) ? -1 : 1;
+	if (SceneManager._scene instanceof Scene_Map && SceneManager._scene._spriteset && SceneManager._scene._spriteset._tilemap) {
+		SceneManager._scene._spriteset._tilemap.addChild(ShxWeaponSpriteH);
+	}
+}
+
+PluginManager.registerCommand(HpluginName, "DisplayWeapon", function (args) {
+	if (args.status !== 'true') {
+		if (ShxWeaponSpriteH && ShxWeaponSpriteH.parent) {
+			ShxWeaponSpriteH.parent.removeChild(ShxWeaponSpriteH);
+			ShxWeaponSpriteH.destroy();
+			ShxWeaponSpriteH = null;
+		}
+		ShxWeaponDataH = null;
+		return;
+	}
+	const weaponFile = (args.weaponSprite || '').trim();
+	if (!weaponFile) return;
+	const _offsetParts = (args.offset || '0, 0').split(',');
+	ShxWeaponDataH = {
+		file: weaponFile,
+		offsetX: eval((_offsetParts[0] || '0').trim()),
+		offsetY: eval((_offsetParts[1] || '0').trim()),
+		autoFlip: args.autoFlip !== 'false',
+		lastAngle: 0
+	};
+	ShxCreateWeaponSpriteH();
+});
+
+//==========================================================
+// PASSIVE COMMON EVENT FOR EVENTS
+//==========================================================
+
+let commonEventNameCache = null;
+let enemyNameCache = null;
+let skillNameCache = null;
+let stateNameCache = null;
+
+const _DataManager_isDatabaseLoaded = DataManager.isDatabaseLoaded;
+DataManager.isDatabaseLoaded = function () {
+	if (!_DataManager_isDatabaseLoaded.call(this)) return false;
+	enemyNameCache = {};
+	$dataEnemies.forEach(enemy => {
+		if (enemy) enemyNameCache[enemy.name.toLowerCase()] = enemy;
+	});
+	commonEventNameCache = {};
+	$dataCommonEvents.forEach(event => {
+		if (event) commonEventNameCache[event.name.toLowerCase()] = event.id;
+	});
+	skillNameCache = {};
+	$dataSkills.forEach(skill => {
+		if (skill) skillNameCache[skill.name.toLowerCase()] = skill;
+	});
+	stateNameCache = {};
+	$dataStates.forEach(state => {
+		if (state) stateNameCache[state.name.toLowerCase()] = state.id;
+	});
+	return true;
+};
+
+Game_Event.prototype.resolveCommonEventId = function (identifier) {
+	if (!isNaN(identifier.trim())) {
+		return parseInt(identifier.trim());
+	}
+	const eventName = identifier.trim().toLowerCase();
+	return commonEventNameCache[eventName] || 0;
+};
+
+const _Game_Event_setupPage = Game_Event.prototype.setupPage;
+Game_Event.prototype.setupPage = function () {
+	const hadPassBefore = this._pageIndex >= 0 && $gameMap._passEvents && $gameMap._passEvents.has(this._eventId);
+	this._cachedNoSlidingComment = undefined;
+	_Game_Event_setupPage.call(this);
+	this._independentCommonEventInterpreters = [];
+	this._wasNearScreen = false;
+	this._commonEventIds = [];
+	this._passiveBlocked = false;
+	this.applyCommonEventsFromNotetag();
+	this.setupFrameSpeed();
+	this.setupPlayerChild();
+	this.setupClickable();
+	this.setupLockRotation();
+	if ($gameMap._passEvents) {
+		const hasPassNow = this._pageIndex >= 0 && this.event().note.includes('<pass>');
+		if (hasPassNow && !hadPassBefore) {
+			$gameMap._passEvents.add(this._eventId);
+		} else if (!hasPassNow && hadPassBefore) {
+			$gameMap._passEvents.delete(this._eventId);
+		}
+	}
+};
+
+Game_Event.prototype.applyCommonEventsFromNotetag = function () {
+	if (!this.event()) return;
+
+	const note = this.event().note;
+	const customTagIds = this.extractCommonEventIdsFromCustomTags(note);
+	const pageCommonIds = this.extractCommonEventIdsFromPage();
+
+	this._commonEventIds = [...new Set([...customTagIds, ...pageCommonIds])];
+	this._passiveBlocked = this.currentPageHasTag("<no passive>");
+
+	if (this.currentPageHasPassiveComment() && $gameSystem.passiveManualCommonEvents &&
+		$gameSystem.passiveManualCommonEvents[$gameMap.mapId()] &&
+		$gameSystem.passiveManualCommonEvents[$gameMap.mapId()][this._eventId]) {
+		const dynamicCommonEventIds = $gameSystem.passiveManualCommonEvents[$gameMap.mapId()][this._eventId];
+
+		if (Array.isArray(dynamicCommonEventIds)) {
+			dynamicCommonEventIds.forEach(id => {
+				if (!this._commonEventIds.includes(id)) {
+					this._commonEventIds.push(id);
+				}
+			});
+		}
+	}
+
+	if (this._commonEventIds.length > 0 && !this._passiveBlocked) {
+		if (!limitAreaOfCalling || this.isNearScreen()) {
+			this.setupCommonEventInterpreters();
+		}
+	}
+};
+
+Game_Character.prototype.isNearScreen = function () {
+	const buffer = 6;
+	const ax = $gameMap.adjustX(this._realX);
+	const ay = $gameMap.adjustY(this._realY);
+	const sw = Graphics.width / $gameMap.tileWidth();
+	const sh = Graphics.height / $gameMap.tileHeight();
+	return ax >= -buffer && ax <= sw + buffer &&
+		ay >= -buffer && ay <= sh + buffer;
+};
+
+Game_Event.prototype.extractCommonEventIdsFromCustomTags = function (note) {
+	return npcTags.reduce((ids, tag) => {
+		if (note.includes(tag.Notetag)) {
+			ids.push(...tag.CommonEventIds);
+		}
+		return ids;
+	}, []);
+};
+
+Game_Event.prototype.extractCommonEventIdsFromPage = function () {
+	if (!this.page()) return [];
+
+	const ids = [];
+	this.page().list.forEach(command => {
+		if (command.code !== 108 && command.code !== 408) return;
+		const match = /<passive:\s*(.+?)\s*>/i.exec(command.parameters[0]);
+		if (match) {
+			const identifiers = match[1].split(',');
+			const resolvedIds = identifiers
+				.map(id => this.resolveCommonEventId(id))
+				.filter(id => id > 0);
+			ids.push(...resolvedIds);
+		}
+	});
+	return ids;
+};
+
+Game_Event.prototype.currentPageHasTag = function (tag) {
+	if (!this.page()) return false;
+	return this.page().list.some(command => (command.code === 108 || command.code === 408) && command.parameters[0].includes(tag));
+};
+
+Game_Event.prototype.setupCommonEventInterpreters = function () {
+	this._independentCommonEventInterpreters = this._commonEventIds
+		.filter(id => $dataCommonEvents && $dataCommonEvents[id])
+		.map(id => {
+			const interpreter = new Game_Interpreter();
+			interpreter.setup($dataCommonEvents[id].list, this._eventId);
+			return interpreter;
+		});
+};
+
+Game_System.prototype.cleanupPassiveCommonEvents = function () {
+	if (!this.passiveCommonEvents) return;
+	for (const mapId in this.passiveCommonEvents) {
+		const mapEvents = this.passiveCommonEvents[mapId];
+		for (const eventId in mapEvents) {
+			if (!mapEvents[eventId] || mapEvents[eventId].length === 0) {
+				delete mapEvents[eventId];
+			}
+		}
+		if (Object.keys(mapEvents).length === 0) {
+			delete this.passiveCommonEvents[mapId];
+		}
+	}
+};
+
+const H_Game_Event_update = Game_Event.prototype.update;
+Game_Event.prototype.update = function () {
+	if (!$gameMap._events[this._eventId]) return; // Stop update null events, a fix (kind of) for Destroy Event parallel name and notetag
+	const shouldUpdate = !$gameMap.eventsPaused || ($gameMap.pausingEvent && this._eventId === $gameMap.pausingEvent);
+	if (shouldUpdate) {
+		H_Game_Event_update.call(this);
+		const mapId = $gameMap.mapId();
+		const _passiveMap = $gameSystem.passiveCommonEvents?.[mapId];
+		if (_passiveMap?.[this._eventId]) {
+			const storedStates = _passiveMap[this._eventId];
+
+			if (!this.stateInterpreters) {
+				this.stateInterpreters = {};
+			}
+
+			for (const stateId in storedStates) {
+				const commonEventId = storedStates[stateId];
+
+				if (!this.stateInterpreters[stateId]) {
+					const interpreter = new Game_Interpreter();
+					interpreter.setup($dataCommonEvents[commonEventId].list, this._eventId);
+					this.stateInterpreters[stateId] = interpreter;
+				}
+			}
+		}
+
+		if (this.stateInterpreters) {
+			for (const stateId in this.stateInterpreters) {
+				const interpreter = this.stateInterpreters[stateId];
+				if (!interpreter.isRunning()) {
+					const commonEventId = _passiveMap?.[this._eventId]?.[stateId];
+					if (commonEventId && $dataCommonEvents[commonEventId]) {
+						interpreter.setup($dataCommonEvents[commonEventId].list, this._eventId);
+					}
+				}
+				interpreter.update();
+			}
+		}
+	}
+	if (this.isPlayerChild && $gamePlayer) {
+		const deltaX = $gamePlayer._realX - this.lastPlayerX;
+		const deltaY = $gamePlayer._realY - this.lastPlayerY;
+
+		if (deltaX !== 0 || deltaY !== 0) {
+			const baseX = $gamePlayer._realX + this.childOffsetX;
+			const baseY = $gamePlayer._realY + this.childOffsetY;
+			const autoX = this._realX - (this.lastPlayerX + this.childOffsetX);
+			const autoY = this._realY - (this.lastPlayerY + this.childOffsetY);
+			this._realX = baseX + autoX;
+			this._realY = baseY + autoY;
+		}
+
+		this.lastPlayerX = $gamePlayer._realX;
+		this.lastPlayerY = $gamePlayer._realY;
+
+		if (this.isMount) {
+			this.setDirection($gamePlayer.direction());
+		}
+	} else if (this.theParent) {
+		if (!this.theParent || this.theParent._erased || !$gameMap._events[this.theParent._eventId]) {
+			this.theParent = null;
+			this.childOffsetX = 0;
+			this.childOffsetY = 0;
+			this.wasAttached = false;
+			return;
+		}
+		const deltaX = this.theParent._realX - this.lastParentX;
+		const deltaY = this.theParent._realY - this.lastParentY;
+
+		if (deltaX !== 0 || deltaY !== 0) {
+			const baseX = this.theParent._realX + this.childOffsetX;
+			const baseY = this.theParent._realY + this.childOffsetY;
+			const autoX = this._realX - (this.lastParentX + this.childOffsetX);
+			const autoY = this._realY - (this.lastParentY + this.childOffsetY);
+			this._realX = baseX + autoX;
+			this._realY = baseY + autoY;
+		}
+
+		this.lastParentX = this.theParent._realX;
+		this.lastParentY = this.theParent._realY;
+	}
+	if (shouldUpdate) {
+		if (this._commonEventIds.length === 0 || this._passiveBlocked) return;
+
+		const isNearScreen = (!limitAreaOfCalling || this.isNearScreen());
+		if (!this._wasNearScreen && isNearScreen) {
+			if (!this._independentCommonEventInterpreters.length) {
+				this.setupCommonEventInterpreters();
+			}
+		}
+		this._wasNearScreen = isNearScreen;
+		if (isNearScreen) {
+			this.updateIndependentCommonEventInterpreters();
+		}
+	}
+};
+
+Game_Event.prototype.updateIndependentCommonEventInterpreters = function () {
+	this._independentCommonEventInterpreters.forEach((interpreter, index) => {
+		if (!interpreter.isRunning()) {
+			const commonEventId = this._commonEventIds[index];
+			if (commonEventId && $dataCommonEvents[commonEventId]) {
+				interpreter.setup($dataCommonEvents[commonEventId].list, this._eventId);
+			}
+		}
+		interpreter.update();
+	});
+};
+
+Game_Event.prototype.currentPageHasPassiveComment = function () {
+	const page = this.page();
+	if (!page) return false;
+
+	const hasPassiveComment = page.list.some(command =>
+		(command.code === 108 || command.code === 408) &&
+		command.parameters[0].match(/<passive:/i)
+	);
+
+	if (hasPassiveComment) return true;
+	const eventNote = this.event().note;
+	return npcTags.some(tag => eventNote.includes(tag.Notetag));
+};
+
+const _Game_Event_setupCommonEventInterpreters = Game_Event.prototype.setupCommonEventInterpreters;
+Game_Event.prototype.setupCommonEventInterpreters = function () {
+	if (!this._originalCommonEventIds) {
+		this._originalCommonEventIds = [...this._commonEventIds];
+	}
+
+	_Game_Event_setupCommonEventInterpreters.call(this);
+};
+
+PluginManager.registerCommand(HpluginName, "AssignNewPassive", function (args) {
+	const status = args.Status;
+	const commonEventIdsOrNames = args.CommonEventId.split(',').map(item => item.trim());
+	const targetEventId = this._eventId;
+	const targetEvent = $gameMap.event(targetEventId);
+
+	if (!targetEvent) return;
+
+	const hasPassiveCommand = targetEvent.currentPageHasPassiveComment();
+	if (!hasPassiveCommand) {
+		return;
+	}
+	if (!targetEvent._commonEventIds) { targetEvent._commonEventIds = []; }
+	if (!$gameSystem.passiveManualCommonEvents) { $gameSystem.passiveManualCommonEvents = {}; }
+	if (!$gameSystem.passiveManualCommonEvents[$gameMap.mapId()]) { $gameSystem.passiveManualCommonEvents[$gameMap.mapId()] = {}; }
+	if (!$gameSystem.passiveManualCommonEvents[$gameMap.mapId()][targetEventId]) { $gameSystem.passiveManualCommonEvents[$gameMap.mapId()][targetEventId] = []; }
+	for (const idOrName of commonEventIdsOrNames) {
+		let commonEventId;
+		if (!isNaN(idOrName)) {
+			commonEventId = parseInt(idOrName);
+		} else {
+			commonEventId = commonEventNameCache[idOrName.toLowerCase()];
+		}
+
+		if (!commonEventId || !$dataCommonEvents[commonEventId]) {
+			continue;
+		}
+		if (status === 'assign') {
+			if (!targetEvent._commonEventIds.includes(commonEventId)) {
+				targetEvent._commonEventIds.push(commonEventId);
+				if (!targetEvent._independentCommonEventInterpreters) {
+					targetEvent._independentCommonEventInterpreters = [];
+				}
+				const interpreter = new Game_Interpreter();
+				interpreter.setup($dataCommonEvents[commonEventId].list, targetEventId);
+				targetEvent._independentCommonEventInterpreters.push(interpreter);
+				if (!$gameSystem.passiveManualCommonEvents[$gameMap.mapId()][targetEventId].includes(commonEventId)) {
+					$gameSystem.passiveManualCommonEvents[$gameMap.mapId()][targetEventId].push(commonEventId);
+				}
+			}
+		} else if (status === 'delete') {
+			const index = targetEvent._commonEventIds.indexOf(commonEventId);
+			if (index !== -1) {
+				targetEvent._commonEventIds.splice(index, 1);
+				if (targetEvent._independentCommonEventInterpreters &&
+					targetEvent._independentCommonEventInterpreters[index]) {
+					targetEvent._independentCommonEventInterpreters.splice(index, 1);
+				}
+			}
+
+			if ($gameSystem.passiveManualCommonEvents[$gameMap.mapId()] &&
+				$gameSystem.passiveManualCommonEvents[$gameMap.mapId()][targetEventId]) {
+				const persistIndex = $gameSystem.passiveManualCommonEvents[$gameMap.mapId()][targetEventId].indexOf(commonEventId);
+				if (persistIndex !== -1) {
+					$gameSystem.passiveManualCommonEvents[$gameMap.mapId()][targetEventId].splice(persistIndex, 1);
+				}
+
+				if ($gameSystem.passiveManualCommonEvents[$gameMap.mapId()][targetEventId].length === 0) {
+					delete $gameSystem.passiveManualCommonEvents[$gameMap.mapId()][targetEventId];
+				}
+			}
+		}
+	}
+});
 
 //==========================================================
 // BREAK ANIMATION
@@ -6496,19 +6285,19 @@ const _0x399826=_0x5ad8;(function(_0x519489,_0x284ab8){const _0x17295c=_0x5ad8,_
 PluginManager.registerCommand(HpluginName, "BreakCharacter", function () {
 	const event = $gameMap.event(this._eventId);
 	if (event) {
-		createBreakEffect(event);
+		ScreateBreakEffectH(event);
 	}
 });
 
-function findEventSprite(event) {
+function SfindEventSpriteH(event) {
 	const spriteset = SceneManager._scene._spriteset;
 	return spriteset._characterSprites.find(
 		sprite => sprite._character === event
 	);
 }
 
-function createBreakEffect(event) {
-	const sprite = findEventSprite(event);
+function ScreateBreakEffectH(event) {
+	const sprite = SfindEventSpriteH(event);
 	if (!sprite) return;
 
 	const initialPos = {
@@ -6522,93 +6311,78 @@ function createBreakEffect(event) {
 	const pieceWidth = initialPos.width / gridSize;
 	const pieceHeight = initialPos.height / gridSize;
 
-	const pieces = [];
-	const pieceBitmaps = [];
-	const bitmap = sprite.bitmap;
+	const frameX = sprite._frame ? sprite._frame.x : 0;
+	const frameY = sprite._frame ? sprite._frame.y : 0;
 
 	const centerX = initialPos.x;
 	const centerY = initialPos.y + initialPos.height / 2;
 
+	const containerSprite = new Sprite();
+	containerSprite.x = centerX;
+	containerSprite.y = centerY;
+	containerSprite.opacity = 255;
+
+	const pieces = [];
+
 	for (let y = 0; y < gridSize; y++) {
 		for (let x = 0; x < gridSize; x++) {
-			const pieceBitmap = new Bitmap(pieceWidth, pieceHeight);
-			pieceBitmap.blt(
-				bitmap,
-				x * pieceWidth,
-				y * pieceHeight,
+			const pieceSprite = new Sprite(sprite.bitmap);
+			pieceSprite.setFrame(
+				frameX + x * pieceWidth,
+				frameY + y * pieceHeight,
 				pieceWidth,
-				pieceHeight,
-				0,
-				0
+				pieceHeight
 			);
-			pieceBitmaps.push(pieceBitmap);
+			pieceSprite.x = (x - gridSize / 2) * pieceWidth;
+			pieceSprite.y = (y - gridSize / 2) * pieceHeight;
 
 			pieces.push({
-				x: centerX + (x - gridSize / 2) * pieceWidth,
-				y: centerY + (y - gridSize / 2) * pieceHeight,
-				width: pieceWidth,
-				height: pieceHeight,
-				index: pieces.length,
+				sprite: pieceSprite,
 				velocity: {
 					x: (Math.random() - 0.5) * 8,
 					y: (Math.random() - 0.5) * 8
-				},
+				}
 			});
+
+			containerSprite.addChild(pieceSprite);
 		}
 	}
 
-	const extraSpace = Math.max(initialPos.width, initialPos.height) * 3;
-	const compositeBitmap = new Bitmap(
-		initialPos.width + extraSpace,
-		initialPos.height + extraSpace
-	);
-	const compositeSprite = new Sprite(compositeBitmap);
-
-	compositeSprite.x = centerX - (compositeBitmap.width / 2);
-	compositeSprite.y = centerY - (compositeBitmap.height / 2);
-	compositeSprite.opacity = 255;
-
 	brokenSprites.set(event.eventId(), {
-		sprite: compositeSprite,
+		sprite: containerSprite,
 		pieces: pieces,
-		pieceBitmaps: pieceBitmaps,
 		frames: 0,
 		maxFrames: 50,
-		initialPos: initialPos
+		initialPos: initialPos,
+		event: event,
+		verticalOffset: -initialPos.height / 2
 	});
 
 	sprite.visible = false;
-	SceneManager._scene._spriteset._tilemap.addChild(compositeSprite);
+	SceneManager._scene._spriteset._tilemap.addChild(containerSprite);
 }
 
-function updateBrokenSprites() {
+function SupdateBrokenSpritesH() {
 	for (const [eventId, data] of brokenSprites.entries()) {
 		data.frames++;
 		data.sprite.opacity = Math.max(0, 255 * (1 - data.frames / data.maxFrames));
 
-		const bitmap = data.sprite.bitmap;
-		bitmap.clear();
+		if (data.event) {
+			data.sprite.x = data.event.screenX();
+			data.sprite.y = data.event.screenY() + data.verticalOffset;
+		}
 
-		data.pieces.forEach((piece, index) => {
-			piece.x += piece.velocity.x;
-			piece.y += piece.velocity.y;
-
-			bitmap.blt(
-				data.pieceBitmaps[index],
-				0,
-				0,
-				piece.width,
-				piece.height,
-				piece.x - data.sprite.x,
-				piece.y - data.sprite.y
-			);
+		data.pieces.forEach(piece => {
+			piece.sprite.x += piece.velocity.x;
+			piece.sprite.y += piece.velocity.y;
 		});
 
 		if (data.frames >= data.maxFrames) {
-			data.pieceBitmaps.forEach(b => b.destroy());
+			data.pieces.forEach(p => p.sprite.destroy());
 			if (data.sprite.parent) {
 				data.sprite.parent.removeChild(data.sprite);
 			}
+			data.sprite.destroy();
 			brokenSprites.delete(eventId);
 		}
 	}
@@ -6616,9 +6390,6 @@ function updateBrokenSprites() {
 
 const H_Scene_Map_terminate = Scene_Map.prototype.terminate;
 Scene_Map.prototype.terminate = function () {
-	H_Scene_Map_terminate.call(this);
-	brokenSprites.clear();
-	activeEffects.clear();
 	if (this._spriteset && this._spriteset._eventHpBars) {
 		const tilemap = this._spriteset._tilemap;
 		if (tilemap) {
@@ -6629,6 +6400,14 @@ Scene_Map.prototype.terminate = function () {
 		}
 		this._spriteset._eventHpBars = [];
 	}
+	if (ShxWeaponSpriteH && ShxWeaponSpriteH.parent) {
+		ShxWeaponSpriteH.parent.removeChild(ShxWeaponSpriteH);
+		ShxWeaponSpriteH.destroy();
+		ShxWeaponSpriteH = null;
+	}
+	H_Scene_Map_terminate.call(this);
+	brokenSprites.clear();
+	activeEffects.clear();
 };
 
 //============================================================
@@ -6637,11 +6416,11 @@ Scene_Map.prototype.terminate = function () {
 
 Game_Map.prototype.spawnIconItemEvent = function (droppedItem, itemKind, x, y) {
 	const eventId = this.getNextEventId();
-	const event = new Game_IconDropEvent(this._mapId, eventId, x, y, droppedItem, itemKind);
+	const event = new Game_SIconDropEventH(this._mapId, eventId, x, y, droppedItem, itemKind);
 	this._events[eventId] = event;
 	this.addEventToTagIndex(event);
 	if (SceneManager._scene instanceof Scene_Map && SceneManager._scene._spriteset) {
-		const sprite = new Sprite_IconDrop(event);
+		const sprite = new Sprite_SIconDropH(event);
 		SceneManager._scene._spriteset._characterSprites.push(sprite);
 		SceneManager._scene._spriteset._tilemap.addChild(sprite);
 	}
@@ -6649,30 +6428,30 @@ Game_Map.prototype.spawnIconItemEvent = function (droppedItem, itemKind, x, y) {
 	return eventId;
 };
 
-function Sprite_IconDrop() {
+function Sprite_SIconDropH() {
 	this.initialize(...arguments);
 }
 
-Sprite_IconDrop.prototype = Object.create(Sprite_Character.prototype);
-Sprite_IconDrop.prototype.constructor = Sprite_IconDrop;
+Sprite_SIconDropH.prototype = Object.create(Sprite_Character.prototype);
+Sprite_SIconDropH.prototype.constructor = Sprite_SIconDropH;
 
-Sprite_IconDrop.prototype.initialize = function (character) {
+Sprite_SIconDropH.prototype.initialize = function (character) {
 	this._iconBitmapReady = false;
 	Sprite_Character.prototype.initialize.call(this, character);
 };
 
-Sprite_IconDrop.prototype.setCharacter = function (character) {
+Sprite_SIconDropH.prototype.setCharacter = function (character) {
 	this._character = character;
 	if (character && character.isIconDropEvent) {
 		this.createIconBitmap();
 	}
 };
 
-Sprite_IconDrop.prototype.createIconBitmap = function () {
+Sprite_SIconDropH.prototype.createIconBitmap = function () {
 	const iconIndex = this._character._droppedItem.iconIndex;
 	const iconBitmap = ImageManager.loadSystem('IconSet');
-	const pw = 32;
-	const ph = 32;
+	const pw = ImageManager.iconWidth;
+	const ph = ImageManager.iconHeight;
 	if (iconBitmap.isReady()) {
 		this.drawIcon(iconBitmap, iconIndex, pw, ph);
 	} else {
@@ -6682,7 +6461,7 @@ Sprite_IconDrop.prototype.createIconBitmap = function () {
 	}
 };
 
-Sprite_IconDrop.prototype.drawIcon = function (iconBitmap, iconIndex, pw, ph) {
+Sprite_SIconDropH.prototype.drawIcon = function (iconBitmap, iconIndex, pw, ph) {
 	const sx = (iconIndex % 16) * pw;
 	const sy = Math.floor(iconIndex / 16) * ph;
 
@@ -6698,7 +6477,7 @@ Sprite_IconDrop.prototype.drawIcon = function (iconBitmap, iconIndex, pw, ph) {
 	this._refresh();
 };
 
-Sprite_IconDrop.prototype.update = function () {
+Sprite_SIconDropH.prototype.update = function () {
 	Sprite.prototype.update.call(this);
 	if (this._character && this._iconBitmapReady) {
 		this.updatePosition();
@@ -6709,17 +6488,17 @@ Sprite_IconDrop.prototype.update = function () {
 	}
 };
 
-Sprite_IconDrop.prototype.updateFrame = function () {
+Sprite_SIconDropH.prototype.updateFrame = function () {
 	if (!this._iconBitmapReady) {
 		Sprite_Character.prototype.updateFrame.call(this);
 	}
 };
 
-Sprite_IconDrop.prototype.characterPatternY = function () {
+Sprite_SIconDropH.prototype.characterPatternY = function () {
 	return 0;
 };
 
-Sprite_IconDrop.prototype.characterPatternX = function () {
+Sprite_SIconDropH.prototype.characterPatternX = function () {
 	return 0;
 };
 
@@ -6730,21 +6509,21 @@ Spriteset_Map.prototype.createCharacters = function () {
 		if (sprite._character && sprite._character.isIconDropEvent) {
 			const character = sprite._character;
 			this._tilemap.removeChild(sprite);
-			const newSprite = new Sprite_IconDrop(character);
+			const newSprite = new Sprite_SIconDropH(character);
 			this._characterSprites[index] = newSprite;
 			this._tilemap.addChild(newSprite);
 		}
 	});
 };
 
-function Game_IconDropEvent() {
+function Game_SIconDropEventH() {
 	this.initialize.apply(this, arguments);
 }
 
-Game_IconDropEvent.prototype = Object.create(Game_Event.prototype);
-Game_IconDropEvent.prototype.constructor = Game_IconDropEvent;
+Game_SIconDropEventH.prototype = Object.create(Game_Event.prototype);
+Game_SIconDropEventH.prototype.constructor = Game_SIconDropEventH;
 
-Game_IconDropEvent.prototype.initialize = function (mapId, eventId, x, y, item, itemKind) {
+Game_SIconDropEventH.prototype.initialize = function (mapId, eventId, x, y, item, itemKind) {
 	this._spawnX = x;
 	this._spawnY = y;
 	this._droppedItem = item;
@@ -6753,10 +6532,10 @@ Game_IconDropEvent.prototype.initialize = function (mapId, eventId, x, y, item, 
 	Game_Event.prototype.initialize.call(this, mapId, eventId);
 };
 
-Game_IconDropEvent.prototype.event = function () {
+Game_SIconDropEventH.prototype.event = function () {
 	return {
 		id: this._eventId,
-		name: `Item_${this._droppedItem.id}`,
+		name: `Item Template`,
 		note: `<item drop>`,
 		meta: {},
 		x: this._spawnX,
@@ -6832,8 +6611,119 @@ Game_IconDropEvent.prototype.event = function () {
 	};
 };
 
-Game_IconDropEvent.prototype.locate = function () {
+Game_SIconDropEventH.prototype.locate = function () {
 	Game_Event.prototype.locate.call(this, this._spawnX, this._spawnY);
+};
+
+function Game_SBothDropEventH() {
+	this.initialize.apply(this, arguments);
+}
+Game_SBothDropEventH.prototype = Object.create(Game_SIconDropEventH.prototype);
+Game_SBothDropEventH.prototype.constructor = Game_SBothDropEventH;
+
+Game_SBothDropEventH.prototype.initialize = function (mapId, eventId, x, y, item, itemKind) {
+	this._collected = false;
+	Game_SIconDropEventH.prototype.initialize.call(this, mapId, eventId, x, y, item, itemKind);
+};
+
+Game_SBothDropEventH.prototype.event = function () {
+	let pages = [{
+		conditions: {
+			actorId: 1, actorValid: false,
+			itemId: 1, itemValid: false,
+			selfSwitchCh: "A", selfSwitchValid: false,
+			switch1Id: 1, switch1Valid: false,
+			switch2Id: 1, switch2Valid: false,
+			variableId: 1, variableValid: false,
+			variableValue: 0
+		},
+		image: { tileId: 0, characterName: "", direction: 2, pattern: 0, characterIndex: 0 },
+		list: [{ code: 0, indent: 0, parameters: [] }],
+		moveFrequency: 3,
+		moveRoute: { list: [{ code: 0, parameters: [] }], repeat: true, skippable: false, wait: false },
+		moveSpeed: 3,
+		moveType: 0,
+		priorityType: 0,
+		stepAnime: false,
+		through: true,
+		trigger: 4,
+		walkAnime: false,
+		directionFix: false
+	}];
+
+	if ($dataTemplateMap) {
+		const templateEv = $dataTemplateMap.events.find(e => e && e.name === 'Item Template');
+		if (templateEv && templateEv.pages && templateEv.pages.length > 0) {
+			pages = templateEv.pages.map(page => ({
+				conditions: page.conditions,
+				image: { tileId: 0, characterName: "", direction: 2, pattern: 0, characterIndex: 0 },
+				list: page.list,
+				moveFrequency: page.moveFrequency,
+				moveRoute: page.moveRoute,
+				moveSpeed: page.moveSpeed,
+				moveType: page.moveType,
+				priorityType: page.priorityType,
+				stepAnime: page.stepAnime,
+				through: true,
+				trigger: page.trigger,
+				walkAnime: page.walkAnime,
+				directionFix: page.directionFix
+			}));
+		}
+	}
+
+	return {
+		id: this._eventId,
+		name: `Item Template`,
+		note: `<item drop>`,
+		meta: {},
+		x: this._spawnX,
+		y: this._spawnY,
+		pages
+	};
+};
+
+Game_SBothDropEventH.prototype.update = function () {
+	Game_Event.prototype.update.call(this);
+	if (this._collected) return;
+	if ($gamePlayer.pos(this.x, this.y)) {
+		this._collected = true;
+		const eventId = this._eventId;
+		const item = this._droppedItem;
+		const kind = this._itemKind;
+		if (kind === 1) $gameParty.gainItem(item, 1);
+		else $gameParty.gainItem(item, 1, false);
+		AudioManager.playSe({
+			name: pickupSFX.sfxFile || 'Item1',
+			volume: Number(pickupSFX.volume || 90),
+			pitch: Number(pickupSFX.pitch || 100),
+			pan: 0
+		});
+		if (SceneManager._scene._spriteset) {
+			const spriteIndex = SceneManager._scene._spriteset._characterSprites.findIndex(s => s._character && s._character._eventId === eventId);
+			if (spriteIndex >= 0) {
+				const sprite = SceneManager._scene._spriteset._characterSprites[spriteIndex];
+				SceneManager._scene._spriteset._tilemap.removeChild(sprite);
+				SceneManager._scene._spriteset._characterSprites.splice(spriteIndex, 1);
+			}
+		}
+		$gameMap.removeEventFromTagIndex(this);
+		$gameMap._events[eventId] = null;
+	}
+};
+
+Game_Map.prototype.spawnBothItemEvent = function (droppedItem, itemKind, x, y) {
+	const eventId = this.getNextEventId();
+	const event = new Game_SBothDropEventH(this._mapId, eventId, x, y, droppedItem, itemKind);
+	this._events[eventId] = event;
+	this.addEventToTagIndex(event);
+	if (SceneManager._scene instanceof Scene_Map && SceneManager._scene._spriteset) {
+		const sprite = new Sprite_SIconDropH(event);
+		SceneManager._scene._spriteset._characterSprites.push(sprite);
+		SceneManager._scene._spriteset._tilemap.addChild(sprite);
+	}
+	event.jumpToNearby(2, false);
+	return eventId;
 };
 
 //============================================================
@@ -6938,9 +6828,9 @@ Game_Map.prototype.spawnEvent = function (templateEventId, x, y, isPermanent = f
 		}
 		this._passEvents.add(eventId);
 		if (this._passEventPositions) {
-			this._passEventPositions.add(`${x},${y}`);
+			this._passEventPositions.add(`${Math.round(x)},${Math.round(y)}`);
 		}
-		this.clearPassageCacheForPosition(x, y);
+		this.clearPassageCacheForPosition(Math.round(x), Math.round(y));
 	}
 
 	if (isPermanent) {
@@ -7018,6 +6908,12 @@ Game_Map.prototype.unspawnEvent = function (eventId) {
 		delete $gameSystem.passiveCommonEvents[this._mapId][eventId];
 	}
 
+	if ($gameSystem.passiveManualCommonEvents &&
+		$gameSystem.passiveManualCommonEvents[this._mapId] &&
+		$gameSystem.passiveManualCommonEvents[this._mapId][eventId]) {
+		delete $gameSystem.passiveManualCommonEvents[this._mapId][eventId];
+	}
+
 	if (event._independentCommonEventInterpreters) {
 		event._independentCommonEventInterpreters = [];
 	}
@@ -7043,10 +6939,16 @@ Game_Map.prototype.unspawnEvent = function (eventId) {
 	});
 
 	if ($dataSystem && $dataSystem.switches) {
-		$dataSystem.switches.forEach((switchName, switchId) => {
-			if (switchName && switchName.toLowerCase().startsWith('self switch')) {
-				$gameSelfSwitches.setValue([this._mapId, eventId, `SW_${switchId}`], false);
-			}
+		if (!window._cachedSelfSwitchIds) {
+			window._cachedSelfSwitchIds = [];
+			$dataSystem.switches.forEach((switchName, switchId) => {
+				if (switchName && switchName.toLowerCase().startsWith('self switch')) {
+					window._cachedSelfSwitchIds.push(switchId);
+				}
+			});
+		}
+		window._cachedSelfSwitchIds.forEach(switchId => {
+			$gameSelfSwitches.setValue([this._mapId, eventId, `SW_${switchId}`], false);
 		});
 	}
 
@@ -7122,7 +7024,8 @@ Game_Map.prototype.removeDeletedEvents = function () {
 	if (!$gameSystem._deletedMapEvents || !$gameSystem._deletedMapEvents[this._mapId]) {
 		return;
 	}
-	$gameSystem._deletedMapEvents[this._mapId].forEach(eventId => {
+	$gameSystem._deletedMapEvents[this._mapId].forEach(entry => {
+		const eventId = typeof entry === 'object' ? entry.eventId : entry;
 		if (this._events[eventId]) {
 			this._events[eventId] = null;
 		}
@@ -7145,7 +7048,6 @@ PluginManager.registerCommand(HpluginName, "spawnEvent", function (args) {
 	if (id <= 0) return;
 
 	const useGridBased = args.gridBased === 'true';
-	const spawnInFront = args.spawnInFront === 'true';
 	const usePixelMode = H_DotMoveSystem && !useGridBased;
 
 	let xExp, yExp;
@@ -7160,16 +7062,18 @@ PluginManager.registerCommand(HpluginName, "spawnEvent", function (args) {
 
 	const checkForbiddenTile = (x, y, letters, checkEvents) => {
 		const collisionRadius = 0.3;
+		const centerX = x + 0.5;
+		const centerY = y + 0.5;
 		const checkPoints = [
-			{ x: x, y: y },
-			{ x: x - collisionRadius, y: y },
-			{ x: x + collisionRadius, y: y },
-			{ x: x, y: y - collisionRadius },
-			{ x: x, y: y + collisionRadius },
-			{ x: x - collisionRadius, y: y - collisionRadius },
-			{ x: x + collisionRadius, y: y - collisionRadius },
-			{ x: x - collisionRadius, y: y + collisionRadius },
-			{ x: x + collisionRadius, y: y + collisionRadius }
+			{ x: centerX, y: centerY },
+			{ x: centerX - collisionRadius, y: centerY },
+			{ x: centerX + collisionRadius, y: centerY },
+			{ x: centerX, y: centerY - collisionRadius },
+			{ x: centerX, y: centerY + collisionRadius },
+			{ x: centerX - collisionRadius, y: centerY - collisionRadius },
+			{ x: centerX + collisionRadius, y: centerY - collisionRadius },
+			{ x: centerX - collisionRadius, y: centerY + collisionRadius },
+			{ x: centerX + collisionRadius, y: centerY + collisionRadius }
 		];
 
 		for (const point of checkPoints) {
@@ -7395,7 +7299,10 @@ PluginManager.registerCommand(HpluginName, "spawnEvent", function (args) {
 				const spawnedEvent = $gameMap.event(eventId);
 				if (spawnedEvent) {
 					spawnedEvent._inheritedEnemyName = spawnerEnemyName;
-					spawnedEvent._inheritedEnemyData = $dataEnemies.find(e => e && e.name === spawnerEnemyName);
+					spawnedEvent._inheritedEnemyData = enemyNameCache[spawnerEnemyName.toLowerCase()];
+					if (spawnerEvent && typeof SgetBattlerForH === 'function') {
+						spawnedEvent._attackerBattler = SgetBattlerForH(spawnerEvent);
+					}
 				}
 			}
 
@@ -7410,6 +7317,13 @@ PluginManager.registerCommand(HpluginName, "spawnEvent", function (args) {
 					event.setCustomRotation(false);
 					event.customRotationPoint = true;
 					event.setRotation(Number(startDegree));
+				}
+			}
+
+			if (args.turnToward) {
+				const spawnedEvent = $gameMap.event(eventId);
+				if (spawnedEvent) {
+					SspawnTurnTorwardH(spawnedEvent, args.turnToward, this._eventId);
 				}
 			}
 
@@ -7453,33 +7367,6 @@ PluginManager.registerCommand(HpluginName, "spawnEvent", function (args) {
 			}
 		}
 	};
-
-	if (spawnInFront) {
-		if (xExp === 'this' && yExp === 'this') {
-			const event = $gameMap.event(this._eventId);
-			if (event) {
-				const direction = event.direction();
-				const offset = getDirectionOffset(direction);
-				if (H_DotMoveSystem && !useGridBased) {
-					const sourcePoint = event.centerPositionPoint();
-					spawnIfValid(sourcePoint.x - 0.5 + offset.x, sourcePoint.y - 0.5 + offset.y);
-				} else {
-					spawnIfValid(event.x + offset.x, event.y + offset.y);
-				}
-				return;
-			}
-		} else if (xExp === 'player' && yExp === 'player') {
-			const direction = $gamePlayer.direction();
-			const offset = getDirectionOffset(direction);
-			if (H_DotMoveSystem && !useGridBased) {
-				const sourcePoint = $gamePlayer.centerPositionPoint();
-				spawnIfValid(sourcePoint.x - 0.5 + offset.x, sourcePoint.y - 0.5 + offset.y);
-			} else {
-				spawnIfValid($gamePlayer.x + offset.x, $gamePlayer.y + offset.y);
-			}
-			return;
-		}
-	}
 
 	if (xExp === 'cursor' || (typeof xExp === 'string' && xExp.includes('cursor'))) {
 		const gridX = $gameMap.canvasToMapX(TouchInput.x);
@@ -7567,6 +7454,7 @@ PluginManager.registerCommand(HpluginName, "spawnEvent", function (args) {
 				}
 			} else if (source === 'this') {
 				const thisEvent = $gameMap.event(this._eventId);
+				if (!thisEvent) return;
 				if (H_DotMoveSystem && !useGridBased) {
 					sourceX = thisEvent.centerPositionPoint().x - 0.5;
 					sourceY = thisEvent.centerPositionPoint().y - 0.5;
@@ -7636,8 +7524,8 @@ PluginManager.registerCommand(HpluginName, "spawnEvent", function (args) {
 		}
 	}
 	else {
-		xExp = spawnEventsShorcut(xExp, this._eventId, 'x', usePixelMode);
-		yExp = spawnEventsShorcut(yExp, this._eventId, 'y', usePixelMode);
+		xExp = SspawnEventsShorcutH(xExp, this._eventId, 'x', usePixelMode);
+		yExp = SspawnEventsShorcutH(yExp, this._eventId, 'y', usePixelMode);
 
 		if (typeof xExp === 'string' && typeof yExp === 'string' &&
 			xExp.includes('<') && yExp.includes('<')) {
@@ -7670,8 +7558,14 @@ PluginManager.registerCommand(HpluginName, "spawnEvent", function (args) {
 			}
 		}
 
-		const x = eval(xExp);
-		const y = eval(yExp);
+		let x, y;
+		try {
+			x = eval(xExp);
+			y = eval(yExp);
+		} catch (e) {
+			console.warn("[SpawnEvent] eval error:", e.message);
+			return;
+		}
 		spawnIfValid(x, y);
 	}
 
@@ -7680,24 +7574,25 @@ PluginManager.registerCommand(HpluginName, "spawnEvent", function (args) {
 	}
 });
 
-function Game_DynamicEvent() {
+function Game_MaithlDynamicEvent() {
 	this.initialize.apply(this, arguments);
 }
 
-Game_DynamicEvent.prototype = Object.create(Game_Event.prototype);
-Game_DynamicEvent.prototype.constructor = Game_DynamicEvent;
+Game_MaithlDynamicEvent.prototype = Object.create(Game_Event.prototype);
+Game_MaithlDynamicEvent.prototype.constructor = Game_MaithlDynamicEvent;
 
-Game_DynamicEvent.prototype.initialize = function (mapId, eventId, x, y, note, waitTime, comments) {
+Game_MaithlDynamicEvent.prototype.initialize = function (mapId, eventId, x, y, note, waitTime, comments, name) {
 	this._spawnX = x;
 	this._spawnY = y;
 	this._note = note;
 	this._waitTime = waitTime;
 	this._comments = comments;
+	this._name = name || "DynamicHitbox";
 	this.isDynamicEvent = true;
 	Game_Event.prototype.initialize.call(this, mapId, eventId);
 };
 
-Game_DynamicEvent.prototype.event = function () {
+Game_MaithlDynamicEvent.prototype.event = function () {
 	let eventList = [];
 
 	if (this._comments) {
@@ -7720,7 +7615,7 @@ Game_DynamicEvent.prototype.event = function () {
 
 	return {
 		id: this._eventId,
-		name: "DynamicHitbox",
+		name: this._name,
 		note: this._note || "",
 		meta: {},
 		x: this._spawnX,
@@ -7761,8 +7656,13 @@ Game_DynamicEvent.prototype.event = function () {
 	};
 };
 
-Game_DynamicEvent.prototype.locate = function () {
+Game_MaithlDynamicEvent.prototype.locate = function () {
 	Game_Event.prototype.locate.call(this, this._spawnX, this._spawnY);
+};
+
+Game_MaithlDynamicEvent.prototype.isObjectCharacter = function () {
+	if (!this._characterName) return true;
+	return Game_CharacterBase.prototype.isObjectCharacter.call(this);
 };
 
 PluginManager.registerCommand(HpluginName, "spawnEventHitbox", function (args) {
@@ -7869,8 +7769,8 @@ PluginManager.registerCommand(HpluginName, "spawnEventHitbox", function (args) {
 			}
 		}
 	} else {
-		xExp = spawnEventsShorcut(xExp, this._eventId, 'x', usePixelMode);
-		yExp = spawnEventsShorcut(yExp, this._eventId, 'y', usePixelMode);
+		xExp = SspawnEventsShorcutH(xExp, this._eventId, 'x', usePixelMode);
+		yExp = SspawnEventsShorcutH(yExp, this._eventId, 'y', usePixelMode);
 	}
 
 	const x = eval(xExp);
@@ -7924,6 +7824,23 @@ PluginManager.registerCommand(HpluginName, "spawnEventHitbox", function (args) {
 				rotationDegree = Math.atan2(dy, dx) * 180 / Math.PI;
 				rotationDegree = (rotationDegree + 90) % 360;
 			}
+		} else if (args.rotationDegree.startsWith('<') && args.rotationDegree.endsWith('>')) {
+			const targetEvent = findNearestTarget(args.rotationDegree, x, y);
+			if (targetEvent) {
+				let targetX, targetY;
+				if (H_DotMoveSystem && targetEvent.centerPositionPoint) {
+					const targetPos = targetEvent.centerPositionPoint();
+					targetX = targetPos.x - 0.5;
+					targetY = targetPos.y - 0.5;
+				} else {
+					targetX = targetEvent.x;
+					targetY = targetEvent.y;
+				}
+				const dx = targetX - x;
+				const dy = targetY - y;
+				const angleRad = Math.atan2(dx, -dy);
+				rotationDegree = (angleRad * 180 / Math.PI + 360) % 360;
+			}
 		} else {
 			try {
 				rotationDegree = eval(args.rotationDegree);
@@ -7967,7 +7884,7 @@ PluginManager.registerCommand(HpluginName, "spawnEventHitbox", function (args) {
 	}
 
 	const eventId = $gameMap.getNextEventId();
-	const event = new Game_DynamicEvent($gameMap._mapId, eventId, x, y, notetags, args.wait, args.comment);
+	const event = new Game_MaithlDynamicEvent($gameMap._mapId, eventId, x, y, notetags, args.wait, args.comment, args.name);
 
 	if (spawnerActorId) {
 		const actor = $gameActors.actor(spawnerActorId);
@@ -7979,7 +7896,10 @@ PluginManager.registerCommand(HpluginName, "spawnEventHitbox", function (args) {
 
 	if (spawnerEnemyName) {
 		event._inheritedEnemyName = spawnerEnemyName;
-		event._inheritedEnemyData = $dataEnemies.find(e => e && e.name === spawnerEnemyName);
+		event._inheritedEnemyData = enemyNameCache[spawnerEnemyName.toLowerCase()];
+		if (spawnerEvent && typeof SgetBattlerForH === 'function') {
+			event._attackerBattler = SgetBattlerForH(spawnerEvent);
+		}
 	}
 
 	const attachTo = args.attachTo || '';
@@ -7995,7 +7915,7 @@ PluginManager.registerCommand(HpluginName, "spawnEventHitbox", function (args) {
 			let minDistance = Infinity;
 			$gameMap.events().forEach(mapEvent => {
 				if (mapEvent && mapEvent.event() && mapEvent.event().note.includes(attachTarget)) {
-					const distance = Math.abs(mapEvent.x - event.x) + Math.abs(mapEvent.y - event.y);
+					const distance = Math.abs($gameMap.deltaX(mapEvent.x, event.x)) + Math.abs($gameMap.deltaY(mapEvent.y, event.y));
 					if (distance < minDistance) {
 						minDistance = distance;
 						parentEvent = mapEvent;
@@ -8037,6 +7957,10 @@ PluginManager.registerCommand(HpluginName, "spawnEventHitbox", function (args) {
 		event.setCustomRotation(false);
 		event.customRotationPoint = true;
 		event.setRotation(Number(rotationDegree));
+	}
+
+	if (args.turnToward) {
+		SspawnTurnTorwardH(event, args.turnToward, this._eventId);
 	}
 
 	return eventId;
@@ -8244,7 +8168,7 @@ PluginManager.registerCommand(HpluginName, "DestroyEvent", function (args) {
 
 	sourceEvents.forEach(event => {
 		const eventId = event.eventId();
-		const isSpawnedEvent = event instanceof Hendrix_TemplateEvent || event instanceof Game_DynamicEvent;
+		const isSpawnedEvent = event instanceof Hendrix_TemplateEvent || event instanceof Game_MaithlDynamicEvent;
 
 		if (isSpawnedEvent) {
 			// Spawned event
@@ -8271,8 +8195,8 @@ PluginManager.registerCommand(HpluginName, "DestroyEvent", function (args) {
 				if (!$gameSystem._deletedMapEvents[$gameMap._mapId]) {
 					$gameSystem._deletedMapEvents[$gameMap._mapId] = [];
 				}
-				if (!$gameSystem._deletedMapEvents[$gameMap._mapId].includes(eventId)) {
-					$gameSystem._deletedMapEvents[$gameMap._mapId].push(eventId);
+				if (!$gameSystem._deletedMapEvents[$gameMap._mapId].some(entry => entry.eventId === eventId)) {
+					$gameSystem._deletedMapEvents[$gameMap._mapId].push({ eventId, name: event.event().name });
 				}
 			}
 
@@ -8304,6 +8228,39 @@ PluginManager.registerCommand(HpluginName, "DestroyEvent", function (args) {
 			$gameMap.removeEventFromTagIndex(event);
 			event.erase();
 			$gameMap._events[eventId] = null;
+		}
+	});
+});
+
+PluginManager.registerCommand(HpluginName, "RecoverDestroyedEvents", function (args) {
+	const eventName = args.eventName;
+	if (!eventName || !$gameSystem._deletedMapEvents) return;
+
+	Object.keys($gameSystem._deletedMapEvents).forEach(mapId => {
+		const numericMapId = Number(mapId);
+		const recoveredIds = [];
+
+		$gameSystem._deletedMapEvents[mapId] = $gameSystem._deletedMapEvents[mapId].filter(entry => {
+			const entryName = typeof entry === 'object' ? entry.name : null;
+			if (entryName === eventName) {
+				recoveredIds.push(typeof entry === 'object' ? entry.eventId : entry);
+				return false;
+			}
+			return true;
+		});
+
+		if (recoveredIds.length > 0 && numericMapId === $gameMap._mapId) {
+			recoveredIds.forEach(eventId => {
+				const event = new Game_Event($gameMap._mapId, eventId);
+				$gameMap._events[eventId] = event;
+				$gameMap.addEventToTagIndex(event);
+
+				if (SceneManager._scene instanceof Scene_Map && SceneManager._scene._spriteset) {
+					const sprite = new Sprite_Character(event);
+					SceneManager._scene._spriteset._characterSprites.push(sprite);
+					SceneManager._scene._spriteset._tilemap.addChild(sprite);
+				}
+			});
 		}
 	});
 });
@@ -8365,8 +8322,8 @@ PluginManager.registerCommand(HpluginName, "destroyRegularEvent", function (args
 				$gameSystem._deletedMapEvents[$gameMap._mapId] = [];
 			}
 
-			if (!$gameSystem._deletedMapEvents[$gameMap._mapId].includes(eventId)) {
-				$gameSystem._deletedMapEvents[$gameMap._mapId].push(eventId);
+			if (!$gameSystem._deletedMapEvents[$gameMap._mapId].some(entry => entry.eventId === eventId)) {
+				$gameSystem._deletedMapEvents[$gameMap._mapId].push({ eventId, name: event.event().name });
 			}
 		}
 
@@ -8440,10 +8397,17 @@ PluginManager.registerCommand(HpluginName, "destroyEventNear", function (args) {
 });
 
 DataManager.loadTemplateMapData = function () {
-	if (templateMapId > 0) {
-		this.loadDataFile('$dataTemplateMap', 'Map%1.json'.format(templateMapId.padZero(3)));
+	if (StemplateMapIdH > 0) {
+		this.loadDataFile('$dataTemplateMap', 'Map%1.json'.format(StemplateMapIdH.padZero(3)));
 	}
 };
+
+function SloadAllMapsDataH(mapId) {
+	const url = `data/Map${String(mapId).padStart(3, '0')}.json`;
+	return fetch(url)
+		.then(response => response.ok ? response.json() : null)
+		.catch(() => null);
+}
 
 DataManager.loadTemplateMapData();
 
@@ -8467,6 +8431,9 @@ Game_Map.prototype.setup = function (mapId) {
 	this.initializePassCache();
 	this.clearCustomEventHitboxCaches();
 	H_Game_Map_setup.call(this, mapId);
+	if ($gameSystem.collidedOnceEvents) {
+		$gameSystem.collidedOnceEvents = {};
+	}
 	this.resetNextEventId();
 	this.platformCache = null;
 	this.lastPlatformCache = 0;
@@ -8545,6 +8512,9 @@ DataManager.makeSaveContents = function () {
 const H_DataManager_extractSaveContents = DataManager.extractSaveContents;
 DataManager.extractSaveContents = function (contents) {
 	H_DataManager_extractSaveContents.call(this, contents);
+	if ($gameSystem._isBeatEmUp !== undefined) {
+		isBeatEmUp = $gameSystem._isBeatEmUp;
+	}
 	if (contents.eventHpData) {
 		for (const key in contents.eventHpData) {
 			$gameVariables._data[key] = contents.eventHpData[key];
@@ -8711,7 +8681,7 @@ Game_System.prototype.checkInRange = function (source, range, target, eyes = 0, 
 		sourceDirection = $gamePlayer.direction();
 		sourceEvent = $gamePlayer;
 	} else {
-		sourceEvent = $gameMap.event(source);
+		sourceEvent = findTarget(source, this);
 		if (!sourceEvent) return false;
 		sourceX = sourceEvent.x;
 		sourceY = sourceEvent.y;
@@ -8719,32 +8689,34 @@ Game_System.prototype.checkInRange = function (source, range, target, eyes = 0, 
 	}
 
 	if (sourceEvent) {
-		sourceEvent._lastCheckRange = {
-			range: range,
-			eyes: eyes,
-			blockRegion: blockRegion
-		};
+		if (!sourceEvent._lastCheckRange) sourceEvent._lastCheckRange = {};
+		sourceEvent._lastCheckRange.range = range;
+		sourceEvent._lastCheckRange.eyes = eyes;
+		sourceEvent._lastCheckRange.blockRegion = blockRegion;
 	}
 
-	// Case 1: Player target
+	// Case 1: Player
 	if (target === "player") {
-		const dx = Math.abs(sourceX - $gamePlayer.x);
-		const dy = Math.abs(sourceY - $gamePlayer.y);
+		const dx = Math.abs($gameMap.deltaX(sourceX, $gamePlayer.x));
+		const dy = Math.abs($gameMap.deltaY(sourceY, $gamePlayer.y));
 		if (dx > range || dy > range) return false;
 		const distance = Math.sqrt(dx * dx + dy * dy);
 		if (distance > range) return false;
 		if (blockRegion > 0 && !window.hasLineOfSight(sourceX, sourceY, $gamePlayer.x, $gamePlayer.y, blockRegion))
 			return false;
-		if (!eyes || eyes === 0) return true;
-		getVisionConePoints(sourceX, sourceY, sourceDirection, range, eyes || 360);
-		return getVisionConePoints.isInCone($gamePlayer.x, $gamePlayer.y);
+		if (eyes && eyes > 0) {
+			getVisionConePoints(sourceX, sourceY, sourceDirection, range, eyes || 360);
+			if (!getVisionConePoints.isInCone($gamePlayer.x, $gamePlayer.y)) return false;
+		}
+		sourceEvent._detectedEvent = $gamePlayer;
+		return true;
 	}
-	// Case 2: This event target
+	// Case 2: This event
 	else if (target === 'this') {
 		const event = $gameMap.event(this._eventId);
 		if (!event) return false;
-		const dx = Math.abs(sourceX - event.x);
-		const dy = Math.abs(sourceY - event.y);
+		const dx = Math.abs($gameMap.deltaX(sourceX, event.x));
+		const dy = Math.abs($gameMap.deltaY(sourceY, event.y));
 		if (dx > range || dy > range) return false;
 		const distance = Math.sqrt(dx * dx + dy * dy);
 		if (distance > range) return false;
@@ -8755,7 +8727,44 @@ Game_System.prototype.checkInRange = function (source, range, target, eyes = 0, 
 		getVisionConePoints(sourceX, sourceY, sourceDirection, range, eyes || 360);
 		return getVisionConePoints.isInCone(event.x, event.y);
 	}
-	// Case 3: Region target
+	else if (target === 'passable') {
+		const srcPoint = sourceEvent?.centerPositionPoint
+			? sourceEvent.centerPositionPoint()
+			: { x: sourceX + 0.5, y: sourceY + 0.5 };
+
+		const searchStartX = Math.max(0, Math.floor(srcPoint.x - range));
+		const searchEndX = Math.min($gameMap.width() - 1, Math.ceil(srcPoint.x + range));
+		const searchStartY = Math.max(0, Math.floor(srcPoint.y - range));
+		const searchEndY = Math.min($gameMap.height() - 1, Math.ceil(srcPoint.y + range));
+
+		for (let x = searchStartX; x <= searchEndX; x++) {
+			for (let y = searchStartY; y <= searchEndY; y++) {
+				if (!$gameMap.isValid(x, y)) continue;
+
+				if (!SisTilePassableH(x, y)) continue;
+
+				const tileCenterX = x + 0.5;
+				const tileCenterY = y + 0.5;
+				const dx = $gameMap.deltaX(tileCenterX, srcPoint.x);
+				const dy = $gameMap.deltaY(tileCenterY, srcPoint.y);
+				const distance = Math.sqrt(dx * dx + dy * dy);
+				if (range > 0 && distance > range) continue;
+
+				if (blockRegion > 0 && !window.hasLineOfSight(sourceX, sourceY, x, y, blockRegion))
+					continue;
+
+				if (eyes && eyes > 0) {
+					getVisionConePoints(sourceX, sourceY, sourceDirection, range, eyes);
+					if (!getVisionConePoints.isInCone(x, y)) continue;
+				}
+
+				return true;
+			}
+		}
+
+		return false;
+	}
+	// Case 3: Region
 	else if (typeof target === 'string' && target.startsWith('region ')) {
 		const regionId = parseInt(target.split(' ')[1]);
 		if (isNaN(regionId)) return false;
@@ -8792,8 +8801,8 @@ Game_System.prototype.checkInRange = function (source, range, target, eyes = 0, 
 	}
 	// Case 3: Tagged events
 	else {
-		const taggedEvents = $gameMap.events().filter(event =>
-			event && event.event() && event.event().note.includes(target));
+		const taggedEvents = ($gameMap.tagToEvents?.get(target)) ||
+			$gameMap.events().filter(event => event && event.event() && event.event().note.includes(target));
 
 		let nearestEvent = null;
 		let nearestDistance = Infinity;
@@ -8812,8 +8821,8 @@ Game_System.prototype.checkInRange = function (source, range, target, eyes = 0, 
 				if (!hasAttackNotetag) continue;
 			}
 
-			const dx = Math.abs(sourceX - otherEvent.x);
-			const dy = Math.abs(sourceY - otherEvent.y);
+			const dx = Math.abs($gameMap.deltaX(sourceX, otherEvent.x));
+			const dy = Math.abs($gameMap.deltaY(sourceY, otherEvent.y));
 			if (dx > range || dy > range) continue;
 
 			const distance = Math.sqrt(dx * dx + dy * dy);
@@ -9137,6 +9146,23 @@ Game_Character.prototype.teleportTo = function (notetag, minDistance = null, max
 	}
 };
 
+function SfindNearestRegionTileH(regionId, fromX, fromY) {
+	let nearest = null;
+	let minDistance = Infinity;
+	for (let x = 0; x < $gameMap.width(); x++) {
+		for (let y = 0; y < $gameMap.height(); y++) {
+			if ($gameMap.regionId(x, y) === regionId) {
+				const distance = Math.sqrt(Math.pow(x - fromX, 2) + Math.pow(y - fromY, 2));
+				if (distance < minDistance) {
+					minDistance = distance;
+					nearest = { x, y };
+				}
+			}
+		}
+	}
+	return nearest;
+}
+
 // Same as move to Position but this one doesn't move using Dot Move System and support perfect pathfinding
 Game_Character.prototype.moveToClosest = function (notetag, perfectPathfinding = false, waitTillFinish = false, exception = null) {
 	const x1 = this.x;
@@ -9154,11 +9180,16 @@ Game_Character.prototype.moveToClosest = function (notetag, perfectPathfinding =
 		if (!eventTarget) return;
 		closestEvent = eventTarget;
 		minDistance = Math.sqrt(Math.pow(eventTarget.x - x1, 2) + Math.pow(eventTarget.y - y1, 2));
-	} else if (notetag === 'detected event') {
+	} else if (notetag === 'detected event' || notetag === 'detected target') {
 		const detected = this._detectedEvent;
 		if (!detected) return;
 		closestEvent = detected;
 		minDistance = Math.sqrt(Math.pow(detected.x - x1, 2) + Math.pow(detected.y - y1, 2));
+	} else if (/^region\s+\d+$/i.test(notetag)) {
+		const regionId = parseInt(notetag.match(/\d+/)[0]);
+		closestEvent = SfindNearestRegionTileH(regionId, x1, y1);
+		if (!closestEvent) return;
+		minDistance = Math.sqrt(Math.pow(closestEvent.x - x1, 2) + Math.pow(closestEvent.y - y1, 2));
 	} else {
 		let targets = findTargets(notetag);
 		if (exception) {
@@ -9179,8 +9210,8 @@ Game_Character.prototype.moveToClosest = function (notetag, perfectPathfinding =
 
 	if (closestEvent) {
 		if (waitTillFinish) {
-			const dx = Math.abs(closestEvent.x - this.x);
-			const dy = Math.abs(closestEvent.y - this.y);
+			const dx = Math.abs($gameMap.deltaX(closestEvent.x, this.x));
+			const dy = Math.abs($gameMap.deltaY(closestEvent.y, this.y));
 			const steps = Math.max(dx, dy);
 
 			const route = {
@@ -9372,20 +9403,30 @@ Game_Character.prototype.moveToPosition = function (targetX, targetY, rotate = f
 	}
 
 	// Case 2: Move forward in current rotation direction
-	if (targetX === 'forward' && targetY === 'tile') {
+	if (targetX === 'forward' && (targetY === 'tile' || typeof targetY === 'number')) {
 		const currentRotation = this._rotation || 0;
-		const currentPos = this.positionPoint();
-		const radians = ((currentRotation - 90) * Math.PI) / 180;
-
-		const targetX = currentPos.x + Math.cos(radians);
-		const targetY = currentPos.y + Math.sin(radians);
-
-		this.moveToTargetContinous(targetX, targetY);
+		const deg = new DotMoveSystem.Degree(currentRotation);
+		const tiles = typeof targetY === 'number' ? targetY : 1;
+		this.mover().startContinuousMove(tiles, deg);
 		return;
 	}
 	if (targetX === 'forward') {
 		const currentRotation = this._rotation || 0;
 		this.dotMoveByDeg(currentRotation);
+		return;
+	}
+
+	// Case 2b: Move backward, opposite of current rotation direction
+	if (targetX === 'backward' && (targetY === 'tile' || typeof targetY === 'number')) {
+		const currentRotation = this._rotation || 0;
+		const deg = new DotMoveSystem.Degree((currentRotation + 180) % 360);
+		const tiles = typeof targetY === 'number' ? targetY : 1;
+		this.mover().startContinuousMove(tiles, deg);
+		return;
+	}
+	if (targetX === 'backward') {
+		const currentRotation = this._rotation || 0;
+		this.dotMoveByDeg((currentRotation + 180) % 360);
 		return;
 	}
 
@@ -9423,7 +9464,7 @@ Game_Character.prototype.moveToPosition = function (targetX, targetY, rotate = f
 	}
 
 	// Case 3.6: Move to detected event from checkRange
-	if (targetX === 'detected event') {
+	if (targetX === 'detected event' || targetX === 'detected target') {
 		const detected = this._detectedEvent;
 		if (!detected) return;
 		if (rotate) {
@@ -9434,6 +9475,24 @@ Game_Character.prototype.moveToPosition = function (targetX, targetY, rotate = f
 		}
 		const targetPos = detected.positionPoint();
 		this.moveToTargetContinous(targetPos.x, targetPos.y);
+		return;
+	}
+
+	// Case 3.7: Move to nearest tile of a region
+	if (typeof targetX === 'string' && /^region\s+\d+$/i.test(targetX)) {
+		const regionId = parseInt(targetX.match(/\d+/)[0]);
+		const nearest = SfindNearestRegionTileH(regionId, this.x, this.y);
+		if (nearest) {
+			if (rotate) {
+				const startPoint = this.positionPoint();
+				const targetPoint = this.positionPoint();
+				targetPoint.x = nearest.x;
+				targetPoint.y = nearest.y;
+				const deg = startPoint.calcDeg(targetPoint).value;
+				this.setRotation(deg);
+			}
+			this.moveToTargetContinous(nearest.x, nearest.y);
+		}
 		return;
 	}
 
@@ -9468,136 +9527,130 @@ Game_Character.prototype.moveToPosition = function (targetX, targetY, rotate = f
 	}
 };
 
-Game_Character.prototype.rotateTo = function (x, y) {
+Game_Event.prototype.setupLockRotation = function () {
+	if (this.page()) {
+		const lockRotationComment = this.list().find(command =>
+			(command.code === 108 || command.code === 408) &&
+			command.parameters[0].match(/<lock rotation sprite>/i)
+		);
+		this._lockSpriteRotation = !!lockRotationComment;
+	} else {
+		this._lockSpriteRotation = false;
+	}
+};
+
+Game_Character.prototype.rotateTo = function (x, y, lerpFrames) {
 	if (x === 'playerLockedTarget') {
+		const frames = typeof y === 'number' ? y : lerpFrames;
 		const playerTarget = $gamePlayer.getLockedTarget();
 		if (!playerTarget) return;
 		x = playerTarget.x;
 		y = playerTarget.y;
+		lerpFrames = frames;
 	}
 
 	if (x === 'eventLockedTarget') {
+		const frames = typeof y === 'number' ? y : lerpFrames;
 		const eventTarget = this.getLockedTarget();
 		if (!eventTarget) return;
 		x = eventTarget.x;
 		y = eventTarget.y;
+		lerpFrames = frames;
 	}
 
 	if (x === 'mouse or gamepad') {
 		if (H_DotMoveSystem) {
 			const stickInput = checkGamepadInput();
-
 			if (stickInput || checkGamepad()) {
 				if (stickInput) {
-					// right stick
 					const angle = Math.atan2(stickInput.x, -stickInput.y);
 					let degrees = (angle * 180 / Math.PI);
 					degrees = (degrees + 360) % 360;
-
 					this.setOriginPoint(y || 'center');
 					this.setCustomRotation(false);
 					this.customRotationPoint = true;
-					this.setRotation(degrees);
+					this._applyRotation(degrees, lerpFrames);
 				}
 			} else {
-				// cursor
 				const characterScreenX = this.screenX();
 				const characterScreenY = this.screenY();
 				const dx = TouchInput.x - characterScreenX;
 				const dy = TouchInput.y - characterScreenY;
-
 				const radians = Math.atan2(dy, dx);
 				let degrees = (radians * 180 / Math.PI + 90) % 360;
 				if (degrees < 0) degrees += 360;
-
 				this.setOriginPoint(y || 'center');
 				this.setCustomRotation(false);
 				this.customRotationPoint = true;
-				this.setRotation(degrees);
+				this._applyRotation(degrees, lerpFrames);
 			}
 			return;
 		}
 	}
+
 	// Case: rotateTo('left joystick') - Rotate to left joystick direction only
 	if (x === 'left joystick') {
 		if (H_DotMoveSystem) {
 			this.setOriginPoint(y || 'center');
 			this.setCustomRotation(false);
 			this.customRotationPoint = true;
-
 			if (navigator.getGamepads && navigator.getGamepads()[0]) {
 				const gamepad = navigator.getGamepads()[0];
 				const leftStickX = gamepad.axes[0];
 				const leftStickY = gamepad.axes[1];
 				const power = Math.sqrt(leftStickX * leftStickX + leftStickY * leftStickY);
-
 				if (power > 0.1) {
 					const rad = Math.atan2(leftStickX, -leftStickY);
 					let degree = rad * 180 / Math.PI;
 					if (degree < 0) degree += 360;
-
-					this.setRotation(degree);
+					this._applyRotation(degree, lerpFrames);
 					return;
 				}
 			}
-
 			if (typeof $virtualStickController !== 'undefined' && $virtualStickController &&
 				typeof $virtualStickController.deg === 'function' && $virtualStickController.deg() != null) {
 				let degree = $virtualStickController.deg();
 				if (degree !== null) {
-					this.setRotation(degree);
+					this._applyRotation(degree, lerpFrames);
 					return;
 				}
 			}
 		}
 		return;
 	}
+
 	// Case: rotateTo('player moving direction') - Rotate to player's movement direction
 	if (x === 'player moving direction') {
 		if (H_DotMoveSystem) {
 			this.setOriginPoint(y || 'center');
 			this.setCustomRotation(false);
 			this.customRotationPoint = true;
-
-			let hasActiveInput = false;
-
-			// Left stick gamepad
 			if (typeof Input !== 'undefined' && Input.leftStick && navigator.getGamepads && navigator.getGamepads()[0]) {
 				const [rad, power] = Input.leftStick;
-
 				if (power > 0.1) {
-					hasActiveInput = true;
 					const degree = AnalogStickUtils.rad2deg(rad);
 					const direction = this.convertAngleToDirection(degree);
 					this.setDirection(direction);
-					this.setRotation(degree);
+					this._applyRotation(degree, lerpFrames);
 					return;
 				}
 			}
-
-			// If gamepad isn't being used or has low input power, check for virtual stick controller
 			if (typeof $virtualStickController !== 'undefined' && $virtualStickController &&
 				typeof $virtualStickController.deg === 'function' && $virtualStickController.deg() != null) {
 				let degree = $virtualStickController.deg();
 				if (degree !== null) {
-					hasActiveInput = true;
 					const direction = this.convertAngleToDirection(degree);
 					this.setDirection(direction);
-					this.setRotation(degree);
+					this._applyRotation(degree, lerpFrames);
 					return;
 				}
 			}
-
-			// Keyboard
 			const isUp = Input.isPressed('up');
 			const isDown = Input.isPressed('down');
 			const isLeft = Input.isPressed('left');
 			const isRight = Input.isPressed('right');
-
 			if (isUp || isDown || isLeft || isRight) {
-				hasActiveInput = true;
 				let degree = 0;
-
 				if (isUp && isRight) degree = 45;
 				else if (isUp && isLeft) degree = 315;
 				else if (isDown && isRight) degree = 135;
@@ -9606,11 +9659,8 @@ Game_Character.prototype.rotateTo = function (x, y) {
 				else if (isRight) degree = 90;
 				else if (isDown) degree = 180;
 				else if (isLeft) degree = 270;
-
 				let direction = this.convertAngleToDirection(degree);
-
-				if (Imported.Hendrix_Animation_Solution &&
-					this.is8DirSprite && this.is8DirSprite()) {
+				if (Imported.Hendrix_Animation_Solution && this.is8DirSprite && this.is8DirSprite()) {
 					this.setDirection(direction);
 				} else {
 					if (degree >= 315 || degree < 45) this.setDirection(8);
@@ -9618,57 +9668,33 @@ Game_Character.prototype.rotateTo = function (x, y) {
 					else if (degree >= 135 && degree < 225) this.setDirection(2);
 					else this.setDirection(4);
 				}
-
-				this.setRotation(degree);
+				this._applyRotation(degree, lerpFrames);
 			}
-
 			return;
-		}
-		else {
+		} else {
 			const isUp = Input.isPressed('up');
 			const isDown = Input.isPressed('down');
 			const isLeft = Input.isPressed('left');
 			const isRight = Input.isPressed('right');
-
 			if (isUp || isDown || isLeft || isRight) {
 				let direction = 0;
 				let degree = 0;
-
-				if (isUp && isRight) {
-					direction = 9;
-					degree = 45;
-				} else if (isUp && isLeft) {
-					direction = 7;
-					degree = 315;
-				} else if (isDown && isRight) {
-					direction = 3;
-					degree = 135;
-				} else if (isDown && isLeft) {
-					direction = 1;
-					degree = 225;
-				} else if (isUp) {
-					direction = 8;
-					degree = 0;
-				} else if (isDown) {
-					direction = 2;
-					degree = 180;
-				} else if (isLeft) {
-					direction = 4;
-					degree = 270;
-				} else if (isRight) {
-					direction = 6;
-					degree = 90;
-				}
-
+				if (isUp && isRight) { direction = 9; degree = 45; }
+				else if (isUp && isLeft) { direction = 7; degree = 315; }
+				else if (isDown && isRight) { direction = 3; degree = 135; }
+				else if (isDown && isLeft) { direction = 1; degree = 225; }
+				else if (isUp) { direction = 8; degree = 0; }
+				else if (isDown) { direction = 2; degree = 180; }
+				else if (isLeft) { direction = 4; degree = 270; }
+				else if (isRight) { direction = 6; degree = 90; }
 				this.setDirection(direction);
-				this._rotation = degree;
+				this._applyRotation(degree, lerpFrames);
 			}
-
 			return;
 		}
 	}
 
-	// Case 1: rotateTo(x, y)
+	// Case 1: rotateTo(x, y, lerpFrames)
 	if (typeof x === 'number' && typeof y === 'number') {
 		if (H_DotMoveSystem) {
 			this.setOriginPoint('center');
@@ -9679,29 +9705,21 @@ Game_Character.prototype.rotateTo = function (x, y) {
 			targetPoint.x = x;
 			targetPoint.y = y;
 			const deg = startPoint.calcDeg(targetPoint).value;
-			this.setRotation(deg);
+			this._applyRotation(deg, lerpFrames);
 		}
 		return;
 	}
 
-	// Case 2: rotateTo(eventId)
-	if (typeof x === 'number' && y === undefined) {
-		const targetEvent = $gameMap.event(x);
-		if (targetEvent) {
-			if (H_DotMoveSystem) {
-				this.setOriginPoint('center');
-				this.setCustomRotation(false);
-				this.customRotationPoint = true;
-				const startPoint = this.positionPoint();
-				const targetPoint = targetEvent.positionPoint();
-				const deg = startPoint.calcDeg(targetPoint).value;
-				this.setRotation(deg);
-			}
-		}
+	// Case 2: rotateTo(degree, null, lerpFrames)
+	if (typeof x === 'number' && (y === undefined || y === null)) {
+		this.setOriginPoint('center');
+		this.setCustomRotation(false);
+		this.customRotationPoint = true;
+		this._applyRotation(x, lerpFrames);
 		return;
 	}
 
-	// Case 3: rotateTo(notetag, range) - Rotate to nearest notetag within range
+	// Case 3: rotateTo(notetag, range, lerpFrames) - Rotate to nearest notetag within range
 	if (typeof x === 'string' && x !== 'player' && x !== 'mouse or gamepad') {
 		const closestEvent = findNearestTarget(x, this.x, this.y, y);
 		if (closestEvent) {
@@ -9712,14 +9730,15 @@ Game_Character.prototype.rotateTo = function (x, y) {
 				const startPoint = this.positionPoint();
 				const targetPoint = closestEvent.positionPoint();
 				const deg = startPoint.calcDeg(targetPoint).value;
-				this.setRotation(deg);
+				this._applyRotation(deg, lerpFrames);
 			}
 		}
 		return;
 	}
 
-	// Case 4: rotateTo('player')
+	// Case 4: rotateTo('player', lerpFrames)
 	if (x === 'player') {
+		const frames = typeof y === 'number' ? y : lerpFrames;
 		if (H_DotMoveSystem) {
 			this.setOriginPoint('center');
 			this.setCustomRotation(false);
@@ -9727,7 +9746,7 @@ Game_Character.prototype.rotateTo = function (x, y) {
 			const startPoint = this.positionPoint();
 			const targetPoint = $gamePlayer.positionPoint();
 			const deg = startPoint.calcDeg(targetPoint).value;
-			this.setRotation(deg);
+			this._applyRotation(deg, frames);
 		}
 		return;
 	}
@@ -9914,6 +9933,45 @@ Game_Character.prototype.turnToward = function (target, forceDirection = false, 
 	}
 };
 
+window.SspawnTurnTorwardH = function (character, turnTowardArg, spawnerEventId) {
+	if (!turnTowardArg) return;
+	const value = turnTowardArg.trim();
+	if (!value) return;
+	const lower = value.toLowerCase();
+
+	if (/^[1-8]$/.test(value)) {
+		character.setDirection(Number(value));
+		return;
+	}
+
+	if (lower.startsWith('same as ')) {
+		const shareTarget = value.slice(8).trim();
+		if (shareTarget.toLowerCase() === 'this') {
+			const spawnerEvent = $gameMap.event(spawnerEventId);
+			if (spawnerEvent) character.setDirection(spawnerEvent.direction());
+		} else {
+			character.shareDirection(shareTarget);
+		}
+		return;
+	}
+
+	if (lower === 'this') {
+		if (spawnerEventId) character.turnToward(spawnerEventId);
+		return;
+	}
+
+	if (findNearestTarget(value, character.x, character.y)) {
+		character.turnToward(value);
+		return;
+	}
+
+	try {
+		if (!isNaN(eval(value))) {
+			character.setDirection(Number(eval(value)));
+		}
+	} catch (e) { }
+};
+
 Game_Character.prototype.sucking = function (notetag, range, speedBoost = 4.5) {
 	if (notetag === 'player') {
 		const dx = $gamePlayer.x - this.x;
@@ -10051,8 +10109,8 @@ Game_Character.prototype.jumpTo = function (x, y) {
 				positions.push({ x: targetX + radius, y: targetY + dy });
 			}
 			positions.sort((a, b) => {
-				const distA = Math.abs(a.x - targetX) + Math.abs(a.y - targetY);
-				const distB = Math.abs(b.x - targetX) + Math.abs(b.y - targetY);
+				const distA = Math.abs($gameMap.deltaX(a.x, targetX)) + Math.abs($gameMap.deltaY(a.y, targetY));
+				const distB = Math.abs($gameMap.deltaX(b.x, targetX)) + Math.abs($gameMap.deltaY(b.y, targetY));
 				return distA - distB;
 			});
 			for (const pos of positions) {
@@ -10251,8 +10309,8 @@ Game_Character.prototype.jumpTo = function (x, y) {
 		if (x === 'away') {
 			const playerX = $gamePlayer.x;
 			const playerY = $gamePlayer.y;
-			const deltaX = this.x - playerX;
-			const deltaY = this.y - playerY;
+			const deltaX = $gameMap.deltaX(this.x, playerX);
+			const deltaY = $gameMap.deltaY(this.y, playerY);
 
 			if (Math.abs(deltaX) > Math.abs(deltaY)) {
 				jumpX = deltaX > 0 ? y : -y;
@@ -10343,8 +10401,6 @@ Game_Character.prototype.jumpTo = function (x, y) {
 const _Game_CharacterBase_updateJump = Game_CharacterBase.prototype.updateJump;
 Game_CharacterBase.prototype.updateJump = function () {
 	_Game_CharacterBase_updateJump.call(this);
-
-	// When jump completes, snap to exact target position
 	if (!this.isJumping() && this._jumpTargetX !== undefined) {
 		this._realX = this._jumpTargetX;
 		this._realY = this._jumpTargetY;
@@ -10406,7 +10462,7 @@ class HHUDSpriteSheetSprite extends Sprite {
 	}
 }
 
-function evaluatePosition(expression) {
+function SevaluatePositionH(expression) {
 	if (typeof expression !== 'string') return Number(expression);
 	let processedExpression = expression
 		.replace(/\bplayer\.x\b/g, '$gamePlayer.screenX()')
@@ -10426,7 +10482,7 @@ class Hendrix_HUD {
 		this.maxVariableValue = Number(hudData.maxVariableValue);
 		this.currentValue = this.getCurrentValue();
 		this.displayValue = this.currentValue;
-		const [width, height, x, y] = (hudData.sizeAndPosition || "100, 20, 0, 0")
+		const [width, height, x, y] = (hudData.sizeAndPosition || "100, 20, (Graphics.width-100)/2, (Graphics.height-20)/2")
 			.split(',')
 			.map(val => val.trim());
 
@@ -10482,11 +10538,11 @@ class Hendrix_HUD {
 	}
 
 	evaluateX() {
-		return evaluatePosition(this.xExpression);
+		return SevaluatePositionH(this.xExpression);
 	}
 
 	evaluateY() {
-		return evaluatePosition(this.yExpression);
+		return SevaluatePositionH(this.yExpression);
 	}
 
 	getCurrentValue() {
@@ -10581,6 +10637,21 @@ class Hendrix_HUD {
 			this.container.addChild(textSprite);
 			this.textSprite = textSprite;
 		}
+
+		const borderThickness = 2;
+		const borderColor = '#00ff00';
+		const borderBitmap = new Bitmap(this.width, this.height);
+		borderBitmap.fillRect(0, 0, this.width, borderThickness, borderColor);
+		borderBitmap.fillRect(0, this.height - borderThickness, this.width, borderThickness, borderColor);
+		borderBitmap.fillRect(0, 0, borderThickness, this.height, borderColor);
+		borderBitmap.fillRect(this.width - borderThickness, 0, borderThickness, this.height, borderColor);
+
+		const borderSprite = new Sprite(borderBitmap);
+		borderSprite.anchor.x = 0.5;
+		borderSprite.anchor.y = 0.5;
+		borderSprite.visible = false;
+		this.container.addChild(borderSprite);
+		this.dragBorderSprite = borderSprite;
 	}
 
 	createAdditionalLayers() {
@@ -10651,9 +10722,12 @@ class Hendrix_HUD {
 
 	isPlayerBehind = function () {
 		if (!smartHUDVisibility) return false;
-		const playerSprite = SceneManager._scene._spriteset._characterSprites.find(
-			sprite => sprite._character === $gamePlayer
-		);
+		if (!this._cachedPlayerSprite) {
+			this._cachedPlayerSprite = SceneManager._scene._spriteset._characterSprites.find(
+				sprite => sprite._character === $gamePlayer
+			);
+		}
+		const playerSprite = this._cachedPlayerSprite;
 		if (!playerSprite) return false;
 		const playerWidth = playerSprite.patternWidth ? playerSprite.patternWidth() : $gameMap.tileWidth();
 		const playerHeight = playerSprite.patternHeight ? playerSprite.patternHeight() : $gameMap.tileHeight();
@@ -10784,7 +10858,7 @@ class Hendrix_HUD {
 					x: this.x,
 					y: this.y
 				};
-				saveUIPositions(window.$hudPositions);
+				MaithlSaveUIPositions(window.$hudPositions);
 			}
 		}
 
@@ -10809,7 +10883,7 @@ class Hendrix_HUD {
 						xOffset: sprite.x,
 						yOffset: sprite.y
 					};
-					saveUIPositions(window.$hudPositions);
+					MaithlSaveUIPositions(window.$hudPositions);
 				}
 			}
 		}
@@ -10861,9 +10935,12 @@ class Hendrix_HUD {
 	updateText() {
 		if (!this.textSprite || this.displayTextType === 'none') return;
 
+		const text = this.getDisplayText();
+		if (text === this._lastDisplayText) return;
+		this._lastDisplayText = text;
+
 		const bitmap = this.textSprite.bitmap;
 		bitmap.clear();
-
 		bitmap.smooth = false;
 
 		if (HUDcustomFont) {
@@ -10882,7 +10959,6 @@ class Hendrix_HUD {
 			}
 		}
 
-		const text = this.getDisplayText();
 		bitmap.drawText(text, 0, 0, this.width, this.height, 'center');
 	}
 
@@ -10905,24 +10981,33 @@ class Hendrix_HUD {
 		);
 		this.displayValue = this.interpolate(this.displayValue, this.currentValue, 0.3);
 		let barWidth = (this.width * this.displayValue) / this.getMaxValue();
-		this.barSprite.bitmap.clear();
 
-		if (this.barImage && barWidth > 0) {
-			let img = ImageManager.loadPicture(this.barImage);
-			if (this.barDirection === 'rightToLeft') {
-				const xOffset = this.width - barWidth;
-				this.barSprite.bitmap.blt(img, img.width - barWidth, 0, barWidth, img.height, xOffset, 0, barWidth, this.height);
+		if (Math.abs(barWidth - (this._lastBarWidth || 0)) > 0.1) {
+			this._lastBarWidth = barWidth;
+			this.barSprite.bitmap.clear();
+
+			if (this.barImage && barWidth > 0) {
+				let img = ImageManager.loadPicture(this.barImage);
+				if (img.isReady()) {
+					if (this.barDirection === 'rightToLeft') {
+						const xOffset = this.width - barWidth;
+						this.barSprite.bitmap.blt(img, img.width - barWidth, 0, barWidth, img.height, xOffset, 0, barWidth, this.height);
+					} else {
+						this.barSprite.bitmap.blt(img, 0, 0, img.width, img.height, 0, 0, barWidth, this.height);
+					}
+				} else {
+					img.addLoadListener(() => { this._lastBarWidth = -1; });
+				}
 			} else {
-				this.barSprite.bitmap.blt(img, 0, 0, img.width, img.height, 0, 0, barWidth, this.height);
-			}
-		} else {
-			if (this.barDirection === 'rightToLeft') {
-				const xOffset = this.width - barWidth;
-				this.barSprite.bitmap.fillRect(xOffset, 0, barWidth, this.height, this.barColor);
-			} else {
-				this.barSprite.bitmap.fillRect(0, 0, barWidth, this.height, this.barColor);
+				if (this.barDirection === 'rightToLeft') {
+					const xOffset = this.width - barWidth;
+					this.barSprite.bitmap.fillRect(xOffset, 0, barWidth, this.height, this.barColor);
+				} else {
+					this.barSprite.bitmap.fillRect(0, 0, barWidth, this.height, this.barColor);
+				}
 			}
 		}
+
 		if (this.currentValue === this.getMaxValue() && prevValue !== this.currentValue) {
 			this.startFlash();
 		}
@@ -10999,8 +11084,12 @@ class Hendrix_HUD {
 
 				this.flashSprite.bitmap.clear();
 				this.flashSprite.bitmap.fillAll(`rgba(255, 255, 255, ${this.flashIntensity / 255})`);
+				this._wasFlashing = true;
 			} else {
-				this.flashSprite.bitmap.clear();
+				if (this._wasFlashing) {
+					this.flashSprite.bitmap.clear();
+					this._wasFlashing = false;
+				}
 			}
 		}
 	}
@@ -11010,11 +11099,10 @@ const _Scene_Map_createAllWindows = Scene_Map.prototype.createAllWindows;
 Scene_Map.prototype.createAllWindows = function () {
 	_Scene_Map_createAllWindows.call(this);
 	this._isVarBarDragMode = false;
-	this.createHUDResetButton();
 	this.createHuds();
 };
 
-function readUIPositions() {
+function MaithlReadUIPositions() {
 	if (Utils.isNwjs()) {
 		const fs = require('fs');
 		const path = require('path');
@@ -11036,7 +11124,7 @@ function readUIPositions() {
 	};
 }
 
-function saveUIPositions(positions) {
+function MaithlSaveUIPositions(positions) {
 	if (Utils.isNwjs()) {
 		const fs = require('fs');
 		const path = require('path');
@@ -11045,7 +11133,7 @@ function saveUIPositions(positions) {
 	}
 }
 
-function loadPositionsFromFile() {
+function MaithlLoadPositionsFromFile() {
 	if (!Utils.isNwjs()) {
 		fetch('js/variableBarPosition.json')
 			.then(response => response.json())
@@ -11062,9 +11150,9 @@ function loadPositionsFromFile() {
 	}
 }
 
-window.$hudPositions = readUIPositions();
+window.$hudPositions = MaithlReadUIPositions();
 if (!Utils.isNwjs()) {
-	setTimeout(loadPositionsFromFile, 500);
+	setTimeout(MaithlLoadPositionsFromFile, 500);
 }
 
 Scene_Map.prototype.createHuds = function () {
@@ -11089,24 +11177,17 @@ Scene_Map.prototype.updateHudPositions = function () {
 	visibleHUDs.forEach(hud => hud.updatePosition(visibleHUDs));
 };
 
-Scene_Map.prototype.createHUDResetButton = function () {
-	this._resetButton = new Sprite();
-	this._resetButton.bitmap = new Bitmap(100, 40);
-	this._resetButton.x = (Graphics.width - 100) / 2;
-	this._resetButton.y = 20;
-	this._resetButton.bitmap.fillRect(0, 0, 100, 40, '#666666');
-	this._resetButton.bitmap.fontSize = 20;
-	this._resetButton.textColor = '#ffffff';
-	this._resetButton.bitmap.drawText('RESET', 0, 0, 100, 40, 'center');
-	this._resetButton.visible = false;
-	this.addChild(this._resetButton);
-};
-
 Scene_Map.prototype.toggleHUDDragMode = function () {
 	if (!Utils.isOptionValid('test')) return;
 
 	this._isVarBarDragMode = !this._isVarBarDragMode;
-	this._resetButton.visible = this._isVarBarDragMode;
+	if (this.hendrixHuds) {
+		this.hendrixHuds.forEach(hud => {
+			if (hud.dragBorderSprite) {
+				hud.dragBorderSprite.visible = this._isVarBarDragMode;
+			}
+		});
+	}
 
 	if (!this._isVarBarDragMode && this.hendrixHuds) {
 		const positions = {};
@@ -11127,7 +11208,7 @@ Scene_Map.prototype.toggleHUDDragMode = function () {
 			});
 		});
 		window.$hudPositions = positions;
-		saveUIPositions(positions);
+		MaithlSaveUIPositions(positions);
 	}
 };
 
@@ -11156,20 +11237,7 @@ Scene_Map.prototype.resetHUDPositions = function () {
 		window.$hudPositions = {
 			additionalLayers: {}
 		};
-		saveUIPositions(window.$hudPositions);
-	}
-};
-
-Scene_Map.prototype.updateHUDResetButton = function () {
-	if (!this._isVarBarDragMode || !this._resetButton) return;
-
-	if (TouchInput.isTriggered()) {
-		const x = TouchInput.x;
-		const y = TouchInput.y;
-		if (x >= this._resetButton.x && x <= this._resetButton.x + 100 &&
-			y >= this._resetButton.y && y <= this._resetButton.y + 40) {
-			this.resetHUDPositions();
-		}
+		MaithlSaveUIPositions(window.$hudPositions);
 	}
 };
 
@@ -11413,6 +11481,7 @@ Spriteset_Map.prototype.createLowerLayer = function () {
 
 Spriteset_Map.prototype.createCollisionSprites = function () {
 	this._collisionContainer = new PIXI.Container();
+	this._collisionContainer.z = 1;
 	this._collisionSprites = [];
 	this._tilemap.addChild(this._collisionContainer);
 };
@@ -11510,16 +11579,23 @@ const processEvent = function (event, comment, state, mapId) {
 		);
 
 		if (hasComment) {
-			// Check if page uses a switch named "self switch X"
-			if (page.conditions.switch1Valid) {
-				const switchName = $dataSystem.switches[page.conditions.switch1Id];
+			// Check if page uses a switch named "self switch X" (Switch 1 or Switch 2 checkbox)
+			const switchSlots = [
+				[page.conditions.switch1Valid, page.conditions.switch1Id],
+				[page.conditions.switch2Valid, page.conditions.switch2Id]
+			];
+			let matchedSwitchSlot = false;
+			for (const [valid, id] of switchSlots) {
+				if (!valid) continue;
+				const switchName = $dataSystem.switches[id];
 				if (switchName?.toLowerCase().startsWith('self switch')) {
-					$gameSelfSwitches.setValue([mapId, event.eventId(),
-						`SW_${page.conditions.switch1Id}`], state);
+					$gameSelfSwitches.setValue([mapId, event.eventId(), `SW_${id}`], state);
 					event.refresh();
-					return;
+					matchedSwitchSlot = true;
+					break;
 				}
 			}
+			if (matchedSwitchSlot) return;
 
 			// Check abcd self switch
 			if (page.conditions.selfSwitchValid) {
@@ -11555,24 +11631,31 @@ Game_SelfSwitches.prototype.setValue = function (key, value) {
 const H_Game_Event_meetsConditions = Game_Event.prototype.meetsConditions;
 Game_Event.prototype.meetsConditions = function (page) {
 	const c = page.conditions;
-	if (c.switch1Valid) {
-		const switchName = $dataSystem.switches[c.switch1Id];
+	const disabledConditions = {};
+	let allSelfSwitchesMet = true;
+
+	for (const [validKey, idKey] of [['switch1Valid', 'switch1Id'], ['switch2Valid', 'switch2Id']]) {
+		if (!c[validKey]) continue;
+		const switchName = $dataSystem.switches[c[idKey]];
 		if (switchName && switchName.toLowerCase().startsWith('self switch')) {
-			const key = [$gameMap.mapId(), this._eventId, `SW_${c.switch1Id}`];
+			const key = [$gameMap.mapId(), this._eventId, `SW_${c[idKey]}`];
 			if (!$gameSelfSwitches.value(key)) {
-				return false;
+				allSelfSwitchesMet = false;
 			}
-			const modifiedPage = {
-				...page,
-				conditions: {
-					...c,
-					switch1Valid: false
-				}
-			};
-			return H_Game_Event_meetsConditions.call(this, modifiedPage);
+			disabledConditions[validKey] = false;
 		}
 	}
-	return H_Game_Event_meetsConditions.call(this, page);
+
+	if (Object.keys(disabledConditions).length === 0) {
+		return H_Game_Event_meetsConditions.call(this, page);
+	}
+	if (!allSelfSwitchesMet) return false;
+
+	const modifiedPage = {
+		...page,
+		conditions: { ...c, ...disabledConditions }
+	};
+	return H_Game_Event_meetsConditions.call(this, modifiedPage);
 };
 
 //============================================================
@@ -11587,15 +11670,15 @@ PluginManager.registerCommand(HpluginName, "SetValue", function (args) {
 	const eventId = `${$gameMap.mapId()}_${this._eventId}`;
 	const id = args.id || 'default';
 	const valueStr = String(args.valueToSet);
-	const randomMax = args.randomMax;
 
 	LocalVarManager.localVars[eventId] = LocalVarManager.localVars[eventId] || {};
 
 	let newValue;
 
-	if (randomMax && randomMax.trim() !== '') {
-		const min = Number(valueStr);
-		const max = Number(randomMax);
+	if (valueStr.includes(':')) {
+		const parts = valueStr.split(':');
+		const min = Number(parts[0]);
+		const max = Number(parts[1]);
 		newValue = Math.floor(Math.random() * (max - min + 1)) + min;
 	} else {
 		const isPlainString = !/[+\-*/()$=<>!&|]/.test(valueStr) &&
@@ -11803,6 +11886,107 @@ PluginManager.registerCommand(HpluginName, "QuickSwitchVariableReset", function 
 
 	if (Utils.isOptionValid('test')) {
 		console.log(`Quick Reset completed: ${switchesReset} switches, ${variablesReset} variables reset with keyword "${keyword}"`);
+	}
+});
+
+PluginManager.registerCommand(HpluginName, "ResetEventPages", async function (args) {
+	const targetName = String(args.eventName || '').trim();
+	if (!targetName) return;
+
+	const currentMapId = $gameMap.mapId();
+
+	const extraSwitchKeys = [];
+	$dataSystem.switches.forEach((name, switchId) => {
+		if (name && /^self switch\s+/i.test(name)) {
+			extraSwitchKeys.push(`SW_${switchId}`);
+		}
+	});
+
+	for (let mapId = 1; mapId < $dataMapInfos.length; mapId++) {
+		if (!$dataMapInfos[mapId]) continue;
+
+		const mapData = (mapId === currentMapId) ? $dataMap : await SloadAllMapsDataH(mapId);
+		if (!mapData || !mapData.events) continue;
+
+		mapData.events.forEach(eventData => {
+			if (!eventData || eventData.name !== targetName) return;
+
+			const eventId = eventData.id;
+			['A', 'B', 'C', 'D', ...extraSwitchKeys].forEach(key => {
+				$gameSelfSwitches.setValue([mapId, eventId, key], false);
+			});
+		});
+	}
+});
+
+//============================================================
+// ACTOR SKILL USE
+//============================================================
+
+const HforceTargetReplace = (text) => text.replace(/\bplayer\b/gi, 'this');
+const HforceTargetReplaceQuoted = (text) => text.replace(/(['"])((?:(?!\1).)*)\1/g, (full, quote, inner) => quote + HforceTargetReplace(inner) + quote);
+
+function HbuildForceTargetCommandList(list) {
+	return list.map(command => {
+		const cloned = { code: command.code, indent: command.indent, parameters: [...command.parameters] };
+
+		if (cloned.code === 357 && cloned.parameters[3] && typeof cloned.parameters[3] === 'object') {
+			const newArgs = {};
+			for (const key in cloned.parameters[3]) {
+				const val = cloned.parameters[3][key];
+				newArgs[key] = typeof val === 'string' ? HforceTargetReplace(val) : val;
+			}
+			cloned.parameters[3] = newArgs;
+		} else if ((cloned.code === 355 || cloned.code === 655) && typeof cloned.parameters[0] === 'string') {
+			cloned.parameters[0] = HforceTargetReplaceQuoted(cloned.parameters[0]);
+		} else if (cloned.code === 111 && cloned.parameters[0] === 12 && typeof cloned.parameters[1] === 'string') {
+			cloned.parameters[1] = HforceTargetReplaceQuoted(cloned.parameters[1]);
+		} else if ((cloned.code === 205 || cloned.code === 212 || cloned.code === 213) && cloned.parameters[0] < 0) {
+			cloned.parameters[0] = 0;
+		}
+
+		return cloned;
+	});
+}
+
+function HstatusTargetList(list) {
+	return forceStatusTarget ? HbuildForceTargetCommandList(list) : list;
+}
+
+PluginManager.registerCommand(HpluginName, "ActorUseSkill", function (args) {
+	const event = $gameMap.event(this._eventId);
+	if (!event || !event.linkedActorId) return;
+
+	const actor = $gameActors.actor(event.linkedActorId);
+	if (!actor) return;
+
+	let skillId;
+	if (args.useSkillRandomly === 'true') {
+		const skills = actor.skills();
+		if (skills.length === 0) return;
+		skillId = skills[Math.floor(Math.random() * skills.length)].id;
+	} else {
+		skillId = Number(args.skillId);
+		if (!actor.hasSkill(skillId)) return;
+	}
+
+	const skill = $dataSkills[skillId];
+	if (!skill || !actor.canPaySkillCost(skill)) return;
+
+	actor.paySkillCost(skill);
+
+	const forceTarget = args.forceTarget === 'true';
+	const commonEventEffect = skill.effects.find(e => e.code === Game_Action.EFFECT_COMMON_EVENT);
+
+	if (forceTarget && commonEventEffect) {
+		const commonEvent = $dataCommonEvents[commonEventEffect.dataId];
+		if (commonEvent) {
+			this.setupChild(HbuildForceTargetCommandList(commonEvent.list), this._eventId);
+		}
+	} else {
+		const action = new Game_Action(actor);
+		action.setSkill(skillId);
+		action.applyGlobal();
 	}
 });
 
@@ -12249,10 +12433,10 @@ PluginManager.registerCommand(HpluginName, "GunReload", function (args) {
 	const slotIndex = parseInt(args.slot || '0');
 	const weapon = $gameParty.leader().equips()[slotIndex];
 	if (!weapon || !DataManager.isWeapon(weapon)) return;
-	performGunReload(weapon.id);
+	SperformGunReloadH(weapon.id);
 });
 
-function performGunReload(weaponId) {
+function SperformGunReloadH(weaponId) {
 	const gunData = $gameSystem.getGunData(weaponId);
 	if (!gunData) {
 		console.log("Gun Reload: No gun data found for weapon ID (You need to add note to database weapon like <ammo item: x> <capacity: x> or <starting ammo: x>", weaponId);
@@ -12325,7 +12509,7 @@ Game_System.prototype.gunAmmoInInventory = function (slot = 1) {
 // STATES
 //============================================================
 
-function processStateApplication(sourceEvent, targetEventId) {
+function SprocessStateApplicationH(sourceEvent, targetEventId) {
 	if (CollisionManager.lastEvaded || CollisionManager.lastImmunity) {
 		return;
 	}
@@ -12336,20 +12520,28 @@ function processStateApplication(sourceEvent, targetEventId) {
 	if (!dmgMatch) return;
 
 	const skillName = dmgMatch[1].trim();
-	const skill = $dataSkills.find(s => s && s.name === skillName);
+	const skill = skillNameCache[skillName.toLowerCase()];
 	if (!skill || !skill.effects) return;
 
 	skill.effects.forEach(effect => {
 		if (effect.code === Game_Action.EFFECT_ADD_STATE) {
 			const stateId = effect.dataId;
 			const baseRate = effect.value1;
-			const { stateRate, hasStateResist } = checkStateResistance(targetEventId, stateId, baseRate);
+			const { stateRate, hasStateResist } = ScheckStateResistanceH(targetEventId, stateId, baseRate);
 
 			if (hasStateResist) return;
 
 			if (Math.random() < stateRate) {
 				const state = $dataStates[stateId];
 				if (!state) return;
+
+				if (targetEventId === 0 || targetEventId === 'player') {
+					const leader = $gameParty.leader();
+					if (leader) leader.addState(stateId);
+				} else {
+					const stBattler = SgetBattlerForH($gameMap.event(targetEventId));
+					if (stBattler) stBattler.addState(stateId);
+				}
 
 				const commonEventMatch = state.note.match(/<state common event:\s*(.+?)>/i);
 				if (!commonEventMatch) return;
@@ -12398,6 +12590,9 @@ function processStateApplication(sourceEvent, targetEventId) {
 				} else {
 					const targetEvent = $gameMap.event(targetEventId);
 					if (targetEvent) {
+						if (targetEvent.databaseActor) {
+							targetEvent.databaseActor.addState(stateId);
+						}
 						if (!$gameSystem.passiveCommonEvents) {
 							$gameSystem.passiveCommonEvents = {};
 						}
@@ -12421,7 +12616,7 @@ function processStateApplication(sourceEvent, targetEventId) {
 
 						$gameSystem.passiveCommonEvents[$gameMap.mapId()][targetEventId][stateId] = commonEventId;
 						const interpreter = new Game_Interpreter();
-						interpreter.setup($dataCommonEvents[commonEventId].list, targetEventId);
+						interpreter.setup(HstatusTargetList($dataCommonEvents[commonEventId].list), targetEventId);
 						targetEvent.stateInterpreters[stateId] = interpreter;
 					}
 				}
@@ -12430,45 +12625,27 @@ function processStateApplication(sourceEvent, targetEventId) {
 	});
 }
 
-function checkStateResistance(targetEventId, stateId, baseRate = 1.0) {
-	let stateRate = baseRate;
-	let hasStateResist = false;
+function ScheckStateResistanceH(targetEventId, stateId, baseRate = 1.0) {
+	const target = (targetEventId === 0 || targetEventId === 'player')
+		? $gamePlayer
+		: $gameMap.event(targetEventId);
+	const battler = SgetBattlerForH(target);
+	if (!battler) return { stateRate: baseRate, hasStateResist: false };
 
-	if (targetEventId === 0 || targetEventId === 'player') {
-		const actor = $gameParty.leader();
-		if (actor) {
-			const actorStateRate = actor.stateRate ? actor.stateRate(stateId) : 1.0;
-			stateRate = baseRate * actorStateRate;
-			hasStateResist = actor.traitObjects().some(obj =>
-				obj?.traits?.some(trait => trait.code === 14 && trait.dataId === stateId)
-			);
-		}
-	} else {
-		const targetEvent = $gameMap.event(targetEventId);
-		if (targetEvent) {
-			if (targetEvent.databaseActor) {
-				if (typeof targetEvent.databaseActor.stateRate === 'function') {
-					const actorStateRate = targetEvent.databaseActor.stateRate(stateId);
-					stateRate = baseRate * actorStateRate;
-				}
-				if (targetEvent.databaseActor.traitObjects) {
-					hasStateResist = targetEvent.databaseActor.traitObjects().some(obj =>
-						obj?.traits?.some(trait => trait.code === 14 && trait.dataId === stateId)
-					);
-				}
-			} else if (targetEvent.databaseEnemy?.traits) {
-				const rateTrait = targetEvent.databaseEnemy.traits.find(
-					t => t.code === 13 && t.dataId === stateId
-				);
-				if (rateTrait) {
-					stateRate = baseRate * rateTrait.value;
-				} else {
-					stateRate = baseRate;
-				}
+	let stateRate = baseRate * battler.stateRate(stateId);
+	let hasStateResist = battler.isStateResist(stateId);
 
-				hasStateResist = targetEvent.databaseEnemy.traits.some(
-					t => t.code === 14 && t.dataId === stateId
-				);
+	if (target !== $gamePlayer && target && target.stateInterpreters) {
+		for (const activeId of Object.keys(target.stateInterpreters).map(Number)) {
+			if (battler.isStateAffected(activeId)) continue;
+			const activeState = $dataStates[activeId];
+			if (!activeState || !activeState.traits) continue;
+			if (activeState.traits.some(t => t.code === 14 && t.dataId === stateId)) {
+				hasStateResist = true;
+			}
+			const activeRateTrait = activeState.traits.find(t => t.code === 13 && t.dataId === stateId);
+			if (activeRateTrait) {
+				stateRate *= activeRateTrait.value;
 			}
 		}
 	}
@@ -12476,21 +12653,28 @@ function checkStateResistance(targetEventId, stateId, baseRate = 1.0) {
 	return { stateRate, hasStateResist };
 }
 
-function processEnemyAttackTraits(sourceEvent, targetEventId) {
-	if (!sourceEvent.databaseEnemy || !sourceEvent.databaseEnemy.traits) return;
-	const enemy = sourceEvent.databaseEnemy;
+function SprocessEnemyAttackTraitsH(sourceEvent, targetEventId) {
+	const attacker = SgetBattlerForH(sourceEvent);
+	if (!attacker) return;
 
-	enemy.traits.forEach(trait => {
-		if (trait.code === 32) {
-			const stateId = trait.dataId;
-			const stateChance = trait.value;
-			const { stateRate, hasStateResist } = checkStateResistance(targetEventId, stateId, stateChance);
+	attacker.attackStates().forEach(stateId => {
+		{
+			const stateChance = attacker.attackStatesRate(stateId);
+			const { stateRate, hasStateResist } = ScheckStateResistanceH(targetEventId, stateId, stateChance);
 
 			if (hasStateResist) return;
 
 			if (Math.random() < stateRate) {
 				const state = $dataStates[stateId];
 				if (!state) return;
+
+				if (targetEventId === 0 || targetEventId === 'player') {
+					const leader = $gameParty.leader();
+					if (leader) leader.addState(stateId);
+				} else {
+					const stBattler = SgetBattlerForH($gameMap.event(targetEventId));
+					if (stBattler) stBattler.addState(stateId);
+				}
 
 				const commonEventMatch = state.note.match(/<state common event:\s*(.+?)>/i);
 				if (!commonEventMatch) return;
@@ -12522,6 +12706,9 @@ function processEnemyAttackTraits(sourceEvent, targetEventId) {
 				else {
 					const targetEvent = $gameMap.event(targetEventId);
 					if (targetEvent) {
+						if (targetEvent.databaseActor) {
+							targetEvent.databaseActor.addState(stateId);
+						}
 						$gameSystem.passiveCommonEvents = $gameSystem.passiveCommonEvents || {};
 						$gameSystem.passiveCommonEvents[$gameMap.mapId()] = $gameSystem.passiveCommonEvents[$gameMap.mapId()] || {};
 						$gameSystem.passiveCommonEvents[$gameMap.mapId()][targetEventId] = $gameSystem.passiveCommonEvents[$gameMap.mapId()][targetEventId] || {};
@@ -12530,7 +12717,7 @@ function processEnemyAttackTraits(sourceEvent, targetEventId) {
 						if (!targetEvent.stateInterpreters[stateId] || !targetEvent.stateInterpreters[stateId].isRunning()) {
 							$gameSystem.passiveCommonEvents[$gameMap.mapId()][targetEventId][stateId] = commonEventId;
 							const interpreter = new Game_Interpreter();
-							interpreter.setup($dataCommonEvents[commonEventId].list, targetEventId);
+							interpreter.setup(HstatusTargetList($dataCommonEvents[commonEventId].list), targetEventId);
 							targetEvent.stateInterpreters[stateId] = interpreter;
 						}
 					}
@@ -12567,15 +12754,15 @@ PluginManager.registerCommand(HpluginName, "AddState", function (args) {
 
 	targetCharacters.forEach(targetData => {
 		const targetId = targetData.id;
-		const { stateRate, hasStateResist } = checkStateResistance(targetId, stateId);
+		const { stateRate, hasStateResist } = ScheckStateResistanceH(targetId, stateId);
 
 		if (hasStateResist) return;
 		if (Math.random() >= stateRate) return;
 
 		if (targetId === 0) {
 			const actor = $gameParty.leader();
+			if (actor) actor.addState(stateId);
 			if (actor && commonEventId) {
-				actor.addState(stateId);
 
 				if (!$gameSystem.passiveCommonEvents) {
 					$gameSystem.passiveCommonEvents = {};
@@ -12600,6 +12787,10 @@ PluginManager.registerCommand(HpluginName, "AddState", function (args) {
 			}
 		} else {
 			const targetEvent = $gameMap.event(targetId);
+			if (targetEvent) {
+				const evBattler = SgetBattlerForH(targetEvent);
+				if (evBattler) evBattler.addState(stateId);
+			}
 			if (targetEvent && commonEventId) {
 				if (!$gameSystem.passiveCommonEvents) {
 					$gameSystem.passiveCommonEvents = {};
@@ -12618,7 +12809,7 @@ PluginManager.registerCommand(HpluginName, "AddState", function (args) {
 				if (!targetEvent.stateInterpreters[stateId] || !targetEvent.stateInterpreters[stateId].isRunning()) {
 					$gameSystem.passiveCommonEvents[$gameMap.mapId()][targetId][stateId] = commonEventId;
 					const interpreter = new Game_Interpreter();
-					interpreter.setup($dataCommonEvents[commonEventId].list, targetId);
+					interpreter.setup(HstatusTargetList($dataCommonEvents[commonEventId].list), targetId);
 					targetEvent.stateInterpreters[stateId] = interpreter;
 				}
 			}
@@ -12632,18 +12823,14 @@ PluginManager.registerCommand(HpluginName, "RemoveState", function (args) {
 
 	const state = $dataStates[stateId];
 	const commonEventMatch = state.note.match(/<state common event:\s*(.+?)>/i);
-	if (!commonEventMatch) return;
+	let commonEventId = 0;
 
-	const commonEventIdentifier = commonEventMatch[1].trim();
-	let commonEventId;
-
-	if (!isNaN(commonEventIdentifier)) {
-		commonEventId = parseInt(commonEventIdentifier);
-	} else {
-		commonEventId = commonEventNameCache[commonEventIdentifier.toLowerCase()] || 0;
+	if (commonEventMatch) {
+		const commonEventIdentifier = commonEventMatch[1].trim();
+		commonEventId = !isNaN(commonEventIdentifier) ?
+			parseInt(commonEventIdentifier) :
+			commonEventNameCache[commonEventIdentifier.toLowerCase()] || 0;
 	}
-
-	if (!commonEventId) return;
 
 	const callingEventId = this._eventId;
 
@@ -12670,6 +12857,8 @@ PluginManager.registerCommand(HpluginName, "RemoveState", function (args) {
 		// Event
 		const targetEvent = $gameMap.event(callingEventId);
 		if (targetEvent) {
+			const evBattler = SgetBattlerForH(targetEvent);
+			if (evBattler) evBattler.removeState(stateId);
 			if ($gameSystem.passiveCommonEvents?.[$gameMap.mapId()]?.[callingEventId]?.[stateId]) {
 				delete $gameSystem.passiveCommonEvents[$gameMap.mapId()][callingEventId][stateId];
 
@@ -12684,6 +12873,127 @@ PluginManager.registerCommand(HpluginName, "RemoveState", function (args) {
 		}
 	}
 });
+
+function findEventByLinkedActorId_StateCEH(actorId) {
+	if (!$gameMap) return null;
+	return $gameMap.events().find(ev => ev && ev.linkedActorId === actorId) || null;
+}
+
+const S_Game_Battler_addState_StateCEH = Game_Battler.prototype.addState;
+Game_Battler.prototype.addState = function (stateId) {
+	const wasAffected = this.isStateAffected(stateId);
+	S_Game_Battler_addState_StateCEH.call(this, stateId);
+
+	if (!wasAffected && this.isStateAffected(stateId) && this.isActor && this.isActor()) {
+		const state = $dataStates[stateId];
+		if (!state || !state.note) return;
+
+		const commonEventMatch = state.note.match(/<state common event:\s*(.+?)>/i);
+		if (!commonEventMatch) return;
+
+		const commonEventIdentifier = commonEventMatch[1].trim();
+		const commonEventId = !isNaN(commonEventIdentifier) ?
+			parseInt(commonEventIdentifier) :
+			commonEventNameCache[commonEventIdentifier.toLowerCase()] || 0;
+
+		if (!commonEventId || !$dataCommonEvents[commonEventId]) return;
+
+		if (this === $gameParty.leader()) {
+			$gameSystem.passiveCommonEvents = $gameSystem.passiveCommonEvents || {};
+			$gameSystem.passiveCommonEvents[$gameMap.mapId()] = $gameSystem.passiveCommonEvents[$gameMap.mapId()] || {};
+			$gameSystem.passiveCommonEvents[$gameMap.mapId()]['player'] = $gameSystem.passiveCommonEvents[$gameMap.mapId()]['player'] || {};
+			$gamePlayer.stateInterpreters = $gamePlayer.stateInterpreters || {};
+
+			if (!$gamePlayer.stateInterpreters[stateId] || !$gamePlayer.stateInterpreters[stateId].isRunning()) {
+				$gameSystem.passiveCommonEvents[$gameMap.mapId()]['player'][stateId] = commonEventId;
+				const interpreter = new Game_Interpreter();
+				interpreter.setup($dataCommonEvents[commonEventId].list, 0);
+				$gamePlayer.stateInterpreters[stateId] = interpreter;
+			}
+		} else {
+			const targetEvent = findEventByLinkedActorId_StateCEH(this.actorId());
+			if (targetEvent) {
+				const targetEventId = targetEvent.eventId();
+				$gameSystem.passiveCommonEvents = $gameSystem.passiveCommonEvents || {};
+				$gameSystem.passiveCommonEvents[$gameMap.mapId()] = $gameSystem.passiveCommonEvents[$gameMap.mapId()] || {};
+				$gameSystem.passiveCommonEvents[$gameMap.mapId()][targetEventId] = $gameSystem.passiveCommonEvents[$gameMap.mapId()][targetEventId] || {};
+				targetEvent.stateInterpreters = targetEvent.stateInterpreters || {};
+
+				if (!targetEvent.stateInterpreters[stateId] || !targetEvent.stateInterpreters[stateId].isRunning()) {
+					$gameSystem.passiveCommonEvents[$gameMap.mapId()][targetEventId][stateId] = commonEventId;
+					const interpreter = new Game_Interpreter();
+					interpreter.setup(HstatusTargetList($dataCommonEvents[commonEventId].list), targetEventId);
+					targetEvent.stateInterpreters[stateId] = interpreter;
+				}
+			}
+		}
+	}
+};
+
+const S_Game_Battler_removeState_StateCEH = Game_Battler.prototype.removeState;
+Game_Battler.prototype.removeState = function (stateId) {
+	const wasAffected = this.isStateAffected(stateId);
+	S_Game_Battler_removeState_StateCEH.call(this, stateId);
+
+	if (wasAffected && !this.isStateAffected(stateId) && this.isActor && this.isActor()) {
+		if (this === $gameParty.leader()) {
+			if ($gameSystem.passiveCommonEvents?.[$gameMap.mapId()]?.['player']?.[stateId]) {
+				delete $gameSystem.passiveCommonEvents[$gameMap.mapId()]['player'][stateId];
+
+				if (Object.keys($gameSystem.passiveCommonEvents[$gameMap.mapId()]['player']).length === 0) {
+					delete $gameSystem.passiveCommonEvents[$gameMap.mapId()]['player'];
+				}
+			}
+
+			if ($gamePlayer.stateInterpreters?.[stateId]) {
+				delete $gamePlayer.stateInterpreters[stateId];
+			}
+		} else {
+			const targetEvent = findEventByLinkedActorId_StateCEH(this.actorId());
+			if (targetEvent) {
+				const targetEventId = targetEvent.eventId();
+				if ($gameSystem.passiveCommonEvents?.[$gameMap.mapId()]?.[targetEventId]?.[stateId]) {
+					delete $gameSystem.passiveCommonEvents[$gameMap.mapId()][targetEventId][stateId];
+
+					if (Object.keys($gameSystem.passiveCommonEvents[$gameMap.mapId()][targetEventId]).length === 0) {
+						delete $gameSystem.passiveCommonEvents[$gameMap.mapId()][targetEventId];
+					}
+				}
+
+				if (targetEvent.stateInterpreters?.[stateId]) {
+					delete targetEvent.stateInterpreters[stateId];
+				}
+			}
+		}
+	}
+};
+
+window.hasState = function (identifier, stateId, context = null) {
+	const target = findTarget(identifier, context);
+	if (!target) return false;
+
+	const resolvedStateId = !isNaN(stateId) ?
+		parseInt(stateId) :
+		(stateNameCache[stateId.toLowerCase()] || 0);
+
+	if (resolvedStateId <= 0) return false;
+
+	if (target === $gamePlayer) {
+		const actor = $gameParty.leader();
+		return actor ? actor.isStateAffected(resolvedStateId) : false;
+	}
+
+	const hsBattler = SgetBattlerForH(target);
+	if (hsBattler && hsBattler.isStateAffected(resolvedStateId)) {
+		return true;
+	}
+
+	if (target.stateInterpreters && target.stateInterpreters[resolvedStateId]) {
+		return target.stateInterpreters[resolvedStateId].isRunning();
+	}
+
+	return false;
+};
 
 //============================================================
 // KNOCKBACK
@@ -12740,8 +13050,8 @@ PluginManager.registerCommand(HpluginName, "Knockback", function (args) {
 					const eventPos = event.positionPoint();
 					const thisPos = character.positionPoint();
 					const dist = Math.sqrt(
-						Math.pow(eventPos.x - thisPos.x, 2) +
-						Math.pow(eventPos.y - thisPos.y, 2)
+						Math.pow($gameMap.deltaX(eventPos.x, thisPos.x), 2) +
+						Math.pow($gameMap.deltaY(eventPos.y, thisPos.y), 2)
 					);
 
 					if (dist < minDistance) {
@@ -12758,8 +13068,8 @@ PluginManager.registerCommand(HpluginName, "Knockback", function (args) {
 		}
 
 		const thisPos = character.positionPoint();
-		const dx = thisPos.x - targetX;
-		const dy = thisPos.y - targetY;
+		const dx = $gameMap.deltaX(thisPos.x, targetX);
+		const dy = $gameMap.deltaY(thisPos.y, targetY);
 
 		const radians = Math.atan2(dy, dx);
 		let moveDegrees = (radians * 180 / Math.PI + 90) % 360;
@@ -12800,7 +13110,14 @@ PluginManager.registerCommand(HpluginName, "Knockback", function (args) {
 				jumpY = -dist;
 			}
 
-			character.jump(jumpX, jumpY);
+			const dirX = Math.sign(jumpX);
+			const dirY = Math.sign(jumpY);
+			let safeDist = dist;
+			while (safeDist > 0 && !character.isValidPosition(character.x + dirX * safeDist, character.y + dirY * safeDist)) {
+				safeDist--;
+			}
+
+			character.jump(dirX * safeDist, dirY * safeDist);
 		}
 		else if (H_DotMoveSystem) {
 			if (!character.knockback) {
@@ -12828,9 +13145,9 @@ PluginManager.registerCommand(HpluginName, "Knockback", function (args) {
 	}
 });
 
-const _Game_Character_update_knockback = Game_Character.prototype.update;
+const _SGame_Character_updateH = Game_Character.prototype.update;
 Game_Character.prototype.update = function () {
-	_Game_Character_update_knockback.call(this);
+	_SGame_Character_updateH.call(this);
 	this.updateLockIn();
 	this.updateJumpPhysics();
 	if (this.knockback && this.knockback.active && H_DotMoveSystem) {
@@ -12851,6 +13168,14 @@ Game_Character.prototype.update = function () {
 			data.active = false;
 			this.knockback = null;
 		}
+	}
+	if (this._rotateLerp) {
+		const lerp = this._rotateLerp;
+		lerp.elapsed++;
+		const t = Math.min(lerp.elapsed / lerp.frames, 1);
+		const eased = 1 - Math.pow(1 - t, 2);
+		this.setRotation(lerp.start + (lerp.target - lerp.start) * eased);
+		if (t >= 1) this._rotateLerp = null;
 	}
 };
 
@@ -12915,6 +13240,61 @@ PluginManager.registerCommand(HpluginName, "DynamicPassable", function (args) {
 	});
 });
 
+PluginManager.registerCommand(HpluginName, "GainItemsRandomly", function (args) {
+	const percentage = Number(eval(args.percentage)) || 0;
+	if (Math.random() * 100 >= percentage) return;
+
+	let itemList = [];
+	try {
+		itemList = JSON.parse(args.itemList || '[]');
+	} catch (e) {
+		return;
+	}
+
+	const pool = [];
+	itemList.forEach(entryStr => {
+		let entry = {};
+		try {
+			entry = JSON.parse(entryStr);
+		} catch (e) {
+			return;
+		}
+
+		const weaponId = parseInt(entry.Weapon || 0);
+		const itemId = parseInt(entry.Item || 0);
+		const armorId = parseInt(entry.Armor || 0);
+		const weight = Math.max(1, parseInt(entry.Weight || 1));
+
+		if (weaponId > 0 && $dataWeapons[weaponId]) pool.push({ data: $dataWeapons[weaponId], weight });
+		if (itemId > 0 && $dataItems[itemId]) pool.push({ data: $dataItems[itemId], weight });
+		if (armorId > 0 && $dataArmors[armorId]) pool.push({ data: $dataArmors[armorId], weight });
+	});
+
+	if (pool.length === 0) return;
+
+	const totalWeight = pool.reduce((sum, entry) => sum + entry.weight, 0);
+	let roll = Math.random() * totalWeight;
+	let chosen = pool[pool.length - 1].data;
+
+	for (const entry of pool) {
+		if (roll < entry.weight) {
+			chosen = entry.data;
+			break;
+		}
+		roll -= entry.weight;
+	}
+
+	$gameParty.gainItem(chosen, 1);
+});
+
+PluginManager.registerCommand(HpluginName, "ChangePriority", function (args) {
+	const priorityType = Number(args.priority);
+	const targets = findTargets(args.target, this);
+	for (const target of targets) {
+		target.setPriorityType(priorityType);
+	}
+});
+
 if (H_DotMoveSystem) {
 	Game_Player.prototype.checkCollisionTargetEvent = function (x, y, d, event) {
 		if ($gameSystem._playerPassThroughEvents &&
@@ -12927,19 +13307,34 @@ if (H_DotMoveSystem) {
 		if (this.isThrough() || event.isThrough()) {
 			return false;
 		}
+		if (this._priorityType === 2 || event._priorityType === 2) {
+			return false;
+		}
 		return true;
 	};
 }
 
-PluginManager.registerCommand(HpluginName, "StopQueue", function () {
-	const event = this.character(0);
-	if (event && event instanceof Game_Event) {
+PluginManager.registerCommand(HpluginName, "StopQueue", function (args) {
+	const identifier = (args && args.target && args.target.trim() !== '') ? args.target.trim() : 'this';
+	let targets;
+
+	if (identifier.startsWith('nearby ')) {
+		const tag = identifier.slice(7);
+		const sourceEvent = $gameMap.event(this._eventId);
+		const nearestEvent = sourceEvent ? findNearestTarget(tag, sourceEvent.x, sourceEvent.y) : null;
+		targets = (nearestEvent && nearestEvent !== sourceEvent) ? [nearestEvent] : [];
+	} else {
+		targets = findTargets(identifier, this);
+	}
+
+	targets.forEach(event => {
+		if (!(event instanceof Game_Event)) return;
 		event.stopQueue();
-		if (this._eventId > 0) {
+		if (event.eventId() === this._eventId) {
 			this.waitMode = '';
 		}
 		event._waitCount = 0;
-	}
+	});
 });
 
 Game_Event.prototype.stopQueue = function () {
@@ -13067,6 +13462,15 @@ Sprite_Character.prototype.showEventIdAndName = function () {
 			this.addChild(this._debugText);
 		}
 	}
+};
+
+// Fix $gamePlayer.dash(x) script call not update camera
+const H_Game_Character_dash = Game_Character.prototype.dash;
+Game_Player.prototype.dash = function (steps) {
+	const beforeX = this.scrolledX();
+	const beforeY = this.scrolledY();
+	H_Game_Character_dash.call(this, steps);
+	this.updateScroll(beforeX, beforeY);
 };
 
 //============================================================
@@ -13235,8 +13639,8 @@ class Sprite_EventEffect extends Sprite {
 
 		const pw = this._targetSprite.patternWidth();
 		const ph = this._targetSprite.patternHeight();
-		const sx = this._targetSprite.characterBlockX() + this._targetSprite.characterPatternX() * pw;
-		const sy = this._targetSprite.characterBlockY() + this._targetSprite.characterPatternY() * ph;
+		const sx = (this._targetSprite.characterBlockX() + this._targetSprite.characterPatternX()) * pw;
+		const sy = (this._targetSprite.characterBlockY() + this._targetSprite.characterPatternY()) * ph;
 
 		sprite.setFrame(sx, sy, pw, ph);
 	}
@@ -13504,6 +13908,30 @@ Sprite_Character.prototype.setHue = function (hue) {
 };
 
 //============================================================
+// $ OFFSET REMOVAL
+//============================================================
+
+if (ignoreDollarOffset) {
+	const H_ImageManager_isObjectCharacter = ImageManager.isObjectCharacter;
+	let animFrameRegex1 = null;
+	let animFrameRegex2 = null;
+	if (Imported.Hendrix_Animation_Solution) {
+		const animFrameKeyword = PluginManager.parameters('Hendrix_Animation_Solution')['Frame Keyword'] || 'f';
+		animFrameRegex1 = new RegExp(`${animFrameKeyword}(\\d+)$`);
+		animFrameRegex2 = new RegExp(`${animFrameKeyword}\\((\\d+)\\)$`);
+	}
+
+	ImageManager.isObjectCharacter = function (filename) {
+		if (H_ImageManager_isObjectCharacter.call(this, filename)) return true;
+		const baseName = Utils.extractFileName(filename);
+		const sign = baseName.match(/^[!$]+/);
+		if (sign && sign[0].includes("$")) return true;
+		if (animFrameRegex1 && (animFrameRegex1.test(baseName) || animFrameRegex2.test(baseName))) return true;
+		return false;
+	};
+}
+
+//============================================================
 // DOT MOVE ADD ON
 //============================================================
 
@@ -13535,6 +13963,23 @@ Game_CharacterBase.prototype.rotation = function () {
 	return this._rotation;
 };
 
+Game_CharacterBase.prototype._applyRotation = function (deg, lerpFrames) {
+	if (lerpFrames && lerpFrames > 0) {
+		const current = this._rotation ?? 0;
+		let diff = ((deg - current) % 360 + 540) % 360 - 180;
+		this._rotateLerp = {
+			start: current,
+			target: current + diff,
+			frames: lerpFrames,
+			elapsed: 0
+		};
+		this._waitCount = lerpFrames - 1;
+	} else {
+		this._rotateLerp = null;
+		this.setRotation(deg);
+	}
+};
+
 Game_CharacterBase.prototype.setRotation = function (deg) {
 	const hadRotationCapability = this._hasRotationCapability;
 	this._rotation = deg;
@@ -13558,26 +14003,7 @@ Game_CharacterBase.prototype.setCustomRotation = function (enabled) {
 
 const H_Sprite_Character_updatePosition = Sprite_Character.prototype.updatePosition;
 Sprite_Character.prototype.updatePosition = function () {
-	// Shake fix for diagonal movement
-	if (fixShakyEvents && this._character && !this._character.customRotationPoint) {
-		const tw = $gameMap.tileWidth();
-		const th = $gameMap.tileHeight();
-		const newX = this._character.scrolledX() * tw + tw / 2;
-		const newY = this._character.scrolledY() * th + th - (this._character.isJumping() ? this._character.jumpHeight() : 0);
-
-		if (!this._lastSpriteX || !this._lastSpriteY ||
-			Math.abs(newX - this._lastSpriteX) >= 0.01 ||
-			Math.abs(newY - this._lastSpriteY) >= 0.01) {
-
-			this._lastSpriteX = newX;
-			this._lastSpriteY = newY;
-			this.x = Math.round(newX);
-			this.y = Math.round(newY);
-			this.z = this._character.screenZ();
-		}
-	} else {
-		H_Sprite_Character_updatePosition.call(this);
-	}
+	H_Sprite_Character_updatePosition.call(this);
 
 	if (this._character === $gamePlayer && (playerGraphicalOffsetX !== 0 || playerGraphicalOffsetY !== 0)) {
 		this.x += playerGraphicalOffsetX;
@@ -13609,7 +14035,9 @@ Sprite_Character.prototype.updatePosition = function () {
 	}
 
 	if (this._character && this._character.customRotationPoint) {
-		this.rotation = (this._character.rotation() * Math.PI) / 180;
+		if (!this._character._lockSpriteRotation) {
+			this.rotation = (this._character.rotation() * Math.PI) / 180;
+		}
 		const origin = this._character.originPoint();
 
 		if (this._character.cachedShouldCheckFlip === undefined) {
@@ -13619,7 +14047,7 @@ Sprite_Character.prototype.updatePosition = function () {
 				$gameMap.events().some(event => event.event().name === origin);
 		}
 
-		if (this._character.cachedShouldCheckFlip) {
+		if (this._character.cachedShouldCheckFlip && !this._character._lockSpriteRotation) {
 			let currentAngle = this._character.rotation() % 360;
 			if (currentAngle < 0) currentAngle += 360;
 
@@ -13923,49 +14351,130 @@ if (H_DotMoveSystem) {
 let playerMovementDisabled = false;
 const movementKeys = ["left", "up", "right", "down", "downLeft", "downRight", "upLeft", "upRight"];
 
+const _heldMovementKeys = new Set();
+
+const H_Input_onKeyDown = Input._onKeyDown;
+Input._onKeyDown = function (event) {
+	H_Input_onKeyDown.call(this, event);
+	const keyName = this.keyMapper[event.keyCode];
+	if (keyName && movementKeys.includes(keyName)) {
+		_heldMovementKeys.add(keyName);
+	}
+};
+
+const H_Input_onKeyUp = Input._onKeyUp;
+Input._onKeyUp = function (event) {
+	H_Input_onKeyUp.call(this, event);
+	const keyName = this.keyMapper[event.keyCode];
+	if (keyName && movementKeys.includes(keyName)) {
+		_heldMovementKeys.delete(keyName);
+	}
+};
+
 const H_Input_isPressed = Input.isPressed;
 Input.isPressed = function (keyName) {
+	if (HallInputBlocked) return false;
 	if (playerMovementDisabled && movementKeys.includes(keyName)) return false;
 	return H_Input_isPressed.call(this, keyName);
 };
 
 const H_Input_isRepeated = Input.isRepeated;
 Input.isRepeated = function (keyName) {
+	if (HallInputBlocked) return false;
 	if (playerMovementDisabled && movementKeys.includes(keyName)) return false;
 	return H_Input_isRepeated.call(this, keyName);
 };
 
 const H_Input_isLongPressed = Input.isLongPressed;
 Input.isLongPressed = function (keyName) {
+	if (HallInputBlocked) return false;
 	if (playerMovementDisabled && movementKeys.includes(keyName)) return false;
 	return H_Input_isLongPressed.call(this, keyName);
 };
 
+const H_TouchInput_isTriggered = TouchInput.isTriggered.bind(TouchInput);
+TouchInput.isTriggered = function () {
+	if (HallInputBlocked) return false;
+	return H_TouchInput_isTriggered();
+};
+
+const H_TouchInput_isPressed = TouchInput.isPressed.bind(TouchInput);
+TouchInput.isPressed = function () {
+	if (HallInputBlocked) return false;
+	return H_TouchInput_isPressed();
+};
+
+const H_TouchInput_isCancelled = TouchInput.isCancelled.bind(TouchInput);
+TouchInput.isCancelled = function () {
+	if (HallInputBlocked) return false;
+	return H_TouchInput_isCancelled();
+};
+
 const H_Input_pollGamepads = Input._pollGamepads;
 Input._pollGamepads = function () {
-	if (playerMovementDisabled) return;
+	if (HallInputBlocked) return;
+	if (playerMovementDisabled) {
+		const origCurrentState = { ...this._currentState };
+		H_Input_pollGamepads.call(this);
+		for (const key of movementKeys) {
+			this._currentState[key] = origCurrentState[key] || false;
+		}
+		return;
+	}
 	H_Input_pollGamepads.call(this);
 };
 
 const H_Game_Player_moveByInput = Game_Player.prototype.moveByInput;
 Game_Player.prototype.moveByInput = function () {
-    if (playerMovementDisabled) {
-        $gameTemp.clearDestination();
-        return;
-    }
-    H_Game_Player_moveByInput.call(this);
+	if (playerMovementDisabled) {
+		$gameTemp.clearDestination();
+		return;
+	}
+	H_Game_Player_moveByInput.call(this);
 };
 
+PluginManager.registerCommand(HpluginName, "GameMode", args => {
+	isBeatEmUp = args.gameMode === 'beatup';
+	$gameSystem._isBeatEmUp = isBeatEmUp;
+});
+
 PluginManager.registerCommand(HpluginName, "ControlPlayerMovement", args => {
+	const wasDisabled = playerMovementDisabled;
 	playerMovementDisabled = !(args.allowMovement === 'true');
+
 	if (playerMovementDisabled) {
-		Input._currentState = {};
+		for (const key of movementKeys) {
+			delete Input._currentState[key];
+		}
 		if (typeof AnalogStickExPluginName !== 'undefined' && Input._analogStickState) {
 			Input._analogStickState = {};
 		}
 		$gameTemp.clearDestination();
+	} else if (wasDisabled) {
+		for (const key of _heldMovementKeys) {
+			Input._currentState[key] = true;
+		}
 	}
 });
+
+PluginManager.registerCommand(HpluginName, "ControlInput", args => {
+	const wasBlocked = HallInputBlocked;
+	HallInputBlocked = args.blockAllInput === 'true';
+	if (HallInputBlocked) {
+		Input.clear();
+		TouchInput.clear();
+	} else if (wasBlocked) {
+		for (const key of _heldMovementKeys) {
+			Input._currentState[key] = true;
+		}
+	}
+});
+
+const H_Scene_Title_start = Scene_Title.prototype.start;
+Scene_Title.prototype.start = function () {
+	HallInputBlocked = false;
+	H_Scene_Title_start.call(this);
+};
 
 //============================================================
 // PASSABLE TILES AND EVENTS
@@ -13973,7 +14482,7 @@ PluginManager.registerCommand(HpluginName, "ControlPlayerMovement", args => {
 
 let passageCache = {};
 
-function generateCacheKey(x, y, bit) {
+function SgenerateCacheKeyH(x, y, bit) {
 	return `${x},${y},${bit}`;
 }
 
@@ -14029,7 +14538,7 @@ Game_Map.prototype.buildPassEventPositions = function () {
 
 Game_Map.prototype.clearPassageCacheForPosition = function (x, y) {
 	for (let bit = 1; bit <= 15; bit++) {
-		const cacheKey = generateCacheKey(x, y, bit);
+		const cacheKey = SgenerateCacheKeyH(x, y, bit);
 		delete passageCache[cacheKey];
 	}
 };
@@ -14073,7 +14582,7 @@ Game_Event.prototype.setPosition = function (x, y) {
 
 const allowRegionID = Number(Hparameters['Allow Region ID'] || 0);
 Game_Map.prototype.checkPassage = function (x, y, bit) {
-	const cacheKey = generateCacheKey(x, y, bit);
+	const cacheKey = SgenerateCacheKeyH(x, y, bit);
 
 	if (passageCache.hasOwnProperty(cacheKey)) {
 		return passageCache[cacheKey];
@@ -14139,13 +14648,13 @@ Game_Map.prototype.isPassable = function (x, y, d) {
 		return true;
 	}
 	const isPlayer = this._interpreter ? this._interpreter._eventId === 0 : false;
-	if (shouldBlockPassage(x, y, isPlayer)) {
+	if (SshouldBlockPassageH(x, y, isPlayer)) {
 		return false;
 	}
 	return H_Game_Map_isPassable.call(this, x, y, d);
 };
 
-function shouldBlockPassage(x, y, isPlayer) {
+function SshouldBlockPassageH(x, y, isPlayer) {
 	if ((isPlayer && blockTarget === 'events') || (!isPlayer && blockTarget === 'player')) {
 		return false;
 	}
@@ -14179,10 +14688,13 @@ Game_CharacterBase.prototype.isThrough = function () {
 		if ((isPlayer && blockTarget === 'events') || (!isPlayer && blockTarget === 'player')) {
 			return isNormallyThrough;
 		}
+		if (this._priorityType === 2) {
+			return isNormallyThrough;
+		}
 		const d = this.direction();
 		const x2 = $gameMap.roundXWithDirection(this.x, d);
 		const y2 = $gameMap.roundYWithDirection(this.y, d);
-		if (shouldBlockPassage(x2, y2, isPlayer)) {
+		if (SshouldBlockPassageH(x2, y2, isPlayer)) {
 			return false;
 		}
 	}
@@ -14204,7 +14716,7 @@ if (H_DotMoveSystem) {
 		}
 
 		const isPlayer = this === $gamePlayer;
-		if (shouldBlockPassage(x2, y2, isPlayer)) {
+		if (this._priorityType !== 2 && SshouldBlockPassageH(x2, y2, isPlayer)) {
 			return false;
 		}
 
@@ -14223,7 +14735,7 @@ if (H_DotMoveSystem) {
 		}
 
 		const isPlayer = this._character === $gamePlayer;
-		if (shouldBlockPassage(ix, iy, isPlayer)) {
+		if (this._character._priorityType !== 2 && SshouldBlockPassageH(ix, iy, isPlayer)) {
 			return false;
 		}
 
@@ -14300,7 +14812,7 @@ Game_CharacterBase.prototype.animationWait = function () {
 };
 
 //=============================================================================
-// Clickable Events with Outline Effect
+// Clickable Events
 //=============================================================================
 
 window._eventsWithOutline = new Map();
@@ -14308,102 +14820,51 @@ window._eventsWithOutline = new Map();
 const H_Sprite_Character_initialize = Sprite_Character.prototype.initialize;
 Sprite_Character.prototype.initialize = function (character) {
 	H_Sprite_Character_initialize.call(this, character);
-	this._outlineSprite = new Sprite();
-	this._outlineSprite.visible = false;
-	this._outlineSprite.alpha = 0.8;
+	this._outlineFilter = null;
 	if (this._character instanceof Game_Event) {
 		this.updateCustomProperties();
 	}
-	this.addChild(this._outlineSprite);
 };
 
 Sprite_Character.prototype.createEventOutline = function () {
-	if (!this.bitmap?.isReady()) return;
-
-	const pw = this.patternWidth();
-	const ph = this.patternHeight();
-	const sx = this.characterBlockX() + this.characterPatternX() * pw;
-	const sy = this.characterBlockY() + this.characterPatternY() * ph;
-
-	const thickness = 2;
-	const padding = thickness * 2;
-	const tempCanvas = document.createElement('canvas');
-	const tempCtx = tempCanvas.getContext('2d');
-	[tempCanvas.width, tempCanvas.height] = [pw + padding, ph + padding];
-
-	tempCtx.drawImage(this.bitmap._canvas || this.bitmap._image,
-		sx, sy, pw, ph,
-		padding / 2, padding / 2, pw, ph);
-
-	const pixels = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height).data;
-	const outlineData = tempCtx.createImageData(tempCanvas.width, tempCanvas.height);
-
-	for (let y = 0; y < tempCanvas.height; y++) {
-		for (let x = 0; x < tempCanvas.width; x++) {
-			const i = (y * tempCanvas.width + x) * 4;
-			if (pixels[i + 3] < 128) {
-				const hasNonTransparentNeighbor = Array.from({ length: thickness }, (_, d) => d + 1).some(d => {
-					const positions = [
-						[x + d, y], [x - d, y],
-						[x, y + d], [x, y - d],
-						[x + d, y + d], [x - d, y - d],
-						[x + d, y - d], [x - d, y + d]
-					];
-
-					return positions.some(([checkX, checkY]) => {
-						const validX = checkX >= 0 && checkX < tempCanvas.width;
-						const validY = checkY >= 0 && checkY < tempCanvas.height;
-						if (!validX || !validY) return false;
-						const checkI = (checkY * tempCanvas.width + checkX) * 4;
-						return pixels[checkI + 3] >= 128;
-					});
-				});
-
-				if (hasNonTransparentNeighbor) {
-					outlineData.data.set([255, 255, 0, 255], i);
-				}
-			}
-		}
+	if (!this._outlineFilter) {
+		const thickness = Number(clickableOutlineSettings.Thickness || 2);
+		const colorStr = String(clickableOutlineSettings.Color || '#FFFFFF').replace('#', '0x');
+		const color = Number(colorStr) || 0xffff00;
+		const opacity = Number(clickableOutlineSettings.Opacity !== undefined ? clickableOutlineSettings.Opacity : 255) / 255;
+		this._outlineFilter = new PIXI.filters.OutlineFilter(thickness, color, 1.0, opacity);
 	}
+	if (!this.filters) this.filters = [];
+	if (!this.filters.includes(this._outlineFilter)) {
+		this.filters.push(this._outlineFilter);
+	}
+};
 
-	const outlineBitmap = new Bitmap(tempCanvas.width, tempCanvas.height);
-	outlineBitmap.context.putImageData(outlineData, 0, 0);
-	this._outlineSprite.bitmap = outlineBitmap;
-
-	this._outlineSprite.anchor.x = this.anchor.x;
-	this._outlineSprite.anchor.y = this.anchor.y;
-	this._outlineSprite.x = 0;
-	this._outlineSprite.y = 2;
-	this._outlineSprite.scale.x = this.scale.x;
-	this._outlineSprite.scale.y = this.scale.y;
+Sprite_Character.prototype.removeEventOutline = function () {
+	if (!this._outlineFilter || !this.filters) return;
+	this.filters = this.filters.filter(f => f !== this._outlineFilter);
+	this._outlineFilter = null;
 };
 
 Sprite_Character.prototype.updateEventOutline = function () {
 	if (!(this._character instanceof Game_Event)) return;
-	if (Graphics.frameCount % 4 !== 0) return;
 
 	const shouldShow = this.shouldHaveEventOutline() && this.isEventHovered();
 
-	if (shouldShow && (!this._outlineSprite.bitmap ||
-		this._character._pattern !== this._lastOutlinePattern ||
-		this._character._direction !== this._lastOutlineDirection)) {
-
+	if (shouldShow && !this._outlineFilter) {
 		this.createEventOutline();
-		this._lastOutlinePattern = this._character._pattern;
-		this._lastOutlineDirection = this._character._direction;
+	} else if (!shouldShow && this._outlineFilter) {
+		this.removeEventOutline();
 	}
-
-	this._outlineSprite.visible = shouldShow;
 };
-
 Sprite_Character.prototype.shouldHaveEventOutline = function () {
 	if (!this._character?.event) return false;
 
 	const eventId = this._character.eventId();
 	const checkInRange = (id, range) => {
 		if (range === Infinity) return true;
-		const dx = Math.abs(this._character.x - $gamePlayer.x);
-		const dy = Math.abs(this._character.y - $gamePlayer.y);
+		const dx = Math.abs($gameMap.deltaX(this._character.x, $gamePlayer.x));
+		const dy = Math.abs($gameMap.deltaY(this._character.y, $gamePlayer.y));
 		return dx <= range && dy <= range;
 	};
 
@@ -14419,19 +14880,20 @@ Sprite_Character.prototype.isEventHovered = function () {
 		const event = this._character;
 		const range = window._eventsWithOutline.get(event._eventId) || 1;
 
-		const dx = Math.abs(event.x - $gamePlayer.x);
-		const dy = Math.abs(event.y - $gamePlayer.y);
+		const dx = Math.abs($gameMap.deltaX(event.x, $gamePlayer.x));
+		const dy = Math.abs($gameMap.deltaY(event.y, $gamePlayer.y));
 		return dx <= range && dy <= range;
 	}
 
 	const screenX = this._character.screenX();
 	const screenY = this._character.screenY();
 	const hitbox = this._character.hitboxData();
+	const touch = Imported.Hendrix_Map_Zoom ? HendrixTouchInput : TouchInput;
 
-	return TouchInput.x >= screenX - $gameMap.tileWidth() / 2 + hitbox.offsetX &&
-		TouchInput.x <= screenX - $gameMap.tileWidth() / 2 + hitbox.offsetX + hitbox.width * $gameMap.tileWidth() &&
-		TouchInput.y >= screenY - $gameMap.tileHeight() + hitbox.offsetY &&
-		TouchInput.y <= screenY - $gameMap.tileHeight() + hitbox.offsetY + hitbox.height * $gameMap.tileHeight();
+	return touch.x >= screenX - $gameMap.tileWidth() / 2 + hitbox.offsetX &&
+		touch.x <= screenX - $gameMap.tileWidth() / 2 + hitbox.offsetX + hitbox.width * $gameMap.tileWidth() &&
+		touch.y >= screenY - $gameMap.tileHeight() + hitbox.offsetY &&
+		touch.y <= screenY - $gameMap.tileHeight() + hitbox.offsetY + hitbox.height * $gameMap.tileHeight();
 };
 
 Game_Event.prototype.isBeingHovered = function () {
@@ -14448,12 +14910,13 @@ Game_Event.prototype.isBeingHovered = function () {
 	if (window._eventsWithOutline.has(this._eventId)) {
 		range = window._eventsWithOutline.get(this._eventId);
 	}
-	const dx = Math.abs(this.x - $gamePlayer.x);
-	const dy = Math.abs(this.y - $gamePlayer.y);
+	const dx = Math.abs($gameMap.deltaX(this.x, $gamePlayer.x));
+	const dy = Math.abs($gameMap.deltaY(this.y, $gamePlayer.y));
 	const inRange = dx <= range && dy <= range;
 
-	const isOver = TouchInput.x >= left && TouchInput.x <= right &&
-		TouchInput.y >= top && TouchInput.y <= bottom;
+	const touch = Imported.Hendrix_Map_Zoom ? HendrixTouchInput : TouchInput;
+	const isOver = touch.x >= left && touch.x <= right &&
+		touch.y >= top && touch.y <= bottom;
 
 	return inRange && isOver;
 };
@@ -14484,12 +14947,15 @@ Scene_Map.prototype.checkClickableEvents = function () {
 	$gameMap.events().forEach(event => {
 		if (!event || !event.page()) return;
 
-		const clickableComment = event.list().find(command =>
-			(command.code === 108 || command.code === 408) &&
-			command.parameters[0].match(/<clickable(?::\s*(\d+))?>/i)
-		);
+		if (event._clickableCachePageIndex !== event._pageIndex) {
+			event._clickableCachePageIndex = event._pageIndex;
+			event._clickableCacheResult = event.list().find(command =>
+				(command.code === 108 || command.code === 408) &&
+				command.parameters[0].match(/<clickable(?::\s*(\d+))?>/i)
+			) || null;
+		}
 
-		if (clickableComment) {
+		if (event._clickableCacheResult) {
 			event.isHovered = event.isBeingHovered();
 			if (TouchInput.isTriggered() && event.isHovered) {
 				event.start();
@@ -14543,25 +15009,29 @@ Game_Map.prototype.getPlatforms = function () {
 };
 
 Game_Map.prototype.getNearestPlatform = function (character) {
-	if (this.getPlatforms().length <= 0) return null;
+	const platformList = this.getPlatforms();
+	if (!platformList || platformList.length === 0) return null;
 
-	const distances = this.getPlatforms().map(platform => {
-		const deltaX = platform._realX - character._realX;
-		const deltaY = platform._realY - character._realY;
-		const platformRange = platform.platformSize / $gameMap.tileWidth();
-		const distance = Math.sqrt(Math.pow(deltaX, 2) + Math.pow(deltaY, 2));
+	let targetPlatform = null;
+	let minSqDistance = Infinity;
+	const tileW = $gameMap.tileWidth() || 48;
 
-		return {
-			platform: platform,
-			distance: distance,
-			inRange: distance <= platformRange
-		};
-	});
+	for (let i = 0; i < platformList.length; i++) {
+		const plat = platformList[i];
+		const diffX = plat._realX - character._realX;
+		const diffY = plat._realY - character._realY;
+		const sqDist = (diffX * diffX) + (diffY * diffY);
 
-	const inRange = distances.filter(d => d.inRange);
-	if (inRange.length === 0) return null;
+		const platRange = plat.platformSize / tileW;
+		const sqRange = platRange * platRange;
 
-	return inRange.reduce((a, b) => a.distance < b.distance ? a : b).platform;
+		if (sqDist <= sqRange && sqDist < minSqDistance) {
+			minSqDistance = sqDist;
+			targetPlatform = plat;
+		}
+	}
+
+	return targetPlatform;
 };
 
 Game_Map.prototype.updatePlatforms = function () {
@@ -14585,6 +15055,9 @@ Game_Map.prototype.updatePlatforms = function () {
 						char._realY += deltaY;
 						char._x = Math.round(char._realX);
 						char._y = Math.round(char._realY);
+
+						char._animPlatShiftX = (char._animPlatShiftX || 0) + deltaX;
+						char._animPlatShiftY = (char._animPlatShiftY || 0) + deltaY;
 
 						if (char === $gamePlayer) {
 							const mapWidth = this.width();
@@ -14667,6 +15140,22 @@ if (!Imported.Hendrix_Animation_Solution) {
 				return;
 			}
 		}
+
+		if (isBeatEmUp) {
+			this._originalDirection = d;
+			switch (d) {
+				case 1: case 4: case 7:
+					d = 4;
+					break;
+				case 2: case 8:
+					d = (this._direction === 4) ? 4 : 6;
+					break;
+				case 3: case 6: case 9:
+				default:
+					d = 6;
+					break;
+			}
+		}
 		_Game_CharacterBase_setDirection.call(this, d);
 	};
 
@@ -14725,6 +15214,14 @@ if (!Imported.Hendrix_Animation_Solution) {
 				if (horz === 4 && vert === 2) this.setDirection(1);
 				if (horz === 6 && vert === 2) this.setDirection(3);
 			}
+
+			if (isBeatEmUp) {
+				if (horz === 4) {
+					this._direction = 4;
+				} else if (horz === 6) {
+					this._direction = 6;
+				}
+			}
 		};
 	}
 
@@ -14778,89 +15275,53 @@ if (!Imported.Hendrix_Animation_Solution) {
 		return character.direction();
 	};
 }
+const Hen_Game_Player_executeMove = Game_Player.prototype.executeMove;
+Game_Player.prototype.executeMove = function (direction) {
+	if (isBeatEmUp) {
+		const currentFacing = this._direction;
+		Hen_Game_Player_executeMove.call(this, direction);
 
-if (isBeatEmUp) {
-	const Hen_Game_CharacterBase_setDirection = Game_CharacterBase.prototype.setDirection;
-	Game_CharacterBase.prototype.setDirection = function (d) {
-		if (isBeatEmUp) {
-			this._originalDirection = d;
-			switch (d) {
-				case 1: case 4: case 7:
-					d = 4;
-					break;
-				case 2: case 8:
-					d = (this._direction === 4) ? 4 : 6;
-					break;
-				case 3: case 6: case 9:
-				default:
-					d = 6;
-					break;
-			}
-		}
-		Hen_Game_CharacterBase_setDirection.call(this, d);
-	};
-
-	const Hen_Game_Player_executeMove = Game_Player.prototype.executeMove;
-	Game_Player.prototype.executeMove = function (direction) {
-		if (isBeatEmUp) {
-			const currentFacing = this._direction;
-			Hen_Game_Player_executeMove.call(this, direction);
-
-			switch (direction) {
-				case 1: case 4: case 7:
-					this._direction = 4;
-					break;
-				case 3: case 6: case 9:
-					this._direction = 6;
-					break;
-				case 2: case 8:
-					this._direction = (currentFacing === 4 || currentFacing === 6) ? currentFacing : 6;
-					break;
-			}
-		} else {
-			Hen_Game_Player_executeMove.call(this, direction);
-		}
-	};
-
-	const Hen_Game_CharacterBase_moveStraight = Game_CharacterBase.prototype.moveStraight;
-	Game_CharacterBase.prototype.moveStraight = function (direction) {
-		Hen_Game_CharacterBase_moveStraight.call(this, direction);
-
-		if (isBeatEmUp) {
-			switch (direction) {
-				case 1:
-				case 4:
-				case 7:
-					this._direction = 4;
-					break;
-				case 3:
-				case 6:
-				case 9:
-					this._direction = 6;
-					break;
-				case 2:
-				case 8:
-					if (this._direction !== 4 && this._direction !== 6) {
-						this._direction = 6;
-					}
-					break;
-			}
-		}
-	};
-
-	const Hen_Game_CharacterBase_moveDiagonally = Game_CharacterBase.prototype.moveDiagonally;
-	Game_CharacterBase.prototype.moveDiagonally = function (horz, vert) {
-		Hen_Game_CharacterBase_moveDiagonally.call(this, horz, vert);
-
-		if (isBeatEmUp) {
-			if (horz === 4) {
+		switch (direction) {
+			case 1: case 4: case 7:
 				this._direction = 4;
-			} else if (horz === 6) {
+				break;
+			case 3: case 6: case 9:
 				this._direction = 6;
-			}
+				break;
+			case 2: case 8:
+				this._direction = (currentFacing === 4 || currentFacing === 6) ? currentFacing : 6;
+				break;
 		}
-	};
-}
+	} else {
+		Hen_Game_Player_executeMove.call(this, direction);
+	}
+};
+
+const Hen_Game_CharacterBase_moveStraight = Game_CharacterBase.prototype.moveStraight;
+Game_CharacterBase.prototype.moveStraight = function (direction) {
+	Hen_Game_CharacterBase_moveStraight.call(this, direction);
+
+	if (isBeatEmUp) {
+		switch (direction) {
+			case 1:
+			case 4:
+			case 7:
+				this._direction = 4;
+				break;
+			case 3:
+			case 6:
+			case 9:
+				this._direction = 6;
+				break;
+			case 2:
+			case 8:
+				if (this._direction !== 4 && this._direction !== 6) {
+					this._direction = 6;
+				}
+				break;
+		}
+	}
+};
 
 //============================================================
 // JUMP
@@ -15021,6 +15482,13 @@ window.HP = function (eventId) {
 	return $gameMap.getCurrentEventHp(eventId) || 0;
 };
 
+window.maxHP = function (eventId) {
+	if (eventId === 'player') {
+		return $gameParty.leader() ? $gameParty.leader().mhp : 0;
+	}
+	return $gameMap.getMaxEventHp(eventId) || 0;
+};
+
 window.hpDecreased = function (eventId) {
 	const currentHp = $gameMap.getCurrentEventHp(eventId);
 	if (currentHp === null) {
@@ -15050,6 +15518,12 @@ window.shareCollide = function (targetId, tags, collisionCooldownInFrames = 0) {
 
 window.checkRange = function (source, range, target, eyes = 0, blockRegion = 0, exception = null) {
 	return $gameSystem.checkInRange(source, range, target, eyes, blockRegion, exception);
+};
+
+window.checkDegree = function (target) {
+	const event = target === 'player' ? $gamePlayer : findTarget(target);
+	if (!event) return 0;
+	return event._rotation || 0;
 };
 
 //============================================================
@@ -15108,6 +15582,28 @@ Game_Player.prototype.update = function (sceneActive) {
 			interpreter.update();
 		}
 	}
+
+	//--- Player as child of an event -------------------------------------
+	if ($gamePlayer._parentEvent) {
+		const parent = $gamePlayer._parentEvent;
+		if (parent._erased || !$gameMap._events[parent._eventId]) {
+			$gamePlayer._parentEvent = null;
+			$gamePlayer._parentOffsetX = 0;
+			$gamePlayer._parentOffsetY = 0;
+		} else {
+			const deltaX = parent._realX - $gamePlayer._lastParentX;
+			const deltaY = parent._realY - $gamePlayer._lastParentY;
+			if (deltaX !== 0 || deltaY !== 0) {
+				$gamePlayer._realX += deltaX;
+				$gamePlayer._realY += deltaY;
+				$gamePlayer._x = Math.round($gamePlayer._realX);
+				$gamePlayer._y = Math.round($gamePlayer._realY);
+			}
+			$gamePlayer._lastParentX = parent._realX;
+			$gamePlayer._lastParentY = parent._realY;
+		}
+	}
+	//----------------------------------------------------------------------
 };
 
 Game_Map.prototype.updatePauseState = function () {
@@ -15588,6 +16084,36 @@ window.equippedWeapon = function (search, slot = 1) {
 	return !isNaN(search) ? weapon.id === Number(search) : weapon.name === search;
 };
 
+window.equippedWeaponData = function (slot = 1) {
+	return $gameParty.leader().equips()[getSlotIndex(slot)] || null;
+};
+
+const wpnPropMap = {
+	id: w => w.id,
+	name: w => w.name,
+	element: w => {
+		const trait = w.traits.find(t => t.code === 31);
+		return trait ? $dataSystem.elements[trait.dataId] : null;
+	},
+	type: w => $dataSystem.weaponTypes[w.wtypeId] || null,
+	hp: w => w.params[0],
+	mp: w => w.params[1],
+	atk: w => w.params[2],
+	def: w => w.params[3],
+	mat: w => w.params[4],
+	mdf: w => w.params[5],
+	agi: w => w.params[6],
+	luk: w => w.params[7]
+};
+
+window.equippedWpn = function (prop, slot = 1) {
+	const weapon = $gameParty.leader().equips()[getSlotIndex(slot)];
+	if (!weapon) return null;
+
+	const getter = wpnPropMap[String(prop).toLowerCase()];
+	return getter ? getter(weapon) : null;
+};
+
 window.equippedWeaponDmg = function (slot = 1) {
 	const weapon = $gameParty.leader().equips()[getSlotIndex(slot)];
 	return weapon ? weapon.params[2] : null;
@@ -15603,6 +16129,22 @@ window.equippedWeaponType = function (search, slot = 1) {
 	}
 	const weaponTypes = $dataSystem.weaponTypes;
 	return weaponTypes[wtypeId] === search;
+};
+
+window.equippedWeaponAtkElement = function (element, slot = 1) {
+	const weapon = $gameParty.leader().equips()[getSlotIndex(slot)];
+	if (!weapon) return false;
+
+	const elementIds = weapon.traits.filter(t => t.code === 31).map(t => t.dataId);
+	if (elementIds.length === 0) return false;
+
+	if (!isNaN(element)) {
+		return elementIds.includes(Number(element));
+	}
+
+	const elements = $dataSystem.elements;
+	const searchIndex = elements.findIndex(name => name && name.toLowerCase() === String(element).toLowerCase());
+	return searchIndex !== -1 && elementIds.includes(searchIndex);
 };
 
 window.equippedWeaponNotetag = function (notetag, slot = 1) {
@@ -15644,14 +16186,32 @@ window.equippedShield = function () {
 	return shield.etypeId === 2;
 };
 
-window.equippedArmor = function (search) {
-	const leader = $gameParty.leader();
-	if (!leader) return false;
-	const allArmors = leader.equips().slice(1);
-	return allArmors.some(armor => {
-		if (!armor) return false;
-		return !isNaN(search) ? armor.id === Number(search) : armor.name === search;
-	});
+const armPropMap = {
+	id: a => a.id,
+	name: a => a.name,
+	type: a => $dataSystem.armorTypes[a.atypeId] || null,
+	hp: a => a.params[0],
+	mp: a => a.params[1],
+	atk: a => a.params[2],
+	def: a => a.params[3],
+	mat: a => a.params[4],
+	mdf: a => a.params[5],
+	agi: a => a.params[6],
+	luk: a => a.params[7]
+};
+
+window.equippedArm = function (prop, slot = null) {
+	const getter = armPropMap[String(prop).toLowerCase()];
+	if (!getter) return null;
+
+	const equips = $gameParty.leader().equips();
+
+	if (slot === null) {
+		return equips.slice(1).filter(armor => armor).map(getter);
+	}
+
+	const armor = equips[slot];
+	return armor ? getter(armor) : null;
 };
 
 window.learnedSkill = function (actorIdentifier, skillIdentifier) {
@@ -15670,12 +16230,50 @@ window.learnedSkill = function (actorIdentifier, skillIdentifier) {
 	if (typeof skillIdentifier === 'number') {
 		skillId = skillIdentifier;
 	} else if (typeof skillIdentifier === 'string') {
-		const skill = $dataSkills.find(s => s && s.name === skillIdentifier);
+		const skill = skillNameCache[skillIdentifier.toLowerCase()];
 		skillId = skill ? skill.id : null;
 	}
 
 	if (!skillId) return false;
 	return actor.isLearnedSkill(skillId);
+};
+
+const actorPropMap = {
+	id: a => a.actorId(),
+	name: a => a.name(),
+	hp: a => a.hp,
+	mhp: a => a.mhp, maxhp: a => a.mhp,
+	mp: a => a.mp,
+	mmp: a => a.mmp, maxmp: a => a.mmp,
+	tp: a => a.tp,
+	maxtp: a => a.maxTp(),
+	atk: a => a.atk,
+	def: a => a.def,
+	mat: a => a.mat, magic: a => a.mat,
+	mdf: a => a.mdf, mdef: a => a.mdf,
+	agi: a => a.agi, spd: a => a.agi, speed: a => a.agi,
+	luk: a => a.luk, luck: a => a.luk,
+	level: a => a.level, lv: a => a.level,
+	exp: a => a.currentExp(),
+	class: a => a.currentClass().name,
+	dead: a => a.isDead(),
+	alive: a => !a.isDead()
+};
+
+window.actor = function (actorIdentifier, keyword) {
+	let targetActor;
+	if (actorIdentifier === 'player') {
+		targetActor = $gameParty.leader();
+	} else if (typeof actorIdentifier === 'number') {
+		targetActor = $gameActors.actor(actorIdentifier);
+	} else if (typeof actorIdentifier === 'string') {
+		targetActor = $gameActors._data.find(a => a && a._name === actorIdentifier);
+	}
+
+	if (!targetActor) return null;
+
+	const getter = actorPropMap[String(keyword).toLowerCase()];
+	return getter ? getter(targetActor) : null;
 };
 
 // ========================================================================
@@ -15844,6 +16442,74 @@ window.inFrontIsImpassable = function (identifier) {
 	);
 };
 
+window.checkInFront = function (source, tileRange, target) {
+	const character = findTarget(source);
+	if (!character) return false;
+
+	const direction = character.direction();
+	let x = character.x;
+	let y = character.y;
+
+	const tilesetLetterRanges = {
+		'A': [[4352, 5887], [5888, 8191]],
+		'B': [[0, 255]],
+		'C': [[256, 511]],
+		'D': [[512, 767]],
+		'E': [[768, 1023]]
+	};
+
+	const impassableMatch = typeof target === 'string' ? target.match(/^impassable\s+([A-E]+)$/i) : null;
+	const isNotetag = typeof target === 'string' && target.startsWith('<') && target.endsWith('>');
+
+	for (let i = 0; i < tileRange; i++) {
+		x = $gameMap.roundXWithDirection(x, direction);
+		y = $gameMap.roundYWithDirection(y, direction);
+
+		if (target === 'event') {
+			if ($gameMap.eventsXy(x, y).length > 0) return true;
+			continue;
+		}
+
+		if (target === 'impassable') {
+			if (!$gameMap.isPassable(x, y, character.reverseDir(direction))) return true;
+			continue;
+		}
+
+		if (target === 'blocked') {
+			if (!$gameMap.isPassable(x, y, character.reverseDir(direction))) return true;
+			const blockingEvent = $gameMap.eventsXy(x, y).some(event =>
+				event._priorityType === 1 &&
+				!event.isThrough() &&
+				!event.event().note.includes('<pass>')
+			);
+			if (blockingEvent) return true;
+			continue;
+		}
+
+		if (impassableMatch) {
+			const letters = impassableMatch[1].toUpperCase().split('');
+			const tilesetRanges = letters.map(letter => tilesetLetterRanges[letter] || []).flat();
+			const tiles = $gameMap.allTiles(x, y);
+			const flags = $gameMap.tilesetFlags();
+			const isImpassableTileset = tiles.some(tileId =>
+				tilesetRanges.some(range => tileId >= range[0] && tileId <= range[1] && (flags[tileId] & 0x0f) === 0x0f)
+			);
+			if (isImpassableTileset) return true;
+			continue;
+		}
+
+		const found = $gameMap.eventsXy(x, y).some(event => {
+			const data = event.event();
+			if (!data) return false;
+			return isNotetag ? data.note.includes(target) : data.name === target;
+		});
+
+		if (found) return true;
+	}
+
+	return false;
+};
+
 window.checkHitboxOverlap = function (event1, event2) {
 	if (!event1 || !event2) return false;
 
@@ -15935,10 +16601,18 @@ window.mapCount = function (target) {
 	return findTargets(target).length;
 };
 
+window.mapName = function () {
+	return $dataMapInfos[$gameMap.mapId()]?.name || '';
+};
+
 // Convert this._eventId to this and stuff
 if (easyConditionalBranch) {
+	const HtranslateCache = new Map();
+
 	const HtranslateThis = function (script) {
 		if (typeof script !== 'string') return script;
+		if (HtranslateCache.has(script)) return HtranslateCache.get(script);
+
 		let result = '';
 		let i = 0;
 		while (i < script.length) {
@@ -15964,6 +16638,7 @@ if (easyConditionalBranch) {
 		result = result.replace(/(?<!['"'])(<[a-zA-Z_][a-zA-Z0-9_]*>)(?!['"'])/g, "'$1'"); // <notetag>
 		result = result.replace(/(?<!['"'])\bplayer\b(?!['"'])/g, "'player'"); // player
 
+		HtranslateCache.set(script, result);
 		return result;
 	};
 
@@ -15984,5 +16659,370 @@ if (easyConditionalBranch) {
 			this.skipBranch();
 		}
 		return true;
+	};
+
+	//=============================================================================
+	// PIXI OutlineFilter
+	//=============================================================================
+
+	if (!PIXI.filters.OutlineFilter) {
+		const H_outlineFragmentShader = `
+			varying vec2 vTextureCoord;
+			uniform sampler2D uSampler;
+			uniform vec4 filterClamp;
+
+			uniform float uAlpha;
+			uniform vec2 uThickness;
+			uniform vec4 uColor;
+			uniform bool uKnockout;
+
+			const float DOUBLE_PI = 2. * 3.14159265358979323846264;
+			const float ANGLE_STEP = \${angleStep};
+
+			float outlineMaxAlphaAtPos(vec2 pos) {
+				if (uThickness.x == 0. || uThickness.y == 0.) {
+					return 0.;
+				}
+
+				vec4 displacedColor;
+				vec2 displacedPos;
+				float maxAlpha = 0.;
+
+				for (float angle = 0.; angle <= DOUBLE_PI; angle += ANGLE_STEP) {
+					displacedPos.x = vTextureCoord.x + uThickness.x * cos(angle);
+					displacedPos.y = vTextureCoord.y + uThickness.y * sin(angle);
+					displacedColor = texture2D(uSampler, clamp(displacedPos, filterClamp.xy, filterClamp.zw));
+					maxAlpha = max(maxAlpha, displacedColor.a);
+				}
+
+				return maxAlpha;
+			}
+
+			void main(void) {
+				vec4 sourceColor = texture2D(uSampler, vTextureCoord);
+				vec4 contentColor = sourceColor * float(!uKnockout);
+				float outlineAlpha = uAlpha * outlineMaxAlphaAtPos(vTextureCoord.xy) * (1.-sourceColor.a);
+				vec4 outlineColor = vec4(vec3(uColor) * outlineAlpha, outlineAlpha);
+				gl_FragColor = contentColor + outlineColor;
+			}
+			`;
+
+		class H_OutlineFilter extends PIXI.Filter {
+			constructor(thickness = 1, color = 0, quality = 0.1, alpha = 1, knockout = false) {
+				super(
+					`attribute vec2 aVertexPosition;
+					attribute vec2 aTextureCoord;
+
+					uniform mat3 projectionMatrix;
+
+					varying vec2 vTextureCoord;
+
+					void main(void)
+					{
+						gl_Position = vec4((projectionMatrix * vec3(aVertexPosition, 1.0)).xy, 0.0, 1.0);
+						vTextureCoord = aTextureCoord;
+					}`,
+					H_outlineFragmentShader.replace(/\$\{angleStep\}/, H_OutlineFilter.getAngleStep(quality))
+				);
+				this._thickness = 1;
+				this._alpha = 1;
+				this._knockout = false;
+				this.uniforms.uThickness = new Float32Array([0, 0]);
+				this.uniforms.uColor = new Float32Array([0, 0, 0, 1]);
+				this.uniforms.uAlpha = alpha;
+				this.uniforms.uKnockout = knockout;
+				Object.assign(this, { thickness, color, quality, alpha, knockout });
+			}
+
+			static getAngleStep(quality) {
+				const samples = Math.max(quality * H_OutlineFilter.MAX_SAMPLES, H_OutlineFilter.MIN_SAMPLES);
+				return (2 * Math.PI / samples).toFixed(7);
+			}
+
+			apply(filterManager, input, output, clear) {
+				this.uniforms.uThickness[0] = this._thickness / input._frame.width;
+				this.uniforms.uThickness[1] = this._thickness / input._frame.height;
+				this.uniforms.uAlpha = this._alpha;
+				this.uniforms.uKnockout = this._knockout;
+				filterManager.applyFilter(this, input, output, clear);
+			}
+
+			get alpha() { return this._alpha; }
+			set alpha(value) { this._alpha = value; }
+
+			get color() { return PIXI.utils.rgb2hex(this.uniforms.uColor); }
+			set color(value) { PIXI.utils.hex2rgb(value, this.uniforms.uColor); }
+
+			get knockout() { return this._knockout; }
+			set knockout(value) { this._knockout = value; }
+
+			get thickness() { return this._thickness; }
+			set thickness(value) { this._thickness = value; this.padding = value; }
+		}
+
+		H_OutlineFilter.MIN_SAMPLES = 1;
+		H_OutlineFilter.MAX_SAMPLES = 100;
+
+		PIXI.filters.OutlineFilter = H_OutlineFilter;
+	}
+}
+
+//=============================================================================
+// ITEM GAIN NOTIFICATION
+//=============================================================================
+
+function SLocalizeH(text) {
+	if (Imported.Hendrix_Localization) {
+		return Hendrix_Localization(text);
+	}
+	return text;
+}
+
+class Maithl_Item_Notification extends Window_Base {
+	constructor() {
+		super(new Rectangle(0, 0, 0, Window_Base.prototype.fittingHeight(1)));
+		this.loadWindowskin();
+		this.contentsOpacity = 0;
+		this.hide();
+		this.setBackgroundType(itemGainTransparentWindow ? 2 : 0);
+		this._item = null;
+		this._amount = 0;
+		this._displayTime = 0;
+		this._itemType = "";
+	}
+
+	showNewItem(item, amount) {
+		this._item = item;
+		this._amount = amount;
+		this._itemType = DataManager.isWeapon(item) ? "weapon" :
+			DataManager.isArmor(item) ? "armor" : "item";
+		this.updateWindowSize();
+		this.updatePosition();
+		this.show();
+		this.fadeIn(16);
+		this.playPopupSound();
+		this._displayTime = itemGainDisplayDuration;
+	}
+
+	showNewGold(amount) {
+		this._item = { name: "", iconIndex: 314 };
+		this._amount = amount;
+		this._itemType = "gold";
+		this.updateWindowSize();
+		this.updatePosition();
+		this.show();
+		this.fadeIn(16);
+		this.playPopupSound();
+		this._displayTime = itemGainDisplayDuration;
+	}
+
+	playPopupSound() {
+		let soundFile;
+		switch (this._itemType) {
+			case "weapon": soundFile = itemGainWeaponSfx; break;
+			case "armor": soundFile = itemGainArmorSfx; break;
+			case "gold": soundFile = itemGainGoldSfx; break;
+			default: soundFile = itemGainItemSfx;
+		}
+		if (soundFile) {
+			AudioManager.playSe({ name: soundFile, pan: 0, pitch: itemGainSfxPitch || 100, volume: itemGainSfxVolume || 100 });
+		}
+	}
+
+	updateWindowSize() {
+		const iconWidth = ImageManager.iconWidth + 8;
+		const padding = this.padding * 2;
+		const itemNameWidth = this.textWidth(SLocalizeH(this._item.name));
+		let quantityWidth = 0;
+
+		if (this._itemType === "gold") {
+			quantityWidth = this.textWidth(" + " + this._amount);
+		} else if (itemGainShowQuantity && this._amount > 1) {
+			quantityWidth = this.textWidth(" x" + this._amount);
+		}
+
+		const totalTextWidth = itemNameWidth + quantityWidth;
+		const minWidth = Math.max(totalTextWidth + iconWidth + itemGainPadding * 2, 120);
+
+		this.width = minWidth + padding;
+		this.height = this.fittingHeight(1);
+		this.createContents();
+	}
+
+	updatePosition() {
+		if (itemGainDisplayAbovePlayer) {
+			const player = $gamePlayer;
+			const x = player.screenX() - this.width / 2;
+			const y = player.screenY() - $gameMap.tileHeight() + itemGainVerticalOffset - this.height;
+			this.x = x;
+			this.y = y;
+		} else {
+			const wx = itemGainPosition[0];
+			const wy = Number(itemGainPosition[1] || 0);
+			if (wx === "center") {
+				this.x = (Graphics.width - this.width) / 2;
+			} else {
+				this.x = parseInt(wx, 10);
+			}
+			this.y = wy;
+		}
+	}
+
+	fadeIn(duration) {
+		this.contentsOpacity = 0;
+		this.show();
+		this._fadeInDuration = duration;
+	}
+
+	fadeOut(duration) {
+		this._fadeOutDuration = duration;
+	}
+
+	refresh() {
+		this.contents.clear();
+		const iconWidth = ImageManager.iconWidth + 8;
+		const iconHeight = ImageManager.iconHeight;
+		const totalWidth = this.contents.width - itemGainPadding * 2;
+		const itemNameWidth = this.textWidth(SLocalizeH(this._item.name));
+		let quantityWidth = 0;
+
+		if (this._itemType === "gold") {
+			quantityWidth = this.textWidth(" + " + this._amount);
+		} else if (itemGainShowQuantity && this._amount > 1) {
+			quantityWidth = this.textWidth(" x" + this._amount);
+		}
+
+		const totalTextWidth = itemNameWidth + quantityWidth;
+		const contentWidth = iconWidth + totalTextWidth;
+
+		let x = 0;
+		switch (itemGainAlignment) {
+			case "center": x = (totalWidth - contentWidth) / 2; break;
+			case "right": x = totalWidth - contentWidth; break;
+			default: x = 0;
+		}
+
+		const iconY = (this.innerHeight - iconHeight) / 2;
+		this.drawIcon(this._itemType === "gold" ? 314 : this._item.iconIndex, x + itemGainPadding, iconY);
+
+		this.changeTextColor(this.getColorForType(this._itemType));
+		let text = SLocalizeH(this._item.name);
+		if (this._itemType === "gold") {
+			text = "+" + this._amount;
+		} else if (itemGainShowQuantity && this._amount > 1) {
+			text += " x" + this._amount;
+		}
+
+		this.drawText(text, x + iconWidth + itemGainPadding, 0, totalTextWidth, 'left');
+		this.resetTextColor();
+	}
+
+	getColorForType(type) {
+		const colorParam = {
+			"weapon": itemGainWeaponColor,
+			"armor": itemGainArmorColor,
+			"gold": itemGainGoldColor,
+			"item": itemGainItemColor
+		}[type];
+
+		if (colorParam && colorParam.toLowerCase() !== "default") {
+			return colorParam;
+		}
+		return ColorManager.normalColor();
+	}
+
+	update() {
+		super.update();
+		if (this._fadeInDuration > 0) {
+			this.contentsOpacity += 255 / this._fadeInDuration;
+			if (!itemGainTransparentWindow) {
+				this.opacity += 255 / this._fadeInDuration;
+			}
+			this._fadeInDuration--;
+			this.refresh();
+		} else if (this._displayTime > 0) {
+			this._displayTime--;
+			if (this._displayTime === 0) {
+				this.fadeOut(16);
+			}
+		} else if (this._fadeOutDuration > 0) {
+			this.contentsOpacity -= 255 / this._fadeOutDuration;
+			if (!itemGainTransparentWindow) {
+				this.opacity -= 255 / this._fadeOutDuration;
+			}
+			this._fadeOutDuration--;
+			if (this._fadeOutDuration === 0) {
+				this.hide();
+			}
+		}
+	}
+}
+
+let _H_Scene_Map_createAllWindows_Popup = Scene_Map.prototype.createAllWindows;
+Scene_Map.prototype.createAllWindows = function () {
+	_H_Scene_Map_createAllWindows_Popup.call(this);
+	if (enableItemGainNotification) {
+		this._newItemPopupWindow = new Maithl_Item_Notification();
+		this.addWindow(this._newItemPopupWindow);
+	}
+};
+
+let _H_Game_Party_gainItem_Popup = Game_Party.prototype.gainItem;
+Game_Party.prototype.gainItem = function (item, amount, includeEquip) {
+	_H_Game_Party_gainItem_Popup.call(this, item, amount, includeEquip);
+	if (enableItemGainNotification && SceneManager._scene instanceof Scene_Map && amount > 0) {
+		if (item && SceneManager._scene._newItemPopupWindow) {
+			SceneManager._scene._newItemPopupWindow.showNewItem(item, amount);
+		}
+	}
+};
+
+let _H_Game_Party_gainGold_Popup = Game_Party.prototype.gainGold;
+Game_Party.prototype.gainGold = function (amount) {
+	_H_Game_Party_gainGold_Popup.call(this, amount);
+	if (enableItemGainNotification && SceneManager._scene instanceof Scene_Map && amount > 0) {
+		if (SceneManager._scene._newItemPopupWindow) {
+			SceneManager._scene._newItemPopupWindow.showNewGold(amount);
+		}
+	}
+};
+
+let _H_Scene_Map_update_Popup = Scene_Map.prototype.update;
+Scene_Map.prototype.update = function () {
+	_H_Scene_Map_update_Popup.call(this);
+	if (this._newItemPopupWindow && itemGainDisplayAbovePlayer) {
+		this._newItemPopupWindow.updatePosition();
+	}
+};
+
+//=============================================================================
+// INPUT SUPPORT
+//=============================================================================
+if (inputSupport !== 'all') {
+	const H_Input_onKeyDown = Input._onKeyDown;
+	Input._onKeyDown = function (event) {
+		if (inputSupport === 'gamepad_only' || inputSupport === 'mouse_only') return;
+		H_Input_onKeyDown.call(this, event);
+	};
+
+	const H_Input_onKeyUp = Input._onKeyUp;
+	Input._onKeyUp = function (event) {
+		if (inputSupport === 'gamepad_only' || inputSupport === 'mouse_only') return;
+		H_Input_onKeyUp.call(this, event);
+	};
+
+	const H_Input_updateGamepadState = Input._updateGamepadState;
+	Input._updateGamepadState = function (gamepad) {
+		if (inputSupport === 'mouse_keyboard' || inputSupport === 'mouse_only') return;
+		H_Input_updateGamepadState.call(this, gamepad);
+	};
+
+	const H_TouchInput_update = TouchInput.update;
+	TouchInput.update = function () {
+		if (inputSupport === 'gamepad_only') {
+			this.clear();
+			return;
+		}
+		H_TouchInput_update.call(this);
 	};
 }

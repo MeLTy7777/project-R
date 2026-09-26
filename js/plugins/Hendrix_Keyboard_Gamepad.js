@@ -1,85 +1,88 @@
 /*:
  * @target MZ
- * @plugindesc A Keyboard and Gamepad Mapping plugin for RPG Maker MZ with config menu for players.
+ * @plugindesc プレイヤー向けの設定メニューを備えた、RPGツクールMZ用キーボード＆ゲームパッド割り当てプラグインです。
  * @author Sang Hendrix
  * @url https://sanghendrix.itch.io
  * 
  * @help
- * Version 1.2.4c - PREMIUM VER
+ * バージョン 1.2.5 - PREMIUM VER
+ * Discordサポート：https://discord.gg/YKPscqHV8b
+ * Patreon：https://www.patreon.com/SangHendrix
  * ----------------------------------------------------------------------------
- * This is a plugin for RPG Maker MZ that lets you map any keyboard button to
- * a gamepad while allowing players to rebind them in-game. But that’s not all,
- * it also enables you to rebind Input.isTriggered and trigger a common event
- * with a single button press.
+ * このRPGツクールMZ用プラグインを使用すると、キーボードの任意のキーを
+ * ゲームパッドに割り当てることができ、さらにプレイヤーがゲーム内で
+ * キー割り当てを変更できるようになります。
+ * それだけでなく、Input.isTriggeredで使用するキーの割り当てを変更したり、
+ * 1回のボタン入力でコモンイベントを実行したりすることもできます。
  * ----------------------------------------------------------------------------
- * HOW TO USE
- * ■ List of default RPG Maker buttons:
+ * 使用方法
+ * ■ RPGツクールのデフォルトボタン一覧：
  * Ok, PageDown, PageUp, Control, Shift, Tab, Escape,
  * Up, Left, Right, Down
  * 
- * ■ Gamepad Button Names (Xbox):
+ * ■ マウスボタン一覧：
+ * leftclick, rightclick, middleclick, wheelup, wheeldown
+ * 
+ * ■ キーボードのキー一覧：
+ * お使いのキーボードをご確認ください
+ * 
+ * ■ ゲームパッドのボタン名（Xbox）：
  * A, B, X, Y, LB, RB, LT, RT, Start, Back, LS-Press, RS-Press,
  * Up, Down, Left, Right
  * 
- * ■ How to map buttons:
- * 1. Set "Menu Name" to display the button in the config menu
- * 2. "Key to bind": Can be from RPG Maker buttons list or any letter on keyboard
- * 3. "-> Keyboard Key": Map keyboard keys (use comma for multiple: E, Space, Enter)
- * 4. "-> Gamepad Key": Map gamepad buttons (use comma for multiple: A, X, Y)
+ * ■ ボタンの割り当て方法：
+ * 1. 「Menu Name」を設定し、設定メニューに表示するボタン名を指定します。
+ * 2. 「Key to bind」：RPGツクールのボタン一覧、またはキーボードの任意の文字キーを指定できます。
+ * 3. 「-> Keyboard Key」：キーボードのキーを割り当てます
+ *    （複数指定する場合はカンマで区切ります：E, Space, Enter）。
+ * 4. 「-> Gamepad Key」：ゲームパッドのボタンを割り当てます
+ *    （複数指定する場合はカンマで区切ります：A, X, Y）。
  * 
- * ■ EXAMPLE: Menu Name          Interact
- *            Key to bind        Ok
- *            -> Keyboard Key    E, Space, O, rightclick
- *            -> Gamepad Key     A, X, etc.
- *            -> Ok function will be changed to E (primary), Space, O, right click
- *            -> Ok function will be changed to A (primary) and X on gamepad
- *            -> This button will be shown as "Interact" in Button Config menu
- *            -> Only the first key (E/A) can be rebound by players, secondary keys remain fixed
+ * ■ 例1：Menu Name          Interact
+ *         Key to bind        Ok
+ *         -> Keyboard Key    E, Space, O, rightclick
+ *         -> Gamepad Key     A, X, etc.
+ *         -> Okの操作は、キーボードではE（メイン）、Space、O、右クリックに変更されます。
+ *         -> Okの操作は、ゲームパッドではA（メイン）とXに変更されます。
+ *         -> Button Configメニューでは、このボタンは「Interact」と表示されます。
+ *         -> プレイヤーが割り当てを変更できるのは最初のキー（E/A）のみで、
+ *            2つ目以降のキーは固定されたままです。
  * 
- * ■ EXAMPLE 2: Menu Name         Attack
- *             Key to bind        U (as in Input.isTriggered('u'))
- *             -> Keyboard Key    U, J, leftclick
- *             -> Gamepad Key     X, Y
- *             Common Event       15
- *             -> When press U or J or left click, call common event id 15
- *             -> When press X or Y on gamepad, call common event id 15
- *             -> This button will be shown as "Attack" in Button Config menu
- *             -> Only U and X can be rebound by players, J and Y remain fixed
+ * ■ 例2：Menu Name          Attack
+ *         Key to bind        U（Input.isTriggered('u')で使用するU）
+ *         -> Keyboard Key    U, J, leftclick
+ *         -> Gamepad Key     X, Y
+ *         Common Event       15
+ *         -> U、J、または左クリックを入力すると、コモンイベントID 15を実行します。
+ *         -> ゲームパッドのXまたはYを押すと、コモンイベントID 15を実行します。
+ *         -> Button Configメニューでは、このボタンは「Attack」と表示されます。
+ *         -> プレイヤーが割り当てを変更できるのはUとXのみで、
+ *            JとYは固定されたままです。
  * 
- * ■ Optional features:
- * - Common Events: If assigned, this button will trigger this event
- * - Choose between "Triggered" or "Pressed" to trigger this button
- * - Enable parallel mode to allow this common event to run without being
- *   interfered by other running events
+ * ■ オプション機能：
+ * - Common Events：設定した場合、このボタンを入力すると指定したコモンイベントを実行します。
+ * - ボタンの入力判定を「Triggered」または「Pressed」から選択できます。
+ * - Parallel Modeを有効にすると、他の実行中のイベントに妨げられることなく、
+ *   このコモンイベントを実行できます。
  * 
- * ■ How to display current button in game messages
- * Use this escape code: \button[menu name]
+ * ■ ゲーム内のメッセージに現在のボタンを表示する方法
+ * 以下の制御文字を使用します：\button[menu name]
  * 
- * ■ Notes:
- * You don't need to use common event. You can simply use
- * Input.isTriggered/Press('your key') then create a mapping for 'your key',
- * similar to example 2 without Common Event 15
- * ----------------------------------------------------------------------------
- * Some conditional branch command examples that you can use:
+ * ■ 条件分岐で使用する方法：
  * Input.isTriggered('leftclick') | Input.isTriggered('rightclick')
- * Input.isTriggered('m') |  Input.isPressed('a')
+ * Input.isTriggered('m') | Input.isPressed('a')
+ * 基本的には、''の中に使用したいキーを指定するだけです。
+ * 
+ * ■ 補足：
+ * コモンイベントを使用する必要はありません。
+ * 単純にInput.isTriggered/Press('your key')を使用し、
+ * 「your key」に対するキー割り当てを作成することもできます。
+ * これは、例2からCommon Event 15の設定を省いた場合と同様です。
  * ----------------------------------------------------------------------------
- * FEATURES
- * - An all-in-one solution to make your game fully compatible with gamepads
- * - Supports multiple gamepads, including Xbox, PS4, and Nintendo Switch
- * - Map ANY keyboard button and optionally assign it a common event ID
- * - Allows to map 2 keys to the same function
- * - Includes a menu that lets players rebind all the keys you’ve set up!
- * - More features to come!
- * - An awesome dev to support you available 24/7
+ * 利用規約
+ * このプラグインを正規に入手した場合、クレジット表記なしで
+ * 無料・商用を問わずプロジェクトに使用することができます。      
  * ----------------------------------------------------------------------------
- * TERMS OF USE
- * Accquiring this plugin legally grants you the permission to use this plugin
- * in both free and commercial projects without giving credit.
- * ----------------------------------------------------------------------------
- * SUPPORTS
- * Discord: https://discord.gg/YKPscqHV8b
- * Patreon: https://www.patreon.com/SangHendrix
  * 
  * @param Show in Option Menu
  * @text Show in Option Menu
@@ -171,202 +174,6 @@
  * @default false
  * @desc Allows this common event to be triggered even if another is already running
  */
-/*:ja
- * @target MZ
- * @plugindesc プレイヤー用の設定メニューを備えた、RPGツクールMZ向けキーボード＆ゲームパッドキー設定プラグインです。
- * @author Sang Hendrix
- * @url https://sanghendrix.itch.io
- * 
- * @help
- * Version 1.2.4c - PREMIUM VER
- * ----------------------------------------------------------------------------
- * このプラグインはRPGツクールMZ用のプラグインで、任意のキーボードボタンを
- * ゲームパッドに割り当てることができ、さらにゲーム内でプレイヤー自身が
- * キー設定を変更できるようになります。
- * それだけでなく、Input.isTriggered の再割り当ても可能で、
- * ボタンひとつでコモンイベントを実行することもできます。
- * ----------------------------------------------------------------------------
- * ■ 使用方法
- *
- * ■ RPGツクール標準ボタン一覧：
- * Ok（決定）、PageDown、PageUp、Control、
- * Shift、Tab、Escape、Up（上）、Left（左）、Right（右）、Down（下）
- *
- * ■ ゲームパッドボタン名（Xbox）：
- * A、B、X、Y、LB、RB、LT、RT、Start、Back、
- * LS-Press（左スティック押し込み）、RS-Press（右スティック押し込み）、
- * Up、Down、Left、Right 
- * 
- * ■ ボタンの割り当て方法：
- * 1. 「Menu Name」を設定すると、コンフィグメニューにそのボタンが表示されます。
- * 2. 「Key to bind」：RPGツクール標準ボタン一覧、またはキーボードの任意のキーを指定できます。
- * 3. 「→ Keyboard Key」：キーボードキーを割り当てます。
- *    （複数指定する場合はカンマ区切り：例 E, Space, Enter）
- * 4. 「→ Gamepad Key」：ゲームパッドのボタンを割り当てます。
- *    （複数指定する場合はカンマ区切り：例 A, X, Y）
- * 
- * ■ 例：
- *   Menu Name          Interact
- *   Key to bind        Ok
- *   → Keyboard Key     E, Space, O, rightclick
- *   → Gamepad Key      A, X など
- *
- *   → Ok機能は、キーボードでは E（メイン）、Space、O、右クリックに変更されます。
- *   → Ok機能は、ゲームパッドでは A（メイン）と X に変更されます。
- *   → このボタンは、ボタン設定メニュー内で「Interact」として表示されます。
- *   → プレイヤーが再設定できるのは最初のキー（E / A）のみで、
- *     それ以外のキーは固定となります。
- * 
- * ■ 例2：
- *   Menu Name          Attack
- *   Key to bind        U（Input.isTriggered('u') として使用）
- *   → Keyboard Key     U, J, leftclick
- *   → Gamepad Key      X, Y
- *   Common Event       15
- *
- *   → U、J、または左クリックを押すと、コモンイベントID 15 が実行されます。
- *   → ゲームパッドの X または Y を押すと、コモンイベントID 15 が実行されます。
- *   → このボタンは、ボタン設定メニュー内で「Attack」として表示されます。
- *   → プレイヤーが再設定できるのは U と X のみで、
- *     J と Y は固定キーとなります。
- * 
- * ■ オプション機能：
- * - コモンイベント：指定すると、このボタンを押した際にそのイベントが実行されます。
- * - 発動方法を「Triggered（トリガー時）」または「Pressed（押下中）」から選択できます。
- * - 並列実行モードを有効にすると、
- *   他のイベントの実行に干渉されずにコモンイベントを実行できます。
- *
- * ■ ゲーム内メッセージに現在のボタンを表示する方法
- * 次の制御文字を使用します：
- *   \button[menu name]
- *
- * ■ 注意事項：
- * コモンイベントを使用する必要はありません。
- * Input.isTriggered / Input.isPressed('your key') を使用し、
- * 「your key」にマッピングを設定するだけでも動作します。
- * （コモンイベント15を指定しない例2と同様の使い方です）
- * ----------------------------------------------------------------------------
- * 使用できる条件分岐コマンド例：
- * Input.isTriggered('leftclick') | Input.isTriggered('rightclick')
- * Input.isTriggered('m') | Input.isPressed('a')
- * ----------------------------------------------------------------------------
- * 特徴
- * - ゲームパッド完全対応を実現するオールインワンソリューション
- * - Xbox、PS4、Nintendo Switch など複数のゲームパッドに対応
- * - 任意のキーボードキーをマッピング可能（コモンイベントIDの割り当ても可）
- * - 1つの機能に対して2つのキーを割り当て可能
- * - 設定したすべてのキーをプレイヤーが再設定できるメニューを搭載
- * - 今後さらに機能追加予定！
- * - 24時間サポート対応の頼れる開発者付き
- * ----------------------------------------------------------------------------
- * TERMS OF USE
- * Accquiring this plugin legally grants you the permission to use this plugin
- * in both free and commercial projects without giving credit.
- * ----------------------------------------------------------------------------
- * SUPPORTS
- * Discord: https://discord.gg/YKPscqHV8b
- * Patreon: https://www.patreon.com/SangHendrix
- * 
- * @param Show in Option Menu
- * @text オプションメニューに表示
- * @type boolean
- * @default true
- * @desc オプションメニューにボタン設定項目を表示します。
- * 
- * @param Option Name
- * @text オプション名
- * @desc オプションメニューに表示されるボタン設定の名称です。
- * @default ボタン設定
- *
- * @param Button Config
- * @text ボタン設定
- * @type struct<CustomButton>[]
- * @default ["{\"DisplayName\":\"\",\"From Key\":\"Up\",\"To Key\":\"W\",\"a\":\"\",\"aa\":\"\",\"b\":\"\",\"Common Event ID\":\"0\",\"Options\":\"triggered\",\"AllowParallel\":\"false\"}","{\"DisplayName\":\"\",\"From Key\":\"Left\",\"To Key\":\"A\",\"a\":\"\",\"aa\":\"\",\"b\":\"\",\"Common Event ID\":\"\",\"Options\":\"triggered\",\"AllowParallel\":\"false\"}","{\"DisplayName\":\"\",\"From Key\":\"Right\",\"To Key\":\"D\",\"a\":\"\",\"aa\":\"\",\"b\":\"\",\"Common Event ID\":\"\",\"Options\":\"triggered\",\"AllowParallel\":\"false\"}","{\"DisplayName\":\"\",\"From Key\":\"Down\",\"To Key\":\"S\",\"a\":\"\",\"aa\":\"\",\"b\":\"\",\"Common Event ID\":\"\",\"Options\":\"triggered\",\"AllowParallel\":\"false\"}","{\"DisplayName\":\"Interact\",\"From Key\":\"Ok\",\"To Key\":\"E\",\"Gamepad Key\":\"\",\"Visibility\":\"Show in Button Config\",\"a\":\"\",\"aa\":\"\",\"b\":\"\",\"Icon\":\"0\",\"Common Event ID\":\"\",\"Options\":\"triggered\",\"AllowParallel\":\"false\"}","{\"DisplayName\":\"Cancel\",\"From Key\":\"Cancel\",\"To Key\":\"X, B\",\"a\":\"\",\"aa\":\"\",\"b\":\"\",\"Common Event ID\":\"\",\"Options\":\"triggered\",\"AllowParallel\":\"false\"}","{\"DisplayName\":\"Menu\",\"From Key\":\"Menu\",\"To Key\":\"Esc, Start\",\"a\":\"\",\"aa\":\"\",\"b\":\"\",\"Common Event ID\":\"\",\"Options\":\"triggered\",\"AllowParallel\":\"false\"}"]
- * 
-* @param DisallowRebindMovementKeys
- * @text 移動キーの再設定を禁止
- * @type boolean
- * @default true
- * @desc ONにすると、プレイヤーは移動キー（上・下・左・右）を再設定できなくなります。
- */
-/*~struct~CustomButton:ja
- * @param DisplayName
- * @text メニュー表示名
- * @desc このボタンの表示名です（メニューに表示されます）
- * @type string
- * @default ボタン名
- * 
- * @param From Key
- * @text 割り当て元キー
- * @desc 文字キー、または PageDown・Up・Left・OK などのRPGツクール標準ボタンを指定します。
- * @type string
- *
- * @param To Key
- * @text → キーボードキー
- * @desc キーボードキーを指定します（複数の場合はカンマ区切り：例 X, Esc, Space）。
- *       ボタン設定メニューには最初のキーのみ表示されます。
- * @type string
- * 
- * @param Gamepad Key
- * @text → ゲームパッドキー
- * @desc ゲームパッドボタンを指定します（複数の場合はカンマ区切り：例 A, B, X）。
- *       ボタン設定メニューには最初のキーのみ表示されます。
- * @type string
- * 
- * @param Visibility
- * @text 表示設定
- * @desc 設定メニュー内でこのボタンをどこに表示するかを指定します。
- * @type select
- * @option ボタン設定に表示
- * @value Show in Button Config
- * @option ボタン設定から非表示
- * @value Hide in Button Config
- * @option ゲームパッド設定から非表示
- * @value Hide from Gamepad Config
- * @option キーボード設定から非表示
- * @value Hide from Keyboard Config
- * @default Show in Button Config
- * 
- * @param a
- * @text -------------------
- * @default ------------------
- *
- * @param aa
- * @text ■ オプション設定
- *
- * @param b
- * @text -------------------
- * @default ------------------
- *
- * @param Icon
- * @text メニューアイコン
- * @desc ボタン名の前に表示されるアイコンです。
- * @type icon
- * @default 0
- *
- * @param Common Event ID
- * @text コモンイベントID
- * @desc 指定した場合、このボタンを押すと該当のコモンイベントが実行されます。
- * @type common_event
- * @default
- *
- * @param Options
- * @text 発動タイミング
- * @desc コモンイベントをキー押下時に実行するか、押している間に実行するかを選択します。
- * @type select
- * @option トリガー時
- * @value triggered
- * @option 押下中
- * @value pressed
- * @default triggered
- * 
- * @param AllowParallel
- * @text 並列実行
- * @type boolean
- * @default false
- * @desc 他のイベントが実行中でも、このコモンイベントを実行できるようにします。
- */
-
 
 var Imported = Imported || {};
 Imported.Hendrix_Keyboard_Gamepad = true;
@@ -394,9 +201,16 @@ const GamepadButtons = {
     });
     const pluginDefaultSettings = JSON.parse(JSON.stringify(customButtons));
     const optionName = parameters['Option Name'] || 'Button Config';
-    let gamepadType = "xbox";
+
+    const MOUSE_LEFT = 1000;
+    const MOUSE_RIGHT = 1001;
+    const MOUSE_MIDDLE = 1002;
+    const MOUSE_WHEEL_UP = 1003;
+    const MOUSE_WHEEL_DOWN = 1004;
 
     const triggeredThisFrame = new Set();
+
+    let gamepadType = "xbox";
 
     const GamepadButtonDisplay = {
         xbox: {
@@ -473,9 +287,6 @@ const GamepadButtons = {
         return menuName;
     }
 
-    const MOUSE_LEFT = 1000;
-    const MOUSE_RIGHT = 1001;
-
     var charToKeyCode = {
         'backspace': 8, 'tab': 9, 'enter': 13, 'shift': 16, 'ctrl': 17, 'alt': 18, 'pause': 19, 'capslock': 20,
         'esc': 27, 'space': 32, 'pageup': 33, 'pagedown': 34, 'end': 35, 'home': 36, 'left': 37, 'up': 38,
@@ -489,7 +300,8 @@ const GamepadButtons = {
         'f5': 116, 'f6': 117, 'f7': 118, 'f8': 119, 'f9': 120, 'f10': 121, 'f11': 122, 'f12': 123,
         'numlock': 144, 'scrolllock': 145, 'semicolon': 186, 'equals': 187, 'comma': 188, 'dash': 189,
         'period': 190, 'forwardslash': 191, 'graveaccent': 192, 'openbracket': 219, 'backslash': 220,
-        'closebracket': 221, 'singlequote': 222, 'leftclick': MOUSE_LEFT, 'rightclick': MOUSE_RIGHT
+        'closebracket': 221, 'singlequote': 222, 'leftclick': MOUSE_LEFT, 'rightclick': MOUSE_RIGHT,
+        'middleclick': MOUSE_MIDDLE, 'wheelup': MOUSE_WHEEL_UP, 'wheeldown': MOUSE_WHEEL_DOWN
     };
 
     var rightClickDetector = {
@@ -510,6 +322,26 @@ const GamepadButtons = {
         }
     };
 
+    var middleClickDetector = {
+        wasClicked: false,
+        isPressed: false,
+        reset: function () { this.wasClicked = false; },
+        setClicked: function () { this.wasClicked = true; this.isPressed = true; },
+        setReleased: function () { this.isPressed = false; }
+    };
+
+    var wheelUpDetector = {
+        wasTriggered: false,
+        reset: function () { this.wasTriggered = false; },
+        setTriggered: function () { this.wasTriggered = true; }
+    };
+
+    var wheelDownDetector = {
+        wasTriggered: false,
+        reset: function () { this.wasTriggered = false; },
+        setTriggered: function () { this.wasTriggered = true; }
+    };
+
     var mouseStates = {
         right: false,
         previousRight: false,
@@ -522,6 +354,12 @@ const GamepadButtons = {
         if (e.button === 0) {
             if (Input && Input._currentState) {
                 Input._currentState[MOUSE_LEFT] = true;
+            }
+        } else if (e.button === 1) {
+            e.preventDefault();
+            middleClickDetector.setClicked();
+            if (Input && Input._currentState) {
+                Input._currentState[MOUSE_MIDDLE] = true;
             }
         } else if (e.button === 2) {
             mouseStates.right = true;
@@ -538,6 +376,11 @@ const GamepadButtons = {
             if (Input && Input._currentState) {
                 Input._currentState[MOUSE_LEFT] = false;
             }
+        } else if (e.button === 1) {
+            middleClickDetector.setReleased();
+            if (Input && Input._currentState) {
+                Input._currentState[MOUSE_MIDDLE] = false;
+            }
         } else if (e.button === 2) {
             mouseStates.right = false;
             rightClickDetector.setReleased();
@@ -546,6 +389,14 @@ const GamepadButtons = {
             }
         }
     });
+
+    document.addEventListener('wheel', function (e) {
+        if (e.deltaY < 0) {
+            wheelUpDetector.setTriggered();
+        } else if (e.deltaY > 0) {
+            wheelDownDetector.setTriggered();
+        }
+    }, { passive: true });
 
     var _Input_clear = Input.clear;
     Input.clear = function () {
@@ -560,6 +411,15 @@ const GamepadButtons = {
         this.updateMouseState();
         if (rightClickDetector.wasClicked) {
             requestAnimationFrame(() => rightClickDetector.reset());
+        }
+        if (middleClickDetector.wasClicked) {
+            requestAnimationFrame(() => middleClickDetector.reset());
+        }
+        if (wheelUpDetector.wasTriggered) {
+            requestAnimationFrame(() => wheelUpDetector.reset());
+        }
+        if (wheelDownDetector.wasTriggered) {
+            requestAnimationFrame(() => wheelDownDetector.reset());
         }
     };
 
@@ -631,6 +491,18 @@ const GamepadButtons = {
             }
 
             return _Input_isPressed.call(this, 'rightclick');
+        }
+
+        if (keyName === 'middleclick') {
+            return middleClickDetector.wasClicked;
+        }
+
+        if (keyName === 'wheelup') {
+            return wheelUpDetector.wasTriggered;
+        }
+
+        if (keyName === 'wheeldown') {
+            return wheelDownDetector.wasTriggered;
         }
 
         const customButton = customButtons.find(button =>
@@ -716,6 +588,18 @@ const GamepadButtons = {
             return _Input_isTriggered.call(this, 'rightclick');
         }
 
+        if (keyName === 'middleclick') {
+            return middleClickDetector.wasClicked;
+        }
+
+        if (keyName === 'wheelup') {
+            return wheelUpDetector.wasTriggered;
+        }
+
+        if (keyName === 'wheeldown') {
+            return wheelDownDetector.wasTriggered;
+        }
+
         const customButton = customButtons.find(button =>
             button['From Key'] && button['From Key'].toLowerCase() === keyName.toLowerCase()
         );
@@ -797,6 +681,9 @@ const GamepadButtons = {
 
         Input.keyMapper[MOUSE_LEFT] = 'leftclick';
         Input.keyMapper[MOUSE_RIGHT] = 'rightclick';
+        Input.keyMapper[MOUSE_MIDDLE] = 'middleclick';
+        Input.keyMapper[MOUSE_WHEEL_UP] = 'wheelup';
+        Input.keyMapper[MOUSE_WHEEL_DOWN] = 'wheeldown';
 
         for (const char in charToKeyCode) {
             const keyCode = charToKeyCode[char];
@@ -1130,8 +1017,10 @@ const GamepadButtons = {
             if (!this._keyListener && !this._mouseListener) {
                 this._keyListener = this._onKeyDown.bind(this);
                 this._mouseListener = this._onMouseDown.bind(this);
+                this._wheelListener = this._onWheel.bind(this);
                 document.addEventListener('keydown', this._keyListener);
                 document.addEventListener('mousedown', this._mouseListener);
+                document.addEventListener('wheel', this._wheelListener);
             }
         } else if (this._captureCategory === "gamepad") {
             if (!this._gamepadBindingStarted) {
@@ -1173,6 +1062,8 @@ const GamepadButtons = {
         let mouseButton = null;
         if (event.button === 0) {
             mouseButton = 'leftclick';
+        } else if (event.button === 1) {
+            mouseButton = 'middleclick';
         } else if (event.button === 2) {
             mouseButton = 'rightclick';
         }
@@ -1186,6 +1077,14 @@ const GamepadButtons = {
         } else {
             this.cancelInputCapture();
         }
+    };
+
+    Scene_ButtonConfig.prototype._onWheel = function (event) {
+        const wheelButton = event.deltaY < 0 ? 'wheelup' : 'wheeldown';
+        this.cleanupListeners();
+        setTimeout(() => {
+            this.processNewBinding(wheelButton);
+        }, 50);
     };
 
     Scene_ButtonConfig.prototype._onKeyDown = function (event) {
@@ -1219,6 +1118,10 @@ const GamepadButtons = {
         if (this._mouseListener) {
             document.removeEventListener('mousedown', this._mouseListener);
             this._mouseListener = null;
+        }
+        if (this._wheelListener) {
+            document.removeEventListener('wheel', this._wheelListener);
+            this._wheelListener = null;
         }
     };
 
@@ -1589,12 +1492,12 @@ const GamepadButtons = {
 
     Window_ButtonList.prototype.formatKeyboardKey = function (keyName) {
         if (!keyName) return '';
-        if (keyName.toLowerCase() === 'leftclick') {
-            return 'Left Click';
-        }
-        if (keyName.toLowerCase() === 'rightclick') {
-            return 'Right Click';
-        }
+        const lower = keyName.toLowerCase();
+        if (lower === 'leftclick') return 'Left Click';
+        if (lower === 'rightclick') return 'Right Click';
+        if (lower === 'middleclick') return 'Middle Click';
+        if (lower === 'wheelup') return 'Wheel Up';
+        if (lower === 'wheeldown') return 'Wheel Down';
         return keyName.charAt(0).toUpperCase() + keyName.slice(1);
     };
 
