@@ -14,5 +14,7 @@ var $plugins =
 {"name":"ProjectR_CombatPresence","status":true,"description":"v1.0.0 画面内の生存敵に応じてProjectRの戦闘状態を切り替えます。","parameters":{"AttackCommonEventId":"1","ScanIntervalFrames":"3","EndGraceFrames":"24"}},
 {"name":"ProjectR_PlayerFacing","status":true,"description":"v1.0.0 戦闘中だけプレイヤーを照準方向へ向けます。","parameters":{}},
 {"name":"ProjectR_BattleHUD","status":true,"description":"v1.0.0 FHD基準のProjectR専用アクション戦闘HUDを表示します。","parameters":{"DebugPreview":"false","VisibilitySwitchId":"0","HideDuringMessages":"true","UltimateVariableId":"0","UltimateMaxVariableId":"0","AssetFolder":"img/projectr_ui/battle/","GodLabel":"GOD"}},
-{"name":"ProjectR_MenuHUD","status":true,"description":"v2.0.0 メニュー原画をそのまま表示するProjectR専用メニューの土台。","parameters":{"ArtworkFile":"menu_main.jpg"}}
+{"name":"ProjectR_MenuHUD","status":true,"description":"v2.0.0 メニュー原画をそのまま表示するProjectR専用メニューの土台。","parameters":{"ArtworkFile":"menu_main.jpg"}},
+{"name":"ProjectR_CardSkillDeck","status":true,"description":"v0.3.5 主人公用30枚カードデッキ・戦闘時5枠スキル・ENERGY。","parameters":{"CardWidth":"150","CardHeight":"210","CardSpacing":"12","DefaultTargetRange":"8.0","Rarity1Color":"#428bdb","Rarity2Color":"#ab72df","Rarity3Color":"#e2bb55","EnableDebugCommands":"true","VfxRegistry":"[]","AutoStartCardCombat":"true","AlwaysShowCardHud":"false","DebugAutoSetupTestDeck":"true","ShowDebugOverlay":"true","DebugAutoRefillEnergy":"false"}},
+{"name":"ProjectR_ItemEquip","status":true,"description":"v0.1.1 MenuHUD ITEM / standard items and Actor 1 weapons","parameters":{}}
 ];

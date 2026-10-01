@@ -1,5 +1,13 @@
 [
 null,
 {"id":1,"expanded":false,"name":"MAP001","order":1,"parentId":0,"scrollX":411.55555555555554,"scrollY":320.8888888888889},
-{"id":2,"expanded":false,"name":"GunTemplate","order":2,"parentId":0,"scrollX":0,"scrollY":0}
+{"id":2,"expanded":false,"name":"GunTemplate","order":2,"parentId":0,"scrollX":0,"scrollY":0},
+null,
+null,
+null,
+null,
+null,
+null,
+null,
+{"id":10,"expanded":false,"name":"ProjectR Card Test Arena","order":3,"parentId":0,"scrollX":1508,"scrollY":852}
 ]
