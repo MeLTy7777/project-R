@@ -39,18 +39,12 @@
         if (reason) return { ok: false, reason };
         const previous = currentWeapon();
         if (previous !== weapon) actor().changeEquip(weaponSlot(), weapon);
-        // Map001's existing aim event handles this too. Reset the old gun lock
-        // immediately, including Arena maps that do not have that parallel event.
-        if (currentWeapon() === weapon && previous !== weapon &&
-            $dataSystem.weaponTypes[previous?.wtypeId] === "銃" && $dataSystem.weaponTypes[weapon.wtypeId] !== "銃") {
-            $gamePlayer.setDirectionFix(false);
-        }
         return { ok: currentWeapon() === weapon, reason: currentWeapon() === weapon ? "装備しました。" : "装備を変更できませんでした。" };
     }
     function debugGrantTestWeapons() {
         if (!debug || cardParameters.DebugAutoSetupTestDeck !== "true") return [];
         const added = [];
-        for (const [id, name] of [[2, "ロングソード"], [51, "テストハンドガン"]]) {
+        for (const [id, name] of [[2, "ロングソード"]]) {
             const w = $dataWeapons[id];
             if (w?.name === name && DataManager.isWeapon(w) && !$gameParty.hasItem(w, true) && currentWeapon() !== w) {
                 $gameParty.gainItem(w, 1); added.push(id);

@@ -150,23 +150,8 @@ function officialStoredHp(h, hp = 996) {
     }
     return e => c.SceneManager._scene._spriteset._eventHpBars.find(b => b._event === e);
 }
-test("Phase32 real AE HP storage lag: Gun damage confirmed synchronously", () => {
-    const h=realGun(), bar=officialStoredHp(h); h.bullet._realX=1;
-    runCommon(h,3,40);
-    assert.equal(bar(h.earth).currentHp,986);
-    assert.equal(h.c.$gameMap.getCurrentEventHp(40),996,"official storage is not yet synchronized");
-    assert.equal(h.api.energy(),6);
-    const trace=h.api.debugTrace();
-    const before=trace.find(t=>t.message==="Before UpdateEventHp"), after=trace.find(t=>t.message==="After UpdateEventHp");
-    assert.equal(before.frame,after.frame); assert.equal(after.hp,986); assert.equal(after.storedHp,996);
-    assert.ok(trace.some(t=>t.message==="CE3 start")); assert.ok(trace.some(t=>t.message==="CE3 end"));
-    assert.equal(trace.find(t=>t.message==="Collision").frame,before.frame);
-    assert.equal(h.api.lastDebugResult().projectileId,h.bullet.eventId());
-});
-test("Phase32 real AE HP storage lag: zero damage remains +0", () => {
-    const h=realGun(); officialStoredHp(h); h.bullet._realX=1; h.c.MaithlCalculateDamagePlayerWeapon=()=>0;
-    runCommon(h,3,40); assert.equal(h.api.energy(),5);
-});
+
+
 test("Phase32 real AE HP storage lag: Mercury actual damage but no ENERGY", () => {
     const h=phase2([158],{officialHp:true}), bar=officialStoredHp(h,10000); const before=h.api.energy();
     h.api.useSlot(0); h.flush(); h.tick(12);
@@ -360,7 +345,7 @@ function boot(options = {}) {
         addEventToTagIndex() {} removeEventFromTagIndex(event) { logs.removedTag = event; }
         hitboxesAreColliding(ax, ay, a, bx, by) { return !logs.forceMiss && Math.hypot(ax - bx, ay - by) < 20; }
         isValid(x, y) { return x >= -30 && x < 60 && y >= -30 && y < 40; }
-        spawnEvent(id, x = 0, y = 0) { return makeProjectile(this, options.realMain ? context.$dataTemplateMap.events[id].note : "<weaponAttack>", x, y).eventId(); }
+        spawnEvent(id, x = 0, y = 0) { return makeProjectile(this, options.realMain && id != null ? (context.$dataTemplateMap.events[id]?.note || "") : "<playerAttack>", x, y).eventId(); }
         unspawnEvent(id) { this._events[id] = null; }
         update() {
             for (const e of this._events.filter(Boolean)) if (e.route && e.travelled < e.range) {
@@ -513,9 +498,9 @@ function boot(options = {}) {
     if (options.realMain) {
         context.HpluginName = "Hendrix_Action_Engine"; context.H_DotMoveSystem = true;
         context.$dataTemplateMap = JSON.parse(fs.readFileSync(path.join(root, "data/Map002.json")));
-        context.equippedWeaponType = () => logs.weaponType !== "sword";
+        context.equippedWeaponType = () => false;
         context.equippedWeapon = id => logs.weaponType === "sword" && id === 2;
-        context.notetag = () => false; context.gunAmmo = () => 10;
+        context.notetag = () => false;
         context.HP = id => context.$gameMap.getCurrentEventHp(id);
         context.AudioManager = { playSe() {} }; context.$gameScreen = { startShake() {} };
         context.$gameActors = { actor: () => actor };
@@ -1258,13 +1243,8 @@ function arenaFacingCase(mapId=10) {
         h.c.PluginManager.callCommand(i,"Hendrix_Action_Engine","SwingWeapon",{eventId:"player",speed:"10"});return i;};
     return h;
 }
-for(const [angle,dir] of [[0,8],[90,6],[180,2],[270,4],[30,8],[120,6]])test(`Phase341 arena gun continuous ${angle}`,()=>{
-    const h=arenaFacingCase();mousePoint(h,angle);h.update();assert.equal(h.c.$gamePlayer.direction(),dir);assert.equal(h.c.$gamePlayer.isDirectionFixed(),true);
-});
-for(const [move,angle,dir] of [[6,0,8],[4,90,6]])test(`Phase341 gun moving ${move} aim ${dir}`,()=>{
-    const h=arenaFacingCase();mousePoint(h,angle);h.update();const x=h.c.$gamePlayer._realX;h.move(move);h.update();
-    assert.equal(h.c.$gamePlayer.direction(),dir);assert.ok(h.c.$gamePlayer._realX>x);
-});
+
+
 test("Phase341 reproduce unlocked DotMove overwrite before swing lock",()=>{
     const h=arenaFacingCase();h.logs.weaponType="sword";mousePoint(h,90);h.c.$gamePlayer.turnToward("mouse or gamepad",false);
     assert.equal(h.c.$gamePlayer.direction(),6);h.move(8);assert.equal(h.c.$gamePlayer.direction(),8);
@@ -1279,27 +1259,14 @@ for(const prior of [false,true])test(`Phase341 sword restores prior fix ${prior}
     const h=arenaFacingCase();h.c.$gamePlayer.setDirectionFix(prior);mousePoint(h,90);h.swing();
     for(let n=0;n<12;n++)h.update();assert.equal(h.c.$gamePlayer.isDirectionFixed(),prior);
 });
-for(const cancel of ["escape","right","same","cast"])test(`Phase341 gun card ${cancel} resumes facing`,()=>{
-    const h=arenaFacingCase();h.select();h.update();mousePoint(h,0);h.update();assert.equal(h.c.$gamePlayer.direction(),8);
-    if(cancel==="escape")h.key("keydown","Escape");else if(cancel==="right")h.click(2);else if(cancel==="same")h.select();else{h.click();h.flush();}
-    mousePoint(h,270);h.update();assert.equal(h.c.$gamePlayer.direction(),4);assert.equal(h.api.isAiming(),false);
-});
+
 test("Phase341 Map001 receives no extra continuous facing or sword fix",()=>{
     const h=arenaFacingCase(1);mousePoint(h,90);h.update();assert.equal(h.c.$gamePlayer.direction(),2);
     h.c.$gamePlayer.setDirectionFix(false);h.c.$gamePlayer.turnToward("mouse or gamepad",false);h.c.$gamePlayer.setDirectionFix(true);
     h.update();assert.equal(h.c.$gamePlayer.direction(),6);h.c.$gamePlayer.setDirectionFix(false);h.swing();assert.equal(h.c.$gamePlayer.isDirectionFixed(),false);
 });
-test("Phase341 Gun Sword Gun switch releases owned fix and resumes aim",()=>{
-    const h=arenaFacingCase();mousePoint(h,90);h.update();h.logs.weaponType="sword";h.update();assert.equal(h.c.$gamePlayer.isDirectionFixed(),false);
-    h.swing();h.logs.weaponType="gun";mousePoint(h,0);h.update();assert.equal(h.c.$gamePlayer.direction(),8);
-});
-for(const lock of ["message","scene","event"])test(`Phase341 gun ${lock} lock recovers`,()=>{
-    const h=arenaFacingCase();mousePoint(h,90);h.update();
-    if(lock==="message")h.logs.message=true;if(lock==="scene")h.logs.changing=true;
-    if(lock==="event")h.c.$gameMap._interpreter.setup([script("observed.push(1)"),end],1);
-    mousePoint(h,270);h.update();assert.equal(h.c.$gamePlayer.isDirectionFixed(),false);
-    h.logs.message=h.logs.changing=false;h.c.$gameMap._interpreter.clear();h.update();assert.equal(h.c.$gamePlayer.direction(),4);
-});
+
+
 for(const cleanup of ["transfer","end","terminate"])test(`Phase341 owned facing cleanup ${cleanup}`,()=>{
     const h=arenaFacingCase();mousePoint(h,90);h.swing();
     if(cleanup==="transfer")h.c.$gameMap.setup(1);else if(cleanup==="end")h.api.endCombat();else h.c.SceneManager._scene.terminate();
@@ -1342,10 +1309,10 @@ function phase2(order = [158, 165, 164, 161, 166], options = {}) {
     h.run = (text, eventId = 0) => {
         const interpreter = new h.c.Game_Interpreter(); interpreter.setup([script(text), end], eventId); interpreter.update(); return interpreter;
     };
-    h.gun = () => { h.run("ProjectR.CardSkillDeck.beginMainAttack(this); observed.push($gameMap.spawnEvent(1,0,0));"); return h.c.$gameMap.event(h.c.observed.pop()); };
+    h.melee = () => { h.run("observed.push($gameMap.spawnEvent());"); return h.c.$gameMap.event(h.c.observed.pop()); };
     h.hit = (bullet, target = h.earth) => {
         bullet._realX = target._realX; bullet._realY = target._realY;
-        h.run("if(checkCollide(this._eventId,'<weaponAttack>')) PluginManager.callCommand(this,'Hendrix_Action_Engine','UpdateEventHp',{eventId:'this',value:'- player weapon'});", target.eventId());
+        h.run("ProjectR.CardSkillDeck.beginMainAttack(this); if(checkCollide(this._eventId,'<playerAttack>')) PluginManager.callCommand(this,'Hendrix_Action_Engine','UpdateEventHp',{eventId:'this',value:'- player weapon'});", target.eventId());
     };
     return h;
 }
@@ -1440,27 +1407,18 @@ for (const mode of ["destroy","erase","end","map","expiry","wall","range"]) test
     assert.equal(h.c.$gameMap.event(p.eventId()),null);assert.equal(h.c.SceneManager._scene._spriteset._characterSprites.length,0);
     assert.equal(h.logs.hpUpdates.length,0);assert.equal(h.api.energy(),mode==="end"?0:9);
 });
-test("Phase2 main-hit integration: 5, gun6, miss6, gun7, sword multi8, card8",()=>{
+test("Phase2 main-hit integration: Sword multi-target +1, Card +0",()=>{
     const h=phase2([158]);h.api.setEnergy(5);
-    const a=h.gun();h.hit(a);assert.equal(h.api.energy(),6);
-    h.c.$gameMap.unspawnEvent(a.eventId());const missed=h.gun();h.c.$gameMap.unspawnEvent(missed.eventId());assert.equal(h.api.energy(),6);
-    const b=h.gun();h.hit(b);assert.equal(h.api.energy(),7);h.hit(b);assert.equal(h.api.energy(),7);
     const sword=h.c.$gameMap.spawnEvent();const hitbox=h.c.$gameMap.event(sword);hitbox.event=()=>({note:"<playerAttack>"});
     hitbox._realX=1;hitbox._realY=0;h.pluto._realX=1;
     h.run("ProjectR.CardSkillDeck.beginMainAttack(this,'sword'); for(const id of [40,41,40]) if(checkCollide(id,'<playerAttack>')) PluginManager.callCommand(this,'Hendrix_Action_Engine','UpdateEventHp',{eventId:String(id),value:'- player weapon'});");
-    assert.equal(h.api.energy(),8);
-    h.api.useSlot(0);h.flush();h.api.setEnergy(8);h.tick(10);assert.equal(h.api.energy(),8);
+    assert.equal(h.api.energy(),6);
+    h.api.useSlot(0);h.flush();h.api.setEnergy(6);h.tick(10);assert.equal(h.api.energy(),6);
 });
-test("Phase2 two bullets in flight retain separate shot tokens, older bullet hits last",()=>{
-    const h=phase2();h.api.setEnergy(5);const a=h.gun(),b=h.gun();h.hit(b);assert.equal(h.api.energy(),6);
-    b._realX=10;h.hit(a);assert.equal(h.api.energy(),7);h.hit(a);assert.equal(h.api.energy(),7);
-});
-test("Phase2 multiple bullets from one input still have per-shot tokens",()=>{
-    const h=phase2();h.api.setEnergy(5);h.run("ProjectR.CardSkillDeck.beginMainAttack(this); observed.push($gameMap.spawnEvent(1),$gameMap.spawnEvent(1));");
-    const[a,b]=h.c.observed.map(id=>h.c.$gameMap.event(id));h.hit(a);a._realX=10;h.hit(b);assert.equal(h.api.energy(),7);
-});
+
+
 test("Phase2 actual zero HP change, collision miss, and damage without collision give no ENERGY",()=>{
-    const h=phase2();h.api.setEnergy(5);const a=h.gun();h.logs.immune=true;h.hit(a);assert.equal(h.api.energy(),5);
+    const h=phase2();h.api.setEnergy(5);const a=h.melee();h.logs.immune=true;h.hit(a);assert.equal(h.api.energy(),5);
     h.logs.immune=false;h.logs.forceMiss=true;h.hit(a);assert.equal(h.api.energy(),5);
     h.run("ProjectR.CardSkillDeck.beginMainAttack(this);PluginManager.callCommand(this,'Hendrix_Action_Engine','UpdateEventHp',{eventId:'40',value:'-10'});");
     assert.equal(h.api.energy(),5);
@@ -1471,17 +1429,13 @@ test("Phase2 fallback entry token reused for one attack, next input recovers aga
     const attack="ProjectR.CardSkillDeck.beginMainAttack(this,'fallback');for(let n=0;n<2;n++)if(checkCollide(40,'<playerAttack>'))PluginManager.callCommand(this,'Hendrix_Action_Engine','UpdateEventHp',{eventId:'40',value:'-10'});";
     h.run(attack);assert.equal(h.api.energy(),6);h.run(attack);assert.equal(h.api.energy(),7);
 });
-test("Phase2 collision captures source before another interpreter overwrites lastSource",()=>{
-    const h=phase2();h.api.setEnergy(5);const b=h.gun();b._realX=1;
-    const i=new h.c.Game_Interpreter();i.setup([script("checkCollide(40,'<weaponAttack>');"),wait(1),script("PluginManager.callCommand(this,'Hendrix_Action_Engine','UpdateEventHp',{eventId:'40',value:'-10'});"),end],0);i.update();
-    h.c.CollisionManager.lastSourceEventId=999;i.update();i.update();assert.equal(h.api.energy(),6);
-});
-test("Phase2 old combat tokens and bullets cannot recover in a new session",()=>{
-    const h=phase2();const b=h.gun(),token=h.api.createMainAttackToken();h.api.endCombat();h.api.startCombat();h.api.setEnergy(5);
-    h.hit(b);assert.equal(h.api.energy(),5);assert.equal(h.api.notifyMainAttackHit(token),false);
+
+test("Phase2 old combat tokens cannot recover in a new session",()=>{
+    const h=phase2();const b=h.melee(),token=h.api.createMainAttackToken();h.api.endCombat();h.api.startCombat();h.api.setEnergy(5);
+    assert.equal(h.api.notifyMainAttackHit(token),false);assert.equal(h.api.energy(),5);
 });
 test("Phase2 inactive main notifications are inert and official damage still delegates",()=>{
-    const h=phase2();h.api.endCombat();const b=h.gun();assert.equal(h.api.beginMainAttack(new h.c.Game_Interpreter()),null);
+    const h=phase2();h.api.endCombat();const b=h.melee();assert.equal(h.api.beginMainAttack(new h.c.Game_Interpreter()),null);
     h.hit(b);assert.equal(h.earth.hp,9990);assert.equal(h.api.energy(),0);
 });
 test("Phase2 direct/area cards have once-per-enemy damage, no Context retained",()=>{
@@ -1533,8 +1487,8 @@ test("Phase2 readiness polling waits for BOTH sheet and target before official S
     h.api.useSlot(0);h.flush();await new Promise(resolve=>setImmediate(resolve));h.tick();assert.equal(h.logs.effects.length,0);
     h.logs.bitmapNotReady=false;h.tick();assert.equal(h.logs.effects.length,0);h.logs.spriteNotReady=false;h.tick();assert.equal(h.logs.effects.length,2);
 });
-test("Phase2 bridge executes actual AE 1.6.6b UpdateEventHp command for gun and card",()=>{
-    const h=phase2([158],{officialHp:true});h.api.setEnergy(5);const b=h.gun();h.hit(b);
+test("Phase2 bridge executes actual AE 1.6.6b UpdateEventHp command for melee and card",()=>{
+    const h=phase2([158],{officialHp:true});h.api.setEnergy(5);const b=h.melee();h.hit(b);
     assert.equal(h.earth.hp,9990);assert.equal(h.api.energy(),6);
     h.api.useSlot(0);h.flush();h.tick(10);assert.equal(h.earth.hp,9827);assert.equal(h.api.energy(),5);
 });
@@ -1572,44 +1526,6 @@ function runCommon(h, id, eventId = 0) {
     for (let n = 0; n < 100 && i.isRunning(); n++) { h.c.Graphics.frameCount++; i.update(); }
     assert.equal(i.isRunning(), false, `CE${id} finished`); return i;
 }
-function realGun() {
-    const h = phase2([158], { officialCollision: true, officialHp: true, realMain: true });
-    h.api.setEnergy(5); runCommon(h, 1);
-    h.bullet = h.c.$gameMap.events().find(e => e.event().note === "<weaponAttack>");
-    assert.ok(h.bullet); return h;
-}
-test("Phase3 CE1 -> official spawn -> Bullet -> real collision -> CE3 HP -> ENERGY +1 (no dmg tag)", () => {
-    const h = realGun(); h.bullet._realX = h.earth._realX;
-    h.c.CollisionManager.lastSourceEventId = 999; runCommon(h, 3, 40);
-    assert.equal(h.earth.hp, 9990); assert.equal(h.api.energy(), 6);
-    assert.equal(h.c.CollisionManager.lastSourceEventId, 999, "official no-dmg collision leaves global ID stale");
-    const trace = h.api.debugTrace(), spawned = trace.find(e => e.message === "Projectile spawned");
-    assert.match(spawned.token, /^gun:/);
-    for (const message of ["gun start", "Projectile spawned", "Collision", "HP", "Energy recovery accepted"]) assert.ok(trace.some(e => e.message === message), message);
-    assert.ok(trace.filter(e => ["Projectile spawned", "Collision", "HP", "Energy recovery accepted"].includes(e.message)).every(e => e.token === spawned.token));
-    assert.equal(h.api.lastDebugResult().energyAfter, 6);
-});
-test("Phase3 real CE3 duplicate bullet recovers only once", () => {
-    const h = realGun(); h.bullet._realX = 1; runCommon(h, 3, 40); runCommon(h, 3, 40);
-    assert.equal(h.api.energy(), 6); assert.equal(h.earth.hp, 9990); // Official cooldown=0 also suppresses repeat collisions.
-    assert.equal(h.api.notifyMainAttackHit(h.api.lastDebugResult().mainAttackToken), false);
-    assert.ok(h.api.debugTrace().some(e => e.message.includes("ignored duplicate")));
-});
-test("Phase3 real gun miss never recovers", () => {
-    const h = realGun(); h.logs.forceMiss = true; runCommon(h, 3, 40);
-    assert.equal(h.earth.hp, 10000); assert.equal(h.api.energy(), 5);
-});
-test("Phase3 real gun zero damage never recovers", () => {
-    const h = realGun(); h.bullet._realX = 1; h.c.MaithlCalculateDamagePlayerWeapon = () => 0;
-    runCommon(h, 3, 40); assert.equal(h.api.energy(), 5); assert.equal(h.api.lastDebugResult().result, "no damage");
-});
-test("Phase3 real collision uses earlier bullet, never latest shot or stale source ID", () => {
-    const h = realGun(), a = h.bullet; runCommon(h, 1);
-    const b = h.c.$gameMap.events().filter(e => e.event().note === "<weaponAttack>").find(e => e !== a);
-    b._realX = 1; runCommon(h, 3, 40); const bToken = h.api.lastDebugResult().mainAttackToken;
-    b._realX = 20; a._realX = 1; runCommon(h, 3, 40);
-    assert.equal(h.api.energy(), 7); assert.notEqual(h.api.lastDebugResult().mainAttackToken, bToken);
-});
 for (const miss of [false, true]) test(`Phase3 actual CE4 Sword ${miss ? "miss +0" : "hit +1"}`, () => {
     const h = phase2([158], { officialCollision: true, officialHp: true, realMain: true });
     h.logs.weaponType = "sword"; h.enemy(1, miss ? 20 : 1.25, 0, "<enemy>"); h.api.setEnergy(5);
@@ -1698,7 +1614,7 @@ test("Phase3 DebugAutoRefill allows >30 consecutive cards and reshuffle, no main
 });
 test("Phase3 transfer cleans projectiles/tokens/VFX but preserves hand/draw/discard/energy", () => {
     const h = phase2([158], { parameters: { AutoStartCardCombat: "true" } });
-    h.api.useSlot(0); h.flush(); const projectile = h.projectiles()[0], token = h.api.createMainAttackToken("gun");
+    h.api.useSlot(0); h.flush(); const projectile = h.projectiles()[0], token = h.api.createMainAttackToken("fallback");
     const before = [clone(h.api.hand()), h.api.drawPileCount(), h.api.discardPileCount(), h.api.energy()];
     h.c.$gameMap.setup(10); h.c.SceneManager._scene.start();
     assert.deepEqual([clone(h.api.hand()), h.api.drawPileCount(), h.api.discardPileCount(), h.api.energy()], before);
@@ -1756,9 +1672,9 @@ test("Phase3 all nine VFX have distinct visual recipes and no new assets",()=>{
 
 function equipmentEnvironment(options = {}) {
     const h=boot(options),c=h.c;const data=JSON.parse(fs.readFileSync(path.join(root,"data/Weapons.json")));
-    const bag=new Map([[2,1],[51,1],[7,1]]);let current=data[1];
+    const bag=new Map([[2,1],[3,1],[7,1]]);let current=data[1];
     const actor={equipSlots:()=>[1,2,3],equips:()=>[current,null,null],isEquipChangeOk:()=>!h.logs.equipLocked,
-        canEquip:w=>[2,9].includes(w.wtypeId),changeEquip(slot,w){assert.equal(slot,0);assert.ok(bag.get(w.id)>0);bag.set(w.id,bag.get(w.id)-1);if(current)bag.set(current.id,(bag.get(current.id)||0)+1);current=w;h.logs.equipChanges=(h.logs.equipChanges||0)+1;}};
+        canEquip:w=>[2].includes(w.wtypeId),changeEquip(slot,w){assert.equal(slot,0);assert.ok(bag.get(w.id)>0);bag.set(w.id,bag.get(w.id)-1);if(current)bag.set(current.id,(bag.get(current.id)||0)+1);current=w;h.logs.equipChanges=(h.logs.equipChanges||0)+1;}};
     c.$gameActors={actor:id=>id===1?actor:null};c.$gameParty.weapons=()=>[...bag].filter(([,n])=>n>0).map(([id])=>data[id]);c.$gameParty.hasItem=w=>(bag.get(w.id)||0)>0;
     c.DataManager.isWeapon=w=>data[w?.id]===w;c.$dataSystem.weaponTypes=JSON.parse(fs.readFileSync(path.join(root,"data/System.json"))).weaponTypes;
     c.$dataWeapons=data;c.$gameParty.gainItem=(w,n)=>bag.set(w.id,(bag.get(w.id)||0)+n);
@@ -1784,10 +1700,10 @@ test("Phase3 ITEM delegates untouched MZ Scene_Item; return reactivates categori
     assert.equal(h.logs.pushes.at(-1),h.c.Scene_Item);assert.equal(h.logs.sounds.filter(s=>s==="ok").length,1);
     s.start();assert.equal(s._categoryWindow.active,true);
 });
-test("Phase3 weapon UI swaps Sword/Gun using Actor1 changeEquip and trades inventory",()=>{
+test("Phase3 weapon UI swaps two Swords using Actor1 changeEquip and trades inventory",()=>{
     const h=equipmentEnvironment(),s=new h.equip.Scene();s.create();const w=s._weaponWindow;
-    for(const id of[2,51,2]){w.select(w._weapons.indexOf(h.weapons[id]));w.processOk();assert.equal(h.equip.currentWeapon(),h.weapons[id]);}
-    assert.equal(h.logs.equipChanges,3);assert.deepEqual(h.logs.sounds,["equip","equip","equip"]);assert.equal(h.bag.get(51),1);assert.equal(h.equip.currentWeapon().wtypeId,2);
+    for(const id of[2,3,2]){w.select(w._weapons.indexOf(h.weapons[id]));w.processOk();assert.equal(h.equip.currentWeapon(),h.weapons[id]);}
+    assert.equal(h.logs.equipChanges,3);assert.deepEqual(h.logs.sounds,["equip","equip","equip"]);assert.equal(h.bag.get(3),1);assert.equal(h.equip.currentWeapon().wtypeId,2);
 });
 test("Phase3 invalid weapon rejects with one buzzer/reason; fixed or unowned also reject",()=>{
     const h=equipmentEnvironment(),s=new h.equip.Scene();s.create();const w=s._weaponWindow;
@@ -2012,8 +1928,8 @@ test("Phase31 ITEM selector and WEAPON use MZ processHandling instead of direct 
 test("Phase31 MZ touch OK equips and cancel returns focus to ITEM/WEAPON", () => {
     const h = equipmentEnvironment(), s = new h.equip.Scene(); s.create();
     s._categoryWindow.select(1); h.logs.input = "ok"; s._categoryWindow.processHandling();
-    const w = s._weaponWindow; w.select(w._weapons.indexOf(h.weapons[51]));
-    w.hitIndex = () => w.index(); w.onTouchSelect(true); w.onTouchOk(); assert.equal(h.equip.currentWeapon(), h.weapons[51]);
+    const w = s._weaponWindow; w.select(w._weapons.indexOf(h.weapons[3]));
+    w.hitIndex = () => w.index(); w.onTouchSelect(true); w.onTouchOk(); assert.equal(h.equip.currentWeapon(), h.weapons[3]);
     h.logs.input = "cancel"; w.processHandling(); assert.equal(w.active, false); assert.equal(s._categoryWindow.active, true);
 });
 test("Phase31 standard input rejects canEquip false without trading inventory", () => {
@@ -2029,20 +1945,20 @@ test("Phase31 first weapon slot detection supports a nonzero slot and dual-wield
     a.equipSlots = () => [1,1,3]; assert.equal(h.equip.weaponSlot(), 0);
     a.equipSlots = () => [2,3]; assert.equal(h.equip.weaponSlot(), -1); assert.equal(h.equip.equip(h.weapons[2]).ok, false);
 });
-test("Phase31 debug grants missing Sword/Gun once, includes equipped items, never on scene or load", () => {
+test("Phase31 debug grants missing Sword only once, includes equipped items, never on scene or load", () => {
     const h = equipmentEnvironment({ debug: true, parameters: { DebugAutoSetupTestDeck: "true" } });
-    h.bag.delete(2); h.bag.delete(51); h.c.DataManager.setupNewGame();
-    assert.equal(h.bag.get(2), 1); assert.equal(h.bag.get(51), 1);
+    h.bag.delete(2); h.bag.delete(3); h.c.DataManager.setupNewGame();
+    assert.equal(h.bag.get(2), 1); assert.equal(h.bag.has(3), false);
     assert.deepEqual(clone(h.equip.debugGrantTestWeapons()), []);
-    h.equip.equip(h.weapons[51]); assert.deepEqual(clone(h.equip.debugGrantTestWeapons()), []); assert.equal(h.bag.get(51), 0);
+    h.equip.equip(h.weapons[2]); assert.deepEqual(clone(h.equip.debugGrantTestWeapons()), []); assert.equal(h.bag.get(2), 0);
     h.bag.delete(2); const s = new h.equip.Scene(); s.create(); s.start();
     h.c.DataManager.extractSaveContents({ system: {} }); assert.equal(h.bag.has(2), false);
 });
 test("Phase31 debug grants require BOTH debug and setup flags; weapon diagnostics debug only", () => {
     for (const [debug, setup] of [[false,true],[true,false]]) {
         const h = equipmentEnvironment({ debug, parameters: { DebugAutoSetupTestDeck: String(setup) } });
-        h.bag.delete(2); h.bag.delete(51); h.c.DataManager.setupNewGame();
-        assert.equal(h.bag.has(2), false); assert.equal(h.bag.has(51), false);
+        h.bag.delete(2); h.bag.delete(3); h.c.DataManager.setupNewGame();
+        assert.equal(h.bag.has(2), false); assert.equal(h.bag.has(3), false);
         const s = new h.equip.Scene(); s.create(); s._weaponWindow.updateHelp();
         assert.equal(!!s._weaponWindow._debugWindow, debug);
         if (debug) assert.match(s._weaponWindow._debugWindow.text, /Current:.*\nCan Equip:.*Weapon Slot: 0/);
@@ -2069,22 +1985,21 @@ function realEquipmentEnvironment(options = {}) {
     return h;
 }
 
-test("Phase31 real MZ Game_Actor/Game_Party: Gun -> Sword -> Gun through window input, correct trades", () => {
-    const h = realEquipmentEnvironment(), c = h.c, party = c.$gameParty, gun = h.weapons[51], sword = h.weapons[2];
-    assert.equal(h.actor.canEquip(gun), true); assert.equal(h.actor.canEquip(sword), true);
-    party.gainItem(gun, 1); if (!party.hasItem(sword, true)) party.gainItem(sword, 1); assert.ok(h.equip.equip(gun).ok);
-    assert.equal(party.numItems(gun), 0);
+test("Phase31 real MZ Game_Actor/Game_Party: Sword2 -> Sword1 -> Sword2, correct trades", () => {
+    const h = realEquipmentEnvironment(), c = h.c, party = c.$gameParty, first = h.weapons[2], other = h.weapons[1];
+    assert.equal(h.equip.currentWeapon(), first);
+    assert.equal(h.actor.canEquip(other), true);
+    party.gainItem(other, 1);
     const s = new h.equip.Scene(); s.create(); s.start(); s._categoryWindow.select(1);
     h.logs.input = "ok"; s._categoryWindow.processHandling(); const w = s._weaponWindow;
-    assert.ok(w._weapons.includes(gun), "equipped weapon appears even with zero inventory");
-    c.$gamePlayer.fixed = true; w.select(w._weapons.indexOf(sword)); h.logs.input = "ok"; w.processHandling();
-    assert.equal(h.actor.equips()[h.equip.weaponSlot()], sword);
-    assert.equal(party.numItems(gun), 1); assert.equal(party.numItems(sword), 0); assert.equal(c.$gamePlayer.fixed, false);
-    assert.ok(w.contents.text.includes("ロングソード   EQUIPPED"));
-    w.select(w._weapons.indexOf(gun)); h.logs.input = "ok"; w.processHandling();
-    assert.equal(h.actor.equips()[h.equip.weaponSlot()], gun);
-    assert.equal(party.numItems(gun), 0); assert.equal(party.numItems(sword), 1); assert.equal(c.equippedWeaponType("銃"), true);
-    assert.ok(w.contents.text.includes("テストハンドガン   EQUIPPED"));
+    assert.ok(w._weapons.includes(first), "equipped weapon appears even with zero inventory");
+    c.$gamePlayer.fixed = true; w.select(w._weapons.indexOf(other)); h.logs.input = "ok"; w.processHandling();
+    assert.equal(h.equip.currentWeapon(), other);
+    assert.equal(party.numItems(first), 1); assert.equal(party.numItems(other), 0);
+    assert.equal(c.$gamePlayer.fixed, true);
+    w.select(w._weapons.indexOf(first)); h.logs.input = "ok"; w.processHandling();
+    assert.equal(h.equip.currentWeapon(), first);
+    assert.equal(party.numItems(first), 0); assert.equal(party.numItems(other), 1);
 });
 test("Phase31 real MZ canEquip/slot seal prevents equip and preserves quantities", () => {
     const h = realEquipmentEnvironment(), c = h.c; c.$gameParty.gainItem(h.weapons[7], 1);
@@ -2094,23 +2009,9 @@ test("Phase31 real MZ canEquip/slot seal prevents equip and preserves quantities
 });
 test("Phase31 real MZ equipped ownership prevents duplicate debug grants", () => {
     const h = realEquipmentEnvironment({ debug: true, parameters: { DebugAutoSetupTestDeck: "true" } });
-    assert.equal(h.equip.currentWeapon(), h.weapons[2]); // Actual Actor 1 initially equips Longsword.
-    assert.deepEqual(clone(h.equip.debugGrantTestWeapons()), [51]);
-    assert.ok(h.equip.equip(h.weapons[51]).ok); assert.equal(h.c.$gameParty.numItems(h.weapons[51]), 0);
+    assert.equal(h.equip.currentWeapon(), h.weapons[2]);
     assert.deepEqual(clone(h.equip.debugGrantTestWeapons()), []);
-    assert.equal(h.c.$gameParty.numItems(h.weapons[51]), 0); assert.equal(h.c.$gameParty.numItems(h.weapons[2]), 1);
-});
-test("Phase31 actual CombatPresence reuses gun sprite: hides on Sword, restores on Gun without deleting event", () => {
-    const h = realEquipmentEnvironment({ realBattle: true }), c = h.c, scene = c.SceneManager._scene;
-    h.seedDeck(); scene.createDisplayObjects();
-    const target = h.enemy(1, 20, 10), targetSprite = new c.Sprite_Character(target);
-    Object.assign(targetSprite, { x:960, y:480, width:48, height:48 }); scene._spriteset._characterSprites.push(targetSprite);
-    const gunEvent = { _eventId:2, isPlayerChild:true, event:()=>({note:"<gun>"}) }; c.$gameMap._events[2] = gunEvent;
-    const gunSprite = new c.Sprite_Character(gunEvent); scene._spriteset._characterSprites.push(gunSprite);
-    c.$gameParty.gainItem(h.weapons[51],1); c.$gameParty.gainItem(h.weapons[2],1);
-    h.equip.equip(h.weapons[51]); scene.start(); assert.equal(gunSprite.visible,true);
-    h.equip.equip(h.weapons[2]); c.ProjectRCombatPresence.refresh(); assert.equal(gunSprite.visible,false);
-    assert.equal(c.$gamePlayer.fixed,false); assert.equal(c.$gameMap.event(2),gunEvent);
-    h.equip.equip(h.weapons[51]); c.ProjectRCombatPresence.refresh(); assert.equal(gunSprite.visible,true);
-    c.$gamePlayer.turnToward("mouse or gamepad"); assert.equal(h.logs.turned,true);
+    h.c.$gameParty.gainItem(h.weapons[1], 1); assert.ok(h.equip.equip(h.weapons[1]).ok);
+    assert.deepEqual(clone(h.equip.debugGrantTestWeapons()), []);
+    assert.equal(h.c.$gameParty.numItems(h.weapons[2]), 1);
 });

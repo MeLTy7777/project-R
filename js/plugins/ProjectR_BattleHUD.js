@@ -758,7 +758,7 @@
 
         weapon() {
             if (debugPreview) {
-                const previewWeapon = $dataWeapons?.[51] || null;
+                const previewWeapon = this.actor()?.equips?.().find(item => item && DataManager.isWeapon(item)) || null;
                 return {
                     weaponId: previewWeapon?.id || 0,
                     name: previewWeapon?.name || "SIDEARM",

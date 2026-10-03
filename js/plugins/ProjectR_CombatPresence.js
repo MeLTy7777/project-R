@@ -86,8 +86,6 @@
     let lastEnemySeenFrame = null;
     let lastScanFrame = -Infinity;
     let battleSummonTarget = null;
-    let gunTemplateEventId = 0;
-    let playerGunEvent = null;
 
     const currentFrame = () => {
         if (typeof Graphics === "undefined") return 0;
@@ -225,115 +223,10 @@
         setTargetVisible(battleSummonTarget, combatActive);
     };
 
-    const eventHasGunTag = event => {
-        if (!event || event._erased || typeof event.event !== "function") {
-            return false;
-        }
-        return /<gun>/i.test(String(event.event()?.note || ""));
-    };
-
-    const isPlayerGunEvent = event => {
-        if (!eventHasGunTag(event)) return false;
-        if (typeof $gamePlayer !== "undefined" &&
-            (event.isPlayerChild || event.theParent === $gamePlayer)) {
-            return true;
-        }
-        return !!event.isSpawnEvent && !event._inheritedEnemyName &&
-            !event._inheritedActorId;
-    };
-
-    const playerHasGunEvent = () => {
-        if (isPlayerGunEvent(playerGunEvent) &&
-            $gameMap?._events?.[playerGunEvent._eventId] === playerGunEvent) {
-            return true;
-        }
-        playerGunEvent = null;
-        const events = typeof $gameMap !== "undefined" ? $gameMap?._events : null;
-        if (!Array.isArray(events)) return false;
-        for (let eventId = 1; eventId < events.length; eventId++) {
-            if (isPlayerGunEvent(events[eventId])) {
-                playerGunEvent = events[eventId];
-                return true;
-            }
-        }
-        return false;
-    };
-
-    const isGunEquipped = () => {
-        if (typeof window.equippedWeaponType !== "function") return false;
-        try {
-            return !!window.equippedWeaponType("銃");
-        } catch (error) {
-            return false;
-        }
-    };
-
-    const findGunTemplateEventId = () => {
-        if (gunTemplateEventId > 0) return gunTemplateEventId;
-        const events = typeof $dataTemplateMap !== "undefined" ?
-            $dataTemplateMap?.events : null;
-        if (!Array.isArray(events)) return 0;
-        for (let eventId = 1; eventId < events.length; eventId++) {
-            if (/<gun>/i.test(String(events[eventId]?.note || ""))) {
-                gunTemplateEventId = eventId;
-                return gunTemplateEventId;
-            }
-        }
-        return 0;
-    };
-
-    const ensureGunWeaponEvent = () => {
-        if (!combatActive || !isGunEquipped() || playerHasGunEvent()) return;
-        if (typeof $gameMap?.spawnEvent !== "function" ||
-            typeof $gamePlayer === "undefined" || !$gamePlayer) {
-            return;
-        }
-        const templateEventId = findGunTemplateEventId();
-        if (templateEventId <= 0) return;
-        const x = finiteOr($gamePlayer._realX, finiteOr($gamePlayer.x, 0)) + 0.5;
-        const y = finiteOr($gamePlayer._realY, finiteOr($gamePlayer.y, 0)) + 0.2;
-        const eventId = $gameMap.spawnEvent(templateEventId, x, y, false);
-        playerGunEvent = eventId ? $gameMap?._events?.[eventId] || null : null;
-    };
-
-    const setManagedSpriteVisible = (sprite, visible) => {
-        if (!sprite) return;
-        if (!visible) {
-            if (!sprite._projectRCombatPresenceHidden) {
-                sprite._projectRCombatPresenceHidden = true;
-                sprite._projectRCombatPresenceWasHidden = !!sprite._hidden;
-            }
-            if (typeof sprite.hide === "function") sprite.hide();
-            else sprite.visible = false;
-        } else if (sprite._projectRCombatPresenceHidden) {
-            const wasHidden = sprite._projectRCombatPresenceWasHidden;
-            delete sprite._projectRCombatPresenceHidden;
-            delete sprite._projectRCombatPresenceWasHidden;
-            if (!wasHidden) {
-                if (typeof sprite.show === "function") sprite.show();
-                else sprite.visible = true;
-            }
-        }
-    };
-
-    const applyWeaponVisibility = () => {
-        const sprites = currentSpriteset()?._characterSprites;
-        if (!Array.isArray(sprites)) return;
-        const visible = combatActive && isGunEquipped();
-        for (let index = 0; index < sprites.length; index++) {
-            const sprite = sprites[index];
-            if (isPlayerGunEvent(sprite?._character)) {
-                setManagedSpriteVisible(sprite, visible);
-            }
-        }
-    };
-
     const setCombatActive = active => {
         const next = !!active;
         if (combatActive === next) return;
         combatActive = next;
-        if (combatActive) ensureGunWeaponEvent();
-        applyWeaponVisibility();
         applyBattleSummonVisibility();
     };
 
@@ -357,8 +250,6 @@
             setCombatActive(false);
         }
 
-        if (combatActive) ensureGunWeaponEvent();
-        applyWeaponVisibility();
         return combatActive;
     };
 
@@ -366,7 +257,6 @@
         lastEnemySeenFrame = null;
         lastScanFrame = -Infinity;
         setCombatActive(false);
-        applyWeaponVisibility();
         applyBattleSummonVisibility();
     };
 

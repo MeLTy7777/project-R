@@ -231,11 +231,8 @@
     const contextTargets = new WeakMap();
     let mainAttacks = new WeakMap();
     let pendingHits = new WeakMap();
-    let shotTokens = new WeakSet();
-    const collisionProbes = [];
     const swordHits = new WeakMap();
     const swordSwings = new WeakMap();
-    const ce3Frames = new WeakMap(), ce3Traced = new WeakSet();
     const swordVisuals = [];
     const SWORD_HITBOX_SCALE = 1.35;
     let swordSnapshot = null, pileTrace = [];
@@ -263,11 +260,10 @@
     }
     function updateArenaFacing() {
         if (!arenaFacingAllowed()) { restoreArenaFacing("arena/scene/lock"); return; }
-        const gun = !!window.equippedWeaponType?.("銃");
         if (arenaFacingLock?.mode === "sword") {
             const lock = arenaFacingLock;
             const finished = lock.sprite ? lock.sprite._duration < 0 || !lock.sprite.parent : frame() >= lock.expires;
-            if (gun || finished) restoreArenaFacing(gun ? "equipment" : "swingEnd");
+            if (finished) restoreArenaFacing("swingEnd");
             else {
                 const movement = Input.dir8 || Input.dir4 || 0;
                 if (movement !== lock.movement) {
@@ -278,13 +274,7 @@
                 return;
             }
         }
-        if (!gun || $gameMap.isEventRunning()) { restoreArenaFacing("equipment/event"); return; }
-        // Match Map001: its non-gun / input-locked branch explicitly releases the gun fix.
-        if (!arenaFacingLock) arenaFacingLock = { mode: "gun", player: $gamePlayer, priorFix: false };
-        $gamePlayer.setDirectionFix(false);
-        try { $gamePlayer.turnToward("mouse or gamepad", false); }
-        catch (error) { restoreArenaFacing("aimError"); warn(error.message); return; }
-        $gamePlayer.setDirectionFix(true);
+        restoreArenaFacing("equipment/event");
     }
     let aimingStatus = "WAITING", aimingNoticeUntil = -1;
     const consumedMouseButtons = new Set();
@@ -526,7 +516,6 @@
         runtime.hits.clear();
         mainAttacks = new WeakMap();
         pendingHits = new WeakMap();
-        shotTokens = new WeakSet();
         keyQueue.length = 0;
         heldKeys.clear();
         arenaQueued = false;
@@ -1082,7 +1071,7 @@
         return result(validateDeck().valid);
     }
     function createMainAttackToken(kind = "fallback") {
-        if (!["gun", "sword", "fallback"].includes(kind)) kind = "fallback";
+        if (!["sword", "fallback"].includes(kind)) kind = "fallback";
         return Object.freeze({ kind: "main", attackKind: kind, session: runtime.session,
             mapId: runtime.mapId, id: `${kind}:${runtime.session}:${++runtime.mainSerial}` });
     }
@@ -1129,7 +1118,6 @@
     }
     function beginMainAttack(interpreter, kind = "fallback") {
         if (!runtime.active || !(interpreter instanceof Game_Interpreter) || contextFor(interpreter)) return null;
-        if (kind === "fallback" && window.equippedWeaponType?.("銃")) kind = "gun";
         const token = createMainAttackToken(kind);
         if (kind === "sword" && isDebugArena()) {
             restoreArenaFacing("nextSword");
@@ -1184,20 +1172,6 @@
         if (record.actionId) releaseUnusedContext(record.actionId);
         return true;
     }
-    const spawnEvent = Game_Map.prototype.spawnEvent;
-    if (spawnEvent) Game_Map.prototype.spawnEvent = function() {
-        const id = spawnEvent.apply(this, arguments);
-        const interpreter = executionStack[executionStack.length - 1];
-        const token = interpreter && mainAttacks.get(interpreter);
-        const event = this.event(id);
-        if (validMainToken(token) && !contextFor(interpreter) && event?.event()?.note?.includes("<weaponAttack>")) {
-            const shot = token.attackKind === "gun" && !shotTokens.has(token) ? token : createMainAttackToken("gun");
-            shotTokens.add(shot);
-            eventActions.set(event, { kind: "main", token: shot, session: runtime.session, mapId: runtime.mapId });
-            trace("Projectile spawned", { eventId: id, token: shot.id });
-        }
-        return id;
-    };
     const unspawnEvent = Game_Map.prototype.unspawnEvent;
     if (unspawnEvent) Game_Map.prototype.unspawnEvent = function(id) {
         const event = this.event(id);
@@ -1206,38 +1180,17 @@
         return value;
     };
     const checkCollision = window.checkCollide;
-    // AE 1.6.6b only updates lastSourceEventId for <dmg: ...> in checkCollide.
-    // The shipped Bullet has only <weaponAttack>. Capture the actual source at
-    // the official successful collision's damage lookup, without a second collision
-    // check (which would consume cooldowns) or reliance on a stale global ID.
-    const sourceDamage = typeof Game_Event !== "undefined" && Game_Event.prototype.getDamageFromNoteTag;
-    if (sourceDamage) Game_Event.prototype.getDamageFromNoteTag = function() {
-        const probe = collisionProbes[collisionProbes.length - 1];
-        if (probe) probe.source = this;
-        return sourceDamage.apply(this, arguments);
-    };
     if (typeof checkCollision === "function") window.checkCollide = function(targetId) {
-        const probe = { source: null };
-        collisionProbes.push(probe);
-        let hit;
-        try { hit = checkCollision.apply(this, arguments); }
-        finally { collisionProbes.pop(); }
+        const hit = checkCollision.apply(this, arguments);
         const interpreter = executionStack[executionStack.length - 1];
         if (runtime.active && interpreter) {
             pendingHits.delete(interpreter);
             const target = $gameMap.event(Number(targetId));
             if (hit && !contextFor(interpreter) && isLivingEnemy(target)) {
-                const source = probe.source;
-                const record = eventActions.get(source);
-                const token = validEventAction(source, record) ? (record.kind === "main" ? record.token : null) :
-                    (arguments[1] === "<playerAttack>" ? mainAttacks.get(interpreter) : null);
+                const token = arguments[1] === "<playerAttack>" ? mainAttacks.get(interpreter) : null;
                 if (validMainToken(token)) {
-                    if (config.debug && ce3Frames.has(interpreter) && !ce3Traced.has(interpreter)) {
-                        trace("CE3 start", { frame: ce3Frames.get(interpreter), target: target.eventId(), token: token.id });
-                        ce3Traced.add(interpreter);
-                    }
-                    pendingHits.set(interpreter, { target, token, projectileId: source?.eventId() });
-                    trace("Collision", { target: target.eventId(), token: token.id, projectileId: source?.eventId() });
+                    pendingHits.set(interpreter, { target, token });
+                    trace("Collision", { target: target.eventId(), token: token.id });
                 }
             }
         }
@@ -1412,16 +1365,10 @@
     };
     const interpreterUpdate = Game_Interpreter.prototype.update;
     Game_Interpreter.prototype.update = function() {
-        const ce3 = config.debug && this._list === $dataCommonEvents[3]?.list;
-        if (ce3 && this._index === 0) { ce3Frames.set(this, frame()); ce3Traced.delete(this); }
         executionStack.push(this);
         try { return interpreterUpdate.apply(this, arguments); }
         finally {
             executionStack.pop();
-            if (ce3 && !this.isRunning()) {
-                if (ce3Traced.has(this)) trace("CE3 end", { target: this._eventId });
-                ce3Frames.delete(this); ce3Traced.delete(this);
-            }
             if (!this.isRunning()) { interpreterContexts.delete(this); mainAttacks.delete(this); pendingHits.delete(this); }
             finishActionIfDone();
         }
