@@ -15,6 +15,8 @@ var $plugins =
 {"name":"ProjectR_PlayerFacing","status":true,"description":"v1.0.0 戦闘中だけプレイヤーを照準方向へ向けます。","parameters":{}},
 {"name":"ProjectR_BattleHUD","status":true,"description":"v1.0.0 FHD基準のProjectR専用アクション戦闘HUDを表示します。","parameters":{"DebugPreview":"false","VisibilitySwitchId":"0","HideDuringMessages":"true","UltimateVariableId":"0","UltimateMaxVariableId":"0","AssetFolder":"img/projectr_ui/battle/","GodLabel":"GOD"}},
 {"name":"ProjectR_MenuHUD","status":true,"description":"v2.0.0 メニュー原画をそのまま表示するProjectR専用メニューの土台。","parameters":{"ArtworkFile":"menu_main.jpg"}},
+{"name":"ProjectR_CombatOcclusion","status":true,"description":"v0.1.0 ProjectR共通Combat Wall / Vision Occlusion。","parameters":{"VisionWallRegionId":"255"}},
+{"name":"ProjectR_VisionOcclusion","status":true,"description":"v1.0.3 壁で遮られる360°プレイヤー視界。壁255の露出を9点で補完。","parameters":{"Enabled":"true","VisionAngle":"360","VisionRangeTiles":"0","DarknessOpacity":"1.0","VisionWallRegionId":"255","StructureRegionId":"254","Debug":"false"}},
 {"name":"ProjectR_CardSkillDeck","status":true,"description":"v0.3.5 主人公用30枚カードデッキ・戦闘時5枠スキル・ENERGY。","parameters":{"CardWidth":"150","CardHeight":"210","CardSpacing":"12","DefaultTargetRange":"8.0","Rarity1Color":"#428bdb","Rarity2Color":"#ab72df","Rarity3Color":"#e2bb55","EnableDebugCommands":"true","VfxRegistry":"[]","AutoStartCardCombat":"true","AlwaysShowCardHud":"false","DebugAutoSetupTestDeck":"true","ShowDebugOverlay":"true","DebugAutoRefillEnergy":"false"}},
 {"name":"ProjectR_ItemEquip","status":true,"description":"v0.1.1 MenuHUD ITEM / standard items and Actor 1 weapons","parameters":{}}
 ];
