@@ -1,5 +1,59 @@
 # ProjectR 全仕様パス MZ実機確認チェックリスト
 
+## 最重要：クリティカル確認シーケンス（まずここだけ）
+
+Reed Flute / Lyre / F / U は、実エンジン読み込みテストでは成功していますが、**MZ実機では未確認**です
+（状態は `IMPLEMENTED / AUTOMATED VERIFIED / MZ VERIFICATION REQUIRED`）。次の順で確認し、
+**失敗した手順の番号と、その直後の「Full-Spec Status」端末の「[認証]」ブロックの文字**を教えてください。
+「Full-Spec Status」端末は、アリーナの南東（x=33, y=26）の `DEV Full-Spec Status` です。
+
+| # | 手順 | 期待される結果 | 失敗したら報告すること |
+| --- | --- | --- | --- |
+| 1 | PlaytestでConsoleに `ProjectRCombatTestArena.enter()` を実行しアリーナへ入る | アリーナに入る。F8に赤いエラーなし | F8の赤い文面 |
+| 2 | 戦闘HUDが出ていないことを確認 | 戦闘外はHUD・神・ダミーなし | 画面のスクリーンショット |
+| 3 | 黄色の端末（操作盤など）の前でFを押す | メッセージが開く | Status端末の「F:」の行 |
+| 4 | 操作盤で Hermesテスト開始 | カードHUD（Q E X C V）・Hermesが出る | 画面の状況 |
+| 5 | HUDと神を確認 | 手札5枚・DRAW/DISCARD/COOLDOWN・Hermes | 「[認証] 戦闘セッション」の行 |
+| 6 | 戦闘中にもう一度、端末の前でFを押す | 照準が別方向でもメッセージが開く | 「F:」の行（物理入力の回数・判定・起動イベントID） |
+| 7 | Q E X C V を1回ずつ押す | 手札の左から1〜5枚目が1枚ずつ発動 | 「直近キー」「直近カード」 |
+| 8 | 操作盤で「Go to Reed Flute Spot」→ 葦笛のカードのキー | ダミー3体の頭上にZzz。DEV端末の「睡眠中ダミー」に3体 | 「葦笛:」の行（候補/生存/範囲内/付与） |
+| 9 | Apolloテストを開始し、リラのカードのキー | 主人公の頭上に音符。「Lyre:」が成功、精神安定あり | 「Lyre:」の行 |
+| 10 | Hermesテストで、南西の研究室の「Gauge満タン」 | Gauge 100/100 | 「Gauge」の行 |
+| 11 | Uキーを押す | Hermes Ultimate：6連斬が見え、Gaugeが0になる。その後もQ E X C Vが使える | 「U:」の行（物理入力・要求・最後・結果） |
+| 12 | 操作盤で戦闘を終える（End） | HUD・神が消える | 画面の状況 |
+| 13 | Escで通常メニューを開く | メニューが開く（戦闘中は開かない） | 画面の状況 |
+| 14 | ITEM（アイテム）を開く | カテゴリ（アイテム/武器/防具/大事なもの/弾薬/指輪）。見るだけでは減らない | 画面とF8 |
+| 15 | SKILL（スキル）= デッキ構築を開き、カードを追加・削除 | `DECK n / 30`。コピー上限で拒否。製品では19枚までで30枚に届かない（正常） | 画面とF8 |
+| 16 | ULTIMATE（アルティメット）を開きApolloを選ぶ | 「現在の選択：アポロン」。Janus/Themis/Athenaは未実装で選べない | 画面とF8 |
+| 17 | Apolloテストを開始 | Apolloが常駐して出る | 「Ultimate選択」「常駐神」 |
+| 18 | Gaugeを満タンにしてUキー | 矢7本が扇状に出る。Gaugeが0 | 「U:」の行 |
+| 19 | 武器ゾーンでG17（ハンドガン）を撃つ | 弾が見える・銃口の発光・弾数が減る・リロードで音 | 画面の状況 |
+| 20 | F8（Console）を確認 | 赤いエラーなし | F8の赤い文面 |
+
+### 「[認証]」ブロックの読み方
+
+```
+[認証] 戦闘セッション:…  カード戦闘:yes/no  戦闘イベント:yes/no
+手札[…]  直近キー:KeyV accepted/passedThrough:理由  直近カード:成功/失敗 …
+葦笛: 候補N 生存N 範囲内N 付与N <理由>  / 睡眠中ダミー[…]
+Lyre: 成功:success / 失敗:理由   / 精神安定:あり(残りN秒)/なし
+F: 物理入力N回  判定:engine / engineAligned:ID / none  起動イベントID:…
+Gauge 現在/最大  Ultimate選択:…  常駐神:…  handler Hermes:yes Apollo:yes
+U: 物理入力N回  受信N 要求N 最後:queued/blocked:理由  結果:OK started / NG 理由
+```
+
+- 「物理入力0回」= そのキーがゲームに届いていません（ウィンドウのフォーカス、IME、別アプリが原因のことがあります）。
+- `blocked:messageBusy` / `eventRunning` / `activeWindow:…` = メッセージや別Windowが開いていて入力が受け付けられていません。
+- 「葦笛: 候補0」= `<enemy>` のイベントを見つけられていません。「範囲内0」= 4タイル内に敵がいません。
+- 「U: … 結果: NG gaugeNotFull」= Gaugeが満タンではありません。
+
+### 製品のデッキが30枚にならないこと（CONTENT BLOCKER）
+
+製品のカードは7種で、コピー上限の合計は19枚です。そのため製品ではボス戦が必ず「30枚必要（現在N枚）」で拒否されます。
+**コードの不具合ではなく、カード追加待ちです。** 30枚ルールもコピー上限も緩めていません。DEV端末の「DEVボス戦開始」だけ、DEV fixtureで試せます。
+
+---
+
 自動テストはMZを起動しません。次の手順は**MZのPlaytest（テストプレイ）で実際に確認**してください。
 私（Claude）はMZを起動できないため、ここに書いた項目はすべて「MZ実機では未確認」です。
 確認できたら、結果（OK / NG と、NGのときは画面の文字）を教えてください。
@@ -80,7 +134,7 @@ ProjectRCardDeck.assignRingToPlayer("hermes"); ProjectRCardDeck.assignRingToPlay
 2. 銃（テストハンドガン）を装備して撃つ。**弾が見える**（以前は見えなかった）、**銃口の発光と短い弾道線**が出る。弾数が減り、リロードで音が鳴る（仮の音: Gun2）。
 3. Hermes剣術カードと、HermesのUltimate（6連斬）で、各斬撃の方向に斬撃が見える。ダメージ数値も出る。
 
-## J. 以前の実機不具合の再確認
+## J. 以前の実機不具合の再確認（上の最重要シーケンスと同じ内容。「Full-Spec Status」端末の「[認証]」ブロックを使う）
 
 アリーナの Hermes / Apollo テストを開始し、次を試して、状態端末（Status Terminal）の下のほうの行を報告してください。
 
@@ -103,6 +157,8 @@ ProjectRCardDeck.assignRingToPlayer("hermes"); ProjectRCardDeck.assignRingToPlay
 ## 自動テスト
 
 ```
+node tests/ProjectR_RuntimeCertification.test.cjs   # 実エンジン: Reed Flute/Lyre/F/U/Q E X C V
+node tests/ProjectR_MenuRuntimeCertification.test.cjs   # 実Window: アイテム/デッキ構築/アルティメット/指輪
 node tests/ProjectR_FullSpec.menu.test.cjs
 node tests/ProjectR_FullSpec.combat.test.cjs
 node tests/ProjectR_FullSpec.arena.test.cjs

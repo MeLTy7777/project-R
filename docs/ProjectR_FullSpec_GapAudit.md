@@ -27,15 +27,15 @@
 | 5 | 指輪の所持・譲渡 | PARTIAL | COMPLETE（実機未確認） | ルール（主人公は無制限、仲間は1人1つ・対象限定・戦闘外のみ）は元々Coreが実装済み。通常メニューの経路が無かった → `ProjectR_RingParty`（ULTIMATE画面でTab）。**製品の「仲間にできる指輪」は未定義 → #34** |
 | 6 | 仲間（Party）システム | NOT IMPLEMENTED | PARTIAL | `ProjectR_PartyCombat`: 定義レジストリ・最大2人・HP/ダウン・デッキ不使用・指輪ごとのAIスキル・自動判断（攻撃/指輪スキル/移動）。**仲間のマップ上の姿・実際の移動と攻撃の演出は未実装**（製品の仲間キャラ自体が未設計）。DEV fixtureのみで動作確認 |
 | 7 | 戦闘イベントのライフサイクル | PARTIAL | COMPLETE（実機未確認） | 戦闘イベントのフラグ（CombatPresence）はあったが、開始/終了で他のシステムをまとめて動かす窓口が無かった → `ProjectR_CombatSession.begin/end`（プラグインコマンド BeginCombat / EndCombat） |
-| 8 | 戦闘中のF（調べる） | BROKEN IN MZ（実機報告） | PARTIAL | RT3の対策（隣のボタンイベントへ向き合わせ＋標準 `start()`）は実機で未確認のまま。今回の静的レビューで新たな不具合は見つからず、変更なし。状態端末にF入力の診断を表示 |
+| 8 | 戦闘中のF（調べる） | BROKEN IN MZ（実機報告） | IMPLEMENTED / AUTOMATED VERIFIED / MZ VERIFICATION REQUIRED | 実エンジン経路（物理F → keyMapper `ok` → Game_Player → DotMoveの正面判定）を再現し、マウス9地点×上下左右の位置×横ずれの126通りで、戦闘中も端末が起動することを確認。**直接 `event.start()` をする補助は廃止**し、標準判定が照準の向きで外れたときだけ、隣の対象がある向きへ一瞬向けて標準判定をやり直す方式に変更（戦闘外と同じ規則）。実機で失敗した原因は再現できていない |
 | 9 | カード入力 Q/E/X/C/V（押下1回=1発動） | COMPLETE | COMPLETE | RT3で実装・自動テスト済み。実機未確認 |
 | 10 | カード戦闘ルール（手札5・Cooldown・捨て札の再シャッフル・失敗は非消費） | COMPLETE | COMPLETE | Coreのテストで検証済み |
-| 11 | 製品カード7枚が実機で動く | BROKEN IN MZ（Reed Flute/Lyre） | PARTIAL | Reed FluteとLyreの実機失敗は、Hendrixの `findTargets/checkRange/hasState/AddState` とDatabaseのState/敵データを照合したが原因を特定できず、**コードは変えていない**。DEVの状態端末に、Reed Flute・Lyreの発動前提・Ultimate・Fの直近結果を表示 |
+| 11 | 製品カード7枚が実機で動く | BROKEN IN MZ（Reed Flute/Lyre） | IMPLEMENTED / AUTOMATED VERIFIED / MZ VERIFICATION REQUIRED | 実Hendrix・実Map004・実Scene_Mapでの物理キー経路では、Reed Flute（ダミー3体にState 32、4秒で解除、範囲外は非消費）とLyre（State 34付与・睡眠解除・睡眠耐性）が成功する。コード上の不具合は見つからず、実機で失敗した原因は再現できていない。**敵にもプレイヤーにも状態アイコンが出ず、効いたか見えなかった**ため、睡眠中の敵にZzz・精神安定の付与時に音符のふきだしを追加（表示のみ）。Lyreの対象種別 `ally` は「主人公（将来は味方）」を指し、現在は主人公へ付与する契約で一致している |
 | 12 | ターゲティング（Direction/Ground/Buff即時/Heal=最寄りの味方、いなければ自分） | PARTIAL | PARTIAL | 各カードが個別に実装。Healの「最寄りの仲間」は、マップ上に仲間が居ないため自分固定。共通ヘルパー化は仲間の姿が決まってから |
 | 13 | 一時的な神の召喚（見える・消える・HPなし・邪魔しない） | COMPLETE | COMPLETE | ロジックは `GodSummonManager`、見た目は表示専用の `GodSummonVisual`。画像はPlugin Parameterで差し替え可（最終アートは未作成） |
 | 14 | 常駐Ultimate神 | COMPLETE | COMPLETE | Divine HP・崩壊・15秒後に50%で復帰。実機未確認 |
 | 15 | Ultimate Gauge（0%開始・満タン=ready・使用で0・HUDの3状態） | COMPLETE | COMPLETE | HUDは「通常 / READY / GAUGE FULL UNAVAILABLE」を区別 |
-| 16 | Ultimate入力 U | BROKEN IN MZ（実機報告） | PARTIAL | RT3の診断のみ。実機未確認。状態端末にU入力の直近結果を表示 |
+| 16 | Ultimate入力 U | BROKEN IN MZ（実機報告） | IMPLEMENTED / AUTOMATED VERIFIED / MZ VERIFICATION REQUIRED | 実エンジン経路で、物理U → UltimateActivation → handler → Gauge 100→0 を Hermes（6連斬）・Apollo（矢7本・扇状）とも確認。Gauge不足・神の崩壊中は発動せずGaugeを消費しない。実機で失敗した原因は再現できていない（診断行を拡充） |
 | 17 | Hermes Ultimateの斬撃の見た目 | NOT IMPLEMENTED | COMPLETE（実機未確認） | Hitbox/ダメージは変更せず、`ProjectR_WeaponPresentation` が6斬撃の各角度で360°の斬撃を描く |
 | 18 | Apollo Ultimateの見た目 | PARTIAL | PARTIAL | 7本の矢は公式Prefab（`VFX/$Bullet`画像）で見える。矢以外の追加演出は無し（最終アートが無いため作らない） |
 | 19 | 通常の剣（公式Swing Weapon + Dynamic Hitbox + Databaseダメージ） | PARTIAL | PARTIAL | 構成はCE1で既に公式どおり。Swing Weaponは4方向なので、マウス方向の360°斬撃を `WeaponPresentation` で重ねた。**剣の専用画像が無い（Pan.pngは暫定）** → BladeImageで差し替え可 |
@@ -99,6 +99,10 @@
 
 ## 5. 既知の未解決（実機の確認が必要）
 
-1. Reed Flute / Lyre が実機で失敗する原因（上記 #11）。状態端末の「Reed Flute直近」「Lyre直近」を報告してください。
-2. 戦闘中のF（#8）、U入力（#16）。同様に状態端末の「F(調べる)直近」「Ultimate直近」を報告してください。
-3. 今回追加した画面・見た目（メニュー3画面と指輪画面、ボス/仲間HUD、斬撃、銃口発光）はすべて実機で未確認です。
+**Reed Flute / Lyre / F / U は `IMPLEMENTED / AUTOMATED VERIFIED / MZ VERIFICATION REQUIRED` です。「COMPLETE」とは呼びません。**
+実エンジン読み込みハーネス（`tests/RealEngineHarness.cjs`）では4つとも成功しますが、実機で以前失敗した原因は特定できていません。
+実機で失敗する場合は、DEV端末「Full-Spec Status」の「[認証]」ブロックを報告してください（手順は docs/ProjectR_FullSpec_ManualVerification.md の冒頭）。
+
+1. Reed Flute / Lyre（#11）、F（#8）、U（#16）: 上記のとおり実機確認待ち。
+2. 今回追加・変更した画面・見た目（メニュー3画面と指輪画面、ボス/仲間HUD、斬撃、銃口発光、睡眠/精神安定のふきだし）は実機で未確認です。
+3. 製品のカードは7種（コピー上限の合計19枚）で、**30枚デッキは作れず、製品のボス戦は開始が拒否されます。これはコードの不具合ではなく、カード追加待ちの CONTENT BLOCKER です。** 30枚ルールもコピー上限も緩めていません。DEV fixture でボス枠組みを試せます。
