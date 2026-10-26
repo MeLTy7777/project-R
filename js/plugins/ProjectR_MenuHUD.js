@@ -30,7 +30,8 @@
  * Enter（テンキーも可）/ OK: 選択項目を決定
  * マウス: 文字位置をクリックすると選択・決定、右クリックで閉じる
  *
- * SKILL/ULTIMATE/ITEMは決定音とselectedCommand更新だけの仮処理です。
+ * SKILL/ULTIMATE/ITEMは MenuHUD.commandScenes に登録されたSceneを開きます（ProjectR_MenuIntegration）。
+ * 未登録の間は決定音とselectedCommand更新だけの仮処理です。
  * SAVE/LOAD/SYSTEM/TITLEは標準のScene_Save/Scene_Load/Scene_Options/
  * Scene_GameEndへ接続します。セーブ禁止・イベントテスト中はSAVEを拒否します。
  * キャンセル時は直前の選択項目へ戻ります。ロード成功・タイトル復帰は
@@ -594,7 +595,10 @@
                 case "title":
                     nextScene = Scene_GameEnd;
                     break;
-                // SKILL / ULTIMATE / ITEM intentionally keep their provisional behavior.
+                // SKILL / ULTIMATE / ITEM: ProjectR_MenuIntegration が MenuHUD.commandScenes へ接続する。
+            }
+            if (!nextScene && MenuHUD.commandScenes && MenuHUD.commandScenes[command]) {
+                nextScene = MenuHUD.commandScenes[command];
             }
             SoundManager.playOk();
             if (nextScene) {
@@ -627,6 +631,8 @@
 
     window.Scene_ProjectRMenu = Scene_ProjectRMenu;
     MenuHUD.Scene = Scene_ProjectRMenu;
+    // 各コマンド(小文字のsymbol)から開くSceneを、他のプラグインが登録するための表。
+    MenuHUD.commandScenes = MenuHUD.commandScenes || {};
 
     const SUBMENU_PHYSICAL_ACTIONS = Object.freeze({
         ...PHYSICAL_ACTIONS, ArrowLeft: "left", ArrowRight: "right"

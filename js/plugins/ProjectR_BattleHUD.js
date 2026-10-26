@@ -520,6 +520,10 @@
         return godPresentationOverrides.delete(String(godId || ""));
     };
 
+    // メニューなど他画面が、HUDと同じ名前・アイコンを読むための読み取り専用の入口（下で定義）。
+    BattleHUD.getCardPresentation = cardId => resolveCardPresentation(String(cardId || ""));
+    BattleHUD.getGodPresentation = godId => resolveGodPresentation(String(godId || ""));
+
     // Skillのnote <ProjectRCard: cardId> を持つSkillを、$dataSkills配列ごとに一度だけ索引化する。
     const skillForCard = cardId => {
         if (typeof $dataSkills === "undefined" || !Array.isArray($dataSkills)) return null;

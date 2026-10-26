@@ -34,4 +34,10 @@ var $plugins =
 ,{"name":"ProjectR_ApolloLyreCalm","status":true,"description":"v1.0.0 Phase 2C-6 Apollo リラの精神安定State付与。","parameters":{"DurationSeconds":"6.0"}}
 ,{"name":"ProjectR_ApolloUltimate","status":true,"description":"v1.0.0 Phase 4D-2 Apollo Ultimate（暫定）7連矢。","parameters":{"ArrowCount":"7","ArrowIntervalSeconds":"0.10","SpreadStepDegrees":"10","ProjectileLifetimeFrames":"90","UltimateDamageGeneratesGauge":"false"}}
 ,{"name":"ProjectR_CombatTestArena","status":true,"description":"v1.1.0 DEV専用 Combat Test Arena（Playtest限定。配布版では何もしません）。","parameters":{}}
+,{"name":"ProjectR_MenuCore","status":true,"description":"v1.0.0 メニュー基盤。カード/神/指輪の表示、デッキ・Ultimate・指輪・所持品のモデル、戦闘中ロック。","parameters":{}}
+,{"name":"ProjectR_MenuUI","status":true,"description":"v1.0.0 メニュー画面の共通部品。","parameters":{}}
+,{"name":"ProjectR_DeckBuilder","status":true,"description":"v1.0.0 カードデッキ構築画面(メニューのSKILL)。","parameters":{}}
+,{"name":"ProjectR_UltimateSelect","status":true,"description":"v1.0.0 Ultimateの神の選択画面(メニューのULTIMATE)。","parameters":{}}
+,{"name":"ProjectR_Inventory","status":true,"description":"v1.0.0 所持品・装備の確認画面(メニューのITEM)。","parameters":{}}
+,{"name":"ProjectR_MenuIntegration","status":true,"description":"v1.0.0 メニュー接続(SKILL/ULTIMATE/ITEM)、戦闘中ロック、進行用プラグインコマンド。","parameters":{}}
 ];
