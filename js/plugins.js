@@ -21,4 +21,5 @@ var $plugins =
 ,{"name":"ProjectR_HermesRecognitionObscure","status":true,"description":"v1.0.0 Phase 2C-1 Hermes認識阻害のinstant handler。","parameters":{"DurationSeconds":"5.0"}}
 ,{"name":"ProjectR_HermesReedFluteSleep","status":true,"description":"v1.0.0 Phase 2C-2 Hermes葦笛睡眠の範囲State handler。","parameters":{"RangeTiles":"4","DurationSeconds":"4.0"}}
 ,{"name":"ProjectR_HermesSwiftMovement","status":true,"description":"v1.0.0 Phase 2C-3 Hermes高速移動の公式Teleport接続。","parameters":{}}
+,{"name":"ProjectR_HermesSwordsmanship","status":true,"description":"v1.0.0 Phase 2C-4 Hermes剣術のDynamic Hitbox。","parameters":{"ForwardTiles":"0.75","HitboxWidth":"1.5","HitboxHeight":"1.5","LifetimeFrames":"3"}}
 ];

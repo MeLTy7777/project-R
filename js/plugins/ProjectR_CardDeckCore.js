@@ -719,6 +719,7 @@
         },
         isCardBattleActive: () => !!activationRouter && !!battleSession?.state,
         endCardBattle() { api.endBattle(); },
+        getActivationHandler: targetType => TARGET_TYPES.has(targetType) ? activationHandlers[targetType] || null : null,
         registerActivationHandler(targetType, handler) {
             if (!TARGET_TYPES.has(targetType) || typeof handler !== "function") return false;
             activationHandlers[targetType] = handler;
