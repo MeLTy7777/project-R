@@ -23,4 +23,5 @@ var $plugins =
 ,{"name":"ProjectR_HermesSwiftMovement","status":true,"description":"v1.0.0 Phase 2C-3 Hermes高速移動の公式Teleport接続。","parameters":{}}
 ,{"name":"ProjectR_HermesSwordsmanship","status":true,"description":"v1.0.0 Phase 2C-4 Hermes剣術のDynamic Hitbox。","parameters":{"ForwardTiles":"0.75","HitboxWidth":"1.5","HitboxHeight":"1.5","LifetimeFrames":"3"}}
 ,{"name":"ProjectR_ApolloDiseaseAttack","status":true,"description":"v1.0.0 Phase 2C-5 Apollo病の矢の弾・Disease・実時間DoT。","parameters":{"DurationSeconds":"6.0","TickIntervalSeconds":"1.0","MaxTicks":"6"}}
+,{"name":"ProjectR_ApolloLyreCalm","status":true,"description":"v1.0.0 Phase 2C-6 Apollo リラの精神安定State付与。","parameters":{"DurationSeconds":"6.0"}}
 ];

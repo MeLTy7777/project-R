@@ -90,7 +90,7 @@ test("Database ID/式/Prefab/登録: Skill238・DoT239・State33、既存State31
     assert.deepEqual(state.traits, []); assert.equal(state.removeByDamage, false);
     assert.equal(state.autoRemovalTiming, 0); assert.equal(state.restriction, 0);
     assert.equal(states[31].name, "認識阻害"); assert.equal(states[32].name, "睡眠");
-    assert.equal(states.length, 34); assert.equal(skills.length, 240);
+    assert.ok(states.length >= 34); assert.equal(skills.length, 240);
     assert.equal(template.id, 4); assert.ok(template.note.includes("<dmg: アポロン病攻撃>"));
     assert.ok(template.note.includes("<attacker: player>")); assert.equal(template.note.includes("<weaponAttack>"), false);
     assert.equal(mapData.events[3].note.includes("<projectRGoldenArrow>"), true);
