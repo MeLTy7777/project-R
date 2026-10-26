@@ -19,4 +19,5 @@ var $plugins =
 ,{"name":"ProjectR_CardBattleInput","status":true,"description":"v1.0.0 Phase 2A 手札1～5入力adapter（CardDeckCoreの後）。","parameters":{}}
 ,{"name":"ProjectR_ApolloGoldenArrow","status":true,"description":"v1.0.0 Phase 2B Apollo黄金の弓矢のAction Combat接続。","parameters":{}}
 ,{"name":"ProjectR_HermesRecognitionObscure","status":true,"description":"v1.0.0 Phase 2C-1 Hermes認識阻害のinstant handler。","parameters":{"DurationSeconds":"5.0"}}
+,{"name":"ProjectR_HermesReedFluteSleep","status":true,"description":"v1.0.0 Phase 2C-2 Hermes葦笛睡眠の範囲State handler。","parameters":{"RangeTiles":"4","DurationSeconds":"4.0"}}
 ];
