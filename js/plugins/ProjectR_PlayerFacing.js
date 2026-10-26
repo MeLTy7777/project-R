@@ -24,13 +24,14 @@
  * 戦闘外のturnToward('mouse or gamepad')は従来どおり(敵が画面内にいない限り)抑止します。
  * マウスカーソル、クリック入力、武器Spriteの回転処理は変更しません。
  *
- * 戦闘中の「調べる」(決定キー=F):
- *   ①押した瞬間に、すぐ隣(約1.5タイル以内)の決定ボタンのイベントへ向きを合わせ、
- *   ②それでも標準処理が何も起動しなければ、同条件のイベントを標準のstart()で起動します。
- *   敵・弾・透明なイベント・決定ボタン以外・プレイヤーより前面/背面のイベントは対象外で、
- *   会話中・イベント実行中は起動しません。カード用Q/E/X/C/VやUltimateキーとは関係しません。
+ * 戦闘中の「調べる」(決定キー=F。導入設定ではOkキー=F):
+ *   起動は常に標準の判定(DotMoveの正面判定・トリガー・優先度)だけで行い、イベントを直接start()しません。
+ *   ①まず現在の向き(照準)で標準処理。②外れたときだけ、すぐ隣(約1.5タイル以内)の決定ボタンの
+ *   イベントがある向きへ一瞬向けて標準処理をやり直します(起動しなければ元の向きへ戻す)。
+ *   向きの候補にするのは、敵・弾・透明・決定ボタン以外・プレイヤーと同じ優先度以外・空のイベントを除いたものだけ。
+ *   会話中・イベント実行中は動きません。終了後は照準の向きに戻ります。カード用Q/E/X/C/VやUltimateキーとは無関係です。
  *
- * ProjectRPlayerFacing.getDiagnostics(): 直近のF押下の判定(canMove/イベント実行中/起動結果)と
+ * ProjectRPlayerFacing.getDiagnostics(): 直近のF押下の判定(canMove/イベント実行中/起動結果/起動したイベントID)と
  *   向き解放の履歴。Arenaの状態端末が表示します。
  */
 
@@ -116,7 +117,7 @@
     let wasCombatEvent = false;
     const diagnostics = {
         aimFrames: 0, releasedFix: 0, lastRelease: null,
-        lastOk: null, interactAssist: 0, interactFallback: 0
+        lastOk: null, interactAssist: 0
     };
 
     const isFree = (player, sceneActive) => sceneActive !== false &&
@@ -232,50 +233,58 @@
         return ax > ay ? (dx > 0 ? 6 : 4) : (dy > 0 ? 2 : 8);
     };
 
-    const nearestInteractable = player => {
+    // 隣接する「調べられる」イベントを近い順に返す(向きの候補を作るだけ。起動の可否は標準処理が決める)。
+    const interactCandidates = player => {
         const events = typeof $gameMap !== "undefined" && $gameMap ? $gameMap.events() : [];
-        let best = null;
-        let bestDistance = Infinity;
+        const found = [];
         for (const event of events) {
             if (!isInteractableEvent(event)) continue;
             const direction = directionToward(player, event);
             if (!direction) continue;
-            const distance = Math.hypot(event._realX - player._realX, event._realY - player._realY);
-            if (distance < bestDistance) {
-                bestDistance = distance;
-                best = { event, direction };
-            }
+            found.push({ event, direction, distance: Math.hypot(event._realX - player._realX, event._realY - player._realY) });
         }
-        return best;
+        return found.sort((a, b) => a.distance - b.distance);
     };
 
+    // 照準による向き固定を一瞬だけ外して向きを変え、元の固定状態へ戻す。
+    const turnPlayer = (player, direction) => {
+        const fixed = player._directionFix;
+        player._directionFix = false;
+        player.setDirection(direction);
+        player._directionFix = fixed;
+    };
+
+    // 戦闘中の「調べる」も標準の判定(DotMoveの正面判定・トリガー・優先度)だけで起動する。
+    // イベントをstart()で直接起動しない。照準の向きで標準判定が外れたときだけ、隣の対象がある向きへ
+    // 向けて標準判定をやり直す(起動しなければ元の向きへ戻す)。戦闘外は標準のまま。
     const _Game_Player_triggerButtonAction = Game_Player.prototype.triggerButtonAction;
     Game_Player.prototype.triggerButtonAction = function() {
         const pressed = Input.isTriggered("ok");
         const assist = pressed && isCombatActive() && this.canMove();
-        const target = assist ? nearestInteractable(this) : null;
-        if (target && target.direction !== this.direction()) {
-            // 照準による向き固定を一瞬だけ外して向きを変え、元の固定状態へ戻す。
-            const fixed = this._directionFix;
-            this._directionFix = false;
-            this.setDirection(target.direction);
-            this._directionFix = fixed;
-            diagnostics.interactAssist++;
-        }
         let started = _Game_Player_triggerButtonAction.call(this);
         let outcome = started ? "engine" : "none";
-        if (!started && target && !$gameMap.isEventRunning()) {
-            target.event.start();
-            started = !!$gameMap.setupStartingEvent();
-            if (started) {
-                diagnostics.interactFallback++;
-                outcome = "fallback:" + target.event.eventId();
-            } else {
-                outcome = "fallbackRejected:" + target.event.eventId();
+        let candidate = null;
+        if (!started && assist) {
+            const tried = new Set([this.direction()]);
+            for (const target of interactCandidates(this)) {
+                candidate = candidate ?? target.event.eventId();
+                if (tried.has(target.direction)) continue;
+                tried.add(target.direction);
+                const original = this.direction();
+                turnPlayer(this, target.direction);
+                if (_Game_Player_triggerButtonAction.call(this)) {
+                    started = true;
+                    outcome = "engineAligned:" + target.event.eventId();
+                    candidate = target.event.eventId();
+                    diagnostics.interactAssist++;
+                    break;
+                }
+                turnPlayer(this, original);
             }
         }
         if (pressed && diagnostics.lastOk) {
-            diagnostics.lastOk = { ...diagnostics.lastOk, candidate: target ? target.event.eventId() : null, outcome };
+            diagnostics.lastOk = { ...diagnostics.lastOk, candidate, outcome,
+                startedEventId: started ? Number($gameMap._interpreter?.eventId?.()) || null : null };
         }
         return started;
     };

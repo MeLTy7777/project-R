@@ -332,6 +332,7 @@ function interactionWorld({ withFacing }) {
             isNormalPriority() { return this.priority === 1; }
             isTransparent() { return this._transparent; }
             list() { return this._list; }
+            eventId() { return this._id ?? 0; }
         }
         var $mouseDirection = 8, $combat = false;
         var $gamePlayer = new Game_Player();

@@ -258,16 +258,25 @@ test("F: 戦闘外は標準の正面判定のまま(隣でも向きが違えば�
     assert.equal(w.press(), false); assert.deepEqual(plain(w.started()), []);
     w.run("$gamePlayer._direction = 2"); assert.equal(w.press(), true);
 });
-test("F: 戦闘中も隣の端末を調べられる(照準の向きが別でも)。標準の正面判定が外れても標準のstart()で起動する", () => {
+test("F: 戦闘中も隣の端末を調べられる(照準の向きが別でも)。起動は標準判定だけ(直接start()しない)", () => {
     const w = facingWorld(); const hub = w.put(10, 9);
     w.explicit(true); w.legacy(true); w.mouse(2); w.frame(); // 照準は下、端末は上
     assert.equal(w.dir(), 2); assert.equal(w.fixed(), true);
     assert.equal(w.press(), true); assert.deepEqual(plain(w.started()), [hub._id ?? 1]);
-    assert.equal(w.diag().lastOk.outcome === "engine" || /^fallback/.test(w.diag().lastOk.outcome), true);
-    // 標準が外す位置(斜め寄り・向きが合わない)でも、通常ルールを満たす隣接イベントなら起動
+    assert.match(w.diag().lastOk.outcome, /^engineAligned:/);
+    assert.equal(w.fixed(), true, "向き固定は元の状態のまま");
+    // 照準の向きのまま標準判定が通る場合は、向きを変えず標準のまま起動する
+    const w1 = facingWorld(); w1.put(10, 9); w1.explicit(true); w1.legacy(true); w1.mouse(8); w1.frame();
+    assert.equal(w1.press(), true); assert.equal(w1.diag().lastOk.outcome, "engine");
+    // 標準判定が外す位置(斜め寄り)は、戦闘外と同じく起動しない。start()で無理に起動しない
     const w2 = facingWorld(); w2.put(10.6, 9.4); w2.explicit(true); w2.legacy(true); w2.mouse(4); w2.frame();
-    assert.equal(w2.press(), true);
-    assert.match(w2.diag().lastOk.outcome, /^(engine|fallback:)/);
+    assert.equal(w2.press(), false); assert.deepEqual(plain(w2.started()), []);
+    assert.equal(w2.diag().lastOk.outcome, "none");
+    assert.doesNotMatch(read("js/plugins/ProjectR_PlayerFacing.js"), /[A-Za-z_]\.start\(\)/, "PlayerFacingはイベントを直接start()しない");
+});
+test("F: 候補の向きで標準判定が起動しなければ、向きを元へ戻す", () => {
+    const w = facingWorld(); w.put(10.6, 9.4); w.explicit(true); w.legacy(true); w.mouse(2); w.frame();
+    assert.equal(w.dir(), 2); w.press(); assert.equal(w.dir(), 2);
 });
 test("F: 通常のイベント規則を守る(敵・透明・Action Button以外・通常優先度以外・空のイベント・遠い・イベント実行中は起動しない)", () => {
     const w = facingWorld(); w.explicit(true); w.legacy(true); w.mouse(2); w.frame();
