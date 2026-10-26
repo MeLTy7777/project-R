@@ -24,7 +24,7 @@
  *   ・ProjectRCardBattleInputと同じ方針で Input._onKeyDown/_onKeyUp をaliasします。
  *   ・カード戦闘中の「押下の瞬間」だけが1回の要求になります。押しっぱなし(repeat)は再要求しません。
  *   ・戦闘外・会話中・メニュー中・Ctrl/Alt/Shift/Meta・IME・編集欄・フォーカス喪失中は何もせず、元のInputへ委譲します。
- *   ・カードキー1～5、Sword/G17/Interact等の既存操作、keyMapper、Gamepad割当は変更しません。
+ *   ・カードキー(Q/E/X/C/V)、Sword/G17/Interact等の既存操作、keyMapper、Gamepad割当は変更しません。
  *   ・Button Config(Hendrix_Keyboard_Gamepad)や現在のkeyMapperで他の操作に使われているキーを指定すると、
  *     そのキーは奪わず、入力だけ無効になります(getInputBinding().active === false)。APIは使えます。
  *   ・入力処理は requestUltimateActivation("keyboard") を呼ぶだけで、トランザクションの中身を持ちません。
@@ -40,6 +40,9 @@
  *   hasUltimateHandler(godId) / getRegisteredUltimateGods()  登録有無・登録済みgodIdの配列のコピー
  *   getLastUltimateActivationResult()  直近の結果のコピー(無ければnull。保存しない)
  *   getInputBinding()  { configured, key, code, keyCode, active, reason } のコピー
+ *   getInputDiagnostics()  { keyDowns, requests, lastCode, lastDecision, lastReason } (診断用・保存しない)
+ *     lastDecision: "queued"(要求として受付) / "held"(押しっぱなし) / "bindingInactive" / "blocked"(入力受付不可。lastReasonに
+ *     CardBattleInput.getBlockedReason()の理由)。
  *
  * 【検証順】 失敗理由
  *   1 battleInactive                カード戦闘が開始していない
@@ -77,7 +80,7 @@
     const deck = root.ProjectRCardDeck;
     const DEFAULT_KEY = "U";
     // 常にUltimateに使わないキー(会話の決定など)。操作割当はButton Configとkeymapperから動的に調べる。
-    const FIXED_RESERVED = ["z", "1", "2", "3", "4", "5"];
+    const FIXED_RESERVED = ["z", "q", "e", "x", "c", "v"];
 
     const gaugeApi = () => root.ProjectRUltimateGauge || null;
     const managerApi = () => root.ProjectRGodSummonManager || null;
@@ -205,6 +208,12 @@
 
     let pending = [];
     let generation = 0;
+    const inputDiagnostics = { keyDowns: 0, requests: 0, lastCode: null, lastDecision: null, lastReason: null };
+    const noteInput = (event, decision, reason) => {
+        inputDiagnostics.lastCode = event?.code || String(event?.keyCode ?? "");
+        inputDiagnostics.lastDecision = decision;
+        inputDiagnostics.lastReason = reason || null;
+    };
     let held = false; // 物理キーが押されている間(捕捉済み)。repeat・二重keydownを遮断する。
     let windowFocused = true;
     const resetInput = () => { pending = []; lastResult = null; generation++; };
@@ -216,14 +225,25 @@
         const _onKeyDown = Input._onKeyDown;
         Input._onKeyDown = function(event) {
             const binding = getInputBinding();
-            if (binding.active && event && matches(event, binding)) {
-                if (held) return; // 押しっぱなし(repeat)や二重keydownは元のInputにも渡さない。
-                const accept = cardInput()?.canAcceptInput;
-                if (!event.repeat && typeof accept === "function" && accept(event)) {
-                    held = true;
-                    pending.push("keyboard");
-                    event.preventDefault?.();
-                    return;
+            if (event && matches(event, binding)) {
+                inputDiagnostics.keyDowns++;
+                if (!binding.active) {
+                    noteInput(event, "bindingInactive", binding.reason);
+                } else if (held) {
+                    noteInput(event, "held");
+                    return; // 押しっぱなし(repeat)や二重keydownは元のInputにも渡さない。
+                } else {
+                    const accept = cardInput()?.canAcceptInput;
+                    const blocked = cardInput()?.getBlockedReason?.(event) ?? (typeof accept === "function" && accept(event) ? null : "inputUnavailable");
+                    if (!event.repeat && blocked === null) {
+                        held = true;
+                        pending.push("keyboard");
+                        inputDiagnostics.requests++;
+                        noteInput(event, "queued");
+                        event.preventDefault?.();
+                        return;
+                    }
+                    noteInput(event, "blocked", event.repeat ? "repeat" : blocked);
                 }
             }
             return _onKeyDown.call(this, event);
@@ -283,6 +303,7 @@
         hasUltimateHandler: godId => validGodId(godId) && handlers.has(godId),
         getRegisteredUltimateGods: () => [...handlers.keys()].sort(),
         getLastUltimateActivationResult: () => lastResult ? JSON.parse(JSON.stringify(lastResult)) : null,
-        getInputBinding
+        getInputBinding,
+        getInputDiagnostics: () => ({ ...inputDiagnostics })
     };
 })();

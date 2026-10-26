@@ -1,12 +1,13 @@
 /*:
  * @target MZ
- * @plugindesc v1.0.0 DEV専用 Combat Test Arena（Playtest限定）。実戦闘系を手動で通すための補助。
+ * @plugindesc v1.1.0 DEV専用 Combat Test Arena（Playtest限定）。実戦闘系を手動で通すための補助。
  * @author ProjectR
  * @base ProjectR_CardDeckCore
  * @base ProjectR_GodSummonManager
  * @base ProjectR_UltimateGauge
  * @base ProjectR_UltimateGodDamageBridge
  * @base Hendrix_Action_Engine
+ * @base ProjectR_CombatPresence
  * @orderAfter ProjectR_ApolloUltimate
  *
  * @command startHermes
@@ -54,6 +55,10 @@
  * @text 主人公へ睡眠(State 32)付与
  * @desc Lyre Calmの確認用。Hendrixの公式AddStateを使います。
  *
+ * @command moveToMultiTarget
+ * @text Reed Fluteスポットへ移動
+ * @desc 3体の敵ダミーが全て4タイル以内に入る位置へ、同じマップ内で移動します（葦笛の確認用）。
+ *
  * @command showStatus
  * @text 現在の状態を表示
  *
@@ -79,10 +84,11 @@
  *
  * 戦闘HUDと敵ダミーについて:
  *   enter()は移動するだけで戦闘を始めません。HUDの表示条件は本番と同じ
- *   ProjectRCombatPresence（実際の戦闘イベント中）だけです。このプラグインは
- *   Hermes/Apolloテストが有効な間だけ、CombatPresence.registerCombatSourceへ
- *   「今テスト戦闘中か」を答え、その間だけ敵ダミー(<enemy>)を表示します。
- *   戦闘が終われば（F8でendCardBattleしても）HUDとダミーは消えます。
+ *   ProjectRCombatPresence.isCombatEventActive()（明示的な戦闘イベント）だけです。
+ *   Hermes/Apolloテストの開始が成功したときだけ beginCombatEvent、End/Reset/Exit
+ *   （とカード戦闘が他の経路で終わったとき）に endCombatEvent を呼び、その間だけ
+ *   敵ダミー(<enemy>)を表示します。敵が画面内にいるかどうかは使いません。
+ *   カード: 左から Q / E / X / C / V。
  *
  * 戦闘用デッキについて:
  *   本番のデッキ検証（30枚・コピー上限）は変更しません。テスト開始の一瞬だけ、
@@ -239,19 +245,24 @@
     };
 
     // ---- 戦闘イベントの宣言とダミーの出現 ----
-    // テストが有効な間だけ「戦闘イベント中」にする。HUDの表示条件は本番と同じ
-    // ProjectRCombatPresenceだけで、ここはその登録口へ「今テスト中か」を答える関数を渡すだけ。
-    // 戦闘が他の経路で終わっても、この関数が偽になるので表示が残らない。
-    const isTestCombat = () => isPlaytest() && runtime.scenario !== null && !!deck()?.isCardBattleActive?.();
+    // Start Hermes/Apollo が成功したときだけ ProjectRCombatPresence.beginCombatEvent、
+    // End / Reset / Exit では endCombatEvent を呼ぶ。HUD等の表示条件は本番と同じ
+    // isCombatEventActive() だけで、ここは独自の戦闘フラグを持たない。
     const COMBAT_SOURCE = "ProjectR_CombatTestArena";
     const presence = () => root.ProjectRCombatPresence || null;
-    presence()?.registerCombatSource?.(COMBAT_SOURCE, isTestCombat);
+    const hasCombatEvent = () => !!presence()?.getCombatEventSources?.().includes(COMBAT_SOURCE);
+    const beginCombat = () => presence()?.beginCombatEvent?.(COMBAT_SOURCE) === true;
+    const endCombat = () => !!presence()?.endCombatEvent?.(COMBAT_SOURCE);
+    const isTestCombat = () => isPlaytest() && runtime.scenario !== null && hasCombatEvent() && !!deck()?.isCardBattleActive?.();
 
     // 敵ダミー(<enemy>)はテスト中だけ現れる。マップに居るだけで戦闘扱いにならないようにするため。
     const isArenaDummy = event => !!event && /^DEV /.test(event.event?.()?.name || "") &&
         /<enemy>/.test(event.event?.()?.note || "");
     const syncDummies = () => {
-        if (!isPlaytest() || currentMapId() !== ARENA_MAP_ID || typeof $gameMap === "undefined" || !$gameMap) return;
+        if (!isPlaytest()) return;
+        // カード戦闘が他の経路(F8のendCardBattle等)で終わったら、戦闘イベントも終える。
+        if (hasCombatEvent() && !deck()?.isCardBattleActive?.() && !runtime.pending) endCombat();
+        if (currentMapId() !== ARENA_MAP_ID || typeof $gameMap === "undefined" || !$gameMap) return;
         const visible = isTestCombat();
         for (const event of $gameMap.events?.() || []) {
             if (isArenaDummy(event) && typeof event.setTransparent === "function" && event.isTransparent?.() === visible) {
@@ -282,17 +293,83 @@
             gauge: gaugeState ? { current: gaugeState.current, max: gaugeState.max, full: gaugeState.full, ready: gaugeState.ready } : null,
             ultimateKey: a?.getInputBinding?.().key ?? null,
             sleeping,
-            combatEvent: !!presence()?.isCombatActive?.(),
+            combatEvent: !!presence()?.isCombatEventActive?.(),
             lastCardInput: lastCardInput(),
+            diagnostics: collectDiagnostics(),
             returnPoint: runtime.returnPoint ? { ...runtime.returnPoint } : null
         };
     };
-    // 直近の1～5キー入力の結果。発動が失敗した理由(手札は変わらない)を確認できる。
+    // 直近のカードキー(Q/E/X/C/V)入力の結果。発動が失敗した理由(手札は変わらない)を確認できる。
     const lastCardInput = () => {
         const result = root.ProjectRCardBattleInput?.getLastResult?.();
         return result ? { ok: !!result.ok, reason: result.reason, detail: result.detail ?? null, handIndex: result.handIndex ?? null } : null;
     };
     const num = value => Math.round(value * 10) / 10;
+    const yn = value => value ? "yes" : "no";
+    // 次の実機報告で原因が分かるように、各段の判定をまとめて返す(Playtest限定)。
+    const collectDiagnostics = () => {
+        const d = deck(), m = manager(), g = gauge(), a = activation();
+        const input = root.ProjectRCardBattleInput?.getDiagnostics?.() || null;
+        const hermesId = m?.resolveGodId?.("hermes") ?? null;
+        const apolloId = m?.resolveGodId?.("apollo") ?? null;
+        const visuals = root.ProjectRGodSummonVisual?.getVisuals?.() || [];
+        const gs = g?.getUltimateGaugeState?.() || null;
+        const god = m?.getPersistentUltimateBattleState?.() || null;
+        const last = a?.getLastUltimateActivationResult?.() || null;
+        const state = d?.getBattleState?.() || null;
+        return {
+            combatEventActive: !!presence()?.isCombatEventActive?.(),
+            combatEventSources: presence()?.getCombatEventSources?.() || [],
+            cardBattleActive: !!d?.isCardBattleActive?.(),
+            keyLabels: root.ProjectRCardBattleInput?.getKeyLabels?.() || [],
+            lastKey: input ? { code: input.lastCode, index: input.lastIndex, decision: input.lastDecision,
+                reason: input.lastReason, accepted: input.accepted, blocked: input.blocked } : null,
+            lastCard: lastCardInput(),
+            hand: state ? state.hand.map(card => card.cardId) : [],
+            counts: state ? { draw: state.drawPile.length, discard: state.discardPile.length, cooldown: state.cooldownPile.length } : null,
+            persistentGodId: god?.godId ?? null,
+            persistentManifested: !!god?.manifested,
+            visibleSummonExists: visuals.length > 0,
+            visuals,
+            divineHp: god ? god.divineHp : null,
+            gauge: gs ? gs.current : null,
+            gaugeFull: !!gs?.full,
+            ultimateReady: !!gs?.ready && !!m?.isPersistentUltimateAvailable?.(),
+            lastUltimate: last ? { ok: !!last.ok, reason: last.reason, handlerReason: last.handlerReason ?? null,
+                error: last.error ?? null } : null,
+            ultimateInput: a?.getInputDiagnostics?.() ?? null,
+            ultimateBinding: a?.getInputBinding?.() ?? null,
+            hermesHandler: hermesId ? !!a?.hasUltimateHandler?.(hermesId) : false,
+            apolloHandler: apolloId ? !!a?.hasUltimateHandler?.(apolloId) : false,
+            interact: root.ProjectRPlayerFacing?.getDiagnostics?.() ?? null,
+            reedFlute: root.ProjectRHermesReedFluteSleep?.getLastDiagnostic?.() ?? null
+        };
+    };
+    const diagnosticLines = () => {
+        const x = collectDiagnostics();
+        const keys = x.keyLabels.join("/") || "-";
+        const lastKey = x.lastKey && x.lastKey.code
+            ? `${x.lastKey.code} ${x.lastKey.decision}${x.lastKey.reason ? ":" + x.lastKey.reason : ""}` : "なし";
+        const lastCard = x.lastCard ? `${x.lastCard.ok ? "成功" : "失敗"} ${x.lastCard.reason}` : "なし";
+        const ui = x.ultimateInput;
+        const lastUlt = x.lastUltimate
+            ? `${x.lastUltimate.ok ? "OK" : "NG"} ${x.lastUltimate.reason}${x.lastUltimate.handlerReason ? "/" + x.lastUltimate.handlerReason : ""}${x.lastUltimate.error ? "/" + x.lastUltimate.error : ""}` : "なし";
+        const i = x.interact;
+        const f = i?.lastOk
+            ? `canMove:${yn(i.lastOk.canMove)} 実行中:${yn(i.lastOk.eventRunning)} 候補:${i.lastOk.candidate ?? "-"} 結果:${i.lastOk.outcome}` : "押下なし";
+        const r = x.reedFlute;
+        const reed = r
+            ? `${r.ok ? "成功" : "失敗"} ${r.detail || r.reason || ""} 敵${r.enemies} 生存${r.alive} 範囲内${r.inRange} 付与${r.applied}${r.stateId ? " State" + r.stateId : ""}${r.error ? " " + r.error : ""}` : "なし";
+        return [
+            `戦闘イベント:${yn(x.combatEventActive)} [${x.combatEventSources.join(",")}] / カード戦闘:${yn(x.cardBattleActive)} / キー ${keys}`,
+            `直近キー: ${lastKey}  (受付${x.lastKey?.accepted ?? 0}/拒否${x.lastKey?.blocked ?? 0}) / 直近カード: ${lastCard}`,
+            `手札 [${x.hand.join(", ")}]`,
+            `神 ${x.persistentGodId ?? "-"} 顕現:${yn(x.persistentManifested)} 表示:${yn(x.visibleSummonExists)} DivineHP:${x.divineHp ?? "-"} / Gauge ${x.gauge ?? "-"} full:${yn(x.gaugeFull)} ready:${yn(x.ultimateReady)}`,
+            `Ultimate直近: ${lastUlt} / handler Hermes:${yn(x.hermesHandler)} Apollo:${yn(x.apolloHandler)} / U入力 受信${ui?.keyDowns ?? "-"} 要求${ui?.requests ?? "-"} 最後:${ui?.lastDecision ?? "-"}${ui?.lastReason ? ":" + ui.lastReason : ""}`,
+            `F(調べる)直近: ${f}`,
+            `Reed Flute直近: ${reed}`
+        ];
+    };
     const statusLines = () => {
         const s = status();
         const head = `[Arena] map ${s.mapId} / 戦闘:${s.cardBattleActive ? "ON" : "OFF"} / シナリオ:${s.scenario || "-"}`;
@@ -314,9 +391,10 @@
         return [head, god, gaugeLine, `${cards}  |  ${last}`];
     };
     const INSTRUCTION_PAGES = [
-        ["【操作】 1〜5 = カード / U = Ultimate / 決定キー = 端末を調べる", "F8 = 詳細診断（ProjectRCombatTestArena.status() など）",
+        ["【操作】 Q E X C V = 手札の左から1〜5枚目 / U = Ultimate / F = 端末を調べる", "F8 = 詳細診断（ProjectRCombatTestArena.status() など）",
             "クリックでゲーム画面にフォーカスを戻してからキーを押す"],
-        ["1) 中央の操作盤でHermes/Apolloテスト開始  2) 1〜5でカード", "3) 南西の研究室でGauge/Divine HPを操作  4) U でUltimate",
+        ["1) 中央の操作盤でHermes/Apolloテスト開始  2) Q E X C V でカード", "3) 南西の研究室でGauge/Divine HPを操作  4) U でUltimate",
+            "操作盤の「Go to Reed Flute Spot」= 3体のダミーの真ん中(葦笛=Vキーの確認)",
             "北西=衝突コース 北東=射撃レーン 中央西=複数ダミー 中央東=タンクダミー", "南東の門=マップ移動テスト  操作盤で「アリーナから出る」"]
     ];
 
@@ -325,6 +403,7 @@
         const d = deck();
         runtime.pending = null;
         const wasActive = !!d?.isCardBattleActive?.();
+        endCombat();
         d?.endCardBattle?.();
         const hadSleep = removeSleep();
         const restored = restoreSnapshot();
@@ -342,6 +421,7 @@
         }
         syncRuntime();
         takeSnapshot();
+        endCombat();
         d.endCardBattle(); // 前のシナリオを片付ける（神・Gauge・Bridge登録もここで破棄される）
         removeSleep();
         const service = persistentService();
@@ -369,6 +449,13 @@
         }
         runtime.scenario = godKind;
         runtime.pending = null;
+        // 明示的な戦闘イベントの開始。ここで初めてHUD・ダミー・神の表示が現れる。
+        if (!beginCombat()) {
+            d.endCardBattle();
+            restoreSnapshot();
+            runtime.scenario = null;
+            return { ok: false, reason: "combatEventUnavailable", reasons: [] };
+        }
         const s = status();
         const expected = battle.sequence.slice(0, 5);
         return { ok: true, scenario: godKind, hand: s.hand, handMatchesFixture: expected.every((id, i) => s.hand[i] === id),
@@ -378,6 +465,7 @@
     const resetScenario = () => {
         const kind = runtime.scenario;
         const d = deck();
+        endCombat();
         d?.endCardBattle?.();
         removeSleep();
         // restoreSnapshotはしない（直後にstartScenarioが同じスナップショットを使い続ける）。
@@ -403,8 +491,19 @@
         if (!isArenaMap(currentMapId())) {
             runtime.returnPoint = { mapId: currentMapId(), x: $gamePlayer.x, y: $gamePlayer.y, direction: $gamePlayer.direction() };
         }
+        endCombat();
         deck()?.endCardBattle?.();
         return transferTo(ARENA_MAP_ID, ARENA_SPAWN.x, ARENA_SPAWN.y, ARENA_SPAWN.direction);
+    };
+
+    // 葦笛の確認用: 3体のダミー((10,15) (12,15) (11,17))の真ん中。全て4タイル以内に入る。
+    const REED_FLUTE_SPOT = Object.freeze({ x: 11, y: 16, direction: 2 });
+    const moveToMultiTarget = () => {
+        if (typeof $gamePlayer === "undefined" || !$gamePlayer) return refuse("playerUnavailable");
+        if (currentMapId() !== ARENA_MAP_ID) return refuse("notInArena");
+        $gamePlayer.locate(REED_FLUTE_SPOT.x, REED_FLUTE_SPOT.y);
+        $gamePlayer.setDirection?.(REED_FLUTE_SPOT.direction);
+        return { ok: true, x: REED_FLUTE_SPOT.x, y: REED_FLUTE_SPOT.y };
     };
 
     const exit = () => {
@@ -466,7 +565,8 @@
 
     const api = {
         ARENA_MAP_ID, TRANSFER_ROOM_MAP_ID, ARENA_SPAWN, SLEEP_STATE_ID, DRAW_SEQUENCE,
-        isPlaytest, status, statusLines,
+        isPlaytest, status, statusLines, diagnosticLines, REED_FLUTE_SPOT,
+        moveToMultiTarget: guarded(moveToMultiTarget),
         instructions: () => INSTRUCTION_PAGES.map(page => [...page]),
         enter: guarded(enter),
         exit: guarded(exit),
@@ -490,7 +590,7 @@
         if (typeof $gameMessage === "undefined" || !$gameMessage) return;
         $gameMessage.setBackground?.(0);
         $gameMessage.setPositionType?.(0); // 上寄せ: 画面下のHUDを隠さない
-        for (const line of lines.slice(0, 4)) $gameMessage.add(line);
+        for (const line of lines.slice(0, 16)) $gameMessage.add(line);
         interpreter?.setWaitMode?.("message");
     };
     const explain = result => {
@@ -521,7 +621,8 @@
             divineAreaHit: ["Divine範囲 -25", () => damageDivineArea()],
             divineGlobalHit: ["Divine全体 -25", () => damageDivineGlobal()],
             collapseGod: ["神を崩壊", () => collapseGod()],
-            applySleep: ["睡眠付与(State 32)", () => applySleep()]
+            applySleep: ["睡眠付与(State 32)", () => applySleep()],
+            moveToMultiTarget: ["Reed Fluteスポットへ移動", () => moveToMultiTarget()]
         };
         for (const [name, [title, fn]] of Object.entries(table)) {
             PluginManager.registerCommand(PLUGIN_NAME, name, commandBody(title, fn));
@@ -537,7 +638,7 @@
             if (!result.ok) say(this, [`[Arena] 退出失敗: ${result.reason}`]);
         });
         PluginManager.registerCommand(PLUGIN_NAME, "showStatus", function() {
-            if (isPlaytest()) say(this, statusLines());
+            if (isPlaytest()) say(this, [...statusLines(), ...diagnosticLines()]);
         });
         PluginManager.registerCommand(PLUGIN_NAME, "showInstructions", function() {
             if (!isPlaytest()) return;

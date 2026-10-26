@@ -95,7 +95,7 @@ test("キーはPlugin Parameterで変更できる。小文字は大文字化、�
     up(g, "U"); down(g, "I"); tick(g); assert.equal(calls.length, 1);
 });
 test("他の操作のキーを指定しても奪わず入力無効(J=攻撃, F=Interact, W=移動, Z=決定, 1=カード)。元のInputへ委譲される", () => {
-    for (const letter of ["J", "F", "W", "A", "S", "D", "X", "Z"]) {
+    for (const letter of ["J", "F", "W", "A", "S", "D", "Z"]) {
         const g = ready("apollo", { UltimateKey: letter }); const calls = fake(g); fill(g);
         const binding = act(g).getInputBinding();
         assert.deepEqual(plain([binding.active, binding.reason]), [false, "keyConflict"], letter);
@@ -148,20 +148,32 @@ test("戦闘前から押され続けているキーのrepeatは要求になら�
     assert.equal(calls.length, 0);
     up(g); down(g); tick(g); assert.equal(calls.length, 1);
 });
-test("カードキー1～5は従来どおりカード入力へ。Ultimateの要求にも影響しない", () => {
+test("カードキー Q/E/X/C/V をUltimateキーに指定しても奪わず入力無効(keyConflict)。数字1～5はもうカードキーではない", () => {
+    for (const letter of ["Q", "E", "X", "C", "V"]) {
+        const g = ready("apollo", { UltimateKey: letter }); const calls = fake(g); fill(g);
+        const binding = act(g).getInputBinding();
+        assert.deepEqual(plain([binding.active, binding.reason]), [false, "keyConflict"], letter);
+        down(g, letter); tick(g);
+        assert.equal(calls.length, 0, letter); assert.equal(gauge(g).getUltimateGauge(), 100, letter);
+        assert.equal(act(g).getInputDiagnostics().lastDecision, "bindingInactive", letter);
+    }
+    // 数字キーはUltimateキーに使える(予約済みではなくなった)が、1文字の英字指定のみ有効なので"1"は既定のUへ。
+    assert.equal(act(load({ UltimateKey: "1" })).getInputBinding().key, "U");
+});
+test("カードキー Q/E は従来どおりカード入力へ。Ultimateの要求にも影響しない", () => {
     const g = ready(); const calls = fake(g); fill(g);
     const before = plain(g.ProjectRCardBattleInput.getLastResult());
-    const e = { code: "Digit1", keyCode: 49, repeat: false, target: g.document.activeElement, preventDefault() { this.defaultPrevented = true; } };
+    const e = { code: "KeyQ", keyCode: 81, repeat: false, target: g.document.activeElement, preventDefault() { this.defaultPrevented = true; } };
     g.Input._onKeyDown(e); tick(g);
     assert.equal(e.defaultPrevented, true); assert.notEqual(g.ProjectRCardBattleInput.getLastResult(), null);
     assert.notDeepEqual(plain(g.ProjectRCardBattleInput.getLastResult()), before);
     assert.equal(calls.length, 0); assert.equal(act(g).getLastUltimateActivationResult(), null);
     g.Input._onKeyUp(e);
     // Ultimate押下中もカードキーは通る。
-    down(g); const e2 = { ...e, defaultPrevented: undefined, code: "Digit2", keyCode: 50 };
+    down(g); const e2 = { ...e, defaultPrevented: undefined, code: "KeyE", keyCode: 69 };
     g.Input._onKeyDown(e2); tick(g);
     assert.equal(calls.length, 1); assert.equal(e2.defaultPrevented, true);
-    assert.notDeepEqual(plain(g.ProjectRCardBattleInput.getLastResult()), before); // Digit2も従来どおりカード入力が処理
+    assert.notDeepEqual(plain(g.ProjectRCardBattleInput.getLastResult()), before); // KeyEも従来どおりカード入力が処理
 });
 test("Ctrl/Alt/Shift/Meta・編集欄・メッセージ中・フォーカス喪失・別Sceneでは要求しない", () => {
     const g = ready(); const calls = fake(g, "apollo", { ok: false, reason: "x" }); fill(g);

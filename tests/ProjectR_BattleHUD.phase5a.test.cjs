@@ -62,7 +62,7 @@ function installUi(g) {
     g.PluginManager.registerCommand ||= () => {};
     g.window = g;
     g.combatActive = false;
-    g.ProjectRCombatPresence = { isCombatActive: () => g.combatActive };
+    g.ProjectRCombatPresence = { isCombatActive: () => g.combatActive, isCombatEventActive: () => g.combatActive };
     const actor = g.$gameParty.leader();
     const hudActor = Object.assign({}, actor, { name: () => "YUKI", hp: 850, mhp: 1000, actorId: () => 1,
         faceName: () => "", faceIndex: () => 0, equips: () => [], states: () => [], _buffs: [] });
@@ -156,7 +156,7 @@ test("HUDはCardDeckCoreより先に読まれても動く: APIは毎回windowか
     assert.equal(sandbox.ProjectRBattleHUD.getViewModel().cardBattleActive, false);
     g.ProjectRCardDeck.startCardBattle();
     assert.equal(sandbox.ProjectRBattleHUD.getViewModel().cardBattleActive, true);
-    assert.deepEqual(plain(sandbox.ProjectRBattleHUD.getViewModel().slots.map(s => s.key)), ["1", "2", "3", "4", "5"]);
+    assert.deepEqual(plain(sandbox.ProjectRBattleHUD.getViewModel().slots.map(s => s.key)), ["Q", "E", "X", "C", "V"]);
 });
 test("セーブ項目を追加しない: $gameSystemの新規プロパティなし、既存HUD stateの形も不変", () => {
     const source = read(HUD_FILE);
@@ -171,10 +171,12 @@ test("セーブ項目を追加しない: $gameSystemの新規プロパティな�
 });
 test("HUDが依存する本体plugin(Core/Input/Manager/Gauge/Activation/Ultimate/カード/Hendrix/DotMove)は変更しない", () => {
     const names = fs.readdirSync(path.join(__dirname, "..", "js/plugins")).filter(f =>
-        (/^ProjectR_/.test(f) && !/^ProjectR_(BattleHUD|Casino|TexasHoldem|CombatPresence|PlayerFacing|CombatTestArena)/.test(f)) || /^Hendrix_|^DotMoveSystem/.test(f));
+        (/^ProjectR_/.test(f) && !/^ProjectR_(BattleHUD|Casino|TexasHoldem|CombatPresence|PlayerFacing|CombatTestArena|CardBattleInput|UltimateActivation|HermesReedFluteSleep|HermesSwordsmanship|GodSummonVisual)/.test(f)) || /^Hendrix_|^DotMoveSystem/.test(f));
     assert.ok(names.length >= 18);
     // CombatPresence/PlayerFacing は Phase 5A-RT2(戦闘イベントの登録口・戦闘中の調べる)で意図して変更した。
     // それらの変更は tests/ProjectR_CombatTestArena.rt2.test.cjs が検証する。
+    // Phase 5A-RT3 で CardBattleInput(Q/E/X/C/V)・UltimateActivation(診断)・HermesReedFluteSleep(診断)・
+    // HermesSwordsmanship(表示連携)も意図して変更した。検証は tests/ProjectR_CombatRuntimeCompliance.test.cjs。
     // git diffは改行コード(autocrlf)の差を正規化するので、内容の変更だけを検出できる。
     for (const name of names) {
         const result = cp.spawnSync("git", ["diff", "--quiet", "0060015", "--", `js/plugins/${name}`], { cwd: path.join(__dirname, "..") });
@@ -252,8 +254,8 @@ test("HUDを破棄(Scene terminate)してもゲームは続行でき、状態は
 test("5枠はhand[0]～hand[4]に対応し、ラベルは1～5。名前は現在の手札の順", () => {
     const g = ready("apollo"); step(g);
     assert.equal(g.hud._skillHUD._slots.length, 5);
-    assert.deepEqual(plain(slots(g).map(s => s.key)), ["1", "2", "3", "4", "5"]);
-    assert.deepEqual(plain(slots(g).map(s => s.label)), ["CARD 1", "CARD 2", "CARD 3", "CARD 4", "CARD 5"]);
+    assert.deepEqual(plain(slots(g).map(s => s.key)), ["Q", "E", "X", "C", "V"]);
+    assert.deepEqual(plain(slots(g).map(s => s.label)), ["CARD Q", "CARD E", "CARD X", "CARD C", "CARD V"]);
     const model = vm5(g);
     assert.deepEqual(model.slots.map(s => s.cardId), handIds(g));
     assert.deepEqual(model.slots.map(s => s.instanceId), state(g).hand.map(c => c.instanceId));
@@ -262,13 +264,13 @@ test("5枠はhand[0]～hand[4]に対応し、ラベルは1～5。名前は現在
 test("実入力(1～5キー)の既存ロジックは不変。HUDはキー表示だけを変える", () => {
     const g = ready("apollo"); g.aim(90); step(g);
     const first = state(g);
-    g.Input._onKeyDown({ code: "Digit1", keyCode: 49, preventDefault() {}, target: g.document.activeElement });
+    g.Input._onKeyDown({ code: "KeyQ", keyCode: 81, preventDefault() {}, target: g.document.activeElement });
     frames(g);
     assert.equal(g.ProjectRCardBattleInput.getLastResult().reason, "success");
     assert.equal(state(g).cooldownPile.length, first.cooldownPile.length + 1);
     step(g); // 入力経路で使ったカードもHUDに反映される
     assert.deepEqual(vm5(g).slots.map(s => s.instanceId), state(g).hand.map(c => c.instanceId));
-    assert.deepEqual(plain(slots(g).map(s => s.key)), ["1", "2", "3", "4", "5"]);
+    assert.deepEqual(plain(slots(g).map(s => s.key)), ["Q", "E", "X", "C", "V"]);
 });
 test("カード使用成功で手札が更新され、即時補充された札が末尾に表示される", () => {
     const g = ready("apollo"); g.aim(90); step(g);
@@ -323,7 +325,7 @@ test("手札が5枚未満でも例外なく、空き枠は「—」の使用不�
     const model = vm5(g);
     assert.deepEqual(plain(model.slots.map(s => s.available)), [true, true, false, false, false]);
     assert.deepEqual(plain(model.slots.slice(2).map(s => s.cardId)), ["", "", ""]);
-    assert.equal(slot(g, 2).key, "3");
+    assert.equal(slot(g, 2).key, "X");
     deck(g).getBattleState = real; step(g);
     assert.equal(vm5(g).slots.every(s => s.available), true);
 });
@@ -463,7 +465,7 @@ test("Ultimate神が無いカード戦闘: 手札HUDは出すが、Ultimate/Divi
     assert.equal(g.hud.visible, true); assert.equal(counts(g).visible, true);
     assert.equal(divine(g).visible, false); assert.equal(ult(g).visible, false);
     assert.equal(vm5(g).divine, null); assert.equal(vm5(g).ultimate.available, false);
-    assert.deepEqual(plain(slots(g).map(s => s.key)), ["1", "2", "3", "4", "5"]);
+    assert.deepEqual(plain(slots(g).map(s => s.key)), ["Q", "E", "X", "C", "V"]);
     assert.equal(text(g.hud._playerHUD._godLabel) === "" || text(g.hud._playerHUD._godLabel) === "GOD", true);
 });
 test("戦闘を再開始すると表示値が新しい実行状態に切り替わる（古い値を引きずらない）", () => {

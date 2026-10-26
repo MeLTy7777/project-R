@@ -131,11 +131,12 @@
  * Q/R/X/C/VおよびUltimateのRは表示だけで、入力処理は追加しません。
  *
  * ---- Phase 5A: カード戦闘HUD（薄い表示アダプタ） ----
- * HUDが表示されるのは、従来どおり ProjectRCombatPresence.isCombatActive() が真の間だけです
- * （カード戦闘が有効なだけでは表示しません）。表示されている間、
+ * HUDが表示されるのは、ProjectRCombatPresence.isCombatEventActive()（beginCombatEventで
+ * 明示的に開始した戦闘イベント）が真の間だけです。画面内に敵がいる・カード戦闘が有効・
+ * テストマップにいる、というだけでは表示しません。表示されている間、
  * ProjectRCardDeck.isCardBattleActive() の間だけ、次の表示に切り替わります。
  * HUDは状態を持たず、毎回 実行中のAPIから読むだけです（セーブ項目は追加しません）。
- *   ・5枠 = 手札 hand[0..4]。キー表示は 1～5（入力処理は ProjectR_CardBattleInput のまま）。
+ *   ・5枠 = 手札 hand[0..4]。キー表示は左から Q / E / X / C / V（入力処理は ProjectR_CardBattleInput）。
  *     名前/アイコンは、Skillのnote <ProjectRCard: cardId>、無ければ内蔵の既定名から解決します。
  *     使用不可（所持・指輪条件）のカードは暗く表示。空き枠は「—」。
  *   ・山札/捨て札/Cooldown山の枚数（CardDeckの戦闘状態から読むだけ）。
@@ -163,8 +164,8 @@
     const BASE_HEIGHT = 1080;
     const FOOTER_TOP = 650;
     const SKILL_KEYS = ["Q", "R", "X", "C", "V"];
-    // Phase 5A: カード戦闘中は同じ5枠が手札hand[0..4]になり、キー表示は1～5になる。
-    const CARD_KEYS = ["1", "2", "3", "4", "5"];
+    // カード戦闘中は同じ5枠が手札hand[0..4]になり、キー表示は左から Q E X C V になる。
+    const CARD_KEYS = ["Q", "E", "X", "C", "V"];
     const SKILL_COUNT = SKILL_KEYS.length;
     const SKILL_SLOT_WIDTH = 172;
     const SKILL_SLOT_HEIGHT = 140;
@@ -1142,12 +1143,14 @@
 
         shouldShow() {
             if (!battleHudState().visible) return false;
-            // 表示の条件は「実際の戦闘イベント中」= ProjectRCombatPresence だけ。
-            // カード戦闘(CardDeck)が有効でも、戦闘イベント中でなければ表示しない。
+            // 表示の条件は「明示的な戦闘イベント中」= ProjectRCombatPresence.isCombatEventActive() だけ。
+            // 敵が画面内にいる・カード戦闘(CardDeck)が有効、というだけでは表示しない。
             const combatPresence = window.ProjectRCombatPresence;
-            if (combatPresence && typeof combatPresence.isCombatActive === "function" &&
-                !combatPresence.isCombatActive()) {
-                return false;
+            if (combatPresence) {
+                const active = typeof combatPresence.isCombatEventActive === "function"
+                    ? combatPresence.isCombatEventActive()
+                    : (typeof combatPresence.isCombatActive === "function" ? combatPresence.isCombatActive() : true);
+                if (!active) return false;
             }
             if (visibilitySwitchId > 0 && (!$gameSwitches || !$gameSwitches.value(visibilitySwitchId))) {
                 return false;
@@ -1537,10 +1540,10 @@
                 color: selected ? rgbaHex(COLORS.cyan) : rgbaHex(COLORS.muted)
             });
             this._slotText.setText(
-                `${data.mode === "card" ? "CARD" : "SKILL"} ${this._index + 1}`,
+                `${data.mode === "card" ? "CARD" : "SKILL"} ${data.mode === "card" && data.key ? data.key : this._index + 1}`,
                 { color: selected ? rgbaHex(COLORS.cyan) : rgbaHex(COLORS.text) }
             );
-            // カード戦闘中は1～5、それ以外はHotbarの従来キー。
+            // カード戦闘中は Q E X C V、それ以外はHotbarの従来キー。
             this._keyText.setText(data.key || this._key);
             if (cooldown) {
                 this._cooldownText.setText(Math.max(0, Math.ceil(data.cooldown.remaining)));

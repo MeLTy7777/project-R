@@ -32,6 +32,10 @@
  * AddState後hasStateで確認し、1体以上成功時のみ既存transactionへ成功を返します。
  * 耐性は公式AddStateのDatabase State有効度/無効化へ委譲します。
  *
+ * ProjectRHermesReedFluteSleep.getLastDiagnostic(): 直近の発動の内訳(診断用・保存しない)。
+ *   { ok, reason, detail, enemies(<enemy>として見つかった数), alive(生存), inRange(範囲内), applied(付与成功),
+ *     stateId, error }。Arenaの状態端末が表示します。
+ *
  * <ProjectRCard: hermes_reed_flute_sleep>の唯一のStateを使用。
  * 再使用で時間更新・非stack。Damageでは解除しません（Stateの設定で変更可能）。
  * 時間は認識阻害と同じInputのupdateCooldownで進み、操作不能中は停止。
@@ -55,6 +59,8 @@
     const range = positive(params.RangeTiles, 4);
     const duration = positive(params.DurationSeconds, 4);
     const effects = new Map(); // runtime only: event -> { map, battler, stateId, remaining }
+    let lastDiagnostic = null; // 診断のみ。保存しない。
+    const record = diagnostic => { lastDiagnostic = Object.freeze({ ...diagnostic }); return lastDiagnostic; };
     const currentMap = () => typeof $gameMap !== "undefined" ? $gameMap : null;
     const stateId = () => {
         const matches = (typeof $dataStates !== "undefined" ? $dataStates : [])
@@ -111,29 +117,57 @@
             return false;
         }
     };
+    const missingPrerequisites = (map, id) => {
+        const missing = [];
+        if (!deck.isCardBattleActive()) missing.push("cardBattle");
+        if (!map) missing.push("map");
+        if (!id) missing.push("stateId(note <ProjectRCard: " + CARD + ">が1つだけ必要)");
+        for (const name of ["findTargets", "checkRange", "hasState"]) if (typeof root[name] !== "function") missing.push(name);
+        if (typeof map?.getCurrentEventHp !== "function") missing.push("getCurrentEventHp");
+        if (typeof SgetBattlerForH !== "function") missing.push("SgetBattlerForH");
+        for (const name of ["AddState", "RemoveState"]) {
+            if (typeof PluginManager._commands?.[`${ENGINE}:${name}`] !== "function") missing.push(name + "Command");
+        }
+        return missing;
+    };
     const activate = context => {
         const map = currentMap(), id = stateId();
-        if (!deck.isCardBattleActive() || !map || !id ||
-                !["findTargets", "checkRange", "hasState"].every(name => typeof root[name] === "function") ||
-                typeof map.getCurrentEventHp !== "function" || typeof SgetBattlerForH !== "function" ||
-                !["AddState", "RemoveState"].every(name =>
-                    typeof PluginManager._commands?.[`${ENGINE}:${name}`] === "function")) {
+        lastDiagnostic = null;
+        const missing = missingPrerequisites(map, id);
+        if (missing.length) {
+            record({ ok: false, reason: "sleepStateUnavailable", detail: "missing", enemies: 0, alive: 0, inRange: 0,
+                applied: 0, stateId: id, error: missing.join(",") });
             return { ok: false, reason: "sleepStateUnavailable" };
         }
         const summons = root.ProjectRGodSummonManager;
-        if (!summons) return { ok: false, reason: "godSummonUnavailable" };
+        if (!summons) {
+            record({ ok: false, reason: "godSummonUnavailable", detail: "noManager", enemies: 0, alive: 0, inRange: 0, applied: 0, stateId: id });
+            return { ok: false, reason: "godSummonUnavailable" };
+        }
         // Hermes一時召喚 → Hermesが葦笛を吹く。召喚失敗時は検索もStateも触れない。
-        return summons.perform({ definition: context?.definition, aim: false }, () => sleepTargets(map, id));
+        const result = summons.perform({ definition: context?.definition, aim: false }, () => sleepTargets(map, id));
+        if (!lastDiagnostic) {
+            record({ ok: !!result?.ok, reason: result?.reason || "summonRejected", detail: "godSummonPerform", enemies: 0,
+                alive: 0, inRange: 0, applied: 0, stateId: id });
+        }
+        return result;
     };
     const sleepTargets = (map, id) => {
         // 先に検索を完了。検索失敗で部分適用を残さない。
-        const targets = [...new Set(root.findTargets("<enemy>"))].filter(event => {
+        const found = [...new Set(root.findTargets("<enemy>"))];
+        const alive = found.filter(event => {
             if (!event || event._erased || map.event(event.eventId()) !== event) return false;
             const hp = map.getCurrentEventHp(event.eventId());
-            return hp != null && hp > 0 && inRange(event);
-        }).map(event => ({ event, battler: battlerFor(event) })).filter(t => t.battler?.isAlive());
+            return hp != null && hp > 0;
+        });
+        const near = alive.filter(event => inRange(event));
+        const targets = near.map(event => ({ event, battler: battlerFor(event) })).filter(t => t.battler?.isAlive());
         let applied = 0;
         for (const { event, battler } of targets) if (applySleep(event, id, map, battler)) applied++;
+        const detail = applied ? "applied" : !found.length ? "noEnemyFound" : !alive.length ? "noAliveEnemy"
+            : !near.length ? "noEnemyInRange" : !targets.length ? "noAliveBattler" : "stateNotApplied";
+        record({ ok: applied > 0, reason: applied ? "applied" : "noSleepTargetApplied", detail, enemies: found.length,
+            alive: alive.length, inRange: near.length, applied, stateId: id });
         return applied ? { ok: true } : { ok: false, reason: "noSleepTargetApplied" };
     };
     deck.registerActivationHandler("ground", context => context.definition.cardId === CARD ? activate(context) : { ok: true });
@@ -200,6 +234,7 @@
             typeof root.hasState === "function" && root.hasState(eventId, stateId());
     };
     root.ProjectRHermesReedFluteSleep = {
+        getLastDiagnostic: () => lastDiagnostic ? { ...lastDiagnostic } : null,
         isEventSleeping,
         canEnemyAct: eventId => !isEventSleeping(eventId)
     };

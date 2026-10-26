@@ -483,7 +483,7 @@ test("専用Database Skill(ID234 アポロン奥義)・式・分散なし。Herm
     assert.equal(skillsData.filter(s => s?.name === apolloSkill.name).length, 1);
     // Map002: 既存の4件(ID0〜4)は変更なし、ID5だけ追加
     const oldMap = JSON.parse(cp.execFileSync("git", ["show", "e5502f3:data/Map002.json"], { encoding: "utf8", maxBuffer: 1 << 26 }));
-    assert.equal(oldMap.events.length, 5); assert.equal(mapData.events.length, 6);
+    assert.equal(oldMap.events.length, 5); assert.equal(mapData.events.length, 7); // ID6 = RT3の「ProjectR God Visual」
     oldMap.events.forEach((event, i) => assert.deepEqual(mapData.events[i], event, `event ${i}`));
     assert.deepEqual({ ...mapData, events: [] }, { ...oldMap, events: [] });
 });
@@ -751,9 +751,11 @@ test("Core/Input/Manager/Gauge/Activation/Bridge/既存カードplugin/Hermes系
         assert.equal(/ApolloUltimate|apollo_ultimate|projectRApolloUltimate/.test(read(`js/plugins/${file}.js`)), false, file);
     }
     // 変更禁止のpluginは、Phase 4D-1完了時点(e5502f3)と完全に同じ
-    for (const file of ["ProjectR_CardDeckCore", "ProjectR_CardBattleInput", "ProjectR_GodSummonManager", "ProjectR_UltimateGodDamageBridge",
-        "ProjectR_UltimateGauge", "ProjectR_UltimateActivation", "ProjectR_ApolloGoldenArrow", "ProjectR_ApolloDiseaseAttack", "ProjectR_ApolloLyreCalm",
-        "ProjectR_HermesRecognitionObscure", "ProjectR_HermesReedFluteSleep", "ProjectR_HermesSwiftMovement", "ProjectR_HermesSwordsmanship",
+    // (CardBattleInput / UltimateActivation / HermesReedFluteSleep / HermesSwordsmanship は Phase 5A-RT3 で
+    //  Q/E/X/C/V・診断・表示連携を足したため固定対象から外す。挙動は専用テストで確認する)
+    for (const file of ["ProjectR_CardDeckCore", "ProjectR_GodSummonManager", "ProjectR_UltimateGodDamageBridge",
+        "ProjectR_UltimateGauge", "ProjectR_ApolloGoldenArrow", "ProjectR_ApolloDiseaseAttack", "ProjectR_ApolloLyreCalm",
+        "ProjectR_HermesRecognitionObscure", "ProjectR_HermesSwiftMovement",
         "ProjectR_HermesUltimate"]) {
         const before = cp.execFileSync("git", ["show", `e5502f3:js/plugins/${file}.js`], { encoding: "utf8", maxBuffer: 1 << 26 }).replace(/\r\n/g, "\n");
         assert.equal(read(`js/plugins/${file}.js`).replace(/\r\n/g, "\n"), before, file);

@@ -4,28 +4,34 @@
  * @base ProjectR_CombatPresence
  * @orderAfter Hendrix_Action_Engine
  * @orderAfter ProjectR_CombatPresence
- * @plugindesc v1.0.0 戦闘中だけプレイヤーを照準方向へ向けます。
+ * @plugindesc v1.1.0 明示的な戦闘イベント中だけ照準方向へ向け、戦闘外は通常の移動向きに戻します。
  * @author ProjectR
  *
  * @help
  * ProjectR_PlayerFacing.js
  *
- * ProjectRCombatPresenceを戦闘状態の基準として使用します。
+ * 向きの基準:
+ *   ProjectRCombatPresence.isCombatEventActive()（beginCombatEventで始めた明示的な戦闘イベント）
+ *   が真の間だけ、プレイヤーは毎フレーム公式のturnToward('mouse or gamepad', true)で
+ *   マウス/ゲームパッドの照準方向を向きます。
  *
- * 非戦闘中:
- *   プレイヤーへのturnToward('mouse or gamepad')を抑止し、
- *   DotMoveの通常の移動方向更新を使用します。
+ * 戦闘外:
+ *   通常のDotMove/MZの移動で向きが変わります（上下左右の移動 = その向き）。
+ *   マウスを向き続けません。攻撃共通イベントや戦闘中の照準が付けたDirection Fixは、
+ *   戦闘イベント終了後、または移動入力があった時点で解放します
+ *   （マップイベントが意図して付けたDirection Fixには触れません）。
  *
- * 戦闘中:
- *   Hendrix Action Engineの既存照準方向処理をそのまま使用します。
- *
+ * 戦闘外のturnToward('mouse or gamepad')は従来どおり(敵が画面内にいない限り)抑止します。
  * マウスカーソル、クリック入力、武器Spriteの回転処理は変更しません。
  *
- * 戦闘中の「調べる」(決定キー):
- *   戦闘中は照準方向に向きが固定されるため、決定キーを押した瞬間だけ、
- *   すぐ隣(約1.5タイル以内)にある決定ボタンのイベントの方向へ向けます。
- *   敵・弾・透明なイベントは対象外です。近くに対象が無ければ何もしません。
- *   カード用の1～5キーやUltimateキーとは関係しません。
+ * 戦闘中の「調べる」(決定キー=F):
+ *   ①押した瞬間に、すぐ隣(約1.5タイル以内)の決定ボタンのイベントへ向きを合わせ、
+ *   ②それでも標準処理が何も起動しなければ、同条件のイベントを標準のstart()で起動します。
+ *   敵・弾・透明なイベント・決定ボタン以外・プレイヤーより前面/背面のイベントは対象外で、
+ *   会話中・イベント実行中は起動しません。カード用Q/E/X/C/VやUltimateキーとは関係しません。
+ *
+ * ProjectRPlayerFacing.getDiagnostics(): 直近のF押下の判定(canMove/イベント実行中/起動結果)と
+ *   向き解放の履歴。Arenaの状態端末が表示します。
  */
 
 (() => {
@@ -95,10 +101,112 @@
         _Game_Player_setDirectionFix.call(this, directionFix);
     };
 
-    // 戦闘中は照準方向にプレイヤーの向きが固定されるため、決定キーで近くの
-    // イベント(端末・看板・扉)を調べても、マウスがそちらを向いていないと起動しない。
-    // 決定キーが押された瞬間だけ、すぐ隣の「決定ボタン」イベントの方向へ向ける。
-    // 戦闘外では何もしない(通常の向きでそのまま調べられる)。
+    // ---- 戦闘イベント(明示)中の向きと、戦闘外の向きの解放 ----
+    // 戦闘イベント中: 毎フレーム公式のturnToward('mouse or gamepad', true)で照準方向へ向ける。
+    // 戦闘外: 通常のDotMove/MZの移動で向きが変わる。攻撃共通イベントが付けたDirection Fixや
+    //   戦闘イベント中に付けたDirection Fixは、戦闘イベント終了後 / 移動入力時に解放する
+    //   (マップイベントが意図して付けたDirection Fixには触れない=自分が付けたと分かる場合だけ)。
+    const combatPresenceApi = () => window.ProjectRCombatPresence || null;
+    const isCombatEvent = () => combatPresenceApi()?.isCombatEventActive?.() === true;
+    const attackCommonEventId = Number(combatPresenceApi()?.settings?.attackCommonEventId) || 1;
+
+    let ownedFix = false;        // この Plugin / 攻撃共通イベントがDirection Fixを付けた
+    let attackSeen = false;      // 攻撃共通イベントが予約された(Direction Fix ONを含む)
+    let releasePending = false;  // 戦闘イベントが終わり、解放待ち
+    let wasCombatEvent = false;
+    const diagnostics = {
+        aimFrames: 0, releasedFix: 0, lastRelease: null,
+        lastOk: null, interactAssist: 0, interactFallback: 0
+    };
+
+    const isFree = (player, sceneActive) => sceneActive !== false &&
+        !$gameMap.isEventRunning() && !player.isMoveRouteForcing() &&
+        !(typeof $gameMessage !== "undefined" && $gameMessage.isBusy());
+
+    const walkingInput = () => {
+        try {
+            return Number(Input.dir4) !== 0 || Number(Input.dir8) !== 0;
+        } catch (error) {
+            return false;
+        }
+    };
+
+    const releaseFix = (player, why) => {
+        player.setDirectionFix(false);
+        ownedFix = false;
+        attackSeen = false;
+        releasePending = false;
+        diagnostics.releasedFix++;
+        diagnostics.lastRelease = why;
+    };
+
+    const _Game_Temp_reserveCommonEvent = Game_Temp.prototype.reserveCommonEvent;
+    Game_Temp.prototype.reserveCommonEvent = function(commonEventId) {
+        if (Number(commonEventId) === attackCommonEventId) attackSeen = true;
+        return _Game_Temp_reserveCommonEvent.apply(this, arguments);
+    };
+
+    const observeOk = player => {
+        if (!Input.isTriggered("ok")) return;
+        diagnostics.lastOk = {
+            frame: currentFrame(), combatEvent: isCombatEvent(),
+            canMove: !!player.canMove(), isMoving: !!player.isMoving(),
+            eventRunning: !!$gameMap.isEventRunning(), messageBusy: !!$gameMessage.isBusy(),
+            moveRouteForcing: !!player.isMoveRouteForcing(), outcome: "pressed"
+        };
+    };
+
+    const updateFacing = (player, sceneActive) => {
+        const combat = isCombatEvent();
+        if (combat && !wasCombatEvent) releasePending = false;
+        if (!combat && wasCombatEvent) releasePending = true;
+        wasCombatEvent = combat;
+        observeOk(player);
+        const free = isFree(player, sceneActive);
+        if (combat) {
+            if (!free) return;
+            player.turnToward(mouseAimTarget, true);
+            ownedFix = true;
+            diagnostics.aimFrames++;
+            return;
+        }
+        if (!ownedFix && !(attackSeen && player.isDirectionFixed())) {
+            attackSeen = false;
+            return;
+        }
+        if (!player.isDirectionFixed()) {
+            ownedFix = false;
+            attackSeen = false;
+            releasePending = false;
+            return;
+        }
+        ownedFix = true;
+        if (free && (releasePending || walkingInput())) {
+            releaseFix(player, releasePending ? "combatEventEnded" : "walkingInput");
+        }
+    };
+
+    const _Game_Player_update = Game_Player.prototype.update;
+    Game_Player.prototype.update = function(sceneActive) {
+        try {
+            updateFacing(this, sceneActive);
+        } catch (error) {
+            console.error("ProjectR_PlayerFacing:", error);
+        }
+        return _Game_Player_update.apply(this, arguments);
+    };
+
+    const _Game_Player_performTransfer = Game_Player.prototype.performTransfer;
+    Game_Player.prototype.performTransfer = function() {
+        _Game_Player_performTransfer.apply(this, arguments);
+        if (ownedFix && !isCombatEvent() && this.isDirectionFixed()) releaseFix(this, "transfer");
+    };
+
+    // ---- 戦闘中の「調べる」(決定キー) ----
+    // 戦闘中は照準方向に向きが固定されるため、通常の「正面判定」だけだとマウスの向き次第で
+    // 端末・看板・扉に届かない。①決定キー押下の瞬間に隣の「決定ボタン」イベントの方向へ向け、
+    // ②それでも標準処理が何も起動しなければ、同じ条件のイベントを標準の start() で起動する。
+    // 戦闘外では何もしない(標準の動作のまま)。
     const interactReach = 1.5;
     const interactAlignment = 0.75;
 
@@ -124,38 +232,58 @@
         return ax > ay ? (dx > 0 ? 6 : 4) : (dy > 0 ? 2 : 8);
     };
 
-    const nearestInteractDirection = player => {
+    const nearestInteractable = player => {
         const events = typeof $gameMap !== "undefined" && $gameMap ? $gameMap.events() : [];
-        let bestDirection = 0;
+        let best = null;
         let bestDistance = Infinity;
         for (const event of events) {
             if (!isInteractableEvent(event)) continue;
             const direction = directionToward(player, event);
             if (!direction) continue;
-            const distance = Math.hypot(
-                event._realX - player._realX,
-                event._realY - player._realY
-            );
+            const distance = Math.hypot(event._realX - player._realX, event._realY - player._realY);
             if (distance < bestDistance) {
                 bestDistance = distance;
-                bestDirection = direction;
+                best = { event, direction };
             }
         }
-        return bestDirection;
+        return best;
     };
 
     const _Game_Player_triggerButtonAction = Game_Player.prototype.triggerButtonAction;
     Game_Player.prototype.triggerButtonAction = function() {
-        if (isCombatActive() && Input.isTriggered("ok") && this.canMove()) {
-            const direction = nearestInteractDirection(this);
-            if (direction && direction !== this.direction()) {
-                // 照準による向き固定を一瞬だけ外して向きを変え、元の固定状態へ戻す。
-                const fixed = this._directionFix;
-                this._directionFix = false;
-                this.setDirection(direction);
-                this._directionFix = fixed;
+        const pressed = Input.isTriggered("ok");
+        const assist = pressed && isCombatActive() && this.canMove();
+        const target = assist ? nearestInteractable(this) : null;
+        if (target && target.direction !== this.direction()) {
+            // 照準による向き固定を一瞬だけ外して向きを変え、元の固定状態へ戻す。
+            const fixed = this._directionFix;
+            this._directionFix = false;
+            this.setDirection(target.direction);
+            this._directionFix = fixed;
+            diagnostics.interactAssist++;
+        }
+        let started = _Game_Player_triggerButtonAction.call(this);
+        let outcome = started ? "engine" : "none";
+        if (!started && target && !$gameMap.isEventRunning()) {
+            target.event.start();
+            started = !!$gameMap.setupStartingEvent();
+            if (started) {
+                diagnostics.interactFallback++;
+                outcome = "fallback:" + target.event.eventId();
+            } else {
+                outcome = "fallbackRejected:" + target.event.eventId();
             }
         }
-        return _Game_Player_triggerButtonAction.call(this);
+        if (pressed && diagnostics.lastOk) {
+            diagnostics.lastOk = { ...diagnostics.lastOk, candidate: target ? target.event.eventId() : null, outcome };
+        }
+        return started;
+    };
+
+    window.ProjectRPlayerFacing = {
+        getDiagnostics: () => JSON.parse(JSON.stringify({
+            ...diagnostics, ownedFix, attackSeen, releasePending,
+            combatEvent: isCombatEvent(), directionFixed: !!$gamePlayer?.isDirectionFixed?.()
+        }))
     };
 })();

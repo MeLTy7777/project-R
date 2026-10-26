@@ -351,7 +351,7 @@ test("1キー→既存Input→Router→実生成が一度だけ発生、通常�
     const game = loadGame(), baseline = loadGame({ withoutPlugin: true });
     assert.deepEqual(plain(game.Input.keyMapper), plain(baseline.Input.keyMapper));
     game.startWith("apollo_golden_arrow");
-    const event = { code: "Digit1", keyCode: 49, preventDefault() {} };
+    const event = { code: "KeyQ", keyCode: 81, preventDefault() {} };
     game.Input._onKeyDown(event); game.Input.update(); game.SceneManager._scene.update();
     game.Input._onKeyDown({ ...event, repeat: true }); game.Input.update(); game.SceneManager._scene.update();
     assert.equal(game.spawns.length, 1);

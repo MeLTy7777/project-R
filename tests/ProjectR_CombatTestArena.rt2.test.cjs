@@ -104,7 +104,8 @@ function stack({ hud = true, playtest = true } = {}) {
 }
 const press = (g, code, keyCode, extra = {}) => g.Input._onKeyDown({ code, keyCode, repeat: false, target: g.document.activeElement, preventDefault() {}, ...extra });
 const release = (g, code, keyCode) => g.Input._onKeyUp({ code, keyCode, target: g.document.activeElement, preventDefault() {} });
-const pressCard = (g, n) => { press(g, `Digit${n}`, 48 + n); g.run(1); release(g, `Digit${n}`, 48 + n); };
+const CARD_LETTERS = ["Q", "E", "X", "C", "V"];
+const pressCard = (g, n) => { const l = CARD_LETTERS[n - 1]; press(g, `Key${l}`, l.charCodeAt(0)); g.run(1); release(g, `Key${l}`, l.charCodeAt(0)); };
 const battle = g => g.d.getBattleState();
 const handIds = g => battle(g).hand.map(c => c.cardId);
 const counts = g => ({ draw: battle(g).drawPile.length, discard: battle(g).discardPile.length, cooldown: battle(g).cooldownPile.length });
@@ -112,11 +113,13 @@ const hudSlotIds = g => g.ProjectRBattleHUD.getViewModel().slots.map(s => s.card
 const hudCounts = g => hudH.text(g.hud._countsHUD._text);
 
 let passed = 0;
-function test(name, body) { body(); console.log(`ok ${++passed} - ${name}`); }
-
-// =====================================================================
-// 1) HUD表示条件
-// =====================================================================
+function test(name, body) {
+    if (process.env.CONTINUE) {
+        try { body(); console.log(`ok ${++passed} - ${name}`); } catch (e) { console.log(`FAIL - ${name}: ${String(e.message).split(String.fromCharCode(10))[0]}`); }
+        return;
+    }
+    body(); console.log(`ok ${++passed} - ${name}`);
+}
 test("原因の再現条件: アリーナの出現位置から、1920x1080の画面にダミーが入る（Eventが居るだけで戦闘扱いになる配置）", () => {
     const g = stack();
     assert.ok(g.dummies.length >= 5);
@@ -148,7 +151,7 @@ test("カード戦闘(CardDeck)が有効なだけではHUDは出ない: 実際�
     assert.equal(g.arena.startHermes().ok, true); g.run(5);
     assert.equal(g.hud.visible, true, "テスト戦闘(宣言された戦闘イベント)の間は表示");
     // 戦闘イベントの宣言だけを外す: 敵もおらず、CardDeckだけが有効な状態。
-    assert.equal(g.ProjectRCombatPresence.unregisterCombatSource("ProjectR_CombatTestArena"), true);
+    assert.equal(g.ProjectRCombatPresence.endCombatEvent("ProjectR_CombatTestArena"), true);
     g.run(60);
     assert.equal(g.d.isCardBattleActive(), true);
     assert.equal(g.presence(), false);
@@ -160,7 +163,9 @@ test("画面内に生存敵が居れば従来どおり戦闘扱い（本番の�
     const g = stack({ playtest: false }); g.loadMap();
     const tank = g.dummies.find(e => e.data.name === "DEV Tank Dummy");
     assert.equal(tank.onScreen(), true);
-    g.run(30); assert.equal(g.presence(), true); assert.equal(g.hud.visible, true);
+    // RT3: 敵が画面内にいるだけでは戦闘HUDは出ない(HUDは明示的な戦闘イベントだけ)。武器の使用可否は従来どおり。
+    g.run(30); assert.equal(g.presence(), true); assert.equal(g.hud.visible, false);
+    assert.equal(g.ProjectRCombatPresence.isCombatEventActive(), false);
     tank.setTransparent(true); for (const e of g.dummies) e.setTransparent(true);
     g.run(40); assert.equal(g.presence(), false); assert.equal(g.hud.visible, false);
     for (const e of g.dummies) e.setTransparent(false);
@@ -264,8 +269,8 @@ test("カード戦闘の入力層は決定キー(Enter/Z/F)を横取りしない
         release(g, code, keyCode);
     }
     // 1～5は戦闘中はカードへ(元のInputには届かない)。
-    g.Input.clear(); press(g, "Digit1", 49); assert.equal(Object.values(g.Input._currentState).some(Boolean), false);
-    release(g, "Digit1", 49);
+    g.Input.clear(); press(g, "KeyQ", 81); assert.equal(Object.values(g.Input._currentState).some(Boolean), false);
+    release(g, "KeyQ", 81);
     // 会話中(メッセージ表示中)は1～5もカードに取られず、元のInputへ渡る。
     g.$gameMessage.isBusy = () => true;
     assert.equal(g.ProjectRCardBattleInput.canAcceptInput(), false);
@@ -294,7 +299,12 @@ function interactionWorld({ withFacing }) {
             setDirectionFix(v) { this._directionFix = v; }
         }
         class Game_Character extends Game_CharacterBase { turnToward() {} }
+        class Game_Temp { reserveCommonEvent() {} }
         class Game_Player extends Game_Character {
+            update() {}
+            performTransfer() {}
+            isMoveRouteForcing() { return false; }
+            isMoving() { return false; }
             canMove() { return !$gameMap.isEventRunning(); }
             // MZ標準: 決定キー → 正面のEventを起動
             triggerAction() { return this.canMove() && this.triggerButtonAction(); }
@@ -327,9 +337,10 @@ function interactionWorld({ withFacing }) {
         var $gamePlayer = new Game_Player();
         var $gameMap = { _events: [], events() { return this._events; }, isEventRunning: () => false,
             setupStartingEvent() { return this._events.some(e => e.started); } };
-        var Input = { _t: false, isTriggered(name) { return name === "ok" && this._t; } };
+        var Input = { _t: false, dir4: 0, dir8: 0, isTriggered(name) { return name === "ok" && this._t; } };
+        var $gameMessage = { isBusy: () => false };
         var window = globalThis;
-        window.ProjectRCombatPresence = { isCombatActive: () => $combat };
+        window.ProjectRCombatPresence = { isCombatActive: () => $combat, isCombatEventActive: () => $combat, settings: { attackCommonEventId: 1 } };
     `;
     const ctx = vm.createContext({ console });
     vm.runInContext(code, ctx);
@@ -393,10 +404,8 @@ test("実装の範囲: 決定キーを押した瞬間だけ動作し、歩行・
     const src = read(FACING);
     assert.match(src, /Game_Player\.prototype\.triggerButtonAction/);
     assert.doesNotMatch(src, /Input\._onKey|Scene_Map|\$gameMap\.mapId|mapId\s*===/, "入力層・Scene・特定マップに依存しない");
-    for (const file of ["js/plugins/ProjectR_CardBattleInput.js", "js/plugins/ProjectR_UltimateActivation.js"]) {
-        const diff = cp.spawnSync("git", ["diff", "0e11dda", "--", file], { cwd: path.join(__dirname, ".."), encoding: "utf8" });
-        assert.equal(diff.stdout, "", `${file}は変更しない`);
-    }
+    // (CardBattleInput / UltimateActivation は RT3 で Q/E/X/C/V・診断を足した。F=決定キーを横取りしないことは別テストで確認)
+    assert.doesNotMatch(read("js/plugins/ProjectR_CardBattleInput.js"), /isTriggered\("ok"\)|keyMapper\[/);
 });
 
 // =====================================================================
@@ -526,24 +535,25 @@ test("操作盤(Control Hub)の選択肢は戦闘中も呼べる: Reset/End/Inst
 // 5) 回帰: 数値・既存システムは変えていない
 // =====================================================================
 test("カード定義・Cooldown・Divine・Gauge・Ultimate・本番検証・Playtestガードは不変（ソースの差分で確認）", () => {
-    const unchanged = ["ProjectR_CardDeckCore", "ProjectR_CardBattleInput", "ProjectR_GodSummonManager", "ProjectR_UltimateGauge",
-        "ProjectR_UltimateGodDamageBridge", "ProjectR_UltimateActivation", "ProjectR_HermesUltimate", "ProjectR_ApolloUltimate",
+    // (RT3で意図して変えたCardBattleInput/UltimateActivation/HermesReedFluteSleep/HermesSwordsmanshipは除く)
+    const unchanged = ["ProjectR_CardDeckCore", "ProjectR_GodSummonManager", "ProjectR_UltimateGauge",
+        "ProjectR_UltimateGodDamageBridge", "ProjectR_HermesUltimate", "ProjectR_ApolloUltimate",
         "ProjectR_ApolloGoldenArrow", "ProjectR_ApolloDiseaseAttack", "ProjectR_ApolloLyreCalm", "ProjectR_HermesRecognitionObscure",
-        "ProjectR_HermesReedFluteSleep", "ProjectR_HermesSwiftMovement", "ProjectR_HermesSwordsmanship",
+        "ProjectR_HermesSwiftMovement",
         "Hendrix_Action_Engine", "Hendrix_Keyboard_Gamepad", "Hendrix_Hotbar_Creator", "DotMoveSystem"].map(n => `js/plugins/${n}.js`);
-    const result = cp.spawnSync("git", ["diff", "--quiet", "0e11dda", "--", ...unchanged, "data/Skills.json", "data/States.json"],
+    const result = cp.spawnSync("git", ["diff", "--quiet", "72c386a", "--", ...unchanged, "data/Skills.json", "data/States.json"],
         { cwd: path.join(__dirname, "..") });
     assert.equal(result.status, 0);
     const params = {}; vm.runInNewContext(read("js/plugins.js"), params);
-    const before = cp.execFileSync("git", ["show", "0e11dda:js/plugins.js"], { encoding: "utf8", cwd: path.join(__dirname, "..") });
-    const plainLines = text => text.split(/\r?\n/).filter(l => /"ProjectR_(CardDeckCore|BattleHUD|CombatPresence|PlayerFacing|CombatTestArena)"/.test(l));
+    const before = cp.execFileSync("git", ["show", "72c386a:js/plugins.js"], { encoding: "utf8", cwd: path.join(__dirname, "..") });
+    const plainLines = text => text.split(/\r?\n/).filter(l => /"ProjectR_(CardDeckCore|BattleHUD)"/.test(l));
     assert.deepEqual(plainLines(read("js/plugins.js")), plainLines(before), "プラグイン登録・パラメータは変えていない");
 });
 test("HUDの変更は表示条件の1か所だけ（Phase 5Aの表示内容・Divine/Gauge/Ultimate表示は不変）", () => {
-    const diff = cp.spawnSync("git", ["diff", "0e11dda", "--", HUD], { cwd: path.join(__dirname, ".."), encoding: "utf8" }).stdout;
-    const changed = diff.split(/\r?\n/).filter(l => /^[+-][^+-]/.test(l));
-    assert.ok(changed.some(l => /cardBattleActive\(\) &&/.test(l) && l.startsWith("-")), "旧: カード戦闘中は強制表示");
-    assert.equal(changed.filter(l => l.startsWith("-")).length, 3, "削除は旧条件の3行だけ");
+    const source = read(HUD);
+    const body = source.slice(source.indexOf("shouldShow() {"), source.indexOf("shouldShow() {") + 1500);
+    assert.doesNotMatch(body, /cardBattleActive\(\)/, "カード戦闘が有効なだけでは強制表示しない");
+    assert.match(body, /isCombatEventActive/, "明示的な戦闘イベントだけを見る");
 });
 
 console.log(`\n${passed} tests passed`);

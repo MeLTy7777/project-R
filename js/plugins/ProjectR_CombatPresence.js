@@ -4,7 +4,7 @@
  * @orderAfter Hendrix_Action_Engine
  * @orderAfter ProjectR_PlayerDeathControl
  * @orderBefore ProjectR_BattleHUD
- * @plugindesc v1.0.0 画面内の生存敵に応じてProjectRの戦闘状態を切り替えます。
+ * @plugindesc v1.1.0 画面内の生存敵で武器の使用可否を、明示的な戦闘イベントでHUD等を切り替えます。
  * @author ProjectR
  *
  * @param AttackCommonEventId
@@ -42,6 +42,21 @@
  *   ProjectRCombatPresence.clearBattleSummon()
  *   ProjectRCombatPresence.registerCombatSource(name, predicate)
  *   ProjectRCombatPresence.unregisterCombatSource(name)
+ *   ProjectRCombatPresence.beginCombatEvent(sourceId)
+ *   ProjectRCombatPresence.endCombatEvent(sourceId)
+ *   ProjectRCombatPresence.isCombatEventActive()
+ *   ProjectRCombatPresence.getCombatEventSources()
+ *   ProjectRCombatPresence.clearCombatEvents()
+ *
+ * 【2つの状態】
+ *   isCombatActive()      … 画面内に生存敵がいる、または戦闘イベント中。武器(射撃/近接)の
+ *                            使用可否と銃の表示に使う従来の状態(終了時に猶予あり)。
+ *   isCombatEventActive() … 「明示的な戦闘イベント」だけ。beginCombatEventで開始し、
+ *                            endCombatEventで終了するまで真(猶予なし・敵の有無に無関係)。
+ *                            戦闘HUD・戦闘中の照準向き・神の常駐表示はこちらだけを見る。
+ *   画面内に敵がいる/カード戦闘が有効/テストマップにいる、というだけでは
+ *   isCombatEventActive()は真になりません。ボス戦などは開始時にbeginCombatEvent、
+ *   終了時にendCombatEventを呼んでください(sourceIdごとに独立、重複開始は1つ扱い)。
  *
  * registerCombatSourceは、画面内の敵以外で「戦闘イベント中」を宣言する
  * 仕組み(例: 開発用のテスト戦闘)のための登録口です。predicate()が
@@ -222,6 +237,9 @@
     // 判定は毎回、登録された関数に問い合わせるだけで、独自の戦闘フラグは持たない。
     const combatSources = new Map();
 
+    // 明示的な戦闘イベント(begin/endで管理)。独自の戦闘フラグはここだけ。
+    const explicitCombatEvents = new Set();
+
     const hasActiveCombatSource = () => {
         for (const predicate of combatSources.values()) {
             try {
@@ -367,7 +385,7 @@
         }
 
         const frame = currentFrame();
-        const enemyPresent = hasLivingEnemyOnScreen() || hasActiveCombatSource();
+        const enemyPresent = explicitCombatEvents.size > 0 || hasLivingEnemyOnScreen() || hasActiveCombatSource();
         if (enemyPresent) {
             lastEnemySeenFrame = frame;
             setCombatActive(true);
@@ -411,6 +429,34 @@
 
     CombatPresence.unregisterCombatSource = function(name) {
         return combatSources.delete(name);
+    };
+
+    const validSourceId = value => typeof value === "string" && value.length > 0;
+
+    CombatPresence.isCombatEventActive = function() {
+        return explicitCombatEvents.size > 0 || hasActiveCombatSource();
+    };
+
+    CombatPresence.getCombatEventSources = function() {
+        return [...explicitCombatEvents];
+    };
+
+    CombatPresence.beginCombatEvent = function(sourceId) {
+        if (!validSourceId(sourceId)) return false;
+        explicitCombatEvents.add(sourceId);
+        // 武器の使用可否(従来の戦闘状態)もすぐ有効にする。
+        if (isCurrentSceneMap()) refreshCombatState(false);
+        return true;
+    };
+
+    CombatPresence.endCombatEvent = function(sourceId) {
+        return explicitCombatEvents.delete(sourceId);
+    };
+
+    CombatPresence.clearCombatEvents = function() {
+        const had = explicitCombatEvents.size > 0;
+        explicitCombatEvents.clear();
+        return had;
     };
 
     CombatPresence.canUseWeapon = function() {
@@ -457,6 +503,18 @@
             if (!CombatPresence.canUseWeapon()) return;
         }
         _Game_Temp_reserveCommonEvent.call(this, commonEventId);
+    };
+
+    // 戦闘イベントは実行時のみ。ニューゲーム・ロードでは持ち越さない。
+    const _DataManager_setupNewGame = DataManager.setupNewGame;
+    DataManager.setupNewGame = function() {
+        explicitCombatEvents.clear();
+        return _DataManager_setupNewGame.apply(this, arguments);
+    };
+    const _DataManager_extractSaveContents = DataManager.extractSaveContents;
+    DataManager.extractSaveContents = function() {
+        explicitCombatEvents.clear();
+        return _DataManager_extractSaveContents.apply(this, arguments);
     };
 
     const _Scene_Map_start = Scene_Map.prototype.start;

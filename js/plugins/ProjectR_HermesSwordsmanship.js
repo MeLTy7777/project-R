@@ -168,6 +168,8 @@
             if (!Number.isFinite(event._rotation) || Math.abs(event._rotation - rotation) > 1e-6 ||
                     ![event._realX, event._realY].every(Number.isFinite)) throw Error("hitboxRotationFailed");
             hitboxes.set(event.eventId(), { map, event, tag, degree, framesLeft: lifetime, hitEnemies: new Set() });
+            // 見た目(公式Swing Weapon)はダメージ判定と別。失敗してもHitbox/ダメージ/カード消費は変えない。
+            try { root.ProjectRGodSummonVisual?.swingWeapon?.("hermes", degree); } catch (error) { /* 表示のみ */ }
             return { ok: true };
         } catch (error) {
             for (const event of map.events()) {

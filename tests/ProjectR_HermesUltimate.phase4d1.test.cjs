@@ -560,9 +560,11 @@ test("Phase 4A/4B/4C/Manager/Bridge/Coreは変更されておらず、Hermes固�
         assert.equal(/HermesUltimate|hermes_ultimate|ProjectRUltimate:/.test(read(`js/plugins/${file}.js`)), false, file);
     }
     // 変更禁止のpluginは、Phase 4C完了時点(cd586e8)と完全に同じ
+    // (UltimateActivation / HermesReedFluteSleep / HermesSwordsmanship は Phase 5A-RT3 で診断・表示連携を足したため、
+    //  固定対象から外す。挙動は各専用テストと tests/ProjectR_CombatRuntimeCompliance.test.cjs で確認する)
     for (const file of ["ProjectR_CardDeckCore", "ProjectR_GodSummonManager", "ProjectR_UltimateGodDamageBridge", "ProjectR_UltimateGauge",
-        "ProjectR_UltimateActivation", "ProjectR_ApolloGoldenArrow", "ProjectR_ApolloDiseaseAttack", "ProjectR_ApolloLyreCalm",
-        "ProjectR_HermesRecognitionObscure", "ProjectR_HermesReedFluteSleep", "ProjectR_HermesSwiftMovement", "ProjectR_HermesSwordsmanship"]) {
+        "ProjectR_ApolloGoldenArrow", "ProjectR_ApolloDiseaseAttack", "ProjectR_ApolloLyreCalm",
+        "ProjectR_HermesRecognitionObscure", "ProjectR_HermesSwiftMovement"]) {
         const before = cp.execFileSync("git", ["show", `cd586e8:js/plugins/${file}.js`], { encoding: "utf8", maxBuffer: 1 << 26 }).replace(/\r\n/g, "\n");
         assert.equal(read(`js/plugins/${file}.js`).replace(/\r\n/g, "\n"), before, file);
     }

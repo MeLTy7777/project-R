@@ -98,6 +98,13 @@ function load({ playtest = true, flipAfterLoad = false, beforePlugin = null } = 
     };
     g.keysBefore = Object.keys(g.$gameSystem).sort();
     g.startBefore = g.Scene_Map.prototype.start;
+    // 戦闘イベントAPIの最小スタブ(実物の挙動は ProjectR_CombatTestArena.rt2 / CombatRuntimeCompliance が検証)。
+    g.combatSources = new Set();
+    g.ProjectRCombatPresence = {
+        isCombatActive: () => g.combatSources.size > 0, isCombatEventActive: () => g.combatSources.size > 0,
+        beginCombatEvent: id => { g.combatSources.add(id); return true; },
+        endCombatEvent: id => g.combatSources.delete(id), getCombatEventSources: () => [...g.combatSources]
+    };
     if (beforePlugin) beforePlugin(g);
     vm.runInContext(pluginSource, g);
     if (flipAfterLoad) g.playtest = false;
@@ -161,12 +168,12 @@ test("全Eventは通行可のタイル上にあり、重なりもなく、Mapの
         }
     }
 });
-test("操作盤Event: 要求の6択+Closeがあり、各分岐が実在のプラグインコマンドを呼ぶ", () => {
+test("操作盤Event: 要求の6択 + Reed Fluteスポット + Closeがあり、各分岐が実在のプラグインコマンドを呼ぶ", () => {
     const hub = must(arenaMap, "DEV Control Hub"), list = hub.pages[0].list;
     const choice = list.find(c => c.code === 102);
     assert.deepEqual(choice.parameters[0], ["Start Hermes Test", "Start Apollo Test", "Reset Current Test", "End Card Battle",
-        "Show Test Instructions", "Exit Arena", "Close"]);
-    assert.equal(choice.parameters[1], 6, "キャンセル=Close（Exitへ流れない）");
+        "Show Test Instructions", "Go to Reed Flute Spot", "Exit Arena", "Close"]);
+    assert.equal(choice.parameters[1], 7, "キャンセル=Close（Exitへ流れない）");
     const branchCommands = [];
     let current = -1;
     for (const c of list) {
@@ -174,7 +181,7 @@ test("操作盤Event: 要求の6択+Closeがあり、各分岐が実在のプラ
         else if (c.code === 357 && current >= 0) branchCommands[current].push(c.parameters[1]);
         else if (c.code === 404) current = -1;
     }
-    assert.deepEqual(branchCommands, [["startHermes"], ["startApollo"], ["resetTest"], ["endTest"], ["showInstructions"], ["exitArena"], []]);
+    assert.deepEqual(branchCommands, [["startHermes"], ["startApollo"], ["resetTest"], ["endTest"], ["showInstructions"], ["moveToMultiTarget"], ["exitArena"], []]);
     assert.equal(hub.pages[0].trigger, 0); assert.equal(hub.pages[0].priorityType, 1);
     // 開始位置(25,26)は操作盤(25,24)の2タイル手前で、通行可。
     assert.deepEqual([hub.x, hub.y], [25, 24]); assert.equal(passable(arenaMap, 25, 26), true);
@@ -327,14 +334,16 @@ test("プラグインはPlaytestでガードされ、ガードより前にAPI/�
     assert.doesNotMatch(pluginSource, /DataManager\.(makeSaveContents|extractSaveContents|saveGame)/);
 });
 test("Core/Manager/Gauge/Bridge/Activation/全カード/Hendrix/DotMoveは変更されていない", () => {
-    const protectedFiles = ["ProjectR_CardDeckCore", "ProjectR_CardBattleInput", "ProjectR_GodSummonManager", "ProjectR_UltimateGauge",
-        "ProjectR_UltimateGodDamageBridge", "ProjectR_UltimateActivation",
+    // (CardBattleInput / UltimateActivation / HermesReedFluteSleep / HermesSwordsmanship は Phase 5A-RT3 で
+    //  Q/E/X/C/V・診断・表示連携を足したため対象外。検証は tests/ProjectR_CombatRuntimeCompliance.test.cjs)
+    const protectedFiles = ["ProjectR_CardDeckCore", "ProjectR_GodSummonManager", "ProjectR_UltimateGauge",
+        "ProjectR_UltimateGodDamageBridge",
         "ProjectR_HermesUltimate", "ProjectR_ApolloUltimate", "ProjectR_ApolloGoldenArrow", "ProjectR_ApolloDiseaseAttack",
-        "ProjectR_ApolloLyreCalm", "ProjectR_HermesRecognitionObscure", "ProjectR_HermesReedFluteSleep",
-        "ProjectR_HermesSwiftMovement", "ProjectR_HermesSwordsmanship", "Hendrix_Action_Engine", "DotMoveSystem"]
+        "ProjectR_ApolloLyreCalm", "ProjectR_HermesRecognitionObscure",
+        "ProjectR_HermesSwiftMovement", "Hendrix_Action_Engine", "DotMoveSystem"]
         .map(name => `js/plugins/${name}.js`);
-    const result = cp.spawnSync("git", ["diff", "--quiet", "0e11dda", "--", ...protectedFiles], { cwd: path.join(__dirname, "..") });
-    assert.equal(result.status, 0, "保護対象ファイルが0e11dda(RT1)から変更されている");
+    const result = cp.spawnSync("git", ["diff", "--quiet", "72c386a", "--", ...protectedFiles], { cwd: path.join(__dirname, "..") });
+    assert.equal(result.status, 0, "保護対象ファイルが72c386a(RT2)から変更されている");
 });
 
 // =====================================================================
@@ -577,15 +586,16 @@ test("プラグインコマンド: 結果をメッセージ(上寄せ)で表示�
     assert.match(g.command("collapseGod")[0], /OK/);
     assert.match(g.command("divineAreaHit")[0], /NG.*崩壊中/);
     assert.match(g.command("applySleep")[0], /OK/); assert.equal(g.states.has(32), true);
-    const status = g.command("showStatus"); assert.equal(status.length, 4); assert.match(status[1], /崩壊|collapsed/);
+    const status = g.command("showStatus"); assert.equal(status.length, 4 + g.arena.diagnosticLines().length); assert.match(status[1], /崩壊|collapsed/);
     assert.match(status.join("\n"), /Ultimateキー:U/);
-    assert.ok(g.command("showInstructions").some(line => /1〜5.*カード/.test(line)));
+    assert.ok(g.command("showInstructions").some(line => /Q E X C V.*手札/.test(line)));
+    assert.equal(g.command("showInstructions").some(line => /1〜5s*=|1〜5でカード|1〜5キー/.test(line)), false, "1〜5キーはカード操作ではない");
     assert.match(g.command("startApollo")[0], /OK/); assert.equal(g.ProjectRGodSummonManager.getPersistentUltimateGodId(), "apollo");
     g.command("endTest"); assert.equal(g.d.isCardBattleActive(), false); assert.equal(g.states.has(32), false);
     g.command("exitArena"); assert.deepEqual(plain(g.transfers.at(-1)), [1, 3, 4, 2, 0]);
     g.command("resetTest"); assert.deepEqual(plain(g.transfers.at(-1)), [ARENA, 25, 26, 8, 0]);
     assert.ok(g.registered.every(name => name.startsWith(`${PLUGIN}:`)));
-    assert.equal(g.registered.length, 13);
+    assert.equal(g.registered.length, 14);
 });
 test("開始前のゲームは何も変えない: 読み込みだけでは戦闘も移動も保存データ変更も起きない（New Gameで自動入場しない）", () => {
     const g = load();

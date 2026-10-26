@@ -25,6 +25,9 @@ const mzInput = inputSource.slice(inputSource.indexOf("function Input()"), input
 const hotbarSlotInput = read("js/plugins/Hendrix_Hotbar_Creator.js")
     .match(/Scene_Map\.prototype\.updateSlotInputs = function \(\) \{[\s\S]*?\n    \};/)[0];
 
+// 手札スロット1～5の物理キー(左から)。旧Hotbar割当の模擬も同じキーにする。
+const SLOT_KEYS = ["Q", "E", "X", "C", "V"];
+
 function loadGame({ legacyBindings = true, prepare = true, adapter = true, productionDefinitions = false } = {}) {
     const documentListeners = new Map();
     const windowListeners = new Map();
@@ -63,7 +66,7 @@ function loadGame({ legacyBindings = true, prepare = true, adapter = true, produ
     if (legacyBindings) {
         const buttons = JSON.parse(keyboardParameters["Button Config"]);
         for (let key = 1; key <= 5; key++) buttons.push(JSON.stringify({
-            "From Key": String(key), "To Key": String(key), "Common Event ID": String(50 + key),
+            "From Key": SLOT_KEYS[key - 1], "To Key": SLOT_KEYS[key - 1], "Common Event ID": String(50 + key),
             Options: "triggered", AllowParallel: "false"
         }));
         keyboardParameters["Button Config"] = JSON.stringify(buttons);
@@ -98,7 +101,7 @@ function loadGame({ legacyBindings = true, prepare = true, adapter = true, produ
     for (let key = 1; key <= 5; key++) {
         game._slotData.set(String(key), { type: "skill", id: key });
         game.SceneManager._scene._skillUI._slots.set(String(key), {
-            _config: { Button: String(key) }, _bounceDuration: 0,
+            _config: { Button: SLOT_KEYS[key - 1] }, _bounceDuration: 0,
             useSlotContents() { game.legacyUses.push(key); }
         });
     }
@@ -109,9 +112,12 @@ function loadGame({ legacyBindings = true, prepare = true, adapter = true, produ
         cards.forEach(card => api.setCardOwned(card.cardId));
         api.setDeck(validDeck);
     }
+    // スロット番号(1～5)を、左から Q E X C V の物理キーへ変換して送る。
     game.emitKey = (type, digit, extra = {}) => {
+        const letter = SLOT_KEYS[digit - 1] || String(digit);
         const event = {
-            code: `Digit${digit}`, keyCode: 48 + digit, key: String(digit), repeat: false,
+            code: SLOT_KEYS[digit - 1] ? `Key${letter}` : `Digit${digit}`,
+            keyCode: SLOT_KEYS[digit - 1] ? letter.charCodeAt(0) : 48 + digit, key: letter.toLowerCase(), repeat: false,
             target: game.document.activeElement,
             preventDefault() { this.defaultPrevented = true; }, ...extra
         };
@@ -486,17 +492,20 @@ test("通常時keyMapper/Gamepad/武器J入力に回帰なし、戦闘中もJは
     assert.ok(game.$gameTemp.reserved.includes(1));
     assert.equal(game.ProjectRCardDeck.getBattleState().cooldownPile.length, 0);
 });
-test("実際の現行設定（数字CE追加なし）でも1～5を使用できテンキーは対象外", () => {
+test("実際の現行設定でも Q/E/X/C/V（左から1～5枠）を使用でき、数字キー1～5とテンキーは対象外", () => {
     const game = loadGame({ legacyBindings: false }), deck = game.ProjectRCardDeck;
     deck.startCardBattle();
     game.tap(1, { code: "Numpad1", keyCode: 97 });
+    for (let digit = 1; digit <= 5; digit++) game.tap(digit, { code: `Digit${digit}`, keyCode: 48 + digit });
     assert.equal(deck.getBattleState().cooldownPile.length, 0);
+    assert.equal(game.ProjectRCardBattleInput.getLastResult(), null);
     game.tap(5);
     assert.equal(game.ProjectRCardBattleInput.getLastResult().handIndex, 4);
+    assert.deepEqual(plain(game.ProjectRCardBattleInput.getKeyLabels()), ["Q", "E", "X", "C", "V"]);
 });
-test("数字キーが既存アクションへ再割当されても戦闘中だけカードへ渡し終了後は復帰", () => {
+test("カードキー(Q)が既存アクションへ再割当されても戦闘中だけカードへ渡し終了後は復帰", () => {
     const game = loadGame(), deck = game.ProjectRCardDeck;
-    game.Input.keyMapper[49] = "j";
+    game.Input.keyMapper[81] = "j";
     game.tap(1);
     assert.equal(game.SceneManager._scene.weaponTriggered, true);
     deck.startCardBattle();
@@ -506,7 +515,7 @@ test("数字キーが既存アクションへ再割当されても戦闘中だ�
     deck.endCardBattle();
     game.tap(1);
     assert.equal(game.SceneManager._scene.weaponTriggered, true);
-    assert.equal(game.Input.keyMapper[49], "j");
+    assert.equal(game.Input.keyMapper[81], "j");
 });
 test("戦闘終了直後に押しっぱなしのrepeatを旧入力へ漏らさずkeyup後に復帰", () => {
     const game = loadGame(), deck = game.ProjectRCardDeck;

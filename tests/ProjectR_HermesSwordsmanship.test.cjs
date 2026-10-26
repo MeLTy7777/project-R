@@ -81,7 +81,7 @@ test("Hermesのみ専用handlerへdispatchしDynamicを1回生成、Prefab不使
 });
 test("1～5入力adapterから1回生成、長押し再発火なし", () => {
     const g = loadGame(); g.startWith(CARD);
-    const e = { code: "Digit1", keyCode: 49, preventDefault() {} };
+    const e = { code: "KeyQ", keyCode: 81, preventDefault() {} };
     g.Input._onKeyDown(e); g.Input.update(); g.SceneManager._scene.update();
     assert.equal(g.ProjectRCardBattleInput.getLastResult().reason, "success");
     g.Input._onKeyDown({ ...e, repeat: true }); g.Input.update(); g.SceneManager._scene.update();
