@@ -40,6 +40,14 @@
  *   ProjectRCombatPresence.canUseWeapon()
  *   ProjectRCombatPresence.setBattleSummon(target)
  *   ProjectRCombatPresence.clearBattleSummon()
+ *   ProjectRCombatPresence.registerCombatSource(name, predicate)
+ *   ProjectRCombatPresence.unregisterCombatSource(name)
+ *
+ * registerCombatSourceは、画面内の敵以外で「戦闘イベント中」を宣言する
+ * 仕組み(例: 開発用のテスト戦闘)のための登録口です。predicate()が
+ * trueを返す間は、生存敵が画面内にいるのと同じ扱いになります
+ * (終了時は通常と同じ猶予後に非戦闘へ戻ります)。このプラグインは
+ * 独自の戦闘フラグを持たず、毎回predicateへ問い合わせるだけです。
  *
  * setBattleSummon(target)には、次のいずれかを渡せます。
  *   - setCombatVisible(boolean)を持つ管理オブジェクト
@@ -210,6 +218,21 @@
         return false;
     };
 
+    // 画面内の敵以外で「戦闘イベント中」を宣言したい仕組み(開発用テスト戦闘など)の登録先。
+    // 判定は毎回、登録された関数に問い合わせるだけで、独自の戦闘フラグは持たない。
+    const combatSources = new Map();
+
+    const hasActiveCombatSource = () => {
+        for (const predicate of combatSources.values()) {
+            try {
+                if (predicate() === true) return true;
+            } catch (error) {
+                // 例外を出した判定元は「戦闘ではない」として扱う。
+            }
+        }
+        return false;
+    };
+
     const setTargetVisible = (target, visible) => {
         if (!target) return;
         if (typeof target.setCombatVisible === "function") {
@@ -344,7 +367,7 @@
         }
 
         const frame = currentFrame();
-        const enemyPresent = hasLivingEnemyOnScreen();
+        const enemyPresent = hasLivingEnemyOnScreen() || hasActiveCombatSource();
         if (enemyPresent) {
             lastEnemySeenFrame = frame;
             setCombatActive(true);
@@ -376,6 +399,18 @@
 
     CombatPresence.refresh = function() {
         return refreshCombatState(false);
+    };
+
+    CombatPresence.registerCombatSource = function(name, predicate) {
+        if (typeof name !== "string" || !name || typeof predicate !== "function") {
+            return false;
+        }
+        combatSources.set(name, predicate);
+        return true;
+    };
+
+    CombatPresence.unregisterCombatSource = function(name) {
+        return combatSources.delete(name);
     };
 
     CombatPresence.canUseWeapon = function() {

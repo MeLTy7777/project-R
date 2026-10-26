@@ -20,6 +20,12 @@
  *   Hendrix Action Engineの既存照準方向処理をそのまま使用します。
  *
  * マウスカーソル、クリック入力、武器Spriteの回転処理は変更しません。
+ *
+ * 戦闘中の「調べる」(決定キー):
+ *   戦闘中は照準方向に向きが固定されるため、決定キーを押した瞬間だけ、
+ *   すぐ隣(約1.5タイル以内)にある決定ボタンのイベントの方向へ向けます。
+ *   敵・弾・透明なイベントは対象外です。近くに対象が無ければ何もしません。
+ *   カード用の1～5キーやUltimateキーとは関係しません。
  */
 
 (() => {
@@ -87,5 +93,69 @@
             }
         }
         _Game_Player_setDirectionFix.call(this, directionFix);
+    };
+
+    // 戦闘中は照準方向にプレイヤーの向きが固定されるため、決定キーで近くの
+    // イベント(端末・看板・扉)を調べても、マウスがそちらを向いていないと起動しない。
+    // 決定キーが押された瞬間だけ、すぐ隣の「決定ボタン」イベントの方向へ向ける。
+    // 戦闘外では何もしない(通常の向きでそのまま調べられる)。
+    const interactReach = 1.5;
+    const interactAlignment = 0.75;
+
+    const isInteractableEvent = event => {
+        if (!event || event._erased || typeof event.isTriggerIn !== "function") return false;
+        if (event.databaseEnemy || event.isSpawnEvent || event.isPlayerChild) return false;
+        if (typeof event.isTransparent === "function" && event.isTransparent()) return false;
+        if (typeof event.isNormalPriority === "function" && !event.isNormalPriority()) return false;
+        if (!event.isTriggerIn([0])) return false;
+        const list = typeof event.list === "function" ? event.list() : null;
+        return !!list && list.length > 1;
+    };
+
+    const directionToward = (player, event) => {
+        const dx = Number(event._realX) - Number(player._realX);
+        const dy = Number(event._realY) - Number(player._realY);
+        if (!Number.isFinite(dx) || !Number.isFinite(dy)) return 0;
+        const ax = Math.abs(dx);
+        const ay = Math.abs(dy);
+        if (Math.max(ax, ay) > interactReach || Math.min(ax, ay) > interactAlignment) {
+            return 0;
+        }
+        return ax > ay ? (dx > 0 ? 6 : 4) : (dy > 0 ? 2 : 8);
+    };
+
+    const nearestInteractDirection = player => {
+        const events = typeof $gameMap !== "undefined" && $gameMap ? $gameMap.events() : [];
+        let bestDirection = 0;
+        let bestDistance = Infinity;
+        for (const event of events) {
+            if (!isInteractableEvent(event)) continue;
+            const direction = directionToward(player, event);
+            if (!direction) continue;
+            const distance = Math.hypot(
+                event._realX - player._realX,
+                event._realY - player._realY
+            );
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                bestDirection = direction;
+            }
+        }
+        return bestDirection;
+    };
+
+    const _Game_Player_triggerButtonAction = Game_Player.prototype.triggerButtonAction;
+    Game_Player.prototype.triggerButtonAction = function() {
+        if (isCombatActive() && Input.isTriggered("ok") && this.canMove()) {
+            const direction = nearestInteractDirection(this);
+            if (direction && direction !== this.direction()) {
+                // 照準による向き固定を一瞬だけ外して向きを変え、元の固定状態へ戻す。
+                const fixed = this._directionFix;
+                this._directionFix = false;
+                this.setDirection(direction);
+                this._directionFix = fixed;
+            }
+        }
+        return _Game_Player_triggerButtonAction.call(this);
     };
 })();

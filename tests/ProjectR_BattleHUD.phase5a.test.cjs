@@ -98,6 +98,7 @@ function ready(god = "apollo", options) {
     assert.equal(deck(g).setUltimateRing(god).ok, true);
     g.startWith(SWORD);
     assert.equal(mgr(g).getPersistentUltimateGodId(), god);
+    g.combatActive = true; // HUDは実際の戦闘イベント(CombatPresence)中だけ表示される
     return g;
 }
 // HUDの更新周期(4frame)に合わせて進める。ゲームの時間は進めない。
@@ -170,8 +171,10 @@ test("セーブ項目を追加しない: $gameSystemの新規プロパティな�
 });
 test("HUDが依存する本体plugin(Core/Input/Manager/Gauge/Activation/Ultimate/カード/Hendrix/DotMove)は変更しない", () => {
     const names = fs.readdirSync(path.join(__dirname, "..", "js/plugins")).filter(f =>
-        (/^ProjectR_/.test(f) && !/^ProjectR_(BattleHUD|Casino|TexasHoldem)/.test(f)) || /^Hendrix_|^DotMoveSystem/.test(f));
+        (/^ProjectR_/.test(f) && !/^ProjectR_(BattleHUD|Casino|TexasHoldem|CombatPresence|PlayerFacing|CombatTestArena)/.test(f)) || /^Hendrix_|^DotMoveSystem/.test(f));
     assert.ok(names.length >= 18);
+    // CombatPresence/PlayerFacing は Phase 5A-RT2(戦闘イベントの登録口・戦闘中の調べる)で意図して変更した。
+    // それらの変更は tests/ProjectR_CombatTestArena.rt2.test.cjs が検証する。
     // git diffは改行コード(autocrlf)の差を正規化するので、内容の変更だけを検出できる。
     for (const name of names) {
         const result = cp.spawnSync("git", ["diff", "--quiet", "0060015", "--", `js/plugins/${name}`], { cwd: path.join(__dirname, "..") });
@@ -194,9 +197,10 @@ test("探索中（戦闘外）はHUD非表示。カード区画は無く、従�
 });
 test("カード戦闘の開始でHUDが現れ、終了で消える。区画は破棄されHotbar表示へ戻る", () => {
     const g = ready("apollo"); step(g);
-    assert.equal(g.hud.visible, true); assert.equal(vm5(g).cardBattleActive, true); // CombatPresenceがfalseでも表示
+    assert.equal(g.hud.visible, true); assert.equal(vm5(g).cardBattleActive, true); // 戦闘イベント(CombatPresence)中なので表示
     assert.equal(counts(g).visible, true); assert.equal(divine(g).visible, true); assert.equal(ult(g).visible, true);
     deck(g).endCardBattle(); step(g);
+    g.combatActive = false; step(g);
     assert.equal(g.hud.visible, false); assert.equal(counts(g).visible, false); assert.equal(divine(g).visible, false);
     assert.equal(vm5(g).slots[0].key, "Q"); assert.equal(vm5(g).counts, null); assert.equal(vm5(g).divine, null);
     g.combatActive = true; step(g);
@@ -209,6 +213,7 @@ test("ロード(extractSaveContents)でカード戦闘は終わり、古いHUD�
     const saved = JSON.stringify(g.DataManager.makeSaveContents());
     assert.equal(/hand|drawPile|APOLLO|DIVINE HP/.test(saved.replace(/_projectRCardDeckData[\s\S]*?(?="_projectR|\})/, "")), false);
     g.DataManager.extractSaveContents(g.DataManager.makeSaveContents());
+    g.combatActive = false; // ロード後のマップ開始でCombatPresenceは非戦闘へ戻る
     step(g);
     assert.equal(deck(g).isCardBattleActive(), false);
     assert.equal(g.hud.visible, false); assert.equal(divine(g).visible, false); assert.equal(counts(g).visible, false);
@@ -221,8 +226,8 @@ test("マップ移動でUltimate神の情報(Divine HP/Gauge)が消え、古い�
     assert.equal(mgr(g).hasPersistentUltimateBattleState(), false);
     assert.equal(divine(g).visible, false); assert.equal(ult(g).visible, false); // 偽の0/100を出さない
     assert.equal(vm5(g).divine, null);
-    deck(g).endCardBattle(); step(g); assert.equal(g.hud.visible, false);
-    deck(g).startCardBattle(); step(g);
+    deck(g).endCardBattle(); g.combatActive = false; step(g); assert.equal(g.hud.visible, false);
+    g.combatActive = true; deck(g).startCardBattle(); step(g);
     assert.equal(divine(g).hp, "DIVINE HP 100 / 100"); assert.equal(ult(g).value, "0/100");
 });
 test("手動のhide()は尊重し、会話/メッセージ中は隠れ、解除で戻る", () => {
@@ -451,6 +456,7 @@ test("Ultimateキー表示はActivationの設定値を使い、Uを決め打ち�
 });
 test("Ultimate神が無いカード戦闘: 手札HUDは出すが、Ultimate/Divine区画は隠し偽の0/100を出さない", () => {
     const g = load(); g.startWith(SWORD); // setUltimateRingしない
+    g.combatActive = true; // 戦闘イベント中
     assert.equal(mgr(g).hasPersistentUltimateBattleState(), false);
     assert.equal(gauge(g).hasUltimateGaugeState(), false);
     step(g, 3);

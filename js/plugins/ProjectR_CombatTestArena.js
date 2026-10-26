@@ -77,6 +77,13 @@
  * 通常の操作はマップ上の端末を調べる（決定キー）だけで行えます。
  * 詳細は docs/ProjectR_CombatTestArena.md を参照してください。
  *
+ * 戦闘HUDと敵ダミーについて:
+ *   enter()は移動するだけで戦闘を始めません。HUDの表示条件は本番と同じ
+ *   ProjectRCombatPresence（実際の戦闘イベント中）だけです。このプラグインは
+ *   Hermes/Apolloテストが有効な間だけ、CombatPresence.registerCombatSourceへ
+ *   「今テスト戦闘中か」を答え、その間だけ敵ダミー(<enemy>)を表示します。
+ *   戦闘が終われば（F8でendCardBattleしても）HUDとダミーは消えます。
+ *
  * 戦闘用デッキについて:
  *   本番のデッキ検証（30枚・コピー上限）は変更しません。テスト開始の一瞬だけ、
  *   登録済みカード定義のmaxCopiesを差し替えて startCardBattle() を呼び、
@@ -231,6 +238,28 @@
         return true;
     };
 
+    // ---- 戦闘イベントの宣言とダミーの出現 ----
+    // テストが有効な間だけ「戦闘イベント中」にする。HUDの表示条件は本番と同じ
+    // ProjectRCombatPresenceだけで、ここはその登録口へ「今テスト中か」を答える関数を渡すだけ。
+    // 戦闘が他の経路で終わっても、この関数が偽になるので表示が残らない。
+    const isTestCombat = () => isPlaytest() && runtime.scenario !== null && !!deck()?.isCardBattleActive?.();
+    const COMBAT_SOURCE = "ProjectR_CombatTestArena";
+    const presence = () => root.ProjectRCombatPresence || null;
+    presence()?.registerCombatSource?.(COMBAT_SOURCE, isTestCombat);
+
+    // 敵ダミー(<enemy>)はテスト中だけ現れる。マップに居るだけで戦闘扱いにならないようにするため。
+    const isArenaDummy = event => !!event && /^DEV /.test(event.event?.()?.name || "") &&
+        /<enemy>/.test(event.event?.()?.note || "");
+    const syncDummies = () => {
+        if (!isPlaytest() || currentMapId() !== ARENA_MAP_ID || typeof $gameMap === "undefined" || !$gameMap) return;
+        const visible = isTestCombat();
+        for (const event of $gameMap.events?.() || []) {
+            if (isArenaDummy(event) && typeof event.setTransparent === "function" && event.isTransparent?.() === visible) {
+                event.setTransparent(!visible);
+            }
+        }
+    };
+
     // ---- 状態表示 ----
     const status = () => {
         const d = deck(), m = manager(), g = gauge(), a = activation();
@@ -253,8 +282,15 @@
             gauge: gaugeState ? { current: gaugeState.current, max: gaugeState.max, full: gaugeState.full, ready: gaugeState.ready } : null,
             ultimateKey: a?.getInputBinding?.().key ?? null,
             sleeping,
+            combatEvent: !!presence()?.isCombatActive?.(),
+            lastCardInput: lastCardInput(),
             returnPoint: runtime.returnPoint ? { ...runtime.returnPoint } : null
         };
+    };
+    // 直近の1～5キー入力の結果。発動が失敗した理由(手札は変わらない)を確認できる。
+    const lastCardInput = () => {
+        const result = root.ProjectRCardBattleInput?.getLastResult?.();
+        return result ? { ok: !!result.ok, reason: result.reason, detail: result.detail ?? null, handIndex: result.handIndex ?? null } : null;
     };
     const num = value => Math.round(value * 10) / 10;
     const statusLines = () => {
@@ -271,7 +307,11 @@
             ? `DRAW ${s.counts.draw} / DISCARD ${s.counts.discard} / COOLDOWN ${s.counts.cooldown}  手札 ${s.hand.length}枚` +
               (s.sleeping ? "  [睡眠中]" : "")
             : "手札: なし";
-        return [head, god, gaugeLine, cards];
+        const last = s.lastCardInput
+            ? `直近のカード入力: ${s.lastCardInput.ok ? "成功" : "失敗"} ${s.lastCardInput.reason}` +
+              (s.lastCardInput.detail ? ` (${s.lastCardInput.detail})` : "")
+            : "直近のカード入力: なし";
+        return [head, god, gaugeLine, `${cards}  |  ${last}`];
     };
     const INSTRUCTION_PAGES = [
         ["【操作】 1〜5 = カード / U = Ultimate / 決定キー = 端末を調べる", "F8 = 詳細診断（ProjectRCombatTestArena.status() など）",
@@ -508,6 +548,26 @@
         });
     };
     registerCommands();
+
+    // 敵ダミーの出現/非表示。マップ読込直後(Scene_Map.startの戦闘判定より前)と、毎フレームで合わせる。
+    if (typeof Game_Map !== "undefined") {
+        if (typeof Game_Map.prototype.setup === "function") {
+            const _setup = Game_Map.prototype.setup;
+            Game_Map.prototype.setup = function() {
+                const result = _setup.apply(this, arguments);
+                try { syncDummies(); } catch (error) { /* 表示の同期に失敗してもマップ読込は止めない */ }
+                return result;
+            };
+        }
+        if (typeof Game_Map.prototype.update === "function") {
+            const _update = Game_Map.prototype.update;
+            Game_Map.prototype.update = function() {
+                const result = _update.apply(this, arguments);
+                try { syncDummies(); } catch (error) { /* 同上 */ }
+                return result;
+            };
+        }
+    }
 
     // リセット後のシナリオ再開始。マップが読み直された後（Scene_Map.start）に一度だけ行う。
     if (typeof Scene_Map !== "undefined" && typeof Scene_Map.prototype.start === "function") {

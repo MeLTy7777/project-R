@@ -53,7 +53,7 @@ const SEQUENCE = (() => {
     const m = pluginSource.match(/DRAW_SEQUENCE = Object\.freeze\(\[([\s\S]*?)\]\)/);
     return [...m[1].matchAll(/"([a-z_]+)"/g)].map(x => x[1]);
 })();
-function load({ playtest = true, flipAfterLoad = false } = {}) {
+function load({ playtest = true, flipAfterLoad = false, beforePlugin = null } = {}) {
     const g = loadBase({ productionDefinitions: true });
     // loadBase()は旧テスト用の手札を準備する。アリーナ検証は未所持の新規データから始める。
     g.ProjectRCardDeck.endCardBattle();
@@ -98,6 +98,7 @@ function load({ playtest = true, flipAfterLoad = false } = {}) {
     };
     g.keysBefore = Object.keys(g.$gameSystem).sort();
     g.startBefore = g.Scene_Map.prototype.start;
+    if (beforePlugin) beforePlugin(g);
     vm.runInContext(pluginSource, g);
     if (flipAfterLoad) g.playtest = false;
     g.arena = g.ProjectRCombatTestArena;
@@ -325,15 +326,15 @@ test("プラグインはPlaytestでガードされ、ガードより前にAPI/�
     assert.doesNotMatch(pluginSource, /_projectRCombatTestArena|\$gameSystem\._(?!projectRCardDeckData)/);
     assert.doesNotMatch(pluginSource, /DataManager\.(makeSaveContents|extractSaveContents|saveGame)/);
 });
-test("Core/Manager/Gauge/Bridge/Activation/HUD/全カード/Hendrix/DotMoveは変更されていない", () => {
+test("Core/Manager/Gauge/Bridge/Activation/全カード/Hendrix/DotMoveは変更されていない", () => {
     const protectedFiles = ["ProjectR_CardDeckCore", "ProjectR_CardBattleInput", "ProjectR_GodSummonManager", "ProjectR_UltimateGauge",
-        "ProjectR_UltimateGodDamageBridge", "ProjectR_UltimateActivation", "ProjectR_BattleHUD", "ProjectR_CombatPresence",
+        "ProjectR_UltimateGodDamageBridge", "ProjectR_UltimateActivation",
         "ProjectR_HermesUltimate", "ProjectR_ApolloUltimate", "ProjectR_ApolloGoldenArrow", "ProjectR_ApolloDiseaseAttack",
         "ProjectR_ApolloLyreCalm", "ProjectR_HermesRecognitionObscure", "ProjectR_HermesReedFluteSleep",
         "ProjectR_HermesSwiftMovement", "ProjectR_HermesSwordsmanship", "Hendrix_Action_Engine", "DotMoveSystem"]
         .map(name => `js/plugins/${name}.js`);
-    const result = cp.spawnSync("git", ["diff", "--quiet", "fb873bf", "--", ...protectedFiles], { cwd: path.join(__dirname, "..") });
-    assert.equal(result.status, 0, "保護対象ファイルがfb873bfから変更されている");
+    const result = cp.spawnSync("git", ["diff", "--quiet", "0e11dda", "--", ...protectedFiles], { cwd: path.join(__dirname, "..") });
+    assert.equal(result.status, 0, "保護対象ファイルが0e11dda(RT1)から変更されている");
 });
 
 // =====================================================================
@@ -647,7 +648,7 @@ test("MZ公式の判定(Utils.isOptionValid(\"test\"))だけに依存し、他�
     assert.doesNotMatch(pluginSource, /@param/, "本番で調整できるパラメータを持たない");
 });
 test("Core変更なし: テスト用の入口を本番ファイルに足していない（差分にtest/debug/arenaを含まない）", () => {
-    const diff = cp.spawnSync("git", ["diff", "fb873bf", "--", "js/plugins/ProjectR_CardDeckCore.js"], { cwd: path.join(__dirname, ".."), encoding: "utf8" });
+    const diff = cp.spawnSync("git", ["diff", "0e11dda", "--", "js/plugins/ProjectR_CardDeckCore.js"], { cwd: path.join(__dirname, ".."), encoding: "utf8" });
     assert.equal(diff.stdout, "");
 });
 

@@ -131,6 +131,8 @@
  * Q/R/X/C/VおよびUltimateのRは表示だけで、入力処理は追加しません。
  *
  * ---- Phase 5A: カード戦闘HUD（薄い表示アダプタ） ----
+ * HUDが表示されるのは、従来どおり ProjectRCombatPresence.isCombatActive() が真の間だけです
+ * （カード戦闘が有効なだけでは表示しません）。表示されている間、
  * ProjectRCardDeck.isCardBattleActive() の間だけ、次の表示に切り替わります。
  * HUDは状態を持たず、毎回 実行中のAPIから読むだけです（セーブ項目は追加しません）。
  *   ・5枠 = 手札 hand[0..4]。キー表示は 1～5（入力処理は ProjectR_CardBattleInput のまま）。
@@ -1140,10 +1142,10 @@
 
         shouldShow() {
             if (!battleHudState().visible) return false;
-            // カード戦闘中は敵の画面内判定に関係なく表示する。それ以外は従来のCombatPresenceに従う。
+            // 表示の条件は「実際の戦闘イベント中」= ProjectRCombatPresence だけ。
+            // カード戦闘(CardDeck)が有効でも、戦闘イベント中でなければ表示しない。
             const combatPresence = window.ProjectRCombatPresence;
-            if (!this.cardBattleActive() && combatPresence &&
-                typeof combatPresence.isCombatActive === "function" &&
+            if (combatPresence && typeof combatPresence.isCombatActive === "function" &&
                 !combatPresence.isCombatActive()) {
                 return false;
             }
