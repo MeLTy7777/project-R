@@ -371,7 +371,7 @@ test("本番にはApollo/Hermesの実Ultimate handlerもダメージも無い(�
     const source = read(ACT_FILE);
     assert.equal(/registerUltimateHandler\(["'](apollo|hermes)/.test(source), false);
     assert.equal(/UpdateEventHp|damagePersistentUltimate|addUltimateGauge|spawnEventHitbox|startAnimation/.test(source.replace(/\/\*:[\s\S]*?\*\//, "")), false);
-    assert.equal(fs.readdirSync(path.join(__dirname, "../js/plugins")).some(f => /Ultimate.*(Apollo|Hermes)|(Apollo|Hermes).*Ultimate/.test(f)), false);
+    assert.equal(fs.readdirSync(path.join(__dirname, "../js/plugins")).some(f => /Ultimate.*Apollo|Apollo.*Ultimate/.test(f)), false); // Phase 4D-1以降: Hermes Ultimateは別pluginにある。Apolloは未実装
 });
 
 // ================= 後始末・保存 =================

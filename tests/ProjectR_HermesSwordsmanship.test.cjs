@@ -63,7 +63,9 @@ test("登録順/名前/3秒CD/専用Skill237と仮式が対応", () => {
     assert.equal(skills[237].damage.formula, "a.atk * 2 - b.def");
     assert.match(skills[237].description, /仮/);
     const previous = JSON.parse(cp.execFileSync("git", ["show", "c8fe551:data/Skills.json"], { encoding: "utf8" }));
-    assert.deepEqual(skills.slice(0, 237), previous);
+    // Phase 4D-1でID235(当時は未使用の空きスロット)がHermes Ultimate専用Skillになった。他は当時から不変。
+    assert.equal(previous[235].name, "");
+    assert.deepEqual(skills.slice(0, 237).filter((_, i) => i !== 235), previous.filter((_, i) => i !== 235));
 });
 test("小さいhandler取得APIは既存directionを返し他はnull、登録契約不変", () => {
     const g = loadGame(), d = g.ProjectRCardDeck;
