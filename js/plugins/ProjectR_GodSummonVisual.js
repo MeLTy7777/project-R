@@ -180,8 +180,10 @@
         pendingSwings.length = 0;
     };
 
-    const spawn = (key, kind, godId, summonId, offset, direction) => {
+    const spawn = (key, kind, godId, summonId, baseOffset, direction) => {
         const player = $gamePlayer;
+        // 見た目の高さ(CharacterPresentation)に合わせて縦オフセットを拡大。48pxなら無変更(三頭身でも神が体に埋まらない)。
+        const offset = root.ProjectRCharacterPresentation?.scaleSummonOffset?.(baseOffset) ?? baseOffset;
         const tid = templateEventId();
         if (!player || !tid || typeof $gameMap.spawnEvent !== "function") {
             diagnostics.lastError = tid ? "playerUnavailable" : "templateMissing";

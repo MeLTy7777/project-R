@@ -124,6 +124,7 @@ function buildWorld({ playtest = true } = {}) {
         ["$dataCommonEvents", "CommonEvents"], ["$dataTroops", "Troops"], ["$dataMapInfos", "MapInfos"], ["$dataAnimations", "Animations"],
         ["$dataTilesets", "Tilesets"]]) ctx[variable] = data(file);
     // Spriteの生成だけは描画資源が要るので軽いstubにする(Hendrixのspawnが作る)。ゲームロジックには関与しない。
+    ctx.RealSprite_Character = ctx.Sprite_Character;
     run("Sprite_Character = class { constructor(c) { this._character = c; this.children = []; this.x = 0; this.y = 0; } update() {} setHue() {} destroy() {} };");
     const mapData = id => parse(read(`data/Map${String(id).padStart(3, "0")}.json`));
 
