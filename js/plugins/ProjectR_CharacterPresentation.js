@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc v1.0.0 ProjectR キャラクター表示プロファイル(三頭身対応)と、攻撃/スキル/奥義の動作コントローラ。表示専用。
+ * @plugindesc v1.1.0 ProjectR キャラクター表示プロファイル(三頭身対応)と、攻撃/スキル/奥義の動作コントローラ。表示専用。
  * @author ProjectR
  * @base Hendrix_Action_Engine
  * @base Hendrix_Animation_Solution
@@ -150,9 +150,29 @@
 
     // 内蔵: 現在の主人公(標準48pxスプライト)。三頭身の画像が用意できたら、このprofileのcharacterNameなどを
     // 差し替えるだけで寸法・アンカーが追従します(戦闘コードは書き換えません)。
+    // 主人公: DEV3H(自作の三頭身。tools/gen_dev3h_character.cjs で生成。1コマ96x96、身長84px=頭28px x 3)。
+    // 画像を差し替えるときは、この profile の characterName / locomotion / actions / anchors を書き換えるだけでよい。
     registerProfile({
-        id: "protagonist", actorId: 1, heads: 3, visualScale: 1, visualHeightPx: 0, directions: 4,
-        notes: "暫定: 標準MZスプライト。三頭身の専用画像が入るまでのDEVプロファイル。"
+        id: "protagonist", actorId: 1, heads: 3, visualScale: 1, visualHeightPx: 84, directions: 4,
+        characterName: "$DEV3H_Idle_f4",
+        locomotion: { idle: "$DEV3H_Idle_f4", walk: "$DEV3H_Walk_f6", run: "$DEV3H_Run_f6" },
+        actions: {
+            SwordAttack: { sprite: "$DEV3H_SwordAttack_f6", frames: 6, speed: 2, hold: 2 },
+            Aim: { sprite: "$DEV3H_GunAim_f2", frames: 2, speed: 30, hold: 0 },
+            GunFire: { sprite: "$DEV3H_GunFire_f3", frames: 3, speed: 2, hold: 0 },
+            GunReload: { sprite: "$DEV3H_GunReload_f6", frames: 6, speed: 6, hold: 4 },
+            SkillCast: { sprite: "$DEV3H_SkillCast_f6", frames: 6, speed: 4, hold: 4 },
+            Ultimate: { sprite: "$DEV3H_Ultimate_f8", frames: 8, speed: 5, hold: 4 },
+            Damage: { sprite: "$DEV3H_Damage_f3", frames: 3, speed: 4, hold: 0 },
+            Down: { sprite: "$DEV3H_Down_f4", frames: 4, speed: 8, hold: 0 }
+        },
+        // 足元からのpx(上がマイナス)。肩=足元-50、構えた手=足元-49。銃の回転中心は肩の少し前。
+        anchors: {
+            weapon: { x: 0, y: -49, byDirection: { 4: { x: -4 }, 6: { x: 4 } } },
+            aim: { x: 0, y: -49 }, melee: { x: 0, y: -46 }, vfx: { x: 0, y: -42 }, summon: { x: 0, y: -50 },
+            muzzle: { forward: 40, side: 0 }
+        },
+        notes: "DEV3H: 自作の三頭身(4方向。8方向なし)。最終アートが決まったら画像と上の数値を差し替える。"
     });
     registerProfile({ id: "default", heads: 3, visualScale: 1, visualHeightPx: 0, directions: 4 });
     try {
@@ -268,7 +288,9 @@
         return ((Math.atan2(dy, dx) * 180 / Math.PI + 450) % 360 + 360) % 360;
     };
 
+    let baselineApplied = null; // 構え(Aim)/ダウン(Down)の基本姿勢として公式スプライトを当てているときの名前
     const restoreOfficial = () => {
+        baselineApplied = null;
         if (!officialApplied) return;
         officialApplied = null;
         const p = player();
@@ -323,7 +345,8 @@
         if (dead) return "Down";
         if (aimHeld) return "Aim";
         const p = player();
-        if (p?.isMoving?.()) return p.isDashing?.() ? "Run" : "Walk";
+        // DotMove の isMoving は移動処理の途中で偽になることがあるため、公式Animation Solutionと同じ「位置の変化」(_isMoving)も見る。
+        if (p?._isMoving === true || p?.isMoving?.()) return p.isDashing?.() ? "Run" : "Walk";
         return "Idle";
     };
     const current = () => {
@@ -362,6 +385,20 @@
         return { dx: s.dx * profile.visualScale, dy: s.dy * profile.visualScale, sy: s.sy, name: cur.name };
     };
 
+    // 基本姿勢のうち、専用スプライトがあるもの(構え=Aim、倒れ=Down)。Idle/Walk/Runは公式の自動切替に任せる。
+    // 行動(剣/銃/詠唱…)が再生中は触らず、終わったら構え/倒れへ戻す。構えを解く/復活で標準に戻す。
+    const syncBaselineSprite = () => {
+        const busy = [...active.values()].some(e => e.official);
+        if (busy) return;
+        const state = baseline();
+        const want = state === "Aim" || state === "Down" ? state : null;
+        const spec = want ? profileForPlayer().actions[want] : null;
+        if (want && spec && spec.sprite) {
+            if (baselineApplied !== want && applyOfficial(want, spec)) baselineApplied = want;
+        } else if (baselineApplied) {
+            restoreOfficial();
+        }
+    };
     const tick = () => {
         for (const entry of [...active.values()]) {
             entry.age++;
@@ -370,11 +407,13 @@
                 if (entry.official && ![...active.values()].some(e => e.official)) restoreOfficial();
             }
         }
+        syncBaselineSprite();
     };
     const clearAll = () => {
         active.clear();
         aimHeld = false;
         officialApplied = null;
+        baselineApplied = null;
         previousHp = null;
         lastUltimateSerial = -1;
     };
@@ -416,11 +455,48 @@
     };
 
     // ---------------- Game_Player / Sprite_Character への接続 ----------------
+    // 【公式Animation Solutionの橋渡し】Idle/Walk/Runの自動切替(updateMovingState/updateGraphics/待機アニメ)は、公式が
+    // Game_CharacterBase.prototype.update を差し替えて呼びます。しかしこのプロジェクトでは Hendrix_Action_Engine が先に
+    // 読み込まれ、Game_Character.update が「差し替え前」の update を保持しているため、プレイヤーでは公式の処理が呼ばれません
+    // (実機で確認: updateMovingState の呼び出し0回。Hendrixファイルは変更しない方針)。
+    // そこで、その1フレームに公式の処理が走らなかったときだけ、公式の関数を同じ順で呼びます。公式が走る環境では何もしません。
+    const asParams = typeof PluginManager !== "undefined" && PluginManager.parameters ? PluginManager.parameters("Hendrix_Animation_Solution") : {};
+    const asFrameKeyword = String(asParams["Frame Keyword"] || "f");
+    const asEnableSwitch = Number(asParams["Enable Switch"] || 0);
+    let playerFrame = 0, asTickedFrame = -1;
+    if (typeof Game_CharacterBase !== "undefined" && typeof Game_CharacterBase.prototype.updateMovingState === "function") {
+        const _updateMovingState = Game_CharacterBase.prototype.updateMovingState;
+        Game_CharacterBase.prototype.updateMovingState = function() {
+            if (this === player()) asTickedFrame = playerFrame;
+            return _updateMovingState.apply(this, arguments);
+        };
+    }
+    const bridgeAnimationSolution = p => {
+        if (typeof p.updateMovingState !== "function" || typeof p.updateGraphics !== "function") return false;
+        p.updateMovingState();
+        const enabled = asEnableSwitch === 0 || (typeof $gameSwitches !== "undefined" && $gameSwitches.value(asEnableSwitch));
+        if (enabled && p._autoGraphicsEnabled) p.updateGraphics();
+        if (p._isIdleAnimating && !p._isMoving && !p._moveRouteForcing && typeof p.animationWait === "function") {
+            p._idleAnimCounter = (p._idleAnimCounter || 0) + 1;
+            if (p._idleAnimCounter >= p.animationWait()) {
+                p._idleAnimCounter = 0;
+                if (p._characterName === p._detectedIdleGraphic) {
+                    const match = p._characterName.match(new RegExp(`${asFrameKeyword}(\\d+)$`)) ||
+                        p._characterName.match(new RegExp(`${asFrameKeyword}\\((\\d+)\\)$`));
+                    p._pattern = (p._pattern + 1) % (match ? Number(match[1]) : 3);
+                    p._patternUpdated = true;
+                }
+            }
+        }
+        return true;
+    };
     if (typeof Game_Player !== "undefined") {
         const _update = Game_Player.prototype.update;
         Game_Player.prototype.update = function() {
+            playerFrame++;
             _update.apply(this, arguments);
             try {
+                if (asTickedFrame !== playerFrame) bridgeAnimationSolution(this);
                 pollGameplayFacts();
                 tick();
             } catch (_error) { /* 表示のみ */ }
