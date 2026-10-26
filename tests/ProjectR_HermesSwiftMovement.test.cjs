@@ -22,14 +22,25 @@ function loadGame() {
     g.Game_CharacterBase = function() {};
     g.Game_Character = function() {};
     g.Game_Player = function() {};
+    g.Game_Event = function() {};
     Object.setPrototypeOf(g.Game_Character.prototype, g.Game_CharacterBase.prototype);
     Object.setPrototypeOf(g.Game_Player.prototype, g.Game_Character.prototype);
+    Object.setPrototypeOf(g.Game_Event.prototype, g.Game_Character.prototype);
     Object.setPrototypeOf(g.$gamePlayer, g.Game_Player.prototype);
     delete g.$gamePlayer.x; delete g.$gamePlayer.y;
     run(objects.slice(objects.indexOf("Object.defineProperties(Game_CharacterBase.prototype"),
         objects.indexOf("Game_CharacterBase.prototype.initialize =")));
     run(method(objects, "Game_CharacterBase.prototype.setPosition ="));
-    // 実DotMove setPosition aliasと実Action Combat通行判定/補正/Teleportを使用。
+    // 導入版DotMoveの幾何/CollisionChecker/cacheを無改変で実行。地形はfixture。
+    const classesEnd = "    DotMoveSystem.CharacterMover = CharacterMover;";
+    run(dot.slice(dot.indexOf("var DotMoveSystem;"), dot.indexOf(classesEnd) + classesEnd.length) +
+        "})(DotMoveSystem || (DotMoveSystem = {}));");
+    run(method(objects, "Game_CharacterBase.prototype.isMapPassable ="));
+    run(method(objects, "Game_CharacterBase.prototype.reverseDir ="));
+    run("const DotMovePoint = DotMoveSystem.DotMovePoint;");
+    run(method(dot, "Game_CharacterBase.prototype.positionPoint =", "\n    };"));
+    run(method(engine, "Game_Player.prototype.checkCollisionTargetEvent =", "\n\t};"));
+    run(method(engine, "Game_Player.prototype.checkCollisionTargetCharacter =", "\n\t};"));
     run(dot.slice(dot.indexOf("const _Game_CharacterBase_setPosition ="),
         dot.indexOf("const _Game_CharacterBase_copyPosition =")));
     for (const name of ["isValidPosition", "findNearestValidPosition", "teleportTo"]) {
@@ -39,26 +50,59 @@ function loadGame() {
     g.blocked = new Set(); g.passageChecks = [];
     Object.assign(g.$gameMap, {
         width: () => 40, height: () => 30,
+        tileWidth: () => 48, tileHeight: () => 48,
+        _allowRegions: new Set(), regionId: () => 0, hasPassEventAt: () => false,
+        isLoopHorizontal: () => false, isLoopVertical: () => false,
+        isValid: (x, y) => x >= 0 && y >= 0 && x < 40 && y < 30,
         roundX: x => x, roundY: y => y,
-        canvasToMapX: x => Math.floor(x / 48), canvasToMapY: y => Math.floor(y / 48),
+        roundXWithDirection: (x, d) => x + (d === 6 ? 1 : d === 4 ? -1 : 0),
+        roundYWithDirection: (y, d) => y + (d === 2 ? 1 : d === 8 ? -1 : 0),
         isPassable(x, y, direction) {
             assert.ok(Number.isInteger(x) && Number.isInteger(y), "通行判定には整数tileを渡す");
             g.passageChecks.push([x, y, direction]);
             return !g.blocked.has(`${x},${y}`);
         }
     });
+    run("const blockRegionID = 0, buildingWallBlock = false, blockTarget = 'both';");
+    run(method(engine, "function SshouldBlockPassageH(", "\n}"));
+    // Action Combatの導入済みRegion/通行Event aliasも通す。
+    const passageAlias = engine.indexOf("const H_Game_CharacterBase_isMapPassable =");
+    run(engine.slice(passageAlias, engine.indexOf("\n}", passageAlias)));
     g.cacheUpdates = 0; g.cancelled = 0; g.destinationCleared = 0;
+    g.calls = [];
+    g.scroll = { x: 0, y: 0 };
+    const cache = new g.DotMoveSystem.MapCharactersCache(40, 30);
+    g.$gameTemp.mapCharactersCache = () => cache;
+    const playerCache = new g.DotMoveSystem.MapCharacterCacheUpdater(g.$gamePlayer);
     Object.assign(g.$gamePlayer, {
-        updateMapCharactersCache() { g.cacheUpdates++; },
+        updateMapCharactersCache() { g.cacheUpdates++; playerCache.updateMapCharactersCache(); },
         canMove: () => true, isInVehicle: () => false,
+        width: () => 1, height: () => 1,
+        collisionRect() { return new g.DotMoveSystem.DotMoveRectangle(this._realX, this._realY, this.width(), this.height()); },
+        screenX() { return (this._realX - g.scroll.x) * 48 + 24; },
+        screenY() { return (this._realY - g.scroll.y) * 48 + 48; },
+        isThrough() { return !!this._through; }, isDebugThrough: () => false,
+        moverData: () => ({}),
+        mover() { g.calls.push([]); return new g.DotMoveSystem.CharacterMover(this); },
         cancelMove() { g.cancelled++; }
     });
+    const addEnemy = g.addEnemy;
+    g.addEnemy = (...args) => {
+        const enemy = addEnemy(...args);
+        Object.setPrototypeOf(enemy, g.Game_Event.prototype);
+        Object.assign(enemy, {
+            positionPoint: () => new g.DotMoveSystem.DotMovePoint(enemy.x, enemy.y),
+            width: () => 1, height: () => 1,
+            collisionRect() { return new g.DotMoveSystem.DotMoveRectangle(this.x, this.y, this.width(), this.height()); },
+            isNormalPriority: () => true, isThrough: () => false
+        });
+        new g.DotMoveSystem.MapCharacterCacheUpdater(enemy).updateMapCharactersCache();
+        return enemy;
+    };
     g.$gameTemp.clearDestination = () => g.destinationCleared++;
     g.$gamePlayer.setPosition(10, 10);
-    g.calls = [];
-    const teleport = g.$gamePlayer.teleportTo;
-    g.$gamePlayer.teleportTo = function(...args) { g.calls.push(args); return teleport.apply(this, args); };
-    g.aim = (x, y) => Object.assign(g.TouchInput, { x: x * 48 + 24, y: y * 48 + 24 });
+    g.$gamePlayer.teleportTo = g.$gamePlayer.findNearestValidPosition = () => { throw Error("Teleport禁止"); };
+    g.aim = (x, y) => Object.assign(g.TouchInput, { x: (x - g.scroll.x) * 48 + 24, y: (y - g.scroll.y) * 48 + 48 });
     g.aim(20, 10);
     run(read(`js/plugins/${PLUGIN}.js`));
     g.prepareSwift = () => { g.start(); g.arrange(0, CARD); g.ProjectRCardDeck.updateCooldown(12); };
@@ -82,17 +126,18 @@ test("登録名/ファイル一致・有効登録1回・認識阻害より後", 
     assert.ok(config.$plugins.indexOf(entries[0]) > config.$plugins.findIndex(p => p.name === "ProjectR_HermesRecognitionObscure"));
     assert.ok(fs.existsSync(path.join(__dirname, "..", "js/plugins", PLUGIN + ".js")));
 });
-test("導入版は座標overloadを実装・mouse teleport分岐なし・Movement Routeはthis.teleportToへ委譲", () => {
+test("導入版API確認: dashは入力方向/速度依存、moveToPositionは継続移動、Teleportは経路未検査", () => {
     const teleport = method(engine, "Game_Character.prototype.teleportTo =");
     assert.ok(teleport.includes("typeof notetag === 'number' && typeof minDistance === 'number'"));
     assert.ok(!teleport.includes("mouse or gamepad"));
+    const dash = method(engine, "Game_Character.prototype.dash =");
+    assert.ok(dash.includes("Input.isPressed('up')"));
+    assert.ok(dash.includes("steps * this.distancePerFrame() * 3"));
+    assert.ok(!dash.includes("this._rotation"));
+    assert.ok(method(engine, "Game_Character.prototype.moveToPosition =").includes("this.moveToTargetContinous(targetX, targetY)"));
+    assert.ok(method(engine, "Game_Character.prototype.rotateTo =").includes("TouchInput.x - characterScreenX"));
     const g = loadGame();
-    g.Game_Character.ROUTE_SCRIPT = 45;
-    g.Game_Character.prototype.processMoveCommand = () => { throw Error("unexpected fallback"); };
-    vm.runInContext(engine.slice(engine.indexOf("const _Game_Character_processMoveCommand ="),
-        engine.indexOf("// COMMANDS CHECK")), g);
-    g.$gamePlayer.processMoveCommand({ code: 45, parameters: ["teleportTo(11, 10)"] });
-    assert.deepEqual(g.position(), [11, 10]); assert.deepEqual(plain(g.calls), [[11, 10]]);
+    assert.equal(typeof g.$gamePlayer.mover().createCollisionChecker().checkCollision, "function");
 });
 
 test("swift instantへdispatch・成功だけ消費/6秒Cooldown/即時ドロー・API引数", () => {
@@ -101,7 +146,7 @@ test("swift instantへdispatch・成功だけ消費/6秒Cooldown/即時ドロー
     const persistent = plain(g.ProjectRCardDeck.getPersistentData());
     const result = g.fireSwift(), state = g.ProjectRCardDeck.getBattleState();
     assert.equal(result.ok, true); assert.equal(result.cardId, CARD); assert.equal(result.targetType, "instant");
-    assert.deepEqual(g.position(), [13, 10]); assert.deepEqual(plain(g.calls), [[13, 10]]);
+    assert.deepEqual(g.position(), [13, 10]); assert.equal(g.calls.length, 1);
     assert.equal(state.hand.length, 5);
     assert.equal(state.drawPile.length + state.discardPile.length,
         before.drawPile.length + before.discardPile.length - 1);
@@ -124,77 +169,185 @@ test("card battle inactiveでは発動不可", () => {
 for (const [name, cursor, expected] of [
     ["右", [20, 10], [13, 10]], ["左", [0, 10], [7, 10]],
     ["上", [10, 0], [10, 7]], ["下", [10, 20], [10, 13]],
-    ["右下", [20, 20], [12, 12]], ["左上", [0, 0], [8, 8]],
-    ["右上", [20, 0], [12, 8]], ["左下", [0, 20], [8, 12]],
+    ["右下", [20, 20], [10 + 3 / Math.SQRT2, 10 + 3 / Math.SQRT2]],
+    ["左上", [0, 0], [10 - 3 / Math.SQRT2, 10 - 3 / Math.SQRT2]],
+    ["右上", [20, 0], [10 + 3 / Math.SQRT2, 10 - 3 / Math.SQRT2]],
+    ["左下", [0, 20], [10 - 3 / Math.SQRT2, 10 + 3 / Math.SQRT2]],
     ["近距離", [11, 10], [11, 10]], ["3tile境界", [10, 13], [10, 13]]
 ]) test(`マウス${name}・遠距離は3tile以内/近距離はカーソル位置`, () => {
     const g = loadGame(); g.prepareSwift(); g.aim(...cursor);
-    assert.equal(g.fireSwift().ok, true); assert.deepEqual(g.position(), expected);
-    assert.ok(Math.hypot(expected[0] - 10, expected[1] - 10) <= 3);
+    assert.equal(g.fireSwift().ok, true);
+    assert.ok(Math.hypot(g.position()[0] - expected[0], g.position()[1] - expected[1]) < 1e-8);
+    assert.ok(Math.hypot(g.position()[0] - 10, g.position()[1] - 10) <= 3 + 1e-8);
 });
 test("発動時点の最新カーソル位置を使用・スクロールしたmap座標変換", () => {
     const g = loadGame(); g.prepareSwift(); g.emitKey("keydown", 1);
-    g.$gameMap.canvasToMapX = x => Math.floor(x / 48) + 5;
-    g.$gameMap.canvasToMapY = y => Math.floor(y / 48) + 3;
-    g.aim(6, 7); g.tick();
+    g.scroll = { x: 5.25, y: 3.125 };
+    g.aim(11, 10); g.tick();
     assert.deepEqual(g.position(), [11, 10]); assert.equal(g.ProjectRCardBattleInput.getLastResult().ok, true);
 });
-test("DotMove小数実座標でも8方向すべて3tile以内・整数座標API・cache更新", () => {
+test("DotMove小数実座標でも8方向すべて3tile以内・cache更新", () => {
     for (const cursor of [[20,10],[0,10],[10,0],[10,20],[20,20],[0,0],[20,0],[0,20]]) {
         const g = loadGame(); g.prepareSwift(); g.$gamePlayer.setPosition(10.7, 10.3); g.aim(...cursor);
         const before = g.cacheUpdates;
         assert.equal(g.fireSwift().ok, true);
         assert.ok(Math.hypot(g.position()[0] - 10.7, g.position()[1] - 10.3) <= 3 + 1e-8);
-        assert.ok(g.calls[0].every(Number.isInteger)); assert.ok(g.cacheUpdates > before);
+        assert.equal(g.calls.length, 1); assert.ok(g.cacheUpdates > before);
     }
 });
-test("通行不能地点は公式補正先へ移動・4方向通行判定を使用", () => {
+test("着地点が壁なら経路上で止まる・開始tile/到達tileの通行判定を使用", () => {
     const g = loadGame(); g.prepareSwift(); g.blocked.add("13,10");
-    assert.equal(g.fireSwift().ok, true); assert.deepEqual(g.position(), [12, 9]);
-    assert.deepEqual(plain(g.calls), [[12, 9]]);
-    assert.ok([2,4,6,8].every(d => g.passageChecks.some(c => c[0] === 12 && c[1] === 9 && c[2] === d)));
+    assert.equal(g.fireSwift().ok, true); assert.deepEqual(g.position(), [12, 10]);
+    assert.ok(g.passageChecks.some(c => c[0] === 12 && c[1] === 10 && c[2] === 6));
+    assert.ok(g.passageChecks.some(c => c[0] === 13 && c[1] === 10 && c[2] === 4));
 });
-test("公式補正先が3tile超なら移動開始前に失敗・非消費", () => {
+test("周囲が壁なら別着地点を探さず失敗・非消費", () => {
     const g = loadGame(); g.prepareSwift();
     for (let x = 0; x < 40; x++) for (let y = 0; y < 30; y++) {
         if (Math.hypot(x - 10, y - 10) <= 3) g.blocked.add(`${x},${y}`);
     }
-    unchangedFailure(g); assert.equal(g.calls.length, 0);
+    unchangedFailure(g); assert.equal(g.cancelled, 0);
 });
-test("全通行不可で公式補正先なし・非消費/Cooldownなし", () => {
+test("全通行不可で経路なし・非消費/Cooldownなし", () => {
     const g = loadGame(); g.prepareSwift(); g.$gameMap.isPassable = () => false;
-    unchangedFailure(g); assert.equal(g.calls.length, 0);
+    unchangedFailure(g); assert.equal(g.cancelled, 0);
 });
-test("マップ外方向は公式範囲判定/補正・有効なmap内3tile以内へ", () => {
+test("マップ外方向は端で停止・別の着地点へ補正しない", () => {
     const g = loadGame(); g.prepareSwift(); g.$gamePlayer.setPosition(1, 10); g.aim(-100, 10);
     assert.equal(g.fireSwift().ok, true);
-    const [x, y] = g.position(); assert.ok(x >= 0 && x < 40 && y >= 0 && y < 30);
-    assert.ok(Math.hypot(x - 1, y - 10) <= 3);
+    assert.deepEqual(g.position(), [0, 10]);
+});
+for (const wallX of [12, 13]) test(`${wallX - 11}tile空間の先が壁・壁の反対側は空いていても直前で停止/成功`, () => {
+    const g = loadGame(); g.prepareSwift(); g.blocked.add(`${wallX},10`);
+    const used = g.ProjectRCardDeck.getBattleState().hand[0];
+    assert.equal(g.fireSwift().ok, true);
+    assert.deepEqual(g.position(), [wallX - 1, 10]);
+    const state = g.ProjectRCardDeck.getBattleState();
+    assert.equal(state.hand.length, 5);
+    assert.ok(!state.hand.some(c => c.instanceId === used.instanceId));
+    assert.equal(state.cooldownPile.find(c => c.instance.instanceId === used.instanceId).remainingSeconds, 6);
+    assert.ok(!g.passageChecks.some(c => c[0] > wallX));
+});
+test("壁に密着した完全停止では非消費/新規Cooldownなし/手札維持", () => {
+    const g = loadGame(); g.prepareSwift(); g.blocked.add("11,10");
+    unchangedFailure(g); assert.equal(g.cancelled, 0); assert.equal(g.destinationCleared, 0);
+});
+test("step未満の隙間でも実際に移動できた分は成功・壁の手前を詰める", () => {
+    const g = loadGame(); g.prepareSwift(); g.$gamePlayer.setPosition(10.98, 10); g.blocked.add("12,10");
+    assert.equal(g.fireSwift().ok, true);
+    assert.ok(g.position()[0] > 10.99 && g.position()[0] <= 11 + 0.00002);
+    assert.equal(g.position()[1], 10);
+});
+test("斜め4方向の壁を抜けず・壁沿いにslideせず方向を維持", () => {
+    for (const [sx, sy] of [[1,1],[-1,1],[1,-1],[-1,-1]]) {
+        const g = loadGame(); g.prepareSwift(); g.aim(10 + 10 * sx, 10 + 10 * sy);
+        const wx = sx > 0 ? 12 : 8, wy = sy > 0 ? 12 : 8;
+        g.blocked.add(`${wx},${wy}`);
+        assert.equal(g.fireSwift().ok, true);
+        const dx = g.position()[0] - 10, dy = g.position()[1] - 10;
+        assert.ok(Math.abs(Math.abs(dx) - Math.abs(dy)) < 1e-8);
+        assert.ok(Math.abs(dx) <= 1.00002 && Math.abs(dy) <= 1.00002);
+    }
+});
+test("斜めの角に隣接する2壁は完全停止・角抜けしない", () => {
+    const g = loadGame(); g.prepareSwift(); g.aim(20, 20);
+    g.blocked.add("11,10"); g.blocked.add("10,11"); unchangedFailure(g);
+});
+test("片方向だけ通行不可の境界も通常通行判定で停止", () => {
+    const g = loadGame(); g.prepareSwift();
+    g.$gameMap.isPassable = (x, y, d) => !(x === 11 && y === 10 && d === 6);
+    assert.equal(g.fireSwift().ok, true); assert.deepEqual(g.position(), [11, 10]);
+});
+test("通過不可の敵Eventは壁と同様に停止・Damage/移動なし", () => {
+    const g = loadGame(), enemy = g.addEnemy(12, 10); g.prepareSwift();
+    const hp = enemy.battler.hp;
+    assert.equal(g.fireSwift().ok, true); assert.deepEqual(g.position(), [11, 10]);
+    assert.equal(enemy.battler.hp, hp); assert.deepEqual([enemy.x, enemy.y], [12, 10]);
+    assert.deepEqual(plain(g.commands), []);
+});
+test("密着した通過不可Eventでは完全停止・非消費", () => {
+    const g = loadGame(); g.addEnemy(11, 10); g.prepareSwift(); unchangedFailure(g);
+});
+test("通常歩行で通過可能なEventの条件を維持", () => {
+    for (const configure of [
+        (g, e) => { e.isThrough = () => true; },
+        (g, e) => { e.isNormalPriority = () => false; },
+        (g, e) => { g.$gameSystem._playerPassThroughEvents = [e.eventId()]; }
+    ]) {
+        const g = loadGame(), enemy = g.addEnemy(12, 10); configure(g, enemy); g.prepareSwift();
+        assert.equal(g.fireSwift().ok, true); assert.deepEqual(g.position(), [13, 10]);
+    }
+});
+test("小さいPlayer/薄いEventでも通過不可Collisionを飛び越さない", () => {
+    const g = loadGame(), enemy = g.addEnemy(10.55, 10); g.prepareSwift();
+    g.$gamePlayer.width = () => 0.02; enemy.width = () => 0.001;
+    assert.equal(g.fireSwift().ok, true);
+    assert.ok(g.position()[0] > 10.5 && g.position()[0] <= 10.53002);
+});
+test("4辺のマップ端と端に密着した完全停止・ループ/通行許可でも越えない", () => {
+    for (const [start, aim, end] of [
+        [[1,10],[-20,10],[0,10]], [[38,10],[60,10],[39,10]],
+        [[10,1],[10,-20],[10,0]], [[10,28],[10,60],[10,29]]
+    ]) {
+        const g = loadGame(); g.prepareSwift(); g.$gamePlayer.setPosition(...start); g.aim(...aim);
+        g.$gameMap.isLoopHorizontal = g.$gameMap.isLoopVertical = () => true;
+        g.$gameMap._allowRegions.add(0);
+        assert.equal(g.fireSwift().ok, true); assert.deepEqual(g.position(), end);
+        g.arrange(0, CARD); unchangedFailure(g);
+    }
+});
+test("8方向に丸めない360度・発動中にmouseを動かしても固定方向", () => {
+    const g = loadGame(); g.prepareSwift(); g.aim(20.125, 13.375);
+    const setPosition = g.$gamePlayer.setPosition;
+    g.$gamePlayer.setPosition = function(...args) { setPosition.apply(this, args); g.aim(0, 0); };
+    assert.equal(g.fireSwift().ok, true);
+    const [x,y] = g.position();
+    assert.ok(Math.abs((y - 10) / (x - 10) - 1 / 3) < 1e-8);
+    assert.ok(Math.abs(Math.hypot(x - 10, y - 10) - 3) < 1e-8);
+});
+test("すり抜け/DebugThrough中とCollisionChecker欠落では非消費", () => {
+    for (const configure of [
+        g => { g.$gamePlayer._through = true; },
+        g => { g.$gamePlayer.isDebugThrough = () => true; },
+        g => { g.$gamePlayer.mover = () => ({}); }
+    ]) { const g = loadGame(); g.prepareSwift(); configure(g); unchangedFailure(g); }
 });
 test("同一位置ではactivationFailed・手札/山札/Cooldown維持", () => {
     const g = loadGame(); g.prepareSwift(); g.aim(10, 10); unchangedFailure(g);
     assert.equal(g.cancelled, 0); assert.equal(g.destinationCleared, 0);
 });
 test("APIがundefinedを返しても座標不変なら失敗", () => {
-    const g = loadGame(); g.prepareSwift(); g.$gamePlayer.teleportTo = () => undefined; unchangedFailure(g);
+    const g = loadGame(); g.prepareSwift(); g.$gamePlayer.setPosition = () => undefined; unchangedFailure(g);
 });
 test("API例外/移動後例外でも元位置へ復元・非消費", () => {
     for (const moved of [false, true]) {
         const g = loadGame(); g.prepareSwift();
-        g.$gamePlayer.teleportTo = function() { if (moved) this.setPosition(12, 10); throw Error("API failed"); };
+        const mover = g.$gamePlayer.mover.bind(g.$gamePlayer);
+        g.$gamePlayer.mover = () => {
+            const m = mover(), create = m.createCollisionChecker.bind(m);
+            m.createCollisionChecker = opt => {
+                if (!moved || g.position()[0] > 10) throw Error("API failed");
+                return create(opt);
+            };
+            return m;
+        };
         unchangedFailure(g);
     }
 });
 test("API不正座標/距離超過も復元して失敗", () => {
     for (const x of [NaN, 20]) {
         const g = loadGame(); g.prepareSwift();
-        g.$gamePlayer.teleportTo = function() { this._realX = x; };
+        const setPosition = g.$gamePlayer.setPosition;
+        let first = true;
+        g.$gamePlayer.setPosition = function(...args) {
+            if (first) { first = false; this._realX = x; } else setPosition.apply(this, args);
+        };
         unchangedFailure(g);
     }
 });
 test("API欠落/不正マウス/死亡等の移動禁止/乗物は非消費", () => {
     for (const configure of [
-        g => { g.$gamePlayer.teleportTo = undefined; },
+        g => { g.$gamePlayer.mover = undefined; },
         g => { g.TouchInput.x = NaN; }, g => { g.$gamePlayer.canMove = () => false; },
         g => { g.$gamePlayer.isInVehicle = () => true; }
     ]) { const g = loadGame(); g.prepareSwift(); configure(g); unchangedFailure(g); }

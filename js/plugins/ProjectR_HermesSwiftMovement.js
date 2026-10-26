@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc v1.0.0 Phase 2C-3 Hermes「高速移動」の公式Teleport接続。
+ * @plugindesc v1.1.0 Phase 2C-3 Hermes「高速移動」の経路Collision接続。
  * @author ProjectR
  * @base ProjectR_CardDeckCore
  * @base Hendrix_Action_Engine
@@ -8,11 +8,11 @@
  * @orderAfter ProjectR_HermesRecognitionObscure
  * @help
  * hermes_swift_movement専用。instantの他カードは既存handlerへ委譲します。
- * 発動時のマウス位置をmap座標へ変換し、実座標から最大3tileに制限。
- * 導入版1.6.6bにはteleportTo('mouse or gamepad', distance)の分岐が
- * ないため、実装済みのteleportTo(x, y)をPlayerから同期呼出します。
- * 小数のDotMove座標を考慮し、制限位置に近い3tile以内の整数座標を渡します。
- * 通行判定/補正は公式findNearestValidPositionのみ。補正先が3tile超なら失敗。
+ * 発動時のマウス方向を固定し、最大3tileを同期移動します。
+ * DotMoveのmover().createCollisionChecker()で短いstepごとに
+ * tile/Eventの通行を確認し、最初の衝突の手前で停止します。
+ * 斜めは両軸と終点を確認。壁沿いのslide/別着地点の探索はしません。
+ * teleportTo/findNearestValidPositionは使用しません。
  * 戻り値ではなく移動前後の実座標で成功確認。例外/不正結果は元の位置へ戻します。
  * 成功時のみ既存transactionが消費・6秒Cooldown・即時ドローを行います。
  * 無敵/攻撃/State/VFX/敵移動は行いません。効果や時間の保存項目も追加しません。
@@ -26,31 +26,63 @@
     const previousInstant = root.ProjectRHermesRecognitionObscure.activate;
     const CARD = "hermes_swift_movement";
     const MAX_DISTANCE = 3;
-    const EPSILON = 1e-8;
+    // DotMoveの矩形判定誤差(1/65536tile)による微小変位は移動成功にしない。
+    const EPSILON = 1e-4;
+    const STEP = 1 / 16;
     const failure = reason => ({ ok: false, reason });
     const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
     const finitePoint = point => point && Number.isFinite(point.x) && Number.isFinite(point.y);
 
-    // 距離制限と整数化のみ。通行/壁/経路の判定は行わない。
-    const limitedTarget = (start, cursor) => {
-        const length = distance(start, cursor);
-        const scale = length > MAX_DISTANCE ? MAX_DISTANCE / length : 1;
-        const x = start.x + (cursor.x - start.x) * scale;
-        const y = start.y + (cursor.y - start.y) * scale;
-        return [Math.floor(x), Math.ceil(x)].flatMap(tx =>
-            [Math.floor(y), Math.ceil(y)].map(ty => ({ x: tx, y: ty }))
-        ).filter(point => distance(start, point) <= MAX_DISTANCE + EPSILON)
-            .sort((a, b) => distance(a, { x, y }) - distance(b, { x, y }))[0];
-    };
-
-    const movePlayer = (player, target, start) => {
-        // 公式の補正先を事前確認。遠方への補正で3tile制限を超えないようにする。
-        const destination = player.findNearestValidPosition(target.x, target.y);
-        if (!finitePoint(destination) || distance(start, destination) > MAX_DISTANCE + EPSILON) {
-            return failure("noDestinationWithinRange");
-        }
+    const movePlayer = (player, map, start, vector) => {
         try {
-            player.teleportTo(destination.x, destination.y);
+            const mover = player.mover();
+            if (typeof mover?.createCollisionChecker !== "function") return failure("movementUnavailable");
+            const width = player.width(), height = player.height();
+            if (![width, height].every(n => Number.isFinite(n) && n > EPSILON)) {
+                return failure("invalidCollisionSize");
+            }
+            const length = Math.hypot(vector.x, vector.y);
+            if (length <= EPSILON) return failure("playerDidNotMove");
+            const limit = Math.min(MAX_DISTANCE, length);
+            const ux = vector.x / length, uy = vector.y / length;
+            // Player矩形より小さいstep。方向/距離はこの発動内で固定。
+            const step = Math.min(STEP, width / 2, height / 2);
+            let travelled = 0;
+            while (limit - travelled > EPSILON) {
+                const from = { x: player._realX, y: player._realY };
+                const checker = mover.createCollisionChecker({ overComplementMode: true });
+                const canStep = amount => {
+                    const to = { x: start.x + ux * (travelled + amount), y: start.y + uy * (travelled + amount) };
+                    // Region許可/ループ設定でもマップ端は越えない。
+                    if (to.x < 0 || to.y < 0 || to.x + width > map.width() || to.y + height > map.height()) return false;
+                    // 通常DotMoveの正式なtile/Event判定。斜めの角抜けも保守的に止める。
+                    if (ux !== 0 && (checker.checkCollision(to.x, from.y, ux > 0 ? 6 : 4).length ||
+                            checker.checkCollision(to.x, to.y, ux > 0 ? 6 : 4).length)) return false;
+                    if (uy !== 0 && (checker.checkCollision(from.x, to.y, uy > 0 ? 2 : 8).length ||
+                            checker.checkCollision(to.x, to.y, uy > 0 ? 2 : 8).length)) return false;
+                    return true;
+                };
+                let amount = Math.min(step, limit - travelled);
+                const blocked = !canStep(amount);
+                if (blocked) {
+                    // 最初の障害物までの残りだけを詰める。壁の先は探索しない。
+                    let low = 0, high = amount;
+                    while (high - low > EPSILON) {
+                        const mid = (low + high) / 2;
+                        if (canStep(mid)) low = mid; else high = mid;
+                    }
+                    amount = low;
+                }
+                if (amount <= EPSILON) break;
+                travelled += amount;
+                player.setPosition(start.x + ux * travelled, start.y + uy * travelled);
+                if (!finitePoint({ x: player._realX, y: player._realY }) ||
+                        Math.hypot(player._realX - (start.x + ux * travelled),
+                            player._realY - (start.y + uy * travelled)) > EPSILON) {
+                    throw Error("invalidMovementResult");
+                }
+                if (blocked) break;
+            }
             const end = { x: player._realX, y: player._realY };
             if (!finitePoint(end) || distance(start, end) > MAX_DISTANCE + EPSILON) {
                 throw Error("invalidMovementResult");
@@ -71,20 +103,23 @@
         const map = typeof $gameMap !== "undefined" ? $gameMap : null;
         if (!deck.isCardBattleActive() || !player || !map ||
                 typeof TouchInput === "undefined" ||
-                !["teleportTo", "findNearestValidPosition", "setPosition", "canMove"].every(
+                !["mover", "width", "height", "screenX", "screenY", "setPosition", "canMove"].every(
                     name => typeof player[name] === "function") ||
-                typeof map.canvasToMapX !== "function" || typeof map.canvasToMapY !== "function") {
+                !["width", "height", "tileWidth", "tileHeight"].every(name => typeof map[name] === "function")) {
             return failure("movementUnavailable");
         }
         if (!player.canMove() || player.isInVehicle?.()) return failure("playerMovementLocked");
+        // すり抜け中は判定を迂回できるので発動しない。フラグ自体は変更しない。
+        if (player.isThrough?.() || player.isDebugThrough?.()) return failure("playerThrough");
         const start = { x: player._realX, y: player._realY };
         // 引数評価時に固定。クリックは不要。Gamepad接続有無にも影響されない。
         const mouse = { x: TouchInput.x, y: TouchInput.y };
         if (!finitePoint(start) || !finitePoint(mouse)) return failure("invalidMousePosition");
-        const cursor = { x: map.canvasToMapX(mouse.x), y: map.canvasToMapY(mouse.y) };
-        if (!finitePoint(cursor)) return failure("invalidMousePosition");
-        const target = limitedTarget(start, cursor);
-        return target ? movePlayer(player, target, start) : failure("noDestinationWithinRange");
+        // 導入版rotateToのmouse分岐と同じscreenX/Y基準。gamepad分岐は使わない。
+        const vector = { x: (mouse.x - player.screenX()) / map.tileWidth(),
+            y: (mouse.y - player.screenY()) / map.tileHeight() };
+        if (!finitePoint(vector)) return failure("invalidMousePosition");
+        return movePlayer(player, map, start, vector);
     };
 
     deck.registerActivationHandler("instant", context =>
