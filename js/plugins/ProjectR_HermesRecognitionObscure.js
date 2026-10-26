@@ -75,7 +75,7 @@
         if (previous?.actor !== actor) previous?.actor.removeState(previous.stateId);
     };
 
-    deck.registerActivationHandler("instant", context => {
+    const activate = context => {
         if (context.definition.cardId !== CARD_ID) return { ok: true };
         const id = stateId();
         const actor = leader();
@@ -96,7 +96,8 @@
         }
         effect = { actor, stateId: id, remaining: duration };
         return { ok: true };
-    });
+    };
+    deck.registerActivationHandler("instant", activate);
 
     const _updateCooldown = deck.updateCooldown;
     deck.updateCooldown = function(seconds) {
@@ -137,6 +138,7 @@
     };
 
     root.ProjectRHermesRecognitionObscure = {
+        activate,
         isPlayerRecognitionObscured: () => hasState(stateId())
     };
 })();
