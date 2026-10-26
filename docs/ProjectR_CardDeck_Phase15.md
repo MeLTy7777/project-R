@@ -23,20 +23,24 @@ equipActorIds=[]は未確定を表し、現段階では味方への割当を許�
 
 ## カードと仮設定値
 
-全カードのmaxCopies=5、maxLevel=5は接続確認用の仮調整値。
-7種類で30枚を組めるように上限を一時的に5とした。通常3／強力2／特殊1という最終バランスは今回確定しない。
+同一カード上限は通常3／強力2／特殊・高性能1。rarityで仮区分し、maxCopiesへ値を設定する。
+categoryはmovement、attack等の役割を維持する。効果範囲・成功率が未確定の認識阻害とリラ支援は通常扱い。
+睡眠・病攻撃は攻撃阻害を伴う役割として強力扱い。7カードに特殊扱いを無理に割り当てない。
+全カードのmaxLevel=3（Lv1～Lv3）。カードごとの区分は仮設定であり、最終バランスではない。
+7種類を上限まで入れても19枚のため、実データだけでは有効な30枚デッキを組めない。
+有効な混成30枚の動作確認では、テスト/Console内の一時Registryだけに検証専用定義を補う。
 cooldownSeconds、rarity、category、targetTypeもPhase 2接続前に調整可能な仮設定。
 威力・Damage・Projectile・Animation・VFX・実効果・状態異常成功率・効果時間は未設定。
 
-| cardId | 能力 | ringId | 秒 | rarity | category | targetType |
-| --- | --- | --- | --- | --- | --- | --- |
-| hermes_swift_movement | 高速移動 | hermes | 6 | normal | movement | instant |
-| hermes_reed_flute_sleep | 葦笛による睡眠 | hermes | 12 | strong | sleep | ground |
-| hermes_perception_obscure | 認識阻害 | hermes | 10 | strong | concealment | instant |
-| hermes_sword_attack | 剣術攻撃 | hermes | 3 | normal | attack | direction |
-| apollo_golden_arrow | 黄金の弓矢 | apollo | 4 | normal | attack | direction |
-| apollo_plague_attack | 病を与える攻撃 | apollo | 12 | strong | ailment | direction |
-| apollo_lyre_calm | リラによる精神安定・支援 | apollo | 10 | strong | support | ally |
+| cardId | 能力 | ringId | 秒 | rarity | category | maxCopies | targetType |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| hermes_swift_movement | 高速移動 | hermes | 6 | normal | movement | 3 | instant |
+| hermes_reed_flute_sleep | 葦笛による睡眠 | hermes | 12 | strong | sleep | 2 | ground |
+| hermes_perception_obscure | 認識阻害 | hermes | 10 | normal | concealment | 3 | instant |
+| hermes_sword_attack | 剣術攻撃 | hermes | 3 | normal | attack | 3 | direction |
+| apollo_golden_arrow | 黄金の弓矢 | apollo | 4 | normal | attack | 3 | direction |
+| apollo_plague_attack | 病を与える攻撃 | apollo | 12 | strong | ailment | 2 | direction |
+| apollo_lyre_calm | リラによる精神安定・支援 | apollo | 10 | normal | support | 3 | ally |
 
 ## MZテストプレイから確認
 
@@ -56,19 +60,19 @@ console.log(cd15.getPersistentData(), cd15.getDeckInvalidReasons(), cd15.getBatt
 
 期待: 指輪5種、カード7種、主人公所持指輪0、保存デッキ空、戦闘状態null。
 
-### テスト用所持・30枚デッキをAPIで明示生成
+### テスト用所持・実カード上限内デッキをAPIで明示生成
 
 ```js
 console.log(cd15.assignRingToPlayer("hermes"), cd15.assignRingToPlayer("apollo"));
 var ids15 = cd15.definitions.cardDefinitions().map(c => c.cardId);
 ids15.forEach(id => cd15.setCardOwned(id, true));
-var deck15 = ids15.flatMap((id, i) => Array(i === 0 || i === 4 ? 5 : 4).fill(id));
+var deck15 = cd15.definitions.cardDefinitions().flatMap(c => Array(c.maxCopies).fill(c.cardId));
 cd15.setDeck(deck15);
 console.log(cd15.isDeckValid(), cd15.getDeckInvalidReasons());
 console.log(cd15.setUltimateRing("apollo"), cd15.getUltimateRingId());
 ```
 
-期待: 30枚、有効true、無効理由[]、Ultimate指定apollo。
+期待: 19枚、有効false、無効理由INVALID_DECK_SIZE、Ultimate指定apollo。
 指輪移動結果がRING_TRANSFER_DURING_BATTLEの場合は戦闘外に移ってから実行する。
 
 ### 指輪を外して復旧
@@ -81,23 +85,56 @@ console.log(cd15.assignRingToPlayer("apollo"));
 console.log(cd15.isDeckValid(), cd15.getDeck());
 ```
 
-期待: デッキ30枚を維持、Apolloだけ無効、Ultimate解除。戻すと有効true。
+期待: デッキ19枚を維持、Apolloカードだけ使用不可、Ultimate解除。
+戻すと全7カードが再び使用可能になり、無効理由は枚数不足だけに戻る。デッキ全体の有効判定はfalseのまま。
 Ultimateは戻しただけでは再指定されない。Actor対応未確定のため、この確認は未所持への変更で行う。
 
-### 戦闘用デッキ・Cooldown
+### 有効な混成30枚検証用の一時定義
+
+次の検証専用5定義はConsoleの一時Registryだけに置く。
+本番の7カードDefinition・$gameSystem・保存デッキには追加しない。
+本番のmaxCopiesを緩めず、19枚＋検証専用11枚で30枚を組む。
 
 ```js
-console.log(cd15.startBattle());
-console.log(cd15.getBattleState());
-console.log(cd15.useBattleCard(cd15.getBattleState().hand[0].instanceId));
-console.log(cd15.getBattleState());
-cd15.updateCooldown(12);
-console.log(cd15.getBattleState());
-cd15.endBattle();
+var extra15 = ["normal", "strong", "special", "normal", "strong"].map((rarity, i) => ({
+    cardId: "test_only_" + i, ringId: i % 2 ? "apollo" : "hermes",
+    maxCopies: { normal: 3, strong: 2, special: 1 }[rarity],
+    cooldownSeconds: 1, maxLevel: 3, rarity, category: "test_only", targetType: "instant"
+}));
+var registry15 = new cd15.DefinitionRegistry(
+    [...cd15.definitions.cardDefinitions(), ...extra15], cd15.definitions.ringDefinitions());
+var service15 = new cd15.CardDeckService(registry15);
+service15.assignRingToPlayer("hermes");
+service15.assignRingToPlayer("apollo");
+registry15.cardDefinitions().forEach(c => service15.setCardOwned(c.cardId));
+var mixed15 = registry15.cardDefinitions().flatMap(c => Array(c.maxCopies).fill(c.cardId));
+service15.setDeck(mixed15);
+console.log(mixed15.length, service15.isDeckValid(), service15.deckInvalidReasons());
+service15.setRingUnowned("apollo");
+console.log(service15.deckInvalidReasons(), service15.deck().length);
+service15.assignRingToPlayer("apollo");
+console.log(service15.isDeckValid(), service15.deck());
+```
+
+期待: 最初は30枚、true、[]。Apollo解除でそのカードのみ無効、30枚保持。戻すとtrue。
+この一時Serviceは本番の所持状態・デッキ・セーブへ接続していない。
+
+### 一時Serviceの戦闘用デッキ・Cooldown
+
+```js
+var battle15 = new cd15.BattleDeckSession(service15);
+console.log(battle15.start());
+console.log(battle15.snapshot());
+console.log(battle15.use(battle15.snapshot().hand[0].instanceId));
+console.log(battle15.snapshot());
+battle15.updateCooldown(12);
+console.log(battle15.snapshot());
+console.log(JSON.stringify(DataManager.makeSaveContents()).includes('"cooldownPile"'));
+battle15.end();
 ```
 
 期待: 開始時hand=5、drawPile=25。使用後hand=5、drawPile=24、cooldownPile=1。
-12秒更新後cooldownPile=0、discardPile=1。
+12秒更新後cooldownPile=0、discardPile=1。一時SessionはGame_Systemに接続しないためセーブ内cooldownPileはfalse。
 Phase 1 APIの秒更新をConsoleから明示実行しており、実時間での自動進行は後続Phaseで接続する。
 
 ### セーブ互換（別スロット）
@@ -116,6 +153,7 @@ console.log(ProjectRCardDeck.getPersistentData());
 console.log(ProjectRCardDeck.getBattleState());
 ```
 
-期待: Card Level=3、所持、30枚デッキ、Ultimate指定apolloを保持。戦闘状態null。
+期待: Card Level=3、所持、実カード19枚デッキ、Ultimate指定apolloを保持。戦闘状態null。
+前の仮仕様でLv4/5を保存していた場合、Phase 1既存の上限処理でLv3へ補正される。所持・指輪・デッキは維持する。
 旧セーブも別途ロードし、既存の進行・所持品を保ちつつ新規指輪が未所持で補完されることを確認する。
 最後に従来の銃・剣・移動・会話等の挙動も目視確認する。自動テストはこのMZ実機確認の代替にはならない。
