@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc v1.0.0 ProjectR カード・指輪・デッキ基盤（Phase 1）
+ * @plugindesc v1.1.0 ProjectR カード・指輪・デッキ基盤＋発動ルーター（Phase 2A）
  * @author ProjectR
  * @orderAfter Hendrix_Action_Engine
  *
@@ -15,8 +15,8 @@
  * @default []
  *
  * @help
- * カード攻撃やHUDを実装せず、Phase 1のデータ、検証、戦闘用山札、
- * セーブ互換だけを提供します。
+ * Phase 1のデータ・セーブ互換と、Phase 2Aの仮発動ルーターを提供します。
+ * 実攻撃・対象検索・HUDは実装しません。1～5入力は別プラグインです。
  *
  * 主なスクリプトAPI:
  *   ProjectRCardDeck.hasPlayerRing(ringId)
@@ -30,6 +30,18 @@
  *   ProjectRCardDeck.startBattle(cardIds)
  *   ProjectRCardDeck.useBattleCard(instanceId)
  *   ProjectRCardDeck.updateCooldown(seconds)
+ *   ProjectRCardDeck.startCardBattle(cardIds)
+ *   ProjectRCardDeck.endCardBattle()
+ *   ProjectRCardDeck.isCardBattleActive()
+ *   ProjectRCardDeck.requestUseCard(handIndex)
+ *   ProjectRCardDeck.registerActivationHandler(targetType, handler)
+ *
+ * handIndexは0～4。handler(context)は同期的に { ok: true } を返した場合だけ
+ * カードを消費します。false・例外・Promiseは失敗扱いです。
+ * context: { handIndex, instance, definition }。Phase 2Aの標準handlerは仮成功のみ。
+ * requestUseCardのreason/reasonsからUI用の結果・拒否理由を取得できます。
+ * 従来のstartBattle/useBattleCardはPhase 1用の低水準APIです。
+ * 新しいカード入力・実効果はstartCardBattle/requestUseCardを使用してください。
  *
  * cardIdは将来Action Combatへ接続するDatabase Skill IDにもできます。
  * 戦闘用山札・手札・捨て札・Cooldownはセーブされません。
@@ -128,6 +140,24 @@
     const ACTOR_OWNER_PREFIX = "actor:";
     const TARGET_TYPES = new Set(["direction", "ground", "instant", "ally"]);
 
+    const ActivationResult = Object.freeze({
+        SUCCESS: "success",
+        BATTLE_INACTIVE: "battleInactive",
+        INVALID_HAND_INDEX: "invalidHandIndex",
+        EMPTY_HAND: "emptyHand",
+        CARD_UNAVAILABLE: "cardUnavailable",
+        UNSUPPORTED_TARGET_TYPE: "unsupportedTargetType",
+        ACTIVATION_FAILED: "activationFailed",
+        ACTIVATION_IN_PROGRESS: "activationInProgress"
+    });
+
+    const activationResult = (reason, details = {}) => ({
+        ok: reason === ActivationResult.SUCCESS,
+        reason,
+        reasons: reason === ActivationResult.SUCCESS ? [] : [{ code: reason }],
+        ...details
+    });
+
     const InvalidReason = Object.freeze({
         INVALID_DECK_SIZE: "INVALID_DECK_SIZE",
         INVALID_CARD_ID: "INVALID_CARD_ID",
@@ -192,7 +222,8 @@
                 const cardId = canonicalId(source?.cardId);
                 const ringId = canonicalId(source?.ringId);
                 if (!cardId || !ringId || this.cards.has(cardId)) continue;
-                const targetType = TARGET_TYPES.has(source.targetType) ? source.targetType : "instant";
+                // 未指定だけinstant。明示的な未知の種別を別効果へ誤dispatchしない。
+                const targetType = canonicalId(source.targetType) || "instant";
                 this.cards.set(cardId, Object.freeze({
                     cardId,
                     ringId,
@@ -535,6 +566,63 @@
         }
     }
 
+    class CardActivationRouter {
+        constructor(session, handlers = {}) {
+            this.session = session;
+            this.handlers = new Map([...TARGET_TYPES].map(type => [type, () => ({ ok: true })]));
+            for (const [type, handler] of Object.entries(handlers)) this.registerHandler(type, handler);
+            this.activating = false;
+        }
+
+        registerHandler(targetType, handler) {
+            if (!TARGET_TYPES.has(targetType) || typeof handler !== "function") return false;
+            this.handlers.set(targetType, handler);
+            return true;
+        }
+
+        requestUseCard(handIndex) {
+            const state = this.session.state;
+            if (!state) return activationResult(ActivationResult.BATTLE_INACTIVE);
+            if (!Number.isInteger(handIndex) || handIndex < 0 || handIndex >= HAND_SIZE) {
+                return activationResult(ActivationResult.INVALID_HAND_INDEX);
+            }
+            const instance = state.hand[handIndex];
+            if (!instance) return activationResult(ActivationResult.EMPTY_HAND);
+            if (this.activating) return activationResult(ActivationResult.ACTIVATION_IN_PROGRESS);
+            const definition = this.session.service.definitions.card(instance.cardId);
+            const reasons = this.session.service.cardInvalidReasons(instance.cardId);
+            if (!definition || reasons.length) {
+                return activationResult(ActivationResult.CARD_UNAVAILABLE, { reasons });
+            }
+            const handler = this.handlers.get(definition.targetType);
+            if (!handler) return activationResult(ActivationResult.UNSUPPORTED_TARGET_TYPE);
+
+            const context = Object.freeze({ handIndex, instance: Object.freeze({ ...instance }), definition });
+            this.activating = true;
+            try {
+                const result = handler(context);
+                // 非同期完了を成功と誤認しない。Phase 2Bも同期的な生成成否を返す契約。
+                if (result && typeof result.then === "function") {
+                    Promise.resolve(result).catch(() => {});
+                    return activationResult(ActivationResult.ACTIVATION_FAILED, { detail: "asyncHandlerUnsupported" });
+                }
+                if (result?.ok !== true || this.session.state !== state ||
+                        state.hand[handIndex]?.instanceId !== instance.instanceId) {
+                    return activationResult(ActivationResult.ACTIVATION_FAILED, { detail: result?.reason || "handlerRejected" });
+                }
+                const consumed = this.session.use(instance.instanceId);
+                return consumed.ok ? activationResult(ActivationResult.SUCCESS, {
+                    handIndex, instanceId: instance.instanceId, cardId: definition.cardId,
+                    targetType: definition.targetType, state: consumed.state
+                }) : activationResult(ActivationResult.ACTIVATION_FAILED, { detail: consumed.reason });
+            } catch (error) {
+                return activationResult(ActivationResult.ACTIVATION_FAILED, { detail: String(error?.message || error) });
+            } finally {
+                this.activating = false;
+            }
+        }
+    }
+
     const parameters = typeof PluginManager !== "undefined" && PluginManager.parameters ?
         PluginManager.parameters(PLUGIN_NAME) : {};
     const definitions = new DefinitionRegistry(
@@ -542,6 +630,9 @@
         parseStructArray(parameters.RingDefinitions)
     );
     let battleSession = null;
+    let activationRouter = null;
+    // handler登録はプラグイン接続設定。戦闘状態とは分離し、セーブしない。
+    const activationHandlers = {};
 
     const ensureGameData = gameSystem => {
         if (!gameSystem) return initialPersistentData(definitions);
@@ -588,6 +679,8 @@
         DefinitionRegistry,
         CardDeckService,
         BattleDeckSession,
+        CardActivationRouter,
+        ActivationResult,
         normalizePersistentData,
         getPersistentData: () => currentService().exportPersistentData(),
         getDeck: () => currentService().deck(),
@@ -612,12 +705,32 @@
         getBossBattleStartInvalidReasons: cardIds => currentService().deckInvalidReasons(cardIds),
         startBattle(cardIds) {
             const service = currentService();
-            battleSession = new BattleDeckSession(service);
-            const result = battleSession.start(cardIds === undefined ? service.deck() : cardIds);
-            if (!result.ok) battleSession = null;
+            const session = new BattleDeckSession(service);
+            const result = session.start(cardIds === undefined ? service.deck() : cardIds);
+            api.endBattle();
+            if (result.ok) battleSession = session;
             return result;
         },
         isBattleActive: () => !!battleSession,
+        startCardBattle(cardIds) {
+            const result = api.startBattle(cardIds);
+            if (result.ok) activationRouter = new CardActivationRouter(battleSession, activationHandlers);
+            return result;
+        },
+        isCardBattleActive: () => !!activationRouter && !!battleSession?.state,
+        endCardBattle() { api.endBattle(); },
+        registerActivationHandler(targetType, handler) {
+            if (!TARGET_TYPES.has(targetType) || typeof handler !== "function") return false;
+            activationHandlers[targetType] = handler;
+            if (activationRouter) activationRouter.registerHandler(targetType, handler);
+            return true;
+        },
+        requestUseCard(handIndex) {
+            if (!api.isCardBattleActive()) return activationResult(ActivationResult.BATTLE_INACTIVE);
+            // 公開APIで変更された最新の所持・指輪状態を使用可能判定へ反映する。
+            battleSession.service = currentService();
+            return activationRouter.requestUseCard(handIndex);
+        },
         useBattleCard(instanceId) {
             return battleSession ? battleSession.use(instanceId) : { ok: false, reason: "BATTLE_NOT_STARTED" };
         },
@@ -628,6 +741,7 @@
         endBattle() {
             if (battleSession) battleSession.end();
             battleSession = null;
+            activationRouter = null;
         }
     };
 
@@ -637,6 +751,7 @@
         const _Game_System_initialize = Game_System.prototype.initialize;
         Game_System.prototype.initialize = function() {
             _Game_System_initialize.call(this);
+            api.endBattle();
             this._projectRCardDeckData = initialPersistentData(definitions);
         };
     }
@@ -646,7 +761,7 @@
         DataManager.extractSaveContents = function(contents) {
             _DataManager_extractSaveContents.call(this, contents);
             if (typeof $gameSystem !== "undefined" && $gameSystem) ensureGameData($gameSystem);
-            battleSession = null;
+            api.endBattle();
         };
     }
 
