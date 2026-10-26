@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc v1.0.0 Phase 3A カード発動時の一時神召喚（論理アンカー）基盤。
+ * @plugindesc v1.1.0 カード発動時の一時神召喚と、常駐Ultimate神（Divine HP・崩壊・復帰）の基盤。
  * @author ProjectR
  * @base ProjectR_CardDeckCore
  * @orderAfter ProjectR_CardBattleInput
@@ -23,6 +23,30 @@
  * @type number
  * @decimals 2
  * @default -0.75
+ *
+ * @param DefaultDivineMaxHp
+ * @text 常駐神の最大Divine HP（仮）
+ * @desc 常駐Ultimate神専用のHP。戦闘開始ごとに満タン。バランス用の仮値。
+ * @type number
+ * @min 1
+ * @default 100
+ *
+ * @param RecoveryDelaySeconds
+ * @text 崩壊からの復帰秒数（仮）
+ * @desc Divine HPが0になってから自動復帰するまでの戦闘中の秒数。
+ * @type number
+ * @decimals 2
+ * @min 0
+ * @default 15
+ *
+ * @param RecoveryHpRate
+ * @text 復帰時のHP割合（仮）
+ * @desc 復帰時にDivine HPを最大値のこの割合まで戻す（0〜1）。
+ * @type number
+ * @decimals 2
+ * @min 0
+ * @max 1
+ * @default 0.5
  *
  * @help
  * カードを使うと、そのカードの指輪の神が一時的に召喚され、神が効果を実行する、
@@ -53,13 +77,34 @@
  *   一度だけ読み取って戦闘中のsnapshotにします。主人公がその指輪を所持している
  *   場合だけ最大1体を作り、無効/未選択でも戦闘は通常どおり開始します。
  *   一時召喚（perform）とは別管理で、カード発動で壊れず、カード効果にも使いません。
- *   HP・AI・自律攻撃・標的・衝突・Ultimate Gaugeは持ちません。位置は毎回
+ *   論理アンカー自体はAI・自律攻撃・標的・衝突・Ultimate Gaugeを持ちません
+ *   （HPは下のPhase 3C-2のDivine HPとして戦闘状態側に持つ）。位置は毎回
  *   Playerの現在位置＋オフセットから導出するので、壁や経路探索の影響を受けません。
  *   endCardBattle・マップ移動・ロードで破棄。実行時のみでセーブしません。
  *   ProjectRGodSummonManager.hasPersistentUltimateSummon()
  *   ProjectRGodSummonManager.getPersistentUltimateSummon()  // 読み取り専用コピー
  *   ProjectRGodSummonManager.getPersistentUltimateGodId() / getPersistentUltimateRingId()
  *   ProjectRGodSummonManager.getPersistentUltimateResult()  // 直近の生成結果
+ *
+ * Phase 3C-2 常駐Ultimate神のDivine HP / 崩壊 / 復帰:
+ *   常駐Ultimate神だけが戦闘中専用のDivine HPを持ちます（Player/敵のHPとは別。
+ *   一時召喚やカードには持たせません）。戦闘開始ごとに満タン、セーブしません。
+ *   Divine HPが0で「崩壊」: 論理アンカー（顕現）は消え、Ultimateは使用不可になりますが、
+ *   戦闘中の常駐神の情報（神・指輪・HP）は残ります。カード（一時召喚）はそのまま使えます。
+ *   崩壊からRecoveryDelaySeconds後（カードのクールダウンと同じ戦闘時間で進み、
+ *   メニュー・会話・フォーカス喪失中は止まる）に、最大値のRecoveryHpRate分のHPで自動復帰し、
+ *   顕現が戻ります。何度でも繰り返します。endCardBattle・マップ移動・ロードで全て破棄。
+ *   ProjectRGodSummonManager.damagePersistentUltimate(amount, source?)  // 将来のボス/AoE用
+ *   ProjectRGodSummonManager.hasPersistentUltimateBattleState()   // 戦闘中の常駐神がいるか
+ *   ProjectRGodSummonManager.isPersistentUltimateCollapsed()
+ *   ProjectRGodSummonManager.isPersistentUltimateAvailable()     // 顕現中かつHP>0
+ *   ProjectRGodSummonManager.getPersistentUltimateStatus()       // "none"|"active"|"collapsed"
+ *   ProjectRGodSummonManager.getPersistentUltimateDivineHp() / getPersistentUltimateMaxDivineHp()
+ *   ProjectRGodSummonManager.getPersistentUltimateDivineHpRate()
+ *   ProjectRGodSummonManager.getPersistentUltimateRecoveryRemainingSeconds()
+ *   ProjectRGodSummonManager.getPersistentUltimateBattleState()  // 読み取り専用コピー
+ *   hasPersistentUltimateSummon / getPersistentUltimateSummon は「顕現中」のみ真/非null。
+ *   getPersistentUltimateGodId / RingId は崩壊中も戦闘中の常駐神を返します。
  *
  * Console: ProjectRGodSummonManager.getActiveSummons()
  */
@@ -75,8 +120,13 @@
     const parameters = PluginManager.parameters("ProjectR_GodSummonManager");
     const offsetX = finiteOr(parameters.PersistentOffsetX, -0.75);
     const offsetY = finiteOr(parameters.PersistentOffsetY, -0.75);
+    // Divine HP関連の仮値（バランス用）。不正値は既定へ、復帰割合は0〜1へ丸める。
+    const divineMaxHp = (() => { const v = finiteOr(parameters.DefaultDivineMaxHp, 100); return v >= 1 ? v : 100; })();
+    const recoveryDelay = (() => { const v = finiteOr(parameters.RecoveryDelaySeconds, 15); return v >= 0 ? v : 15; })();
+    const recoveryRate = Math.min(1, Math.max(0, finiteOr(parameters.RecoveryHpRate, 0.5)));
     const summons = new Map(); // 一時召喚（カード発動ごと）。
-    let persistent = null; // 常駐Ultimate召喚。最大1。
+    let persistent = null; // 常駐Ultimateの顕現（論理アンカー）。最大1。崩壊中はnull。
+    let battle = null; // 常駐Ultimateの戦闘状態 {godId, ringId, maxHp, hp, status, recoveryRemaining}。顕現とは別。
     let persistentResult = { ok: false, reason: "notStarted" };
     let serial = 0;
 
@@ -94,6 +144,7 @@
     const clear = () => {
         summons.clear();
         persistent = null;
+        battle = null;
         persistentResult = { ok: false, reason: "notStarted" };
     };
 
@@ -171,10 +222,15 @@
             offsetX: persistent.offsetX, offsetY: persistent.offsetY
         });
     };
-    const fail = reason => { persistent = null; persistentResult = { ok: false, reason }; return persistentResult; };
+    // 顕現（論理アンカー）を作る。戦闘状態のgod/ringのsnapshotをそのまま使う。
+    const manifest = point => {
+        persistent = { summonId: ++serial, godId: battle.godId, ringId: battle.ringId, offsetX, offsetY,
+            x: point.x + offsetX, y: point.y + offsetY };
+    };
+    const fail = reason => { persistent = null; battle = null; persistentResult = { ok: false, reason }; return persistentResult; };
     // 戦闘開始時に一度だけ。既に有効な常駐があれば再利用し、重複は作らない。
     const ensurePersistent = () => {
-        if (persistent) return persistentResult;
+        if (battle) return persistentResult; // 崩壊中でも作り直さない（復帰は時間経過のみ）。
         try {
             if (!deck.isCardBattleActive()) return fail("battleInactive");
             const ringId = deck.getUltimateRingId?.();
@@ -184,13 +240,62 @@
             if (!godId) return fail("godUnresolved");
             const point = playerPoint();
             if (!point) return fail("playerUnavailable");
-            persistent = { summonId: ++serial, godId, ringId, offsetX, offsetY,
-                x: point.x + offsetX, y: point.y + offsetY };
+            battle = { godId, ringId, maxHp: divineMaxHp, hp: divineMaxHp, status: "active", recoveryRemaining: 0 };
+            manifest(point);
             persistentResult = { ok: true, godId, ringId };
         } catch (error) {
             return fail(String(error?.message || error));
         }
         return persistentResult;
+    };
+    const divineHpOf = () => battle ? battle.hp : 0;
+    const battleInfo = () => battle && Object.freeze({
+        godId: battle.godId, ringId: battle.ringId, status: battle.status, manifested: !!persistent,
+        divineHp: battle.hp, maxDivineHp: battle.maxHp, divineHpRate: battle.hp / battle.maxHp,
+        recoveryRemainingSeconds: battle.status === "collapsed" ? battle.recoveryRemaining : 0
+    });
+    const isAvailable = () => !!battle && battle.status === "active" && battle.hp > 0 && !!persistent;
+    // 将来のボス/AoE用。有効な常駐Ultimateが顕現中のときだけHPを減らす。
+    const damagePersistentUltimate = (amount, source) => {
+        const info = reason => ({ ok: false, reason, damage: 0, collapsed: false, status: battle ? battle.status : "none",
+            divineHp: divineHpOf(), maxDivineHp: battle ? battle.maxHp : 0 });
+        if (typeof amount !== "number" || !Number.isFinite(amount) || amount <= 0) return info("invalidDamage");
+        if (!battle) return info("noPersistentUltimate");
+        if (battle.status !== "active" || battle.hp <= 0) return info("collapsed");
+        const damage = Math.min(amount, battle.hp);
+        battle.hp = Math.max(0, battle.hp - damage);
+        const collapsed = battle.hp <= 0;
+        if (collapsed) {
+            // 崩壊: 顕現だけを消し、戦闘状態は残して復帰タイマーを開始（カード/戦闘/指輪/選択には触れない）。
+            battle.hp = 0;
+            battle.status = "collapsed";
+            battle.recoveryRemaining = recoveryDelay;
+            persistent = null;
+        }
+        return { ok: true, damage, requested: amount, collapsed, status: battle.status, divineHp: battle.hp,
+            maxDivineHp: battle.maxHp, divineHpRate: battle.hp / battle.maxHp, source: typeof source === "string" ? source : null };
+    };
+    // 復帰: 最大値 * 割合のHPで顕現を戻す。Player位置が無ければ0秒のまま次の戦闘時間で再試行。
+    const recover = () => {
+        const point = playerPoint();
+        if (!point) return false;
+        battle.hp = Math.min(battle.maxHp, Math.max(battle.maxHp * recoveryRate, Math.min(1, battle.maxHp)));
+        battle.status = "active";
+        battle.recoveryRemaining = 0;
+        manifest(point);
+        return true;
+    };
+    const advanceRecovery = seconds => {
+        if (!battle || battle.status !== "collapsed" || !Number.isFinite(seconds) || seconds <= 0) return;
+        battle.recoveryRemaining = Math.max(0, battle.recoveryRemaining - seconds);
+        if (battle.recoveryRemaining < 1e-8) { battle.recoveryRemaining = 0; recover(); }
+    };
+    // 認識阻害・睡眠・病と同じ戦闘時間（InputのupdateCooldown）。停止条件もInput側に従う。
+    const _updateCooldown = deck.updateCooldown;
+    deck.updateCooldown = function(seconds) {
+        const result = _updateCooldown.apply(this, arguments);
+        if (battle && deck.isCardBattleActive()) advanceRecovery(seconds);
+        return result;
     };
     const _startCardBattle = deck.startCardBattle;
     deck.startCardBattle = function() {
@@ -225,8 +330,18 @@
         ensurePersistentUltimateSummon: () => ({ ...ensurePersistent() }),
         hasPersistentUltimateSummon: () => !!persistent,
         getPersistentUltimateSummon: persistentInfo,
-        getPersistentUltimateGodId: () => persistent?.godId ?? null,
-        getPersistentUltimateRingId: () => persistent?.ringId ?? null,
-        getPersistentUltimateResult: () => ({ ...persistentResult })
+        getPersistentUltimateGodId: () => battle?.godId ?? null,
+        getPersistentUltimateRingId: () => battle?.ringId ?? null,
+        getPersistentUltimateResult: () => ({ ...persistentResult }),
+        damagePersistentUltimate,
+        hasPersistentUltimateBattleState: () => !!battle,
+        isPersistentUltimateCollapsed: () => battle?.status === "collapsed",
+        isPersistentUltimateAvailable: isAvailable,
+        getPersistentUltimateStatus: () => battle ? battle.status : "none",
+        getPersistentUltimateDivineHp: divineHpOf,
+        getPersistentUltimateMaxDivineHp: () => battle ? battle.maxHp : 0,
+        getPersistentUltimateDivineHpRate: () => battle ? battle.hp / battle.maxHp : 0,
+        getPersistentUltimateRecoveryRemainingSeconds: () => battle && battle.status === "collapsed" ? battle.recoveryRemaining : 0,
+        getPersistentUltimateBattleState: battleInfo
     };
 })();
