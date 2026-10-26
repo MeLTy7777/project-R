@@ -116,8 +116,11 @@
         if (!Number.isFinite(options.degree) || !options.point) return false;
         const feet = feetOf();
         if (!feet || ![options.point.x, options.point.y].every(Number.isFinite)) return false;
-        effects.push({ kind: "muzzle", degree: normalize(options.degree), age: 0, frames: 6,
-            color: options.color ?? config.muzzleColor, rel: { x: options.point.x - feet.x, y: options.point.y - feet.y } });
+        const rel = { x: options.point.x - feet.x, y: options.point.y - feet.y };
+        // 発光は4フレームの短い閃光。そのあと銃口から立ちのぼる薄い煙(14フレーム)。
+        effects.push({ kind: "muzzle", degree: normalize(options.degree), age: 0, frames: 4,
+            color: options.color ?? config.muzzleColor, rel });
+        effects.push({ kind: "smoke", degree: normalize(options.degree), age: 0, frames: 14, rel });
         return true;
     };
 
@@ -161,27 +164,42 @@
             g.lineTo(center.x + Math.cos(a1) * effect.radius, center.y + Math.sin(a1) * effect.radius);
             drawBladeImage(g, effect, center, now, fade);
         } else if (effect.kind === "muzzle") {
-            // 銃口の点(足元+相対)。小さく短い。体の中心の大きな発光はしない。
+            // 銃口の点(足元+相対)だけの小さく短い閃光。体の中心の大きな発光はしない。
+            // 橙の小さな円錐(明るい床でも見える)→淡い黄の円錐→白い芯、の3層。長さは約9〜14px。
             const feet = feetOf();
             if (!feet || !effect.rel) return;
             const a = rad(effect.degree);
             const mx = feet.x + effect.rel.x, my = feet.y + effect.rel.y;
-            const size = 8 * fade + 3;
+            const size = 4 * fade + 2;
             g.lineStyle(0);
-            // 明るい床でも見えるよう、橙の外側→淡い黄→白い芯の3層(短く小さいまま)
-            g.beginFill(0xff8a1f, 0.8 * fade + 0.1);
-            g.drawPolygon([mx + Math.cos(a) * size * 2.4, my + Math.sin(a) * size * 2.4,
-                mx + Math.cos(a + 1.9) * size * 0.95, my + Math.sin(a + 1.9) * size * 0.95,
-                mx + Math.cos(a - 1.9) * size * 0.95, my + Math.sin(a - 1.9) * size * 0.95]);
+            g.beginFill(0xff8a1f, 0.75 * fade + 0.1);
+            g.drawPolygon([mx + Math.cos(a) * size * 2.6, my + Math.sin(a) * size * 2.6,
+                mx + Math.cos(a + 1.7) * size * 0.8, my + Math.sin(a + 1.7) * size * 0.8,
+                mx + Math.cos(a - 1.7) * size * 0.8, my + Math.sin(a - 1.7) * size * 0.8]);
             g.endFill();
-            g.beginFill(effect.color, 0.85 * fade + 0.1);
-            g.drawPolygon([mx + Math.cos(a) * size * 1.8, my + Math.sin(a) * size * 1.8,
-                mx + Math.cos(a + 1.9) * size * 0.6, my + Math.sin(a + 1.9) * size * 0.6,
-                mx + Math.cos(a - 1.9) * size * 0.6, my + Math.sin(a - 1.9) * size * 0.6]);
+            g.beginFill(effect.color, 0.9 * fade + 0.1);
+            g.drawPolygon([mx + Math.cos(a) * size * 1.7, my + Math.sin(a) * size * 1.7,
+                mx + Math.cos(a + 1.7) * size * 0.5, my + Math.sin(a + 1.7) * size * 0.5,
+                mx + Math.cos(a - 1.7) * size * 0.5, my + Math.sin(a - 1.7) * size * 0.5]);
             g.endFill();
-            g.beginFill(0xffffff, 0.8 * fade);
-            g.drawCircle(mx, my, 2 * fade + 1);
+            g.beginFill(0xffffff, 0.85 * fade + 0.1);
+            g.drawCircle(mx, my, 1.4 * fade + 0.8);
             g.endFill();
+        } else if (effect.kind === "smoke") {
+            // 控えめな煙: 小さな灰色の円が銃口から少し進み、上へ流れながら薄くなる(大きな玉にはしない)。
+            const feet = feetOf();
+            if (!feet || !effect.rel) return;
+            const a = rad(effect.degree);
+            const mx = feet.x + effect.rel.x, my = feet.y + effect.rel.y;
+            g.lineStyle(0);
+            for (let k = 0; k < 2; k++) {
+                const drift = (4 + k * 3) * t + 2 + k * 2;
+                const px = mx + Math.cos(a) * drift + (k ? 2 : -1) * t;
+                const py = my + Math.sin(a) * drift - 5 * t - k * 2 * t;
+                g.beginFill(0xb9bec8, 0.3 * fade);
+                g.drawCircle(px, py, 1.6 + 2.2 * t + k * 0.6);
+                g.endFill();
+            }
         }
     };
     const advance = () => {

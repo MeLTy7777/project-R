@@ -420,10 +420,24 @@
     }
 
     // ---- 反動(銃スプライト): 公式が毎フレーム置く位置へ、発射直後だけ後退と傾きを足す(公式は毎フレーム絶対位置で置き直すので蓄積しない) ----
+    // リロード中は銃を腰の高さへ下げ、銃口を足元側へ倒す(体のリロード動作=両手が腹の前、と合わせるため)。
+    // 公式が毎フレーム置き直すので蓄積しない。0→1→0の山型(sin)で、始まりと終わりは構えの位置と一致する。
+    const applyReloadDip = sprite => {
+        if (!state.reloading || !state.reloadLeft || config.reloadFrames <= 0) return false;
+        const progress = Math.min(1, Math.max(0, 1 - state.reloadLeft / config.reloadFrames));
+        const ease = Math.sin(Math.PI * progress);
+        sprite.y += 12 * ease;
+        const twoPi = Math.PI * 2;
+        let delta = ((Math.PI / 2 - sprite.rotation) % twoPi + twoPi) % twoPi;
+        if (delta > Math.PI) delta -= twoPi;
+        sprite.rotation += Math.sign(delta) * 0.5 * ease;
+        return true;
+    };
     const applyKick = () => {
+        const sprite = typeof ShxWeaponSpriteH !== "undefined" ? ShxWeaponSpriteH : null;
+        if (sprite) applyReloadDip(sprite);
         if (state.kick <= 0) return false;
         state.kick = Math.max(0, state.kick - 1 / 9);
-        const sprite = typeof ShxWeaponSpriteH !== "undefined" ? ShxWeaponSpriteH : null;
         if (!sprite) return false;
         const theta = (state.kickDegree - 90) * Math.PI / 180;
         sprite.x -= Math.cos(theta) * 5 * state.kick;
@@ -431,11 +445,14 @@
         sprite.rotation += (Math.cos(theta) < 0 ? 1 : -1) * 0.14 * state.kick;
         return true;
     };
-    if (typeof Spriteset_Map !== "undefined") {
-        const _update = Spriteset_Map.prototype.update;
-        Spriteset_Map.prototype.update = function() {
-            _update.apply(this, arguments);
-            applyKick();
+    // 公式Display Weaponは Scene_Map.update の最後(Spriteset更新の後)で、毎フレーム位置と角度を置き直す
+    // (Hendrix_Action_Engine。実機で確認: Spriteset_Map.updateに足しても上書きされ、反動もリロードの下げも見えなかった)。
+    // ProjectR_GunSystemはそれより後に読み込まれるので、Scene_Map.updateの外側で、公式が置いた後に足す。
+    if (typeof Scene_Map !== "undefined") {
+        const _sceneUpdate = Scene_Map.prototype.update;
+        Scene_Map.prototype.update = function() {
+            _sceneUpdate.apply(this, arguments);
+            try { applyKick(); } catch (_error) { /* 表示のみ */ }
         };
     }
 

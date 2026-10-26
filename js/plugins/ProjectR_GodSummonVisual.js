@@ -200,6 +200,12 @@
                 // 親子(Playerの子)として追従する相対位置は、生成位置から自動で決まる。念のため明示する。
                 event.childOffsetX = offset.x;
                 event.childOffsetY = offset.y;
+                // Hendrixの親子追従は「プレイヤーの移動量」だけを足して動く。生成時に入る lastPlayerX/Y は「位置+オフセット」で、
+                // 最初のフレームにずれた量だけ動いてしまい、神がプレイヤーの真上に重なる(実機で確認)。現在位置で上書きして防ぐ。
+                if (event.isPlayerChild) {
+                    event.lastPlayerX = player._realX;
+                    event.lastPlayerY = player._realY;
+                }
                 applyAppearance(record, event);
             }
             return record;
