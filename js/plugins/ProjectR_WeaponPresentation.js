@@ -168,6 +168,12 @@
             const mx = feet.x + effect.rel.x, my = feet.y + effect.rel.y;
             const size = 8 * fade + 3;
             g.lineStyle(0);
+            // 明るい床でも見えるよう、橙の外側→淡い黄→白い芯の3層(短く小さいまま)
+            g.beginFill(0xff8a1f, 0.8 * fade + 0.1);
+            g.drawPolygon([mx + Math.cos(a) * size * 2.4, my + Math.sin(a) * size * 2.4,
+                mx + Math.cos(a + 1.9) * size * 0.95, my + Math.sin(a + 1.9) * size * 0.95,
+                mx + Math.cos(a - 1.9) * size * 0.95, my + Math.sin(a - 1.9) * size * 0.95]);
+            g.endFill();
             g.beginFill(effect.color, 0.85 * fade + 0.1);
             g.drawPolygon([mx + Math.cos(a) * size * 1.8, my + Math.sin(a) * size * 1.8,
                 mx + Math.cos(a + 1.9) * size * 0.6, my + Math.sin(a + 1.9) * size * 0.6,

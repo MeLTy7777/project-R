@@ -109,7 +109,7 @@
 
 ## 6. Character Animation Foundation + 新銃(G17)（本フェーズ）
 
-状態の見方: `IMPLEMENTED / AUTOMATED VERIFIED / MZ VERIFICATION REQUIRED`（実機は未確認）。
+状態の見方: `IMPLEMENTED / AUTOMATED VERIFIED / MZ VERIFICATION REQUIRED`。MZ実機は一部だけ確認済み（銃の読み込み・構え・発射・弾の直進・命中・リロード・動作の記録・F8に例外なし。詳細は `docs/ProjectR_NewGunSystem.md`）。見た目の細部は未確認。
 
 | 項目 | 状態 | メモ |
 | --- | --- | --- |

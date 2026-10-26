@@ -104,6 +104,26 @@ fire():
 `docs/ProjectR_FullSpec_ManualVerification.md` 冒頭の「Character Animation + 新銃」手順(アリーナ北東の Animation / Weapon Zone)を使います。
 MZ実機での確認は**未実施**です(自動テストは実エンジンの読み込みまで)。
 
+## 実機(MZ Playtest)での確認結果(部分)
+
+自動テストとは別に、MZ 1.10.0 のPlaytest(F8 DevToolsつき)をデスクトップ操作で実際に起動し、Combat Test Arena(Map004)で確認しました
+(確認日: 2026-10-27、操作はDevToolsのConsole+実際のキー/マウス)。
+
+| 項目 | 結果 |
+|---|---|
+| 全プラグイン読み込み | OK。`ProjectRGunSystem` / `ProjectRCharacterPresentation` / `ProjectRCombatTestArenaAnimation` / `ProjectRWeaponPresentation` が object。F8に例外なし(`window.onerror`でも0件) |
+| 構え(Display Weapon) | OK。戦闘中にG17を持つと銃が体の前に出て、マウスで回る。左向きでは銃が反転して上向きのまま(autoFlip) |
+| 発射 | OK。左クリックで弾が出る。HUDの弾数が1ずつ減る(7→6→5→4)。弾は照準線上を直進し、発射後にマウスを動かしても曲がらない仕様(自動テストで確認) |
+| 弾の見え方 | 初版は細くて黄色い床で見えなかったため、太め+暗い縁取りに直して再確認(左向きの弾が見えた) |
+| 弾の速度 | 0.5タイル/frame(`distancePerFrame`で確認。自動テストと一致) |
+| 命中 | OK。ダミー(Event 4)のHPが 1000→937(1回分)。隣のダミーは無傷 |
+| リロード(Rキー) | OK。弾倉2→7、ストック92→87(公式1回)。しゃがむ仮モーション |
+| 動作 | `history()`に GunFire / GunReload / SwordAttack / SkillCast(golden_arrow, sword_attack) / Ultimate(hermes) が記録され、Gaugeが0になった |
+| 副作用 | **発見**: アリーナへの移動(`enter()`)時にMZのオートセーブが働き、`save/file0.rmmzsave`(オートセーブ枠)が上書きされた。DEVの装備/状態が保存されるので、アリーナ確認中の実セーブは避けること |
+
+**未確認(実機)**: 銃口の発光の見た目(短すぎて撮れず。色は明るい床向けに橙の外側を追加済みで未再確認) / 銃と体の反動の見た目 / 動作の「跳ね」の見た目 /
+Hermes・Apollo各神の演出 / Idle・Walk・Run(専用画像なし) / 三頭身 / 8方向。
+
 ## テスト
 
 `node tests/ProjectR_CharacterAnimationGun.test.cjs`(実エンジン・実Map004・物理キー): 構え/発射/銃口位置(8方向)/直進(マウスを動かしても曲がらない)/命中1回/

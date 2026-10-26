@@ -622,8 +622,9 @@ const zoneCommand = (w, name) => {
     return texts;
 };
 test("DEVアリーナ: Animation / Weapon Certification Zoneの端末がMap004北東に追加され、既存のゾーン/イベントは不変", () => {
+    // 基準は本フェーズ開始時のcheckpoint(4493f74)のMap004。既存の31イベントが1つも変わっていないことを確認する
     const { execFileSync } = require("node:child_process");
-    const before = JSON.parse(execFileSync("git", ["show", "HEAD:data/Map004.json"], { encoding: "utf8", maxBuffer: 1 << 26 }));
+    const before = JSON.parse(execFileSync("git", ["show", "4493f74:data/Map004.json"], { encoding: "utf8", maxBuffer: 1 << 26 }));
     const now = json("data/Map004.json");
     for (const event of before.events) {
         if (!event) continue;
