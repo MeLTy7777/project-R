@@ -31,3 +31,6 @@ desktop.ini
 # Editor settings
 .vscode/
 .idea/
+
+# Third-party material whose terms forbid redistributing it as-is (see docs/ProjectR_ThirdPartyAssets.md)
+img/characters/TF_Actor1.png

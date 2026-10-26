@@ -25,6 +25,7 @@ F8(DevTools)のConsoleに赤いエラーが出ていないことも毎回見て�
 | A14 | Gaugeを満タンにしてU | 体が大きく跳ね(Ultimate)、Hermes=6連斬 / Apollo=7連矢。終わると通常に戻る | 「Anim: Status」 |
 | A15 | 「Anim: Damage」「SkillCast」「Ultimate」端末 | カード/ゲージを使わずに動作だけ確認できる | 画面の状況 |
 | A16 | 「Anim: Tall Profile (anchors)」→ G17を構える | 銃の回転中心が頭の上まで上がる(アンカーが高さ144pxに追従する確認。画像は48pxのままなのが仕様)。Hermes/Apolloの位置も上がる | スクリーンショット |
+| A16b | 端末「Anim: TF Tall Sprite (48x72)」(x=34, y=8)→ G17を構える | 主人公が背の高い見た目(TF TallSpriteMZ、48×72px)になる。銃の回転中心が体の中央(足元-36px)に来る。Hermes/Apolloの位置も少し上がる。もう一度押すと元の見た目 | スクリーンショット |
 | A17 | 「Anim: Restore」を押す / アリーナを出る | 装備・弾薬・プロファイルが元に戻る | 装備と弾数 |
 | A18 | 戦闘を終了する | 銃の表示が消え、通常のIdle/Walkへ戻る。F8にエラーなし | 画面とF8 |
 

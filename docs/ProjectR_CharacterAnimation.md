@@ -130,6 +130,12 @@ ProjectRCharacterPresentation.registerProfile({
 | 8方向素材 | 未提供 |
 | カード別/カテゴリ別の詠唱モーション | 仕組みあり(`cardActions`)。個別素材なし |
 
+## 6b. 試せる背の高い素材(TF TallSpriteMZ)
+
+DEVアリーナの端末「Anim: TF Tall Sprite (48x72)」で、主人公の見た目を `img/characters/TF_Actor1.png`(48×72px、約2.5頭身)に切り替えられます。
+`visualHeightPx: 0`(自動)のまま、見た目の高さ72pxを実スプライトから読み取り、銃の回転中心・銃口・神の位置が追従します(当たり判定は不変)。
+画像はGit管理外です(規約上、そのままの再配布不可)。入手先・クレジット・扱いは `docs/ProjectR_ThirdPartyAssets.md` の第6節。
+
 ## 7. 診断
 
 `ProjectRCharacterPresentation.diagnostics()` / `history()` / `current()`。DEVアリーナの「動作/銃の状態を表示」端末で同じ内容を読めます。

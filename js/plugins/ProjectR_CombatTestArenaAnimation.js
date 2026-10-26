@@ -22,6 +22,8 @@
  * @text Ultimate動作を再生
  * @command animDamage
  * @text Damage動作を再生
+ * @command animTfSprite
+ * @text TF TallSpriteMZの主人公(48×72)に切り替え/戻す
  * @command animProfileTall
  * @text 見た目の高さ144pxのDEVプロファイル(アンカーだけ)
  * @command animProfileReset
@@ -45,6 +47,13 @@
  *   剣を装備して攻撃 → 踏み込みの動作と斬撃。カード(Q/E/X/C/V)とUで SkillCast / Ultimate 動作。
  *   「SkillCast/Ultimate/Damage動作」端末はカードやゲージを使わずに動作だけを確認できます。
  *
+ * 【TF TallSpriteMZ(背の高い主人公)】端末「TF Tall Sprite」で、主人公の見た目を img/characters/TF_Actor1.png
+ *   (48×72px。Tonbi@Tobishima-Factory作。クレジットはタイトルの「クレジット」と docs/ProjectR_ThirdPartyAssets.md)に
+ *   切り替えます。もう一度押す/「Restore」/アリーナを出る/New Game/ロードで元に戻ります。
+ *   見た目の高さはCharacterPresentationが実スプライトから72pxと読み取り、銃の回転中心・銃口・神の位置が追従します。
+ *   当たり判定は変わりません。**この画像は規約(そのままの再配布不可)のためGitに入れていません(.gitignore)**。
+ *   ファイルが無いPCでは「ファイルがありません」と表示して何もしません。
+ *
  * 【見た目の高さ144pxのDEVプロファイル】アンカー(銃の回転中心・銃口・神の位置)が背の高いキャラに追従することだけを
  *   確認する設定です。主人公のスプライト画像そのものは標準48pxのままなので、銃が頭の上に見えるのは仕様です
  *   (三頭身の専用画像は未提供。docs/ProjectR_CharacterAnimation.md)。「標準プロファイルへ戻す」で元に戻ります。
@@ -64,7 +73,15 @@
 
     const presentation = () => root.ProjectRCharacterPresentation;
     const gun = () => root.ProjectRGunSystem;
-    const runtime = { snapshot: null, profile: null };
+    const runtime = { snapshot: null, profile: null, sprite: null };
+    const TF_SPRITE = { name: "TF_Actor1", index: 0, file: "img/characters/TF_Actor1.png" };
+    // 画像の有無はNW.jsのfsで確認する(Git管理外のため、無い環境がある)。fsが無い環境(テスト等)は差し替え可能。
+    let assetCheck = file => {
+        try {
+            const fs = require("fs"), path = require("path");
+            return fs.existsSync(path.join(path.dirname(process.mainModule.filename), file));
+        } catch (_error) { return true; }
+    };
 
     const say = (interpreter, lines) => {
         if (typeof $gameMessage === "undefined" || !$gameMessage) return;
@@ -95,7 +112,16 @@
         $gameSystem.setGunAmmo(GUN_WEAPON_ID, magazine === null ? data.maxCapacity : magazine);
         return true;
     };
+    const restoreSprite = () => {
+        const saved = runtime.sprite;
+        runtime.sprite = null;
+        if (!saved || typeof $gameActors === "undefined" || !$gameActors) return false;
+        $gameActors.actor(saved.actorId)?.setCharacterImage(saved.name, saved.index);
+        $gamePlayer?.refresh?.();
+        return true;
+    };
     const restore = () => {
+        restoreSprite();
         const state = runtime.snapshot;
         runtime.snapshot = null;
         if (runtime.profile) { presentation()?.registerProfile?.(runtime.profile); runtime.profile = null; }
@@ -116,6 +142,15 @@
         animCast: () => { const r = presentation().request("SkillCast", { source: "arena" }); return `SkillCast: ${r.ok ? "再生" : r.reason}`; },
         animUltimate: () => { const r = presentation().request("Ultimate", { source: "arena" }); return `Ultimate: ${r.ok ? "再生" : r.reason}`; },
         animDamage: () => { const r = presentation().request("Damage", { source: "arena" }); return `Damage: ${r.ok ? "再生" : r.reason}`; },
+        animTfSprite: () => {
+            if (runtime.sprite) { restoreSprite(); return "標準の主人公の見た目へ戻しました"; }
+            if (!assetCheck(TF_SPRITE.file)) return `NG: ${TF_SPRITE.file} がありません(規約上Gitに入れていません。docs/ProjectR_ThirdPartyAssets.md)`;
+            const actor = leader();
+            runtime.sprite = { actorId: actor.actorId(), name: actor.characterName(), index: actor.characterIndex() };
+            actor.setCharacterImage(TF_SPRITE.name, TF_SPRITE.index);
+            $gamePlayer.refresh();
+            return "TF TallSpriteMZ(48×72)に切り替え。見た目の高さはスプライトから自動で読み取ります";
+        },
         animProfileTall: () => {
             const api = presentation();
             if (!runtime.profile) runtime.profile = api.profileForActor(1);
@@ -163,7 +198,7 @@
         const _setup = Game_Map.prototype.setup;
         Game_Map.prototype.setup = function(mapId) {
             const result = _setup.apply(this, arguments);
-            if (!ARENA_MAPS.includes(Number(mapId)) && (runtime.snapshot || runtime.profile)) {
+            if (!ARENA_MAPS.includes(Number(mapId)) && (runtime.snapshot || runtime.profile || runtime.sprite)) {
                 try { restore(); } catch (_error) { /* DEV補助 */ }
             }
             return result;
@@ -176,6 +211,7 @@
             DataManager[name] = function() {
                 if (runtime.profile) { presentation()?.registerProfile?.(runtime.profile); runtime.profile = null; }
                 runtime.snapshot = null;
+                runtime.sprite = null; // New Game/ロードでは作り直されるアクターに任せる
                 return original.apply(this, arguments);
             };
         }
@@ -184,6 +220,7 @@
     root.ProjectRCombatTestArenaAnimation = Object.freeze({
         actions: Object.keys(actions), statusLines, restore,
         run: name => (actions[name] ? actions[name]() : null),
-        isActive: () => !!(runtime.snapshot || runtime.profile)
+        isActive: () => !!(runtime.snapshot || runtime.profile || runtime.sprite),
+        setAssetCheck: fn => { assetCheck = typeof fn === "function" ? fn : assetCheck; }
     });
 })();

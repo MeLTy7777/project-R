@@ -45,6 +45,7 @@ var $plugins =
 ,{"name":"ProjectR_CombatSession","status":true,"description":"v1.0.0 戦闘ライフサイクルの一元窓口(開始/終了でカード戦闘・HUD・神・Gauge・仲間を管理)。","parameters":{}}
 ,{"name":"ProjectR_BossFramework","status":true,"description":"v1.0.0 ボス戦の枠組み(HP・フェーズ・開始時デッキ検証・敗北/リトライ・Divine HP攻撃窓口)。","parameters":{}}
 ,{"name":"ProjectR_CombatExtrasHUD","status":true,"description":"v1.0.0 戦闘HUDの追加表示(ボス名/HP/フェーズ、仲間のHP/ダウン)。","parameters":{}}
+,{"name":"ProjectR_Credits","status":true,"description":"v1.0.0 タイトルの「クレジット」画面(第三者素材の表記。表示専用)。","parameters":{}}
 ,{"name":"ProjectR_CharacterPresentation","status":true,"description":"v1.0.0 キャラクター表示プロファイル(三頭身対応)と攻撃/スキル/奥義の動作コントローラ。表示専用。","parameters":{}}
 ,{"name":"ProjectR_WeaponPresentation","status":true,"description":"v1.2.0 武器・斬撃の見た目(360°斬撃、銃口の発光、睡眠/精神安定のふきだし)。表示専用。","parameters":{}}
 ,{"name":"ProjectR_GunSystem","status":true,"description":"v1.0.0 新銃システム(G17)。公式Easy Gun System + Display Weapon + 専用弾Prefab。","parameters":{}}

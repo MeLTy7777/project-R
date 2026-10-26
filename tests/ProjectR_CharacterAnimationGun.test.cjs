@@ -631,10 +631,10 @@ test("DEVアリーナ: Animation / Weapon Certification Zoneの端末がMap004�
         assert.deepEqual(now.events[event.id], event, `既存イベント ${event.id} ${event.name} は不変`);
     }
     const zone = now.events.filter(e => e && e.id >= 32);
-    assert.equal(zone.length, 11);
+    assert.equal(zone.length, 12);
     const commands = zone.map(e => e.pages[0].list.find(c => c.code === 357)?.parameters[1]).filter(Boolean);
     assert.deepEqual(commands.sort(), ["animCast", "animDamage", "animEmpty", "animEquipGun", "animEquipSword", "animProfileTall", "animRefill",
-        "animRestore", "animStatus", "animUltimate"].sort());
+        "animRestore", "animStatus", "animTfSprite", "animUltimate"].sort());
     const positions = new Set(now.events.filter(Boolean).map(e => e.x + "," + e.y));
     assert.equal(positions.size, now.events.filter(Boolean).length, "イベントが重ならない");
     assert.ok(zone.some(e => e.name.startsWith("DEV Sign: Animation")), "説明の看板がある");
@@ -676,6 +676,96 @@ test("DEVアリーナ: 端末の操作(G17装備/弾倉を空に/動作再生/�
     assert.equal(ctx.$gameParty.leader().equips()[0].id, originalWeapon, "アリーナ退出で装備が戻る");
     assert.equal(pres(w).visualHeight(), 48, "アリーナ退出でプロファイルが戻る");
     assert.equal(ctx.ProjectRCombatTestArenaAnimation.isActive(), false);
+});
+
+// ---------------- TF TallSpriteMZ(48×72)とクレジット ----------------
+test("TF TallSpriteMZ: 端末で主人公の見た目を切り替え/戻せる。見た目の高さは実スプライトから72pxと読み取られ、当たり判定は変わらない", () => {
+    const w = arena();
+    const { ctx } = w;
+    const api = ctx.ProjectRCombatTestArenaAnimation;
+    const original = { name: ctx.$gameActors.actor(1).characterName(), index: ctx.$gameActors.actor(1).characterIndex() };
+    api.setAssetCheck(() => false);
+    let lines = zoneCommand(w, "animTfSprite");
+    assert.match(lines[0], /NG: img\/characters\/TF_Actor1\.png がありません/);
+    assert.equal(ctx.$gameActors.actor(1).characterName(), original.name, "ファイルが無い環境では何も変えない");
+    api.setAssetCheck(() => true);
+    lines = zoneCommand(w, "animTfSprite");
+    assert.match(lines[0], /TF TallSpriteMZ/);
+    assert.equal(ctx.$gameActors.actor(1).characterName(), "TF_Actor1");
+    assert.equal(ctx.$gamePlayer.characterName(), "TF_Actor1", "プレイヤーの見た目も更新");
+    // 実Sprite_Characterが72pxと読み取ることを、576×576のシート(8体=4×2)で確認する
+    const sprite = new ctx.RealSprite_Character(ctx.$gamePlayer);
+    sprite._bitmap = { width: 576, height: 576, isReady: () => true }; // setterを通さず直接差す(描画資源のstubのため)
+    assert.equal(sprite.patternHeight(), 72); assert.equal(sprite.patternWidth(), 48);
+    ctx.SceneManager._scene._spriteset._characterSprites = [sprite];
+    assert.equal(pres(w).visualHeight(), 72, "プロファイルのvisualHeightPx=0(自動)は実スプライトの高さ");
+    const feet = { x: ctx.$gamePlayer.screenX(), y: ctx.$gamePlayer.screenY() };
+    assert.deepEqual(plain(pres(w).anchorScreen("weapon")), { x: feet.x, y: feet.y - 36 }, "回転中心は高さの中央(足元-36)");
+    assert.deepEqual(plain(pres(w).scaleSummonOffset({ x: -0.75, y: -0.75 })), { x: -0.75, y: -1.125 }, "神の位置も高さに追従");
+    assert.equal(pres(w).profileForPlayer().hitbox, null, "当たり判定は変えない");
+    lines = zoneCommand(w, "animTfSprite");
+    assert.match(lines[0], /標準の主人公/);
+    assert.equal(ctx.$gameActors.actor(1).characterName(), original.name); assert.equal(ctx.$gameActors.actor(1).characterIndex(), original.index);
+    // 切り替えたままアリーナを出ても、Restoreでも元に戻る
+    zoneCommand(w, "animTfSprite");
+    zoneCommand(w, "animRestore");
+    assert.equal(ctx.$gameActors.actor(1).characterName(), original.name, "Restoreで戻る");
+    zoneCommand(w, "animTfSprite");
+    assert.equal(ctx.ProjectRCombatTestArenaAnimation.isActive(), true);
+    w.enterMap(2, 3, 3);
+    assert.equal(ctx.$gameActors.actor(1).characterName(), original.name, "アリーナ退出で戻る");
+    assert.equal(ctx.ProjectRCombatTestArenaAnimation.isActive(), false);
+});
+
+test("TF素材の扱い: 規約上そのままの再配布ができないため、画像はGit管理外(.gitignore)。既存の画像は上書きしていない", () => {
+    const { execFileSync } = require("node:child_process");
+    const ignored = execFileSync("git", ["check-ignore", "img/characters/TF_Actor1.png"], { cwd: path.join(__dirname, ".."), encoding: "utf8" });
+    assert.match(ignored, /TF_Actor1\.png/);
+    const tracked = execFileSync("git", ["ls-files", "img/characters/TF_Actor1.png"], { cwd: path.join(__dirname, ".."), encoding: "utf8" });
+    assert.equal(tracked.trim(), "", "TF_Actor1.pngはコミットされていない");
+    const file = path.join(__dirname, "..", "img/characters/TF_Actor1.png");
+    if (fs.existsSync(file)) { // この環境にある場合だけ形式を確認(他の環境では存在しない)
+        const b = fs.readFileSync(file);
+        assert.deepEqual([b.readUInt32BE(16), b.readUInt32BE(20)], [576, 576], "576×576 = 8体(4×2)、1体 144×288 = 3×4コマ(48×72)");
+    }
+    // 既存のRTPのActor1を使い続けている(上書きしていない)
+    const actors = json("data/Actors.json");
+    assert.equal(actors[1].characterName, "Actor1");
+});
+
+test("クレジット: タイトルに「クレジット」が追加され、TF TallSpriteMZの表記(規約の例文)と公式素材の著作権表記が表示される", () => {
+    const w = buildWorld();
+    assert.deepEqual(w.failures, []);
+    const { ctx } = w;
+    assert.ok(ctx.$plugins.find(p => p.name === "ProjectR_Credits").status);
+    const credits = ctx.ProjectRCredits;
+    const text = plain(credits.lines()).join("\n");
+    assert.match(text, /Material provided by: Tonbi@Tobishima-Factory/);
+    assert.match(text, /Gotcha Gotcha Games Inc\.\/YOJI OJIMA 2020/);
+    assert.match(text, /TF TallSpriteMZ/);
+    // タイトルはScene_Bootのあと(ゲームオブジェクト作成済み・ウィンドウスキンあり)。同じ状態を用意する
+    ctx.Graphics._width = 816; ctx.Graphics._height = 624;
+    ctx.ColorManager._windowskin = { getPixel: () => "#ffffff", isReady: () => true };
+    ctx.DataManager.createGameObjects();
+    ctx.DataManager._globalInfo = []; // セーブ一覧(読み込み済み・空)
+    const window = new ctx.Window_TitleCommand(new ctx.Rectangle(0, 0, 400, 300));
+    window.refresh();
+    assert.deepEqual(plain(window._list.map(c => c.symbol)), ["newGame", "continue", "options", "projectRCredits"], "既存コマンドはそのまま、末尾に追加");
+    assert.equal(window._list[3].name, "クレジット");
+    const view = new credits.Window_ProjectRCredits(new ctx.Rectangle(0, 0, 800, 400));
+    assert.ok(view.contents, "画面を描画できる");
+    // 画面は決定/キャンセルで戻る(表示専用。ゲーム状態に触れない)
+    const scene = Object.create(credits.Scene_ProjectRCredits.prototype);
+    let popped = 0;
+    scene.popScene = () => { popped++; };
+    ctx.SoundManager.playCancel = () => {};
+    ctx.Input.isTriggered = name => name === "cancel";
+    ctx.Scene_MenuBase.prototype.update = () => {};
+    scene.update();
+    assert.equal(popped, 1);
+    // 台帳にも同じ内容
+    const ledger = read("docs/ProjectR_ThirdPartyAssets.md");
+    assert.match(ledger, /Tonbi@Tobishima-Factory/); assert.match(ledger, /TF_Actor1\.png/);
 });
 
 test("文書・資産: 新銃/キャラ表示の文書、開発用素材(自作)、第三者素材台帳が存在し、旧素材の扱いを書いている", () => {
