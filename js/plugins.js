@@ -34,10 +34,16 @@ var $plugins =
 ,{"name":"ProjectR_ApolloLyreCalm","status":true,"description":"v1.0.0 Phase 2C-6 Apollo リラの精神安定State付与。","parameters":{"DurationSeconds":"6.0"}}
 ,{"name":"ProjectR_ApolloUltimate","status":true,"description":"v1.0.0 Phase 4D-2 Apollo Ultimate（暫定）7連矢。","parameters":{"ArrowCount":"7","ArrowIntervalSeconds":"0.10","SpreadStepDegrees":"10","ProjectileLifetimeFrames":"90","UltimateDamageGeneratesGauge":"false"}}
 ,{"name":"ProjectR_CombatTestArena","status":true,"description":"v1.1.0 DEV専用 Combat Test Arena（Playtest限定。配布版では何もしません）。","parameters":{}}
+,{"name":"ProjectR_PartyCombat","status":true,"description":"v1.0.0 仲間(最大2人)の戦闘フレームワーク。定義レジストリ・HP/ダウン・自動AIの意思決定。","parameters":{}}
 ,{"name":"ProjectR_MenuCore","status":true,"description":"v1.0.0 メニュー基盤。カード/神/指輪の表示、デッキ・Ultimate・指輪・所持品のモデル、戦闘中ロック。","parameters":{}}
 ,{"name":"ProjectR_MenuUI","status":true,"description":"v1.0.0 メニュー画面の共通部品。","parameters":{}}
 ,{"name":"ProjectR_DeckBuilder","status":true,"description":"v1.0.0 カードデッキ構築画面(メニューのSKILL)。","parameters":{}}
 ,{"name":"ProjectR_UltimateSelect","status":true,"description":"v1.0.0 Ultimateの神の選択画面(メニューのULTIMATE)。","parameters":{}}
+,{"name":"ProjectR_RingParty","status":true,"description":"v1.0.0 指輪/Party Rings画面(主人公と仲間の間で指輪を移す)。","parameters":{}}
 ,{"name":"ProjectR_Inventory","status":true,"description":"v1.0.0 所持品・装備の確認画面(メニューのITEM)。","parameters":{}}
 ,{"name":"ProjectR_MenuIntegration","status":true,"description":"v1.0.0 メニュー接続(SKILL/ULTIMATE/ITEM)、戦闘中ロック、進行用プラグインコマンド。","parameters":{}}
+,{"name":"ProjectR_CombatSession","status":true,"description":"v1.0.0 戦闘ライフサイクルの一元窓口(開始/終了でカード戦闘・HUD・神・Gauge・仲間を管理)。","parameters":{}}
+,{"name":"ProjectR_BossFramework","status":true,"description":"v1.0.0 ボス戦の枠組み(HP・フェーズ・開始時デッキ検証・敗北/リトライ・Divine HP攻撃窓口)。","parameters":{}}
+,{"name":"ProjectR_CombatExtrasHUD","status":true,"description":"v1.0.0 戦闘HUDの追加表示(ボス名/HP/フェーズ、仲間のHP/ダウン)。","parameters":{}}
+,{"name":"ProjectR_WeaponPresentation","status":true,"description":"v1.0.0 武器・斬撃の見た目(360°斬撃、銃口の発光/弾道、リロード音)。表示専用。","parameters":{}}
 ];
