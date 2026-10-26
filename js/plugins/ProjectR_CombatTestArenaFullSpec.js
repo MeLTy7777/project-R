@@ -216,12 +216,56 @@
             AddState: engine("AddState"), RemoveState: engine("RemoveState"), leader: !!(typeof $gameParty !== "undefined" && $gameParty.leader?.()),
             summonManager: !!root.ProjectRGodSummonManager, calm: !!root.ProjectRApolloLyreCalm?.isPlayerCalm?.() };
     };
-    const runtimeDiagnostics = () => [
-        `Reed Flute直近: ${short(root.ProjectRHermesReedFluteSleep?.getLastDiagnostic?.())}`,
-        `Lyre前提: ${short(lyrePrerequisites())}`,
-        `Ultimate直近: ${short(root.ProjectRUltimateActivation?.getLastUltimateActivationResult?.())}`,
-        `F(調べる)直近: ${short(root.ProjectRPlayerFacing?.getDiagnostics?.().lastOk)}`
-    ];
+    // ---- 実機確認用の観測(読み取りだけ。ゲームの動作には介入しない) ----
+    // 物理キー(F/U)の受信と、カードごとの直近結果。MZ実機で「何が起きたか」を短い行で報告できるようにする。
+    const watched = { F: { count: 0, frame: null }, U: { count: 0, frame: null } };
+    const frameNow = () => typeof Graphics !== "undefined" && Number.isFinite(Graphics.frameCount) ? Graphics.frameCount : null;
+    if (typeof Input !== "undefined" && typeof Input._onKeyDown === "function") {
+        const _onKeyDown = Input._onKeyDown;
+        Input._onKeyDown = function(event) {
+            const letter = event && (/^Key[A-Z]$/.test(event.code || "") ? event.code.slice(3) : String.fromCharCode(event?.keyCode || 0));
+            if (letter && watched[letter] && !event.repeat) { watched[letter].count++; watched[letter].frame = frameNow(); }
+            return _onKeyDown.apply(this, arguments);
+        };
+    }
+    const lastByCard = {}; // cardId -> { ok, reason, detail }
+    let lastSeenInstance = null;
+    const trackCards = () => {
+        const result = root.ProjectRCardBattleInput?.getLastResult?.();
+        if (!result || result.instanceId === lastSeenInstance && result.cardId in lastByCard) return;
+        lastSeenInstance = result.instanceId;
+        if (result.cardId) lastByCard[result.cardId] = { ok: !!result.ok, reason: result.reason, detail: result.detail ?? null };
+    };
+    const ago = frame => { const now = frameNow(); return frame === null || now === null ? "?" : `${Math.max(0, now - frame)}f前`; };
+    const cardText = id => lastByCard[id] ? `${lastByCard[id].ok ? "成功" : "失敗"}:${lastByCard[id].reason}${lastByCard[id].detail ? "/" + lastByCard[id].detail : ""}` : "未使用";
+    const sleepingDummies = () => (typeof $gameMap !== "undefined" && $gameMap ? $gameMap.events() : [])
+        .filter(e => e?.databaseEnemy && root.ProjectRHermesReedFluteSleep?.isEventSleeping?.(e.eventId())).map(e => e.eventId());
+    // 実機確認用の短い状態行(依頼された値だけ)。
+    const certificationLines = () => {
+        const d = deck(), m = root.ProjectRGodSummonManager, g = root.ProjectRUltimateGauge, a = root.ProjectRUltimateActivation;
+        const input = root.ProjectRCardBattleInput?.getDiagnostics?.() || {};
+        const state = d?.getBattleState?.();
+        const reed = root.ProjectRHermesReedFluteSleep?.getLastDiagnostic?.();
+        const facing = root.ProjectRPlayerFacing?.getDiagnostics?.().lastOk;
+        const last = a?.getLastUltimateActivationResult?.();
+        const ui = a?.getInputDiagnostics?.() || {};
+        const gs = g?.getUltimateGaugeState?.();
+        const god = m?.getPersistentUltimateBattleState?.();
+        const hermes = m?.resolveGodId?.("hermes"), apollo = m?.resolveGodId?.("apollo");
+        const lastCard = root.ProjectRCardBattleInput?.getLastResult?.();
+        const yn = v => v ? "yes" : "no";
+        trackCards();
+        return [
+            `[認証] 戦闘セッション:${session().sources().join(",") || "なし"}  カード戦闘:${yn(d?.isCardBattleActive?.())}  戦闘イベント:${yn(root.ProjectRCombatPresence?.isCombatEventActive?.())}`,
+            `手札[${state ? state.hand.map(c => c.cardId.replace(/^(hermes|apollo)_/, "")).join(",") : "-"}]  直近キー:${input.lastCode || "なし"} ${input.lastDecision || ""}${input.lastReason ? ":" + input.lastReason : ""}  直近カード:${lastCard ? (lastCard.ok ? "成功 " : "失敗 ") + (lastCard.cardId || lastCard.reason) : "なし"}`,
+            `葦笛: 候補${reed ? reed.enemies : "-"} 生存${reed ? reed.alive : "-"} 範囲内${reed ? reed.inRange : "-"} 付与${reed ? reed.applied : "-"} ${reed ? reed.detail || reed.reason : "未使用"} / 睡眠中ダミー[${sleepingDummies().join(",")}]`,
+            `Lyre: ${cardText("apollo_lyre_calm")} / 精神安定:${root.ProjectRApolloLyreCalm?.isPlayerCalm?.() ? "あり(残り" + Math.ceil(root.ProjectRApolloLyreCalm.getRemainingSeconds()) + "秒)" : "なし"}`,
+            `F: 物理入力${watched.F.count}回(${ago(watched.F.frame)}) 判定:${facing ? facing.outcome : "なし"} 起動イベントID:${facing ? facing.startedEventId ?? "なし" : "-"} (候補${facing?.candidate ?? "-"})`,
+            `Gauge ${gs ? Math.round(gs.current) + "/" + gs.max : "なし"}  Ultimate選択:${d?.getUltimateRingId?.() || "未選択"}  常駐神:${god ? god.godId + (m.isPersistentUltimateAvailable() ? "(使用可)" : "(" + god.status + ")") : "なし"}  handler Hermes:${yn(hermes && a?.hasUltimateHandler?.(hermes))} Apollo:${yn(apollo && a?.hasUltimateHandler?.(apollo))}`,
+            `U: 物理入力${watched.U.count}回(${ago(watched.U.frame)}) 受信${ui.keyDowns ?? "-"} 要求${ui.requests ?? "-"} 最後:${ui.lastDecision || "-"}${ui.lastReason ? ":" + ui.lastReason : ""} / 結果:${last ? (last.ok ? "OK " : "NG ") + last.reason + (last.handlerReason ? "/" + last.handlerReason : "") + (last.error ? "/" + last.error : "") : "なし"}`
+        ];
+    };
+    const runtimeDiagnostics = () => [`Lyre前提: ${short(lyrePrerequisites())}`];
     const statusLines = () => {
         const b = boss().getHudState(), members = party().members();
         return [
@@ -231,6 +275,7 @@
             members.length ? "仲間: " + members.map(m => `${m.actorId}${m.down ? "(DOWN)" : ":" + Math.ceil(m.hp)}`).join(" ") : "仲間: なし",
             runtime.log.length ? "仲間AI直近: " + runtime.log.slice(-3).join(" | ") : "仲間AI直近: なし",
             `DEV fixture: ${runtime.originalCards ? "適用中(テスト後はrestoreRealを)" : "なし"}`,
+            ...certificationLines(),
             ...runtimeDiagnostics()
         ];
     };
@@ -245,6 +290,7 @@
         const _update = Game_Map.prototype.update;
         Game_Map.prototype.update = function(sceneActive) {
             const result = _update.apply(this, arguments);
+            try { trackCards(); } catch (_error) { /* 観測のみ */ }
             try {
                 if (sceneActive !== false && !this.eventsPaused && party().isActive() && boss().isActive()) party().tick(1 / 60, world());
             } catch (_error) { /* DEV補助。マップ更新は止めない */ }
@@ -292,7 +338,7 @@
     }
 
     root.ProjectRCombatTestArenaFullSpec = Object.freeze({
-        BOSS_ID, ALLIES, startBossTest, bossHit, bossDivine, allyHit, bossEntryCheck, menuTest, restoreReal, statusLines,
+        BOSS_ID, ALLIES, startBossTest, bossHit, bossDivine, allyHit, bossEntryCheck, menuTest, restoreReal, statusLines, certificationLines,
         getLog: () => [...runtime.log]
     });
 })();

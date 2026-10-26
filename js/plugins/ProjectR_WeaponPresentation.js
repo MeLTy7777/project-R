@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc v1.0.0 ProjectR 武器・斬撃の見た目（360°斬撃、銃口の発光/弾道、リロード音）。表示専用。
+ * @plugindesc v1.1.0 ProjectR 武器・斬撃・状態の見た目（360°斬撃、銃口の発光/弾道、リロード音、睡眠/精神安定のふきだし）。表示専用。
  * @author ProjectR
  * @base Hendrix_Action_Engine
  * @base ProjectR_CombatPresence
@@ -84,6 +84,12 @@
  *   銃(G17)   : 弾が出る攻撃のとき、マウス方向の銃口に発光と短い弾道線。リロードで音。
  *               弾そのもの(Bullet)・弾数・リロードは公式のGun APIのままです（二重の弾薬システムはありません）。
  * 見た目は戦闘HUDより下、キャラクターより上に描き、Hendrix Hotbar等には介入しません。
+ *
+ * 【状態の見た目(v1.1.0)】敵にもプレイヤーにも状態アイコンが出ないため、効いたかどうかが見えませんでした。
+ *   葦笛睡眠(State 32)が効いている敵: 頭上にZzzのふきだし(約1.5秒ごと)。
+ *   リラの精神安定(State 34)が付いた瞬間: プレイヤー頭上に音符のふきだし。
+ *   状態は読むだけで、付与・解除・時間・AIには一切触れません(ProjectRHermesReedFluteSleep.isEventSleeping /
+ *   ProjectRApolloLyreCalm.isPlayerCalm の公開APIを見ます)。ふきだし画像は標準のimg/system/Balloon.pngです。
  *
  * 【素材の状況（未解決）】
  *   剣の専用画像はありません。img/pictures/Pan.png は公式Swing Weaponの暫定画像(フライパン)で、
@@ -229,6 +235,30 @@
         for (const id of [...seenSwordHitboxes]) if (!current.has(id)) seenSwordHitboxes.delete(id);
     };
 
+    // ---- 状態の見た目: 公開APIで読むだけ。標準のふきだしを出す(Zzz=10, 音符=3) ----
+    const BALLOON_SLEEP = 10, BALLOON_CALM = 3, SLEEP_REPEAT_FRAMES = 90;
+    const sleepFrames = new Map(); // eventId -> 経過frame(睡眠中のみ)
+    let wasCalm = false;
+    const pollStates = () => {
+        const temp = typeof $gameTemp !== "undefined" ? $gameTemp : null;
+        const map = typeof $gameMap !== "undefined" ? $gameMap : null;
+        if (!temp || typeof temp.requestBalloon !== "function" || !map) return;
+        const flute = root.ProjectRHermesReedFluteSleep;
+        if (flute && typeof flute.isEventSleeping === "function") {
+            for (const event of map.events()) {
+                if (!event || !event.databaseEnemy) continue;
+                const id = event.eventId();
+                if (!flute.isEventSleeping(id)) { sleepFrames.delete(id); continue; }
+                const frame = sleepFrames.get(id) || 0;
+                if (frame % SLEEP_REPEAT_FRAMES === 0) temp.requestBalloon(event, BALLOON_SLEEP);
+                sleepFrames.set(id, frame + 1);
+            }
+        }
+        const calm = !!root.ProjectRApolloLyreCalm?.isPlayerCalm?.();
+        if (calm && !wasCalm && typeof $gamePlayer !== "undefined" && $gamePlayer) temp.requestBalloon($gamePlayer, BALLOON_CALM);
+        wasCalm = calm;
+    };
+
     // ---- 通常武器: 攻撃入力が受理されたとき(CE1が予約された)にだけ描く ----
     const mouseDegree = () => {
         const player = typeof $gamePlayer !== "undefined" ? $gamePlayer : null;
@@ -300,6 +330,7 @@
             const layer = this._projectRWeaponLayer;
             if (!layer) return;
             pollGodAttacks();
+            try { pollStates(); } catch (_error) { /* 表示のみ */ }
             layer.clear();
             const center = centerOf();
             if (center) for (const effect of effects) drawEffect(layer, effect, center);
@@ -309,7 +340,7 @@
     // マップ移動・ロードで残さない。
     if (typeof Game_Map !== "undefined") {
         const _setup = Game_Map.prototype.setup;
-        Game_Map.prototype.setup = function() { for (const e of effects) e.sprite?.parent?.removeChild(e.sprite); effects.length = 0; seenSwordHitboxes.clear(); return _setup.apply(this, arguments); };
+        Game_Map.prototype.setup = function() { for (const e of effects) e.sprite?.parent?.removeChild(e.sprite); effects.length = 0; seenSwordHitboxes.clear(); sleepFrames.clear(); wasCalm = false; return _setup.apply(this, arguments); };
     }
 
     root.ProjectRWeaponPresentation = {
@@ -317,6 +348,6 @@
         activeCount: () => effects.length, effects: () => effects.map(e => ({ ...e })),
         clear: () => { for (const e of effects) e.sprite?.parent?.removeChild(e.sprite); effects.length = 0; },
         // テスト/診断用の入口
-        _poll: pollGodAttacks, _draw: (g, center) => { for (const e of effects) drawEffect(g, e, center); advance(); }
+        _poll: pollGodAttacks, _pollStates: pollStates, _draw: (g, center) => { for (const e of effects) drawEffect(g, e, center); advance(); }
     };
 })();
