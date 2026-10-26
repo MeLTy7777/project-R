@@ -40,8 +40,15 @@
     const SKILL_MARKER = "<ProjectRCard: apollo_golden_arrow>";
     const TEMPLATE_NAME = "ProjectR Apollo Golden Arrow";
     const projectiles = new Map();
+    let shotSerial = 0; // Ultimateゲージの与ダメージgainId用（1発1Hit・IDの再利用に依存しない）。
 
-    const command = (name, args, eventId) => {
+    // 与ダメージ報酬: ゲージplugin（任意）が前後のHP差から実ダメージを記録する。無い場合・失敗しても攻撃は同じ。
+    const trackDamage = (enemyId, attackId, apply) => {
+        const gauge = root.ProjectRUltimateGauge;
+        return typeof gauge?.trackDamage === "function"
+            ? gauge.trackDamage(enemyId, { attackId, source: "damage:golden_arrow" }, apply) : apply();
+    };
+    const command =(name, args, eventId) => {
         const interpreter = new Game_Interpreter();
         interpreter._eventId = eventId;
         PluginManager.callCommand(interpreter, ENGINE, name, args);
@@ -101,7 +108,7 @@
             if (!Number.isFinite(event._rotation) || Math.abs(event._rotation - degree) > 0.000001) {
                 throw Error("projectileRotationFailed");
             }
-            projectiles.set(id, { map, event });
+            projectiles.set(id, { map, event, serial: ++shotSerial });
             return { ok: true };
         } catch (error) {
             // spawnEventが登録後に例外を出した場合も、新しく生成された専用弾だけを片付ける。
@@ -140,7 +147,8 @@
             const record = projectiles.get(sourceId);
             if (!record || record.map !== this || this.event(sourceId) !== record.event) continue;
             try {
-                command("UpdateEventHp", { eventId: String(enemyId), value: "-damage", exceedMaxHealth: "false" }, sourceId);
+                trackDamage(enemyId, `arrow:${record.serial}`, () =>
+                    command("UpdateEventHp", { eventId: String(enemyId), value: "-damage", exceedMaxHealth: "false" }, sourceId));
             } finally {
                 // 同じ弾は他の敵の判定へ残さない。貫通なし。
                 destroy(sourceId, record);

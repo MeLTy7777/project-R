@@ -60,7 +60,7 @@ show();
 10. **2周目**: `ug.addUltimateGauge(60, 'f8')` → 60、`ug.addUltimateGauge(60, 'f8')` → 100(`gained:40`)、`ug.consumeUltimateGauge()` → `ok:true`。複数回繰り返せること。
 11. **gainId**: `ug.addUltimateGauge(10, 'f8', 'damage-attack-42')` → `gained:10`。同じ行をもう一度 → `ok:false, reason:'duplicateGain', gained:0`(ゲージは10のまま)。`ug.addUltimateGauge(10, 'f8', 'damage-attack-43')` → 20。`ug.hasUltimateGaugeGainId('damage-attack-42')`が`true`。
 12. **満タン時のgainId**: `ug.addUltimateGauge(100, 'f8', 'fill-1')`で100にしたあと`ug.addUltimateGauge(5, 'f8', 'late-1')` → `gaugeFull`。`ug.hasUltimateGaugeGainId('late-1')`が`false`(使用済みにならない)。`ug.consumeUltimateGauge()`のあと同じ`late-1`で加算すると`gained:5`。
-13. **通常カード**: `prepare2c6('apollo_golden_arrow')`で表示されたキーを押す。崩壊中・満タン中でも矢が発射され、ゲージの値は変わらない(カード使用では増えない)。
+13. **通常カード**: `prepare2c6('apollo_golden_arrow')`で表示されたキーを押す。崩壊中・満タン中でも矢が発射される。(Phase 4Aの時点ではカード使用でゲージは増えなかったが、**Phase 4B以降は成功したカード使用で`CardUseGain`が加算される**。満タン中は100のまま。詳細は`ProjectR_CardDeck_Phase4B.md`。)
 14. **戦闘終了**: `cd2c6.endCardBattle()` → `ug.hasUltimateGaugeState()`が`false`、`ug.getUltimateGauge()`が`0`、`ug.getUltimateGaugeGainCount()`が`0`、`ug.consumeUltimateGauge().reason`が`'noUltimateGauge'`。
 15. **次の戦闘**: `cd2c6.startCardBattle()` → `show()`で`g:0`(前の戦闘のゲージ・gainIdは持ち越さない。手順11の`damage-attack-42`で再び加算できる)。
 16. マップ移動・セーブしてロードした後も`ug.hasUltimateGaugeState()`が`false`(ゲージはセーブされない)。ロード後に戦闘を始めると`g:0`から。Ultimate指輪の選択は保存されたまま。

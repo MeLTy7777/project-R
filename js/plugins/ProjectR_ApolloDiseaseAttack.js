@@ -85,6 +85,12 @@
     const projectiles = new Map(); // runtime only: eventId -> { map, event }
     const effects = new Map(); // runtime only: event -> { map, battler, stateId, remaining, tickTimer, ticks }
     const previousDirection = deck.getActivationHandler("direction");
+    let shotSerial = 0, diseaseSerial = 0; // Ultimateゲージの与ダメージgainId用（初撃の弾・Disease付与ごとの連番）。
+    // 与ダメージ報酬: ゲージplugin（任意）が前後のHP差から実ダメージを記録する。無い場合・失敗しても攻撃は同じ。
+    const trackDamage = (enemyId, context, apply) => {
+        const gauge = root.ProjectRUltimateGauge;
+        return typeof gauge?.trackDamage === "function" ? gauge.trackDamage(enemyId, context, apply) : apply();
+    };
     const currentMap = () => typeof $gameMap !== "undefined" ? $gameMap : null;
     const uniqueByNote = (list, marker) => {
         const matches = list.filter(item => item?.note?.includes(marker));
@@ -154,7 +160,7 @@
             if (!Number.isFinite(event._rotation) || Math.abs(event._rotation - degree) > 0.000001) {
                 throw Error("projectileRotationFailed");
             }
-            projectiles.set(id, { map, event });
+            projectiles.set(id, { map, event, serial: ++shotSerial });
             return { ok: true };
         } catch (error) {
             for (const event of map.events()) {
@@ -188,7 +194,7 @@
             command("AddState", { target: String(event.eventId()), stateId: String(id) }, event.eventId());
             if (!root.hasState(event.eventId(), id)) return false;
             // 非stack。再付与は残り時間とタイマーを初期化する。
-            effects.set(event, { map, battler, stateId: id, remaining: duration, tickTimer: 0, ticks: 0 });
+            effects.set(event, { map, battler, stateId: id, remaining: duration, tickTimer: 0, ticks: 0, serial: ++diseaseSerial });
             return true;
         } catch (error) {
             if (!already) battler.removeState(id);
@@ -206,7 +212,9 @@
         interpreter._eventId = 0;
         const damage = interpreter.calculateDamageAgainstEvent(event, "skill", skill.id);
         if (!(damage > 0)) return;
-        command("UpdateEventHp", { eventId: String(event.eventId()), value: String(-damage), exceedMaxHealth: "false" });
+        // DoTの各tickは付与ごとの連番＋tick番号で一意。DoTではカード使用ゲージは加算しない。
+        trackDamage(event.eventId(), { attackId: `disease:${record.serial}`, tickId: record.ticks, source: "damage:disease_dot" }, () =>
+            command("UpdateEventHp", { eventId: String(event.eventId()), value: String(-damage), exceedMaxHealth: "false" }));
     };
     const advance = (event, record, seconds) => {
         const elapsed = Math.min(seconds, record.remaining);
@@ -258,7 +266,8 @@
             const record = projectiles.get(sourceId);
             if (!record || record.map !== this || this.event(sourceId) !== record.event) continue;
             try {
-                command("UpdateEventHp", { eventId: String(enemyId), value: "-damage", exceedMaxHealth: "false" }, sourceId);
+                trackDamage(enemyId, { attackId: `plague:${record.serial}`, source: "damage:disease_hit" }, () =>
+                    command("UpdateEventHp", { eventId: String(enemyId), value: "-damage", exceedMaxHealth: "false" }, sourceId));
                 // 初撃で倒れた敵にはDiseaseを付けない。耐性で失敗しても初撃は有効。
                 if (aliveHp(this, enemy)) applyDisease(enemy, this);
             } finally {

@@ -240,15 +240,15 @@ test("消費後に再び満タンにでき、複数サイクル（満タン→�
     collapse(g); battleTime(g, 900); gauge(g).addUltimateGauge(100);
     assert.equal(gauge(g).consumeUltimateGauge().ok, true); // 崩壊を挟んでも使える
 });
-test("自動では増減しない: 時間経過・待機・崩壊・復帰・Divine HPダメージ・通常カード使用でゲージは変わらない", () => {
+test("自動では増減しない: 時間経過・待機・崩壊・復帰・Divine HPダメージでゲージは変わらない（カード使用はPhase 4Bで加算元になった）", () => {
     const g = ready("apollo"); g.startWith(ARROW);
     gauge(g).addUltimateGauge(33);
     battleTime(g, 600);
     mgr(g).damagePersistentUltimate(30); assert.equal(gauge(g).getUltimateGauge(), 33);
-    assert.equal(g.fire().reason, "success"); assert.equal(gauge(g).getUltimateGauge(), 33); // カード使用はゲージ無関係
-    collapse(g); assert.equal(gauge(g).getUltimateGauge(), 33);
+    assert.equal(g.fire().reason, "success"); assert.equal(gauge(g).getUltimateGauge(), 35); // Phase 4B: CardUseGain(2.0)だけ増える
+    collapse(g); assert.equal(gauge(g).getUltimateGauge(), 35);
     battleTime(g, 900); assert.equal(mgr(g).isPersistentUltimateAvailable(), true);
-    assert.deepEqual(snap(g), [33, 100, false, false]);
+    assert.deepEqual(snap(g), [35, 100, false, false]);
     const fresh = ready("hermes"); battleTime(fresh, 1200); assert.equal(gauge(fresh).getUltimateGauge(), 0);
 });
 test("戦闘終了でゲージ状態とgainId履歴が消え、次の戦闘は0から始まる", () => {
@@ -343,25 +343,32 @@ test("Divine HP・Damage Bridge・一時召喚は不変（Gaugeはそれらを�
     assert.equal(summons.length, 1); assert.equal(/gauge/i.test(Object.keys(summons[0]).join(",")), false);
     assert.equal(gauge(t).getUltimateGauge(), 100);
 });
-test("7枚のカードはGaugeに依存せず、ゲージ有り/無しで同じ動作（カード使用でゲージは増えない）", () => {
+test("7枚のカードはGaugeに依存せず、ゲージ有り/無しで同じ動作（Phase 4B: 攻撃3枚だけ与ダメージ報酬を任意参照）", () => {
     const cards = ["ProjectR_ApolloGoldenArrow", "ProjectR_ApolloDiseaseAttack", "ProjectR_ApolloLyreCalm", "ProjectR_HermesSwordsmanship",
         "ProjectR_HermesRecognitionObscure", "ProjectR_HermesReedFluteSleep", "ProjectR_HermesSwiftMovement"];
     assert.equal(cards.length, 7);
-    for (const file of cards) assert.equal(/UltimateGauge/.test(read(`js/plugins/${file}.js`)), false, file);
+    const attackers = new Set(["ProjectR_ApolloGoldenArrow", "ProjectR_ApolloDiseaseAttack", "ProjectR_HermesSwordsmanship"]);
+    for (const file of cards) {
+        const text = read(`js/plugins/${file}.js`);
+        assert.equal(/UltimateGauge/.test(text), attackers.has(file), file);
+        // 参照は「任意の」trackDamageだけ（Gaugeが無くても攻撃は同じ）。加算量の式やaddUltimateGaugeは持たない。
+        assert.equal(/addUltimateGauge|recordDamageDealt|DamageGainRate/.test(text), false, file);
+    }
     const withGauge = ready("apollo"); withGauge.startWith(ARROW);
     const without = load(); without.startWith(ARROW);
     assert.equal(withGauge.fire().reason, "success"); assert.equal(without.fire().reason, "success");
     assert.deepEqual(plain(withGauge.ProjectRApolloGoldenArrow.getActiveProjectiles().length), plain(without.ProjectRApolloGoldenArrow.getActiveProjectiles().length));
-    assert.equal(gauge(withGauge).getUltimateGauge(), 0); // カード使用では増えない（加算元の接続はPhase 4B）
+    assert.equal(gauge(withGauge).getUltimateGauge(), 2); // Phase 4B: 成功したカード使用でCardUseGain
     // 崩壊中も通常カードは動く（ゲージ満タンでも）。
     const c = ready("apollo"); c.startWith(ARROW); gauge(c).addUltimateGauge(100); collapse(c);
-    assert.equal(c.fire().reason, "success"); assert.equal(gauge(c).getUltimateGauge(), 100);
+    assert.equal(c.fire().reason, "success"); assert.equal(gauge(c).getUltimateGauge(), 100); // 満タンでも溢れず、カードは通常どおり
 });
 test("plugins.js: Gaugeが1件登録され、Manager・Bridgeの後・全カードの前。既存entryとparameterは不変", () => {
     const c = {}; vm.runInNewContext(read("js/plugins.js"), c);
     const index = name => c.$plugins.findIndex(p => p.name === name);
     const entries = c.$plugins.filter(p => p.name === "ProjectR_UltimateGauge");
-    assert.equal(entries.length, 1); assert.equal(entries[0].status, true); assert.deepEqual(plain(entries[0].parameters), { MaxGauge: "100" });
+    assert.equal(entries.length, 1); assert.equal(entries[0].status, true); assert.deepEqual(plain(entries[0].parameters), { MaxGauge: "100", CardUseGain: "2.0", SupportBonusGain: "2.0",
+        DamageGainRate: "0.0025", DamageGainPerHitCap: "1.5", ImportantDodgeGain: "5.0" });
     assert.ok(index("ProjectR_UltimateGauge") > index("ProjectR_GodSummonManager"));
     assert.ok(index("ProjectR_UltimateGauge") > index("ProjectR_UltimateGodDamageBridge"));
     for (const card of ["ApolloGoldenArrow", "HermesSwordsmanship", "ApolloLyreCalm", "ApolloDiseaseAttack", "HermesRecognitionObscure", "HermesReedFluteSleep", "HermesSwiftMovement"]) {

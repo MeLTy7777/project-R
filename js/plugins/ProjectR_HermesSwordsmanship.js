@@ -73,6 +73,12 @@
     const hitboxes = new Map();
     let serial = 0;
     const previousDirection = deck.getActivationHandler("direction");
+    // 与ダメージ報酬: ゲージplugin（任意）が前後のHP差から実ダメージを記録する。無い場合・失敗しても攻撃は同じ。
+    const trackDamage = (enemyId, attackId, apply) => {
+        const gauge = root.ProjectRUltimateGauge;
+        return typeof gauge?.trackDamage === "function"
+            ? gauge.trackDamage(enemyId, { attackId, source: "damage:hermes_sword" }, apply) : apply();
+    };
     const isSword = event => !!event?.event?.()?.note?.includes(TAG);
     const command = (name, args, eventId = 0) => {
         const interpreter = new Game_Interpreter();
@@ -189,7 +195,8 @@
                 if (hp == null || hp <= 0 || !root.checkCollide(enemyId, record.tag) ||
                         root.CollisionManager.lastSourceEventId !== id) continue;
                 record.hitEnemies.add(enemy);
-                command("UpdateEventHp", { eventId: String(enemyId), value: "-damage", exceedMaxHealth: "false" }, id);
+                trackDamage(enemyId, record.tag, () =>
+                    command("UpdateEventHp", { eventId: String(enemyId), value: "-damage", exceedMaxHealth: "false" }, id));
             }
             if (--record.framesLeft <= 0) destroy(id, record);
         }

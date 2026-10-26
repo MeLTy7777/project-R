@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc v1.0.0 Phase 4A 戦闘中Ultimateゲージの基盤（実行時状態・加算・準備完了判定・消費）。
+ * @plugindesc v1.1.0 Phase 4A/4B 戦闘中Ultimateゲージ（状態・加算・準備完了判定・消費）と加算元（カード使用・支援・与ダメージ・重要回避）。
  * @author ProjectR
  * @base ProjectR_GodSummonManager
  * @orderAfter ProjectR_GodSummonManager
@@ -13,11 +13,68 @@
  * @default 100
  * @desc Ultimateゲージの最大値。0以下・数値以外は100として扱います。
  *
+ * @param CardUseGain
+ * @text カード使用成功の加算量（暫定）
+ * @type number
+ * @decimals 4
+ * @min 0
+ * @default 2.0
+ * @desc 発動に成功し消費されたカード1枚ごとの加算量。0で無効。負・数値以外は既定値に戻ります。
+ *
+ * @param SupportBonusGain
+ * @text 支援カード成功の追加加算量（暫定）
+ * @type number
+ * @decimals 4
+ * @min 0
+ * @default 2.0
+ * @desc category=support のカードが成功したとき、カード使用の加算量に上乗せする量。
+ *
+ * @param DamageGainRate
+ * @text ダメージ加算率（暫定）
+ * @type number
+ * @decimals 6
+ * @min 0
+ * @default 0.0025
+ * @desc 実際に減ったHP × この値 がゲージ加算量（1回のダメージごと）。
+ *
+ * @param DamageGainPerHitCap
+ * @text 1ダメージあたりの加算上限（暫定）
+ * @type number
+ * @decimals 4
+ * @min 0
+ * @default 1.5
+ * @desc 1回のダメージイベントで加算できる最大量。
+ *
+ * @param ImportantDodgeGain
+ * @text 重要回避成功の加算量（暫定）
+ * @type number
+ * @decimals 4
+ * @min 0
+ * @default 5.0
+ * @desc recordImportantDodge が成功したときの加算量。
+ *
  * @help
- * 戦闘（ボス/カード戦）ごとに0から始まるUltimateゲージの基盤です。
- * このPhase 4Aでは「状態・加算API・問い合わせAPI・消費API」だけを提供します。
- * 実際の戦闘行動（与ダメージ・カード使用・支援・回避）からの加算、Ultimateの入力、
- * Ultimate攻撃、HUDは含みません（加算元の接続は後続フェーズ）。
+ * 戦闘（ボス/カード戦）ごとに0から始まるUltimateゲージです。
+ * Phase 4A: 状態・加算API・問い合わせAPI・消費API。
+ * Phase 4B: 実際の戦闘行動からの加算元（下記）。加算量はすべて暫定値で、最終バランスではありません。
+ * Ultimateの入力、Ultimate攻撃、HUDは含みません。
+ *
+ * ---- Phase 4B 加算元（すべてaddUltimateGaugeを経由。ゲージは戦闘の観察役で、失敗しても戦闘は止まりません） ----
+ *  カード使用: ProjectRCardDeck.requestUseCardがSUCCESS（発動成功かつ消費）を返したときだけ
+ *    CardUseGainを1回。失敗・未消費・空振りカードの扱いはCore準拠（空振りでも発動成功なら加算）。
+ *    gainIdは card:<カードinstanceId>:<そのinstanceの使用回数>。同じ結果を2度処理しても1回だけ。
+ *    常駐神が崩壊中でも加算します。
+ *  支援: そのカードのcategoryがsupportなら、さらにSupportBonusGainを上乗せ（CardUseGainと重ねる）。
+ *  与ダメージ: recordDamageDealt(実ダメージ, {attackId, targetId, tickId?, source?}) が
+ *    min(実ダメージ × DamageGainRate, DamageGainPerHitCap) を加算。実ダメージは「実際に減ったHP」
+ *    （trackDamage/recordEventHpLossが前後のHPから求める）。死亡済みの敵・HPが減らない攻撃は加算なし。
+ *    gainIdは damage:<attackId>:<targetId>[:<tickId>]。
+ *  重要回避: 現在、ProjectRに回避システムは存在しません。recordImportantDodge(dodgeId, source?) を
+ *    公開しておくだけで、実ゲームからの呼び出しは未接続です。敵の攻撃が外れただけでは加算しません。
+ *  加算しないもの: 時間経過・戦闘開始・神の顕現/復帰・被ダメージ・Divine HPへのダメージ・カードのドロー/
+ *    クールダウン・一時召喚の生成・メニュー操作。
+ *
+ * ---- Phase 4A ----
  *
  * ゲージ状態は、有効な常駐Ultimate戦闘状態（Ultimate指輪を選択し、Playerが所持）が
  * ある戦闘にだけ作られます。無い場合はゲージ状態を作りませんが、戦闘と通常カードは
@@ -68,8 +125,28 @@
         return typeof raw !== "undefined" && String(raw).trim() !== "" && Number.isFinite(value) && value > 0 ? value : DEFAULT_MAX;
     })();
 
+    // Phase 4B 暫定の加算量。不正値（負・NaN・Infinity・空・数値以外）は既定値へ戻す。0は「その加算元を無効」。
+    const gainParameters = PluginManager.parameters("ProjectR_UltimateGauge");
+    const nonNegative = (raw, fallback) => {
+        const value = Number(raw);
+        return typeof raw !== "undefined" && String(raw).trim() !== "" && Number.isFinite(value) && value >= 0 ? value : fallback;
+    };
+    const gainConfig = Object.freeze({
+        cardUseGain: nonNegative(gainParameters.CardUseGain, 2.0),
+        supportBonusGain: nonNegative(gainParameters.SupportBonusGain, 2.0),
+        damageGainRate: nonNegative(gainParameters.DamageGainRate, 0.0025),
+        damageGainPerHitCap: nonNegative(gainParameters.DamageGainPerHitCap, 1.5),
+        importantDodgeGain: nonNegative(gainParameters.ImportantDodgeGain, 5.0)
+    });
+
     let state = null; // { max, current } 実行時のみ。
     const gainIds = new Set(); // 使用済みgainId（戦闘中のみ）。
+    // 診断（読み取り専用・非保存）: 加算元別の累計と直近の結果。戦闘ごとに消える。
+    const newTotals = () => ({ card: 0, support: 0, damage: 0, dodge: 0 });
+    let totals = newTotals();
+    let lastGain = null;
+    const useCounts = new Map(); // instanceId -> 発動回数（同じinstanceは冷却後に再使用されるためgainIdに含める）
+    const processedActivations = new WeakSet(); // 処理済みの発動結果（同じ結果の二重処理防止）
 
     const manager = () => root.ProjectRGodSummonManager || null;
     const normalizeId = value => {
@@ -85,7 +162,7 @@
         gauge: state ? state.current : 0, max: state ? state.max : 0,
         rate: state ? Math.min(1, Math.max(0, state.current / state.max)) : 0, full: isFull(), ready: isReady()
     });
-    const clear = () => { state = null; gainIds.clear(); };
+    const clear = () => { state = null; gainIds.clear(); totals = newTotals(); lastGain = null; useCounts.clear(); };
 
     const addUltimateGauge = (amount, source, gainId) => {
         const base = { ok: false, reason: null, requested: typeof amount === "number" ? amount : null, gained: 0,
@@ -126,7 +203,122 @@
         }
     };
 
+    // ---- Phase 4B 加算元。方針（量・上限・gainId）はすべてここに集約し、すべてaddUltimateGauge経由 ----
+    // 加算元からの呼び出しは例外を投げず、失敗しても戦闘（カード発動・ダメージ）を妨げない。
+    const award = (category, amount, source, gainId) => {
+        const result = amount > 0 ? addUltimateGauge(amount, source, gainId)
+            : { ok: false, reason: "zeroGain", requested: amount, gained: 0, source, gainId: gainId ?? null, ...gaugeFields() };
+        if (result.ok) totals[category] += result.gained;
+        lastGain = { category, ok: result.ok, reason: result.reason, requested: result.requested, gained: result.gained,
+            source: result.source, gainId: result.gainId };
+        return result;
+    };
+    const rejected = (reason, extra) => ({ ok: false, reason, gained: 0, ...gaugeFields(), ...extra });
+
+    // カード使用: requestUseCardのSUCCESS結果（Routerが発動成功を確認し、カードを消費した後）を1回だけ処理する。
+    // instanceIdは冷却後に再び手札へ戻るため、そのinstanceの使用回数もgainIdへ含める。
+    const recordCardUse = activation => {
+        try {
+            if (!activation || typeof activation !== "object" || activation.ok !== true || activation.reason !== "success") {
+                return rejected("notActivated");
+            }
+            const instanceId = normalizeId(activation.instanceId);
+            if (instanceId === null) return rejected("invalidInstanceId");
+            const snapshot = activation.state && typeof activation.state === "object" ? activation.state : null;
+            if (processedActivations.has(activation) || (snapshot && processedActivations.has(snapshot))) {
+                return rejected("duplicateActivation");
+            }
+            processedActivations.add(activation);
+            if (snapshot) processedActivations.add(snapshot);
+            if (!state) return rejected("noUltimateGauge");
+            const use = (useCounts.get(instanceId) || 0) + 1;
+            useCounts.set(instanceId, use);
+            const card = award("card", gainConfig.cardUseGain, "card", `card:${instanceId}:${use}`);
+            // 支援ボーナスはカードのcategory（既存メタデータ）がsupportのときだけ。カード名は見ない。
+            const support = deck?.definitions?.card(activation.cardId)?.category === "support"
+                ? award("support", gainConfig.supportBonusGain, "support", `support:${instanceId}:${use}`) : null;
+            const gained = card.gained + (support ? support.gained : 0);
+            return { ok: gained > 0, reason: gained > 0 ? "added" : card.reason, gained, card, support, ...gaugeFields() };
+        } catch (error) {
+            return rejected("gaugeError");
+        }
+    };
+
+    // 与ダメージ: 実際に減ったHP（実ダメージ）× DamageGainRate を、1回あたりDamageGainPerHitCapで頭打ちにして加算する。
+    const damageGainId = context => {
+        const explicit = normalizeId(context.damageId);
+        if (explicit !== null) return explicit;
+        const attackId = normalizeId(context.attackId), targetId = normalizeId(context.targetId);
+        if (attackId === null || targetId === null) return null; // 識別子が無ければgainId無し（呼び出し側が二重呼び出しを避ける）。
+        const tickId = context.tickId == null ? undefined : normalizeId(context.tickId);
+        if (tickId === null) return null;
+        return ["damage", attackId, targetId, ...(tickId === undefined ? [] : [tickId])].join(":");
+    };
+    const recordDamageDealt = (actualDamage, context) => {
+        try {
+            const ctx = context && typeof context === "object" ? context : {};
+            const source = typeof ctx.source === "string" ? ctx.source : "damage";
+            if (typeof actualDamage !== "number" || !Number.isFinite(actualDamage) || actualDamage <= 0) {
+                return rejected("invalidDamage", { actualDamage: typeof actualDamage === "number" ? actualDamage : null, source });
+            }
+            const rawGain = actualDamage * gainConfig.damageGainRate;
+            const gain = Math.min(rawGain, gainConfig.damageGainPerHitCap);
+            const result = award("damage", gain, source, damageGainId(ctx));
+            return { ...result, actualDamage, rawGain, gain, capped: rawGain > gainConfig.damageGainPerHitCap };
+        } catch (error) {
+            return rejected("gaugeError");
+        }
+    };
+    // 対象イベントの現在HP。倒されて消えたイベントは0。HPが読めない場合はundefined（実ダメージを偽って作らない）。
+    const eventHp = eventId => {
+        const map = typeof $gameMap !== "undefined" ? $gameMap : null;
+        if (!map) return undefined;
+        const event = map.event(eventId);
+        if (!event || event._erased) return 0;
+        const hp = map.getCurrentEventHp(eventId);
+        return hp == null ? undefined : hp;
+    };
+    const recordEventHpLoss = (eventId, hpBefore, context) => {
+        try {
+            const ctx = { targetId: eventId, ...(context && typeof context === "object" ? context : {}) };
+            const before = typeof hpBefore === "number" ? hpBefore : NaN;
+            if (!(before > 0)) return recordDamageDealt(0, ctx); // 既に倒れている/HP不明の対象は加算なし。
+            const after = eventHp(eventId);
+            if (after === undefined) return rejected("hpUnavailable");
+            return recordDamageDealt(before - Math.max(0, after), ctx);
+        } catch (error) {
+            return rejected("gaugeError");
+        }
+    };
+    // 攻撃側のHP適用をそのまま実行し、前後のHP差を与ダメージとして記録する。applyの結果と例外は変えない。
+    const trackDamage = (eventId, context, apply) => {
+        let before;
+        try { before = eventHp(eventId); } catch (error) { before = undefined; }
+        try {
+            return apply();
+        } finally {
+            if (before > 0) recordEventHpLoss(eventId, before, context);
+        }
+    };
+
+    // 重要回避: ProjectRには回避システムが無いため、実ゲームからは未接続。成功判定を行う将来の仕組みが呼ぶための入口。
+    const recordImportantDodge = (dodgeId, source) => {
+        try {
+            const id = normalizeId(dodgeId);
+            if (id === null) return rejected("invalidDodgeId");
+            return award("dodge", gainConfig.importantDodgeGain, typeof source === "string" ? source : "dodge", `dodge:${id}`);
+        } catch (error) {
+            return rejected("gaugeError");
+        }
+    };
+
     if (deck) {
+        const _requestUseCard = deck.requestUseCard;
+        deck.requestUseCard = function() {
+            const result = _requestUseCard.apply(this, arguments);
+            if (result?.ok === true) recordCardUse(result); // 例外は投げない。発動結果はそのまま返す。
+            return result;
+        };
         // 戦闘開始: 有効な常駐Ultimate戦闘状態（Managerが作成済み）があるときだけ0から始める。
         // 開始し直し・失敗・Ultimate無しでは前のゲージを残さない。
         const _startCardBattle = deck.startCardBattle;
@@ -167,6 +359,14 @@
         getUltimateGaugeState: () => state && Object.freeze({ current: state.current, max: state.max, ...gaugeFields() }),
         hasUltimateGaugeGainId: gainId => { const id = normalizeId(gainId); return id !== null && gainIds.has(id); },
         getUltimateGaugeGainCount: () => gainIds.size,
+        // Phase 4B
+        recordCardUse,
+        recordDamageDealt,
+        recordEventHpLoss,
+        trackDamage,
+        recordImportantDodge,
+        getGainConfig: () => gainConfig,
+        getGainStats: () => Object.freeze({ totals: Object.freeze({ ...totals }), last: lastGain && Object.freeze({ ...lastGain }) }),
         clear
     };
 })();

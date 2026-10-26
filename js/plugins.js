@@ -19,7 +19,7 @@ var $plugins =
 ,{"name":"ProjectR_CardBattleInput","status":true,"description":"v1.0.0 Phase 2A 手札1～5入力adapter（CardDeckCoreの後）。","parameters":{}}
 ,{"name":"ProjectR_GodSummonManager","status":true,"description":"v1.1.0 カード発動時の一時神召喚と、常駐Ultimate神（Divine HP・崩壊・復帰）の基盤。","parameters":{"LifetimeFrames":"12","PersistentOffsetX":"-0.75","PersistentOffsetY":"-0.75","DefaultDivineMaxHp":"100","RecoveryDelaySeconds":"15","RecoveryHpRate":"0.5"}}
 ,{"name":"ProjectR_UltimateGodDamageBridge","status":true,"description":"v1.0.0 Phase 3C-3 ボス/範囲攻撃から常駐Ultimate神のDivine HPへダメージを渡す橋渡し。","parameters":{}}
-,{"name":"ProjectR_UltimateGauge","status":true,"description":"v1.0.0 Phase 4A 戦闘中Ultimateゲージの基盤（加算・準備完了判定・消費）。","parameters":{"MaxGauge":"100"}}
+,{"name":"ProjectR_UltimateGauge","status":true,"description":"v1.1.0 Phase 4A/4B 戦闘中Ultimateゲージ（加算・準備完了判定・消費）と加算元（カード使用・支援・与ダメージ・重要回避。値は暫定）。","parameters":{"MaxGauge":"100","CardUseGain":"2.0","SupportBonusGain":"2.0","DamageGainRate":"0.0025","DamageGainPerHitCap":"1.5","ImportantDodgeGain":"5.0"}}
 ,{"name":"ProjectR_ApolloGoldenArrow","status":true,"description":"v1.0.0 Phase 2B Apollo黄金の弓矢のAction Combat接続。","parameters":{}}
 ,{"name":"ProjectR_HermesRecognitionObscure","status":true,"description":"v1.0.0 Phase 2C-1 Hermes認識阻害のinstant handler。","parameters":{"DurationSeconds":"5.0"}}
 ,{"name":"ProjectR_HermesReedFluteSleep","status":true,"description":"v1.0.0 Phase 2C-2 Hermes葦笛睡眠の範囲State handler。","parameters":{"RangeTiles":"4","DurationSeconds":"4.0"}}
