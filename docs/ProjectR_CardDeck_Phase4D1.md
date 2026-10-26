@@ -1,5 +1,7 @@
 # Phase 4D-1 Hermes Ultimate（最初の本番Ultimate handler）
 
+> Phase 4D-2でApolloの本番Ultimate handlerも追加されました（`docs/ProjectR_CardDeck_Phase4D2.md`）。この文書の「Apolloは未実装」「登録は`["hermes"]`」（手順3・22）はPhase 4D-1時点の記述です。
+
 ## 範囲
 
 - 実装したのは **Hermes の Ultimate だけ**です。名称「ヘルメース奥義」・斬撃回数・間隔・範囲・ダメージ式はすべて**仮**です（最終的な設定・Lore・バランスではありません）。

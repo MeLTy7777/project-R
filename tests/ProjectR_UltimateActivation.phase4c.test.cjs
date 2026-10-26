@@ -362,7 +362,7 @@ test("置き換えたhandlerが次の発動から使われ、他の神のhandler
     assert.equal(act(g).requestUltimateActivation().ok, true);
     assert.deepEqual([old.length, other.length, latest.length], [0, 0, 1]);
 });
-test("本番にはApollo/Hermesの実Ultimate handlerもダメージも無い(未登録・押してもnoUltimateHandlerでゲージ100のまま)", () => {
+test("Activation単体にはApollo/Hermesの実Ultimate handlerもダメージも無い(未登録・押してもnoUltimateHandlerでゲージ100のまま。本番handlerは別pluginがPhase 4D-1/4D-2で登録)", () => {
     const g = ready("apollo"); assert.deepEqual(plain(act(g).getRegisteredUltimateGods()), []);
     fill(g); down(g); tick(g);
     const r = act(g).getLastUltimateActivationResult();
@@ -371,7 +371,7 @@ test("本番にはApollo/Hermesの実Ultimate handlerもダメージも無い(�
     const source = read(ACT_FILE);
     assert.equal(/registerUltimateHandler\(["'](apollo|hermes)/.test(source), false);
     assert.equal(/UpdateEventHp|damagePersistentUltimate|addUltimateGauge|spawnEventHitbox|startAnimation/.test(source.replace(/\/\*:[\s\S]*?\*\//, "")), false);
-    assert.equal(fs.readdirSync(path.join(__dirname, "../js/plugins")).some(f => /Ultimate.*Apollo|Apollo.*Ultimate/.test(f)), false); // Phase 4D-1以降: Hermes Ultimateは別pluginにある。Apolloは未実装
+    assert.equal(fs.readdirSync(path.join(__dirname, "../js/plugins")).some(f => /Ultimate.*Apollo|Apollo.*Ultimate/.test(f)), true); // Phase 4D-2以降: Hermes/Apollo Ultimateは各々別plugin(この試験はActivation単体なので読み込まない)
 });
 
 // ================= 後始末・保存 =================

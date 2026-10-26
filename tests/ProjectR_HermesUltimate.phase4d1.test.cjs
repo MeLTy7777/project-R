@@ -97,7 +97,7 @@ test("plugins.js: Activation/Gauge/Manager/Swordsmanshipの後に1件だけ登�
     }
     assert.match(header, /@param UltimateDamageGeneratesGauge[\s\S]*@default false/);
 });
-test("Hermesのhandlerを、Managerが解決したgod IDで登録。Apolloは未登録のまま、別の対応表は作らない", () => {
+test("Hermesのhandlerを、Managerが解決したgod IDで登録。Apollo Ultimate pluginを読み込まないこの構成ではApolloは未登録、別の対応表は作らない", () => {
     const g = load();
     const godId = mgr(g).resolveGodId("hermes");
     assert.equal(godId, "hermes");
@@ -190,7 +190,7 @@ test("崩壊中のHermesは発動できない(handlerは呼ばれずゲージ100
     assert.equal(mgr(g).getPersistentUltimateStatus(), "active");
     g.aim(0); assert.equal(request(g).ok, true); assert.equal(gauge(g).getUltimateGauge(), 0);
 });
-test("Apolloを選択してゲージ100でもproduction handlerは無く、noUltimateHandlerでゲージ100のまま", () => {
+test("Apollo Ultimate pluginを読み込まない構成でApolloを選択してゲージ100でも、noUltimateHandlerでゲージ100のまま(Apollo本番handlerはPhase 4D-2の試験)", () => {
     const g = ready("apollo"); fill(g); g.aim(0);
     const result = request(g);
     assert.deepEqual(plain([result.ok, result.reason, result.godId]), [false, "noUltimateHandler", "apollo"]);
@@ -299,7 +299,7 @@ test("プレイヤーを動かさない。発動後にプレイヤーが動く�
 test("専用Database Skill(ID235)を使い、Swordsmanship(237)は不変。他のSkillも変わっていない", () => {
     const skills = JSON.parse(read("data/Skills.json")), before = JSON.parse(cp.execFileSync("git", ["show", "cd586e8:data/Skills.json"], { encoding: "utf8", maxBuffer: 1 << 26 }));
     assert.equal(skills.length, before.length); assert.equal(skills.length, 240);
-    skills.forEach((skill, i) => { if (i !== 235) assert.deepEqual(skill, before[i], `skill ${i}`); });
+    skills.forEach((skill, i) => { if (i !== 235 && i !== 234) assert.deepEqual(skill, before[i], `skill ${i}`); }); // 234はPhase 4D-2のApollo Ultimate
     assert.equal(before[235].name, ""); // 未使用の空きスロットだった
     const skill = skills[235];
     assert.deepEqual(plain([skill.id, skill.name, skill.note, skill.damage.type, skill.damage.formula, skill.damage.variance, skill.damage.critical]),

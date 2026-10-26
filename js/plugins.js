@@ -29,4 +29,5 @@ var $plugins =
 ,{"name":"ProjectR_HermesUltimate","status":true,"description":"v1.0.0 Phase 4D-1 Hermes Ultimate（暫定）6連斬撃。","parameters":{"SlashCount":"6","SlashIntervalSeconds":"0.12","SequenceSeconds":"0.75","RangeTiles":"2.0","HitboxWidth":"1.5","LifetimeFrames":"3","UltimateDamageGeneratesGauge":"false"}}
 ,{"name":"ProjectR_ApolloDiseaseAttack","status":true,"description":"v1.0.0 Phase 2C-5 Apollo病の矢の弾・Disease・実時間DoT。","parameters":{"DurationSeconds":"6.0","TickIntervalSeconds":"1.0","MaxTicks":"6"}}
 ,{"name":"ProjectR_ApolloLyreCalm","status":true,"description":"v1.0.0 Phase 2C-6 Apollo リラの精神安定State付与。","parameters":{"DurationSeconds":"6.0"}}
+,{"name":"ProjectR_ApolloUltimate","status":true,"description":"v1.0.0 Phase 4D-2 Apollo Ultimate（暫定）7連矢。","parameters":{"ArrowCount":"7","ArrowIntervalSeconds":"0.10","SpreadStepDegrees":"10","ProjectileLifetimeFrames":"90","UltimateDamageGeneratesGauge":"false"}}
 ];
