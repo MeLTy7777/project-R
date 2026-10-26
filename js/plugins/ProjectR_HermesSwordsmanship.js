@@ -4,6 +4,7 @@
  * @author ProjectR
  * @base ProjectR_CardDeckCore
  * @base ProjectR_ApolloGoldenArrow
+ * @base ProjectR_GodSummonManager
  * @base Hendrix_Action_Engine
  * @base DotMoveSystem
  * @orderAfter ProjectR_HermesSwiftMovement
@@ -48,6 +49,9 @@
  * DestroyEventは導入版unspawnEventがTemplate専用、DestroyDynamicEventは
  * 50ms遅延かつ後からmap/IDを参照するので、このadapterでは使いません。
  * 終了/マップ変更/ロードで専用Hitboxだけ除去。保存APIは変更しません。
+ * Phase 3A: 発動時にProjectRGodSummonManagerでHermes一時召喚を作り、召喚context
+ * （プレイヤー中心と固定済みマウス角）からHitboxを生成します。位置・形状・寿命・
+ * Damage・攻撃者(player)は従来どおり。失敗時は召喚も破棄され非消費です。
  * Console: ProjectRHermesSwordsmanship.getActiveHitboxes()
  */
 (() => {
@@ -105,7 +109,7 @@
     const clear = () => {
         for (const [id, record] of [...hitboxes]) destroy(id, record);
     };
-    const activate = () => {
+    const activate = cardContext => {
         const map = typeof $gameMap !== "undefined" ? $gameMap : null;
         const player = typeof $gamePlayer !== "undefined" ? $gamePlayer : null;
         if (!deck.isCardBattleActive() || !map || !player ||
@@ -127,16 +131,16 @@
                 $dataSkills.filter(s => s?.name?.toLowerCase() === skill.name.toLowerCase()).length !== 1) {
             return { ok: false, reason: "damageSkillUnavailable" };
         }
-        if (typeof TouchInput === "undefined" || typeof player.centerPositionPoint !== "function") {
-            return { ok: false, reason: "invalidMousePosition" };
-        }
-        const dx = TouchInput.x - player.screenX(), dy = TouchInput.y - player.screenY();
-        const center = player.centerPositionPoint();
-        if (![dx, dy, center.x, center.y].every(Number.isFinite) || Math.hypot(dx, dy) < 1e-8) {
-            return { ok: false, reason: "invalidMousePosition" };
-        }
-        const radians = Math.atan2(dy, dx);
-        const degree = (radians * 180 / Math.PI + 450) % 360;
+        if (typeof player.centerPositionPoint !== "function") return { ok: false, reason: "invalidMousePosition" };
+        const summons = root.ProjectRGodSummonManager;
+        if (!summons) return { ok: false, reason: "godSummonUnavailable" };
+        // Hermes一時召喚 → 召喚アンカーを起点に剣術Hitboxを生成。失敗時は召喚も即破棄。
+        return summons.perform({ definition: cardContext?.definition },
+            summon => slash(map, skill, summon));
+    };
+    const slash = (map, skill, summon) => {
+        const { center, radians, degree } = summon;
+        if (!center || summon.distance < 1e-8) return { ok: false, reason: "invalidMousePosition" };
         const x = center.x - 0.5 + Math.cos(radians) * forward;
         const y = center.y - 0.5 + Math.sin(radians) * forward;
         // 導入版Collisionの0度だけ非回転扱いになる分岐を避け、真上は同値の360度。
@@ -167,7 +171,7 @@
         }
     };
     deck.registerActivationHandler("direction", context => context.definition.cardId === CARD
-        ? activate() : previousDirection ? previousDirection(context) : { ok: true });
+        ? activate(context) : previousDirection ? previousDirection(context) : { ok: true });
 
     const _update = Game_Map.prototype.update;
     Game_Map.prototype.update = function(sceneActive) {

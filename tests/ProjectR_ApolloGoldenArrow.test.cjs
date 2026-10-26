@@ -143,7 +143,10 @@ function loadGame({ withoutPlugin = false, productionDefinitions = false, prepar
     run(read("js/plugins/ProjectR_CardDeckCore.js"));
     run(read("js/plugins/ProjectR_CardBattleInput.js"));
     game.saveBeforePlugin = [game.DataManager.makeSaveContents, game.DataManager.extractSaveContents];
-    if (!withoutPlugin) run(read("js/plugins/ProjectR_ApolloGoldenArrow.js"));
+    if (!withoutPlugin) {
+        run(read("js/plugins/ProjectR_GodSummonManager.js"));
+        run(read("js/plugins/ProjectR_ApolloGoldenArrow.js"));
+    }
     game.$gameSystem = new game.Game_System(); game.$gameSystem.initialize();
     game.$gameMap = new game.Game_Map();
     game.$gamePlayer = { _realX: 10, _realY: 10, screenX: () => 504, screenY: () => 528, isTransferring: () => false };

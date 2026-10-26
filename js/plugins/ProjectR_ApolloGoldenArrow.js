@@ -3,6 +3,7 @@
  * @plugindesc v1.0.0 Phase 2B Apollo「黄金の弓矢」だけをAction Combatへ接続。
  * @author ProjectR
  * @base ProjectR_CardDeckCore
+ * @base ProjectR_GodSummonManager
  * @base Hendrix_Action_Engine
  * @base DotMoveSystem
  * @orderAfter ProjectR_CardBattleInput
@@ -18,6 +19,9 @@
  * 独自Collision/HP計算は実装しません。Prefab寿命は90フレーム。
  *
  * 生成・回転の成功時だけ{ok:true}を返し、消費/Cooldown/ドローは既存Routerに任せます。
+ * Phase 3A: 発射前にProjectRGodSummonManagerでApollo一時召喚を作り、召喚context
+ * （プレイヤー位置と固定済みマウス角）から同じ弾を発射します。弾の位置・角度・
+ * Damage・攻撃者(player)は従来どおり。生成失敗時は召喚も破棄され非消費です。
  * 他のdirectionカードはPhase 2Aの仮成功のままです。
  * 終了・マップ切替で弾を破棄。セーブ形式と保存処理は変更しません。
  * Engine標準のMap保存に含まれた非恒久弾はロード後onMapLoadedで破棄します。
@@ -54,7 +58,7 @@
         for (const [id, record] of [...projectiles]) destroy(id, record);
     };
 
-    const activate = () => {
+    const activate = cardContext => {
         const map = currentMap();
         if (!deck.isCardBattleActive() || !map || !(SceneManager._scene instanceof Scene_Map) ||
                 !$gamePlayer || !SceneManager._scene._spriteset) return { ok: false, reason: "mapUnavailable" };
@@ -77,13 +81,15 @@
                 !template.note.includes(`<dmg: ${skill.name}>`) || !template.note.includes("<attacker: player>")) {
             return { ok: false, reason: "projectileTemplateUnavailable" };
         }
-        // 導入済みrotateTo('mouse or gamepad')のマウス分岐と同じ画面座標系。
-        // degree overloadに渡し、Gamepadの有無にかかわらず発射時のマウス角を固定する。
-        const dx = TouchInput.x - $gamePlayer.screenX();
-        const dy = TouchInput.y - $gamePlayer.screenY();
-        const x = $gamePlayer._realX, y = $gamePlayer._realY;
-        if (![dx, dy, x, y].every(Number.isFinite)) return { ok: false, reason: "invalidMousePosition" };
-        const degree = (Math.atan2(dy, dx) * 180 / Math.PI + 450) % 360;
+        const summons = root.ProjectRGodSummonManager;
+        if (!summons) return { ok: false, reason: "godSummonUnavailable" };
+        // Apollo一時召喚 → 召喚アンカーから黄金の弓矢を発射。失敗時は召喚も即破棄。
+        return summons.perform({ definition: cardContext?.definition }, summon => fire(map, template, summon));
+    };
+    // 導入済みrotateTo('mouse or gamepad')のマウス分岐と同じ画面座標系の角度を、
+    // 召喚contextが発射時に一度だけ固定して渡す。Gamepadの有無にかかわらずマウス角。
+    const fire = (map, template, summon) => {
+        const { x, y, degree } = summon;
         const before = new Set(map.events());
         try {
             const id = map.spawnEvent(template.id, x, y, false, degree);
@@ -107,7 +113,7 @@
     };
 
     deck.registerActivationHandler("direction", context =>
-        context.definition.cardId === CARD_ID ? activate() : { ok: true }
+        context.definition.cardId === CARD_ID ? activate(context) : { ok: true }
     );
 
     const _update = Game_Map.prototype.update;
