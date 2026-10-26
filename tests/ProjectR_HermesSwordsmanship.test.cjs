@@ -226,7 +226,7 @@ test("通常Sword用Dynamic/Bullet/GunにDamage/寿命/終了cleanupを適用し
     g.PluginManager._commands["Hendrix_Action_Engine:spawnEventHitbox"].call({ _eventId: 0 }, {
         position: "10, 10", notetag: "<playerAttack><hitbox: 1.5, 1.2>", wait: "", rotationDegree: "" });
     const normal = g.$gameMap.events()[0];
-    const bulletId = g.$gameMap.spawnEvent(1, 10, 10, false, 90);
+    const bulletId = g.$gameMap.spawnEvent(7, 10, 10, false, 90);
     const enemy = g.addEnemy(3, 10, 10); g.tick(4); g.ProjectRCardDeck.endCardBattle();
     assert.equal(g.$gameMap.event(normal.eventId()), normal); assert.ok(g.$gameMap.event(bulletId));
     assert.equal(enemy.bar.currentHp, 200); assert.equal(g.hpCommands().length, 0);

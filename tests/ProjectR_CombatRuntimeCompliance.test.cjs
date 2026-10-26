@@ -390,7 +390,7 @@ test("Map002に公式Prefab『ProjectR God Visual』(<child of: player>・すり
     assert.equal(page.through, true); assert.equal(page.trigger, 4, "Action Buttonではない(Fキーを奪わない)");
     assert.ok(page.list.some(c => c.code === 108 && c.parameters[0] === "<child of: player>"));
     assert.equal(page.image.characterName, "", "画像はPlugin Parameterから設定する");
-    for (let i = 1; i <= 5; i++) assert.equal(map2.events[i].id, i, "既存のPrefabは不変");
+    for (let i = 3; i <= 5; i++) assert.equal(map2.events[i].id, i, "既存のPrefabは不変(1,2は旧銃の撤去で空き)");
 });
 test("常駐神: 戦闘イベント中に顕現していれば見える。崩壊で消え、復帰で再び現れる。画像はPlugin Parameter", () => {
     const w = visualWorld();
@@ -550,26 +550,21 @@ test("通常の剣(CE1の近接ブランチ): Swing Weapon(見える剣の振り
     // 古い剣(ロングソード)専用のCE4呼び出しは従来どおり
     assert.ok(cmds.some(c => c.code === 117 && c.parameters[0] === 4));
 });
-test("銃(CE1の銃ブランチ+Bullet Prefab): 公式の弾薬API・Display Weapon・射撃演出。弾は発射時の照準で1回だけ回転して前進(追尾なし)", () => {
+test("銃(新実装): CE1に銃処理は残らず、弾はProjectR専用Prefab。弾は発射時に一度だけ回転して前進(追尾なし)。G17のデータは維持", () => {
     const text = JSON.stringify(cmds);
-    assert.ok(cmds.some(c => plugin(c, "GunAmmoControl") && c.parameters[3].target === "ammo" && c.parameters[3].value === "-1"));
-    assert.ok(cmds.some(c => plugin(c, "GunReload")), "公式のリロード");
-    assert.match(text, /gunAmmo\(\) > 0/); assert.match(text, /gunAmmoInInventory\(\) > 0/);
-    assert.ok(cmds.some(c => c.code === 250 && c.parameters[0].name === "Gun1"), "発射音");
-    assert.ok(cmds.some(c => c.code === 212 && c.parameters[1] === 111), "発射の演出アニメーション");
-    assert.ok(cmds.some(c => plugin(c, "spawnEvent") && c.parameters[3].eventId === "Bullet"), "Prefabの弾を生成");
-    assert.ok(cmds.some(c => plugin(c, "spawnEvent") && c.parameters[3].eventId === "Object: Gun"), "Display Weapon(公式)");
+    assert.ok(!cmds.some(c => plugin(c, "GunAmmoControl") || plugin(c, "GunReload")), "弾薬/リロードはCEではなくGunSystem");
+    assert.ok(!cmds.some(c => c.code === 212 && c.parameters[1] === 111), "旧: 体中心の発射アニメ(111)は撤去");
+    assert.ok(!/Object: Gun|"Bullet"|Gun1/.test(text), "旧Gunオブジェクト/旧Bullet/旧発射音はCE1から撤去");
     const map2 = json("data/Map002.json");
-    const bullet = map2.events.find(e => e && e.name === "Bullet"), gun = map2.events.find(e => e && e.name === "Object: Gun");
-    const scripts = bullet.pages[0].list.find(c => c.code === 205).parameters[1].list.filter(c => c.code === 45).map(c => c.parameters[0]);
-    assert.equal(scripts.filter(s => s.startsWith("rotateTo(")).length, 1, "回転は1回だけ");
-    assert.equal(scripts.find(s => s.startsWith("rotateTo(")), "rotateTo('mouse or gamepad')");
-    assert.ok(scripts.filter(s => s === "moveToPosition('forward')").length >= 3, "前方へ進む");
-    assert.ok(scripts.every(s => /^(setMoveSpeed\(|rotateTo\(|moveToPosition\('forward'\))/.test(s)), "追尾する命令を含まない");
-    assert.ok(scripts.findIndex(s => s.startsWith("rotateTo(")) < scripts.findIndex(s => s === "moveToPosition('forward')"), "回転してから前進");
-    assert.match(JSON.stringify(gun.pages[1].list), /<child of: player>/);
+    assert.ok(!map2.events.some(e => e && (e.name === "Bullet" || e.name === "Object: Gun")), "旧Prefabは撤去");
+    const bullet = map2.events.find(e => e && e.name === "ProjectR G17 Bullet");
+    assert.equal(bullet.note.split("\n")[0], "<projectRGunBullet>");
+    const scripts = bullet.pages[0].moveRoute.list.filter(c => c.code === 45).map(c => c.parameters[0]);
+    assert.deepEqual(scripts, ["moveToPosition('forward')"], "Prefabは前進だけ。回転は発射時にGunSystemが一度だけ設定");
+    assert.equal(bullet.pages[0].moveRoute.repeat, true);
     const handgun = json("data/Weapons.json")[51];
     assert.match(handgun.note, /<capacity: 7>/); assert.match(handgun.note, /<ammo item: 弾薬>/);
+    assert.equal(handgun.name, "テストハンドガン"); assert.equal(handgun.wtypeId, 9);
 });
 test("Animation Solutionは導入・有効。使える多コマの攻撃画像は無いのでplayFrames/toFrameは使わない(アセット制限)", () => {
     assert.equal(plugins.find(p => p.name === "Hendrix_Animation_Solution").status, true);

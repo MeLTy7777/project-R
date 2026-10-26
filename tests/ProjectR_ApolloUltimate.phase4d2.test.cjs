@@ -483,12 +483,10 @@ test("専用Database Skill(ID234 アポロン奥義)・式・分散なし。Herm
     assert.equal(skillsData.filter(s => s?.name === apolloSkill.name).length, 1);
     // Map002: 既存の4件(ID0〜4)は変更なし、ID5だけ追加
     const oldMap = JSON.parse(cp.execFileSync("git", ["show", "e5502f3:data/Map002.json"], { encoding: "utf8", maxBuffer: 1 << 26 }));
-    assert.equal(oldMap.events.length, 5); assert.equal(mapData.events.length, 7); // ID6 = RT3の「ProjectR God Visual」
-    // 全仕様パス: G17の弾(ID1 Bullet)の画像だけ、見えない(空)から公式の弾画像 VFX/$Bullet に変更した（他は不変）。
-    oldMap.events.forEach((event, i) => {
-        const expected = i === 1 ? JSON.parse(JSON.stringify(event).replace("\"characterName\":\"\"", "\"characterName\":\"VFX/$Bullet\"")) : event;
-        assert.deepEqual(mapData.events[i], expected, `event ${i}`);
-    });
+    assert.equal(oldMap.events.length, 5); assert.equal(mapData.events.length, 8); // ID6 = RT3のGod Visual、ID7 = 新銃の弾Prefab
+    // 新銃への置換: 旧Bullet(ID1)と旧Object: Gun(ID2)は撤去(null)。Apolloの矢(ID3〜5)は不変。
+    assert.equal(mapData.events[1], null); assert.equal(mapData.events[2], null);
+    oldMap.events.forEach((event, i) => { if (i >= 3) assert.deepEqual(mapData.events[i], event, `event ${i}`); });
     assert.deepEqual({ ...mapData, events: [] }, { ...oldMap, events: [] });
 });
 

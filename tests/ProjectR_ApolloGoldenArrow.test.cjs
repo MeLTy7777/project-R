@@ -339,13 +339,13 @@ test("他6カードはPhase 2Aの仮成功を維持しProjectile/Damageを要求
 });
 test("通常武器の既存Bullet/Gun/CEへ追加弾判定を適用しない", () => {
     const game = loadGame(), enemy = game.addEnemy();
-    const id = game.$gameMap.spawnEvent(1, 20, 20, false, 90);
-    const gunId = game.$gameMap.spawnEvent(2, 10, 10, false, 90);
+    const id = game.$gameMap.spawnEvent(7, 20, 20, false, 90);
+    const gunId = game.$gameMap.spawnEvent(7, 12, 12, false, 90);
     game.$gameMap.update(true);
     assert.equal(enemy.bar.currentHp, 200); assert.equal(game.commands.length, 0);
     game.ProjectRCardDeck.endCardBattle();
     assert.ok(game.$gameMap.event(id)); assert.ok(game.$gameMap.event(gunId));
-    assert.equal(game.$gameMap.event(id).event().note, "<weaponAttack>");
+    assert.equal(game.$gameMap.event(id).event().note.split("\n")[0], "<projectRGunBullet>");
 });
 test("1キー→既存Input→Router→実生成が一度だけ発生、通常キー割当は不変", () => {
     const game = loadGame(), baseline = loadGame({ withoutPlugin: true });
@@ -374,7 +374,7 @@ test("終了・マップ移動で専用弾のみ破棄、ロードされた残�
     game.startWith("apollo_golden_arrow"); game.fire(); game.$gameMap.setup(2);
     assert.equal(game.ProjectRApolloGoldenArrow.getActiveProjectiles().length, 0);
     const orphan = game.$gameMap.spawnEvent(arrowTemplate.id, 10, 10, false, 90);
-    const bullet = game.$gameMap.spawnEvent(1, 10, 10, false, 90);
+    const bullet = game.$gameMap.spawnEvent(7, 10, 10, false, 90);
     game.SceneManager._scene.onMapLoaded();
     assert.equal(game.$gameMap.event(orphan), null);
     assert.ok(game.$gameMap.event(bullet));

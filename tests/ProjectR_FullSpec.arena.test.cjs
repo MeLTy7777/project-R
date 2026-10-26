@@ -222,30 +222,29 @@ test("剣の斬撃: 経過で弧が進み、寿命で消える。描画はダメ
     assert.equal(wp.playSlash({ degree: NaN }), false);
 });
 
-test("銃: 弾が出るときだけ(弾数>0)銃口の発光と弾道。空撃ちでは光らない。弾数管理は公式のまま", () => {
+test("銃の発光: GunSystemが渡した銃口の点にだけ描く(体の中心には出さない)。弾道線は撤去。武器側は弾数を持たない", () => {
     const g = weaponGame();
     g.weapon.note = "<capacity: 7>\n<ammo item: 弾薬>";
     const wp = g.ProjectRWeaponPresentation;
     const temp = new g.Game_Temp();
     temp.reserveCommonEvent(1);
-    deepEqual(wp.effects().map(e => e.kind).sort(), ["muzzle", "tracer"]);
-    wp.clear();
-    g.ammo = 0;
-    temp.reserveCommonEvent(1);
-    assert.equal(wp.activeCount(), 0, "空撃ち(弾0)は発光しない");
+    assert.equal(wp.activeCount(), 0, "銃の攻撃入力ではWeaponPresentationは何も描かない(旧: 体中心の発光)");
+    assert.equal(wp.playMuzzle({ degree: 90 }), false, "銃口の点が無ければ描かない");
+    assert.equal(wp.playMuzzle({ degree: 90, point: { x: 400, y: 300 } }), true);
+    deepEqual(wp.effects().map(e => e.kind), ["muzzle"], "弾道線(tracer)は撤去");
     const src = read("js/plugins/ProjectR_WeaponPresentation.js");
-    assert.ok(!/ammo\s*[-+]=|ammo--|ammo\+\+|setAmmo|_ammo/.test(src), "独自の弾薬管理を持たない");
+    assert.ok(!/ammo\s*[-+]=|ammo--|ammo\+\+|setAmmo|_ammo|tracer/.test(src), "独自の弾薬管理・弾道線を持たない");
 });
 
-test("リロード: 公式GunReloadで弾数が増えたときだけ音(既存SEを仮に使用・差し替えはパラメータ)", () => {
+test("リロード音: WeaponPresentationは公式GunReloadをラップしない(音とリロードはGunSystemの1経路)", () => {
     const g = weaponGame();
     g.ammo = 2;
     g.PluginManager._commands["Hendrix_Action_Engine:GunReload"]({});
-    assert.equal(g.ammo, 7);
-    assert.equal(g.played.length, 1); assert.equal(g.played[0].name, "Gun2");
-    g.PluginManager._commands["Hendrix_Action_Engine:GunReload"]({}); // 満タンのまま
-    assert.equal(g.played.length, 1, "弾数が増えなければ音なし");
-    assert.match(read("js/plugins/ProjectR_WeaponPresentation.js"), /@param ReloadSeName/);
+    assert.equal(g.ammo, 7, "公式コマンドは素のまま");
+    assert.equal(g.played.length, 0, "WeaponPresentation側の二重のリロード音は無い");
+    const head = read("js/plugins/ProjectR_WeaponPresentation.js");
+    assert.doesNotMatch(head, /@param ReloadSeName/); assert.doesNotMatch(head, /GunReload/);
+    assert.match(read("js/plugins/ProjectR_GunSystem.js"), /@param ReloadSeName/);
 });
 
 test("Hermes奥義/剣術: 既存Hitboxの角度に合わせて斬撃を描く(Hitbox側は観察のみ)", () => {
@@ -265,18 +264,18 @@ test("Hermes奥義/剣術: 既存Hitboxの角度に合わせて斬撃を描く(H
     assert.equal(wp.effects().find(e => e.degree === 135).color, wp.config.godSlashColor);
 });
 
-test("素材の扱い: 剣の専用画像が無いこと(Pan.pngは暫定)を明記し、BladeImageで差し替え可能。G17のBullet(VFX/$Bullet)が見える", () => {
+test("素材の扱い: 剣の専用画像が無いこと(Pan.pngは暫定)を明記し、BladeImageで差し替え可能。G17の弾(VFX/$ProjectR_G17Bullet)が見える", () => {
     const head = read("js/plugins/ProjectR_WeaponPresentation.js");
     assert.match(head, /@param BladeImage/); assert.match(head, /Pan\.png/); assert.match(head, /素材の状況/);
     const map = JSON.parse(read("data/Map002.json"));
-    const bullet = map.events.filter(Boolean).find(e => e.name === "Bullet");
-    assert.equal(bullet.pages[0].image.characterName, "VFX/$Bullet", "公式弾プレハブが見える画像を持つ");
+    const bullet = map.events.filter(Boolean).find(e => e.name === "ProjectR G17 Bullet");
+    assert.equal(bullet.pages[0].image.characterName, "VFX/$ProjectR_G17Bullet", "新銃の弾Prefabが見える画像を持つ");
     const fs = require("node:fs"), path = require("node:path");
-    assert.ok(fs.existsSync(path.join(__dirname, "..", "img/characters/VFX/$Bullet.png")));
-    // 銃の弾薬・容量は公式APIのまま(CE1が呼ぶ)
+    assert.ok(fs.existsSync(path.join(__dirname, "..", "img/characters/VFX/$ProjectR_G17Bullet.png")));
+    assert.ok(fs.existsSync(path.join(__dirname, "..", "img/characters/VFX/$Bullet.png")), "Apolloの矢が使う既存画像は残す");
+    // 銃の弾薬・容量は公式API。呼び出し元はCE1ではなくGunSystem(CE1に銃処理は無い)
     const ce = JSON.parse(read("data/CommonEvents.json"))[1];
-    assert.ok(ce.list.some(c => c.code === 357 && c.parameters[1] === "GunAmmoControl"));
-    assert.ok(ce.list.some(c => c.code === 357 && c.parameters[1] === "GunReload"));
+    assert.ok(!ce.list.some(c => c.code === 357 && (c.parameters[1] === "GunAmmoControl" || c.parameters[1] === "GunReload")));
 });
 
 test("文書: ギャップ監査は全項目を分類し、手動確認はA〜Lの実機手順と未確認の明記を含む", () => {

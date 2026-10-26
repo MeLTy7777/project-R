@@ -196,7 +196,7 @@ test("1発1Hit: 重なる2体でも先頭1体だけ、以降の更新で再Damag
 test("空振りでもカードは消費済み。Golden Arrowの弾や通常Bullet/Gunには干渉しない", () => {
     const g = loadGame(), e = g.enemy(); g.begin(); g.ProjectRCardDeck.requestUseCard(0); g.tick(5);
     assert.equal(g.ProjectRCardDeck.getBattleState().cooldownPile.length, 1);
-    const bullet = g.$gameMap.spawnEvent(1, 20, 20, false, 90); g.tick();
+    const bullet = g.$gameMap.spawnEvent(7, 20, 20, false, 90); g.tick();
     assert.equal(e.bar.currentHp, 200); assert.ok(g.$gameMap.event(bullet));
 });
 test("State耐性: 無効化/有効度0でも初撃は有効・カード成功、Disease/DoTなし", () => {
@@ -277,7 +277,7 @@ test("マップsetup・同ID差替えでも元Battlerの病を解除、ロード
     g.$gameMap.setup(2);
     assert.equal(e.battler.isStateAffected(STATE), false); assert.equal(g.diseased(e), false);
     const orphan = g.$gameMap.spawnEvent(template.id, 10, 10, false, 90);
-    const bullet = g.$gameMap.spawnEvent(1, 10, 10, false, 90);
+    const bullet = g.$gameMap.spawnEvent(7, 10, 10, false, 90);
     g.SceneManager._scene.onMapLoaded();
     assert.equal(g.$gameMap.event(orphan), null); assert.ok(g.$gameMap.event(bullet));
 });

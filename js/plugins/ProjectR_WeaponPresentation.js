@@ -1,10 +1,11 @@
 /*:
  * @target MZ
- * @plugindesc v1.1.0 ProjectR 武器・斬撃・状態の見た目（360°斬撃、銃口の発光/弾道、リロード音、睡眠/精神安定のふきだし）。表示専用。
+ * @plugindesc v1.2.0 ProjectR 武器・斬撃・状態の見た目（360°斬撃、銃口の発光、睡眠/精神安定のふきだし）。表示専用。銃本体はProjectR_GunSystem。
  * @author ProjectR
  * @base Hendrix_Action_Engine
  * @base ProjectR_CombatPresence
  * @orderAfter ProjectR_CombatPresence
+ * @orderAfter ProjectR_CharacterPresentation
  * @orderAfter ProjectR_HermesUltimate
  * @orderAfter ProjectR_HermesSwordsmanship
  *
@@ -49,30 +50,6 @@
  * @type string
  * @default #ffe9a8
  *
- * @param MuzzleOffsetPixels
- * @text 銃口の位置（プレイヤー中心から・px）
- * @type number
- * @default 30
- *
- * @param TracerFrames
- * @text 弾道線の表示frame数（0で無し）
- * @type number
- * @min 0
- * @default 6
- *
- * @param ReloadSeName
- * @text リロード音（audio/se）
- * @desc 専用のリロード音素材はまだ無いため、仮に既存SEを使います。差し替えはここだけ。
- * @type file
- * @dir audio/se/
- * @default Gun2
- *
- * @param ReloadSeVolume
- * @type number
- * @min 0
- * @max 100
- * @default 50
- *
  * @help
  * ProjectR_WeaponPresentation.js
  *
@@ -81,8 +58,8 @@
  *               これに加えて、マウス方向(360°)へ刃の斬撃を重ねて描きます。
  *   Hermes剣術: 既存のHitbox(マウス方向・360°)が出た瞬間、そのHitboxと同じ角度で斬撃を描きます。
  *   Hermes奥義: 6連斬撃の1回ごとに、Hitboxと同じ角度で斬撃を描きます（Hitbox側は変更しません）。
- *   銃(G17)   : 弾が出る攻撃のとき、マウス方向の銃口に発光と短い弾道線。リロードで音。
- *               弾そのもの(Bullet)・弾数・リロードは公式のGun APIのままです（二重の弾薬システムはありません）。
+ *   銃(G17)   : 銃の構え/弾/弾薬/リロード/反動は ProjectR_GunSystem が持ちます。ここは銃口の発光だけを、
+ *               GunSystemが渡す銃口の点に描きます(旧: 体の中心の発光・弾道線・リロード音は撤去)。
  * 見た目は戦闘HUDより下、キャラクターより上に描き、Hendrix Hotbar等には介入しません。
  *
  * 【状態の見た目(v1.1.0)】敵にもプレイヤーにも状態アイコンが出ないため、効いたかどうかが見えませんでした。
@@ -95,11 +72,10 @@
  *   剣の専用画像はありません。img/pictures/Pan.png は公式Swing Weaponの暫定画像(フライパン)で、
  *   img/system/Weapons1-3.png は横スクロール戦闘用の武器シートのため360°回転には向きません。
  *   BladeImage に画像名を指定すれば、その画像を回転して使います（空なら図形）。
- *   リロード専用の音素材もまだ無く、既存のGun2を仮に使っています。
  *
  * API: ProjectRWeaponPresentation
- *   playSlash({ degree, color?, frames?, sweep?, radius?, god? }) / playMuzzle({ degree, color? })
- *   playReload() / activeCount() / clear()
+ *   playSlash({ degree, color?, frames?, sweep?, radius?, god? }) / playMuzzle({ degree, point:{x,y}, color? })
+ *   activeCount() / clear()
  */
 
 (() => {
@@ -118,9 +94,7 @@
         bladeImage: String(params.BladeImage || "").trim(),
         slashColor: color(params.SlashColor, 0xdfe8ff), godSlashColor: color(params.GodSlashColor, 0xffd479),
         slashFrames: Math.floor(num(params.SlashFrames, 12, 2)), sweep: num(params.SlashSweepDegrees, 110, 10),
-        radius: num(params.SlashRadiusPixels, 78, 8), muzzleColor: color(params.MuzzleColor, 0xffe9a8),
-        muzzleOffset: num(params.MuzzleOffsetPixels, 30, 0), tracerFrames: Math.floor(num(params.TracerFrames, 6, 0)),
-        reloadSe: params.ReloadSeName === undefined ? "Gun2" : String(params.ReloadSeName).trim(), reloadVolume: num(params.ReloadSeVolume, 50, 0)
+        radius: num(params.SlashRadiusPixels, 78, 8), muzzleColor: color(params.MuzzleColor, 0xffe9a8)
     });
 
     // ---- エフェクト(論理)。描画先が無くても追加・経過・破棄できる ----
@@ -136,26 +110,29 @@
             sweep: num(options.sweep, config.sweep, 10), radius: num(options.radius, config.radius, 8) });
         return true;
     };
+    // 銃口の発光は、GunSystemが渡した画面上の銃口点(point)にだけ描く。足元からの相対位置で持つので、
+    // 発光中にプレイヤーが動いても銃口についていく。pointが無ければ描かない(体の中心には出さない)。
     const playMuzzle = (options = {}) => {
-        if (!Number.isFinite(options.degree)) return false;
-        const degree = normalize(options.degree);
-        effects.push({ kind: "muzzle", degree, age: 0, frames: 6, color: options.color ?? config.muzzleColor });
-        if (config.tracerFrames > 0) {
-            effects.push({ kind: "tracer", degree, age: 0, frames: config.tracerFrames, color: options.color ?? config.muzzleColor });
-        }
-        return true;
-    };
-    const playReload = () => {
-        if (!config.reloadSe || typeof AudioManager === "undefined") return false;
-        AudioManager.playSe({ name: config.reloadSe, volume: config.reloadVolume, pitch: 90, pan: 0 });
+        if (!Number.isFinite(options.degree) || !options.point) return false;
+        const feet = feetOf();
+        if (!feet || ![options.point.x, options.point.y].every(Number.isFinite)) return false;
+        effects.push({ kind: "muzzle", degree: normalize(options.degree), age: 0, frames: 6,
+            color: options.color ?? config.muzzleColor, rel: { x: options.point.x - feet.x, y: options.point.y - feet.y } });
         return true;
     };
 
     // ---- 描画: 1フレーム分。中心はプレイヤーの画面座標 ----
-    const centerOf = () => {
+    const feetOf = () => {
         const player = typeof $gamePlayer !== "undefined" ? $gamePlayer : null;
         if (!player || typeof player.screenX !== "function") return null;
-        return { x: player.screenX(), y: player.screenY() - 24 };
+        return { x: player.screenX(), y: player.screenY() };
+    };
+    // 斬撃の中心は CharacterPresentation の melee アンカー(体の高さに追従)。無ければ従来の足元-24px。
+    const centerOf = () => {
+        const anchored = root.ProjectRCharacterPresentation?.anchorScreen?.("melee");
+        if (anchored) return anchored;
+        const feet = feetOf();
+        return feet ? { x: feet.x, y: feet.y - 24 } : null;
     };
     // BladeImage指定時: その画像を刃として、掃く角度に合わせて回転する(画像は真上向き・根元が下端中央)。
     const drawBladeImage = (g, effect, center, degree, fade) => {
@@ -184,21 +161,21 @@
             g.lineTo(center.x + Math.cos(a1) * effect.radius, center.y + Math.sin(a1) * effect.radius);
             drawBladeImage(g, effect, center, now, fade);
         } else if (effect.kind === "muzzle") {
+            // 銃口の点(足元+相対)。小さく短い。体の中心の大きな発光はしない。
+            const feet = feetOf();
+            if (!feet || !effect.rel) return;
             const a = rad(effect.degree);
-            const mx = center.x + Math.cos(a) * config.muzzleOffset, my = center.y + Math.sin(a) * config.muzzleOffset;
-            const size = 16 * fade + 4;
+            const mx = feet.x + effect.rel.x, my = feet.y + effect.rel.y;
+            const size = 8 * fade + 3;
             g.lineStyle(0);
-            g.beginFill(effect.color, 0.9 * fade + 0.1);
+            g.beginFill(effect.color, 0.85 * fade + 0.1);
             g.drawPolygon([mx + Math.cos(a) * size * 1.8, my + Math.sin(a) * size * 1.8,
-                mx + Math.cos(a + 1.9) * size * 0.7, my + Math.sin(a + 1.9) * size * 0.7,
-                mx + Math.cos(a - 1.9) * size * 0.7, my + Math.sin(a - 1.9) * size * 0.7]);
+                mx + Math.cos(a + 1.9) * size * 0.6, my + Math.sin(a + 1.9) * size * 0.6,
+                mx + Math.cos(a - 1.9) * size * 0.6, my + Math.sin(a - 1.9) * size * 0.6]);
             g.endFill();
-        } else if (effect.kind === "tracer") {
-            const a = rad(effect.degree);
-            const sx = center.x + Math.cos(a) * config.muzzleOffset, sy = center.y + Math.sin(a) * config.muzzleOffset;
-            g.lineStyle(2, effect.color, 0.7 * fade);
-            g.moveTo(sx, sy);
-            g.lineTo(sx + Math.cos(a) * 220, sy + Math.sin(a) * 220);
+            g.beginFill(0xffffff, 0.8 * fade);
+            g.drawCircle(mx, my, 2 * fade + 1);
+            g.endFill();
         }
     };
     const advance = () => {
@@ -277,13 +254,9 @@
         const weapon = equippedWeapon();
         const degree = mouseDegree();
         if (!weapon || degree === null) return;
-        if (isGun(weapon)) {
-            // 弾が出るとき(弾数>0)だけ銃口を光らせる。空撃ちでは光らない。
-            const ammo = typeof root.gunAmmo === "function" ? root.gunAmmo() : 0;
-            if (ammo > 0) playMuzzle({ degree });
-        } else {
-            playSlash({ degree });
-        }
+        if (isGun(weapon)) return; // 銃はProjectR_GunSystemが受ける
+        playSlash({ degree });
+        root.ProjectRCharacterPresentation?.request?.("SwordAttack", { degree, source: "sword" });
     };
     if (typeof Game_Temp !== "undefined") {
         const _reserve = Game_Temp.prototype.reserveCommonEvent;
@@ -296,20 +269,6 @@
             if (isAttack && queue && queue.length > before) {
                 try { onAttackAccepted(); } catch (_error) { /* 表示のみ */ }
             }
-            return result;
-        };
-    }
-
-    // ---- リロード: 公式GunReloadコマンドをラップ(弾数が増えたときだけ音) ----
-    const engineCommand = "Hendrix_Action_Engine:GunReload";
-    if (typeof PluginManager !== "undefined" && PluginManager._commands && typeof PluginManager._commands[engineCommand] === "function") {
-        const original = PluginManager._commands[engineCommand];
-        PluginManager._commands[engineCommand] = function() {
-            const before = typeof root.gunAmmo === "function" ? root.gunAmmo() : 0;
-            const result = original.apply(this, arguments);
-            try {
-                if ((typeof root.gunAmmo === "function" ? root.gunAmmo() : 0) > before) playReload();
-            } catch (_error) { /* 表示のみ */ }
             return result;
         };
     }
@@ -344,7 +303,7 @@
     }
 
     root.ProjectRWeaponPresentation = {
-        config, playSlash, playMuzzle, playReload,
+        config, playSlash, playMuzzle,
         activeCount: () => effects.length, effects: () => effects.map(e => ({ ...e })),
         clear: () => { for (const e of effects) e.sprite?.parent?.removeChild(e.sprite); effects.length = 0; },
         // テスト/診断用の入口
