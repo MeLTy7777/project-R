@@ -133,7 +133,10 @@ function test(name, body) { body(); console.log(`ok ${++passed} - ${name}`); }
 test("既存ProjectR_BattleHUDを再利用: 登録は1つのまま、新しいHUD pluginは追加しない", () => {
     const entries = productionConfig.$plugins.filter(p => p.name === "ProjectR_BattleHUD" && p.status);
     assert.equal(entries.length, 1);
-    assert.equal(productionConfig.$plugins.filter(p => /hud/i.test(p.name) && p.name !== "ProjectR_MenuHUD").length, 1);
+    assert.equal(productionConfig.$plugins.filter(p => /hud/i.test(p.name) && p.name !== "ProjectR_MenuHUD" && p.name !== "ProjectR_CombatExtrasHUD").length, 1);
+    // 全仕様パスで追加した ProjectR_CombatExtrasHUD は別HUDではなく、このBattleHUD(Manager)の子として
+    // ボス/仲間の表示を足すだけの付属プラグイン(BattleHUDの表示条件・登録は変えない)。
+    assert.match(fs.readFileSync(path.join(__dirname, "..", "js/plugins/ProjectR_CombatExtrasHUD.js"), "utf8"), /@base ProjectR_BattleHUD/);
     assert.equal(fs.existsSync(path.join(__dirname, "..", HUD_FILE)), true);
     // js/plugins.js上のBattleHUD行は変更しない（Phase 5Aは新規登録を行わない）。
     const head = cp.execFileSync("git", ["show", "0060015:js/plugins.js"], { encoding: "utf8", cwd: path.join(__dirname, "..") })
@@ -171,12 +174,15 @@ test("セーブ項目を追加しない: $gameSystemの新規プロパティな�
 });
 test("HUDが依存する本体plugin(Core/Input/Manager/Gauge/Activation/Ultimate/カード/Hendrix/DotMove)は変更しない", () => {
     const names = fs.readdirSync(path.join(__dirname, "..", "js/plugins")).filter(f =>
-        (/^ProjectR_/.test(f) && !/^ProjectR_(BattleHUD|Casino|TexasHoldem|CombatPresence|PlayerFacing|CombatTestArena|CardBattleInput|UltimateActivation|HermesReedFluteSleep|HermesSwordsmanship|GodSummonVisual)/.test(f)) || /^Hendrix_|^DotMoveSystem/.test(f));
+        (/^ProjectR_/.test(f) && !/^ProjectR_(BattleHUD|MenuHUD|Casino|TexasHoldem|CombatPresence|PlayerFacing|CombatTestArena|CardBattleInput|UltimateActivation|HermesReedFluteSleep|HermesSwordsmanship|GodSummonVisual)/.test(f)) || /^Hendrix_|^DotMoveSystem/.test(f))
+        // 基準(0060015)に存在したファイルだけ比べる。後から追加したplugin(視界/メニュー/ボス枠組み等)は別のテストが担当。
+        .filter(f => cp.spawnSync("git", ["cat-file", "-e", `0060015:js/plugins/${f}`], { cwd: path.join(__dirname, "..") }).status === 0);
     assert.ok(names.length >= 18);
     // CombatPresence/PlayerFacing は Phase 5A-RT2(戦闘イベントの登録口・戦闘中の調べる)で意図して変更した。
     // それらの変更は tests/ProjectR_CombatTestArena.rt2.test.cjs が検証する。
     // Phase 5A-RT3 で CardBattleInput(Q/E/X/C/V)・UltimateActivation(診断)・HermesReedFluteSleep(診断)・
     // HermesSwordsmanship(表示連携)も意図して変更した。検証は tests/ProjectR_CombatRuntimeCompliance.test.cjs。
+    // 全仕様パス: MenuHUD(MenuHUD.commandScenes)・BattleHUD(getCardPresentation/getGodPresentation)に小さな接続口を追加。
     // git diffは改行コード(autocrlf)の差を正規化するので、内容の変更だけを検出できる。
     for (const name of names) {
         const result = cp.spawnSync("git", ["diff", "--quiet", "0060015", "--", `js/plugins/${name}`], { cwd: path.join(__dirname, "..") });

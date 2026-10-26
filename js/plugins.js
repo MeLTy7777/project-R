@@ -46,4 +46,5 @@ var $plugins =
 ,{"name":"ProjectR_BossFramework","status":true,"description":"v1.0.0 ボス戦の枠組み(HP・フェーズ・開始時デッキ検証・敗北/リトライ・Divine HP攻撃窓口)。","parameters":{}}
 ,{"name":"ProjectR_CombatExtrasHUD","status":true,"description":"v1.0.0 戦闘HUDの追加表示(ボス名/HP/フェーズ、仲間のHP/ダウン)。","parameters":{}}
 ,{"name":"ProjectR_WeaponPresentation","status":true,"description":"v1.0.0 武器・斬撃の見た目(360°斬撃、銃口の発光/弾道、リロード音)。表示専用。","parameters":{}}
+,{"name":"ProjectR_CombatTestArenaFullSpec","status":true,"description":"v1.0.0 DEV専用 Combat Test Arena 追加シナリオ(ボス/仲間/メニュー/指輪。Playtest限定)。","parameters":{}}
 ];

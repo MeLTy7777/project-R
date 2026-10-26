@@ -484,7 +484,11 @@ test("専用Database Skill(ID234 アポロン奥義)・式・分散なし。Herm
     // Map002: 既存の4件(ID0〜4)は変更なし、ID5だけ追加
     const oldMap = JSON.parse(cp.execFileSync("git", ["show", "e5502f3:data/Map002.json"], { encoding: "utf8", maxBuffer: 1 << 26 }));
     assert.equal(oldMap.events.length, 5); assert.equal(mapData.events.length, 7); // ID6 = RT3の「ProjectR God Visual」
-    oldMap.events.forEach((event, i) => assert.deepEqual(mapData.events[i], event, `event ${i}`));
+    // 全仕様パス: G17の弾(ID1 Bullet)の画像だけ、見えない(空)から公式の弾画像 VFX/$Bullet に変更した（他は不変）。
+    oldMap.events.forEach((event, i) => {
+        const expected = i === 1 ? JSON.parse(JSON.stringify(event).replace("\"characterName\":\"\"", "\"characterName\":\"VFX/$Bullet\"")) : event;
+        assert.deepEqual(mapData.events[i], expected, `event ${i}`);
+    });
     assert.deepEqual({ ...mapData, events: [] }, { ...oldMap, events: [] });
 });
 

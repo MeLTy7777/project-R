@@ -243,7 +243,7 @@ test("復元したプラグインは旧コミットの内容と同一(CombatOccl
     }
 });
 
-test("復元作業は戦闘/カード/HUD/Ultimate/Hendrix/DotMoveのコードを変えていない(基準=e1bf4ca)", () => {
+test("復元作業は戦闘/カード/HUD/Ultimate/Hendrix/DotMoveのコードを変えていない(e1bf4ca→復元コミットc6c84bd)", () => {
     const base = cp.spawnSync("git", ["rev-parse", "--verify", "-q", "e1bf4ca"], { cwd: root });
     if (base.status !== 0) { console.log("  (基準コミットが無いのでスキップ)"); return; }
     const protectedFiles = fs.readdirSync(path.join(root, "js/plugins"))
@@ -251,7 +251,10 @@ test("復元作業は戦闘/カード/HUD/Ultimate/Hendrix/DotMoveのコード�
         .filter(f => cp.spawnSync("git", ["cat-file", "-e", `e1bf4ca:js/plugins/${f}`], { cwd: root }).status === 0)
         .filter(f => !/Casino|TexasHoldem/.test(f)).map(f => `js/plugins/${f}`);
     assert.ok(protectedFiles.length > 20);
-    const r = cp.spawnSync("git", ["diff", "--quiet", "e1bf4ca", "--", ...protectedFiles, "js/rmmz_core.js", "js/rmmz_objects.js",
+    // 復元コミット(c6c84bd)そのものが保護対象を変えていないことを確認する(後続の別作業の変更は対象外)。
+    const recovery = cp.spawnSync("git", ["rev-parse", "--verify", "-q", "c6c84bd"], { cwd: root });
+    if (recovery.status !== 0) { console.log("  (復元コミットが無いのでスキップ)"); return; }
+    const r = cp.spawnSync("git", ["diff", "--quiet", "e1bf4ca", "c6c84bd", "--", ...protectedFiles, "js/rmmz_core.js", "js/rmmz_objects.js",
         "js/rmmz_scenes.js", "js/rmmz_sprites.js", "js/rmmz_managers.js", "js/rmmz_windows.js"], { cwd: root });
     assert.equal(r.status, 0);
 });
