@@ -16,7 +16,9 @@ const KEYS = { Q: ["KeyQ", 81], E: ["KeyE", 69], X: ["KeyX", 88], C: ["KeyC", 67
 const press = (w, key) => w.tap(...KEYS[key]);
 const GUN_ID = 51, AMMO_ITEM = 31;
 
-function arena(god = "hermes", { x = 11, y = 16, mouse = [700, 300] } = {}) {
+// dev3h:false(既定)は従来の検証用に「標準48pxの素のプロファイル」へ差し替える(DEV3Hの寸法・アンカー・行動スプライトを除く)。
+// dev3h:true は本番の内蔵プロファイル(DEV3H 三頭身)のまま使う。
+function arena(god = "hermes", { x = 11, y = 16, mouse = [700, 300], dev3h = false } = {}) {
     const w = buildWorld();
     assert.deepEqual(w.failures, [], "全pluginが本番順で読み込める");
     w.enterMap(4, x, y);
@@ -25,6 +27,7 @@ function arena(god = "hermes", { x = 11, y = 16, mouse = [700, 300] } = {}) {
     const started = w.ctx.ProjectRCombatTestArena.startScenario(god);
     assert.equal(started.ok, true, JSON.stringify(started));
     w.frames(2);
+    if (!dev3h) w.ctx.ProjectRCharacterPresentation.registerProfile({ id: "protagonist", actorId: 1, heads: 3, visualScale: 1, visualHeightPx: 0, directions: 4 });
     w.played = []; w.calls = [];
     w.ctx.AudioManager.playSe = se => { w.played.push(se.name); };
     const original = w.ctx.PluginManager.callCommand;
@@ -566,17 +569,23 @@ test("発射の見た目: 発光は銃口の点だけ(体の中心ではない)�
     wp.clear();
     const result = sys(w).fire("test");
     const effects = plain(wp.effects());
-    assert.deepEqual(effects.map(e => e.kind), ["muzzle"], "銃口の発光1つ(旧: 体中心の発光+弾道線は無い)");
+    assert.deepEqual(effects.map(e => e.kind), ["muzzle", "smoke"], "銃口の短い閃光と控えめな煙だけ(体中心の発光・弾道線は無い)");
+    assert.ok(effects[0].frames <= 4, "閃光は4フレーム以内の短さ");
+    assert.ok(effects[1].frames > effects[0].frames && effects[1].frames <= 16, "煙は閃光より長いが短時間");
     const feet = { x: ctx.$gamePlayer.screenX(), y: ctx.$gamePlayer.screenY() };
-    near(feet.x + effects[0].rel.x, result.muzzle.x, 1e-9); near(feet.y + effects[0].rel.y, result.muzzle.y, 1e-9);
+    for (const effect of effects) { near(feet.x + effect.rel.x, result.muzzle.x, 1e-9); near(feet.y + effect.rel.y, result.muzzle.y, 1e-9); }
     assert.equal(pres(w).current().name, "GunFire");
     assert.ok(historyNames(w).includes("GunFire"));
     w.frames(12);
     const canvas = new Proxy({}, { get: () => () => undefined }); // 描画先(PIXI.Graphics)の代わり。描画APIを呼べることも確認する
+    for (let i = 0; i < 5; i++) wp._draw(canvas, { x: 0, y: 0 });
+    assert.deepEqual(plain(wp.effects()).map(e => e.kind), ["smoke"], "閃光は4フレームで消え、煙だけが残る");
     for (let i = 0; i < 12; i++) wp._draw(canvas, { x: 0, y: 0 });
-    assert.equal(wp.activeCount(), 0, "発光は短時間で消える");
+    assert.equal(wp.activeCount(), 0, "発光も煙も短時間で消える");
     assert.equal(pres(w).current().name, "Aim", "撃った後はAimへ戻る");
     // 反動(銃スプライト): 発射直後だけ照準と逆へ後退し銃口が跳ね、約9frameで収まる(公式が毎フレーム置き直す前提で蓄積しない)
+    // 反動は Scene_Map.update の最後(公式が毎フレーム置いた後)で足される。もう1発撃って、その1フレーム目から測る
+    assert.equal(sys(w).fire("test").ok, true);
     const weaponSprite = w.run("ShxWeaponSpriteH");
     assert.ok(weaponSprite, "公式Display Weaponのスプライトが存在する");
     const base = { x: 300, y: 200, rotation: 0.1 };
@@ -631,14 +640,14 @@ test("DEVアリーナ: Animation / Weapon Certification Zoneの端末がMap004�
         assert.deepEqual(now.events[event.id], event, `既存イベント ${event.id} ${event.name} は不変`);
     }
     const zone = now.events.filter(e => e && e.id >= 32);
-    assert.equal(zone.length, 12);
+    assert.equal(zone.length, 17);
     const commands = zone.map(e => e.pages[0].list.find(c => c.code === 357)?.parameters[1]).filter(Boolean);
-    assert.deepEqual(commands.sort(), ["animCast", "animDamage", "animEmpty", "animEquipGun", "animEquipSword", "animProfileTall", "animRefill",
+    assert.deepEqual(commands.sort(), ["animAim", "animAnchors", "animCast", "animDamage", "animDev3h", "animDown", "animEmpty", "animEquipGun", "animEquipSword", "animProfileTall", "animRefill", "animSword",
         "animRestore", "animStatus", "animTfSprite", "animUltimate"].sort());
     const positions = new Set(now.events.filter(Boolean).map(e => e.x + "," + e.y));
     assert.equal(positions.size, now.events.filter(Boolean).length, "イベントが重ならない");
     assert.ok(zone.some(e => e.name.startsWith("DEV Sign: Animation")), "説明の看板がある");
-    for (const e of zone) assert.ok(e.x >= 27 && e.x <= 37 && e.y >= 8 && e.y <= 10, `射撃レーンの手前に収まる ${e.name}`);
+    for (const e of zone) assert.ok(e.x >= 27 && e.x <= 37 && e.y >= 8 && e.y <= 11, `射撃レーンの手前に収まる ${e.name}`);
     const w = arena();
     for (const e of zone) assert.equal(w.ctx.$gameMap.isPassable(e.x, e.y, 2) || w.ctx.$gameMap.isPassable(e.x, e.y, 6), true, `${e.name} は床の上`);
     assert.equal(w.ctx.$plugins.find(p => p.name === "ProjectR_CombatTestArenaAnimation").status, true);
@@ -704,7 +713,7 @@ test("TF TallSpriteMZ: 端末で主人公の見た目を切り替え/戻せる�
     assert.deepEqual(plain(pres(w).scaleSummonOffset({ x: -0.75, y: -0.75 })), { x: -0.75, y: -1.125 }, "神の位置も高さに追従");
     assert.equal(pres(w).profileForPlayer().hitbox, null, "当たり判定は変えない");
     lines = zoneCommand(w, "animTfSprite");
-    assert.match(lines[0], /標準の主人公/);
+    assert.match(lines[0], /元の主人公/);
     assert.equal(ctx.$gameActors.actor(1).characterName(), original.name); assert.equal(ctx.$gameActors.actor(1).characterIndex(), original.index);
     // 切り替えたままアリーナを出ても、Restoreでも元に戻る
     zoneCommand(w, "animTfSprite");
@@ -728,9 +737,10 @@ test("TF素材の扱い: 規約上そのままの再配布ができないため�
         const b = fs.readFileSync(file);
         assert.deepEqual([b.readUInt32BE(16), b.readUInt32BE(20)], [576, 576], "576×576 = 8体(4×2)、1体 144×288 = 3×4コマ(48×72)");
     }
-    // 既存のRTPのActor1を使い続けている(上書きしていない)
+    // 既存のRTPのActor1.pngは上書きしていない(主人公は自作のDEV3Hを使う。リード以外のアクターはRTPのまま)
     const actors = json("data/Actors.json");
-    assert.equal(actors[1].characterName, "Actor1");
+    assert.equal(actors[1].characterName, "$DEV3H_Idle_f4");
+    assert.equal(actors[2].characterName, "Actor1");
 });
 
 test("クレジット: タイトルに「クレジット」が追加され、TF TallSpriteMZの表記(規約の例文)と公式素材の著作権表記が表示される", () => {
@@ -768,6 +778,211 @@ test("クレジット: タイトルに「クレジット」が追加され、TF 
     assert.match(ledger, /Tonbi@Tobishima-Factory/); assert.match(ledger, /TF_Actor1\.png/);
 });
 
+// ---------------- DEV3H(自作の三頭身)・Idle/Walk/Run・構え/ダウン・神の位置・リロード・自動セーブ ----------------
+const dev3hArena = (opts = {}) => arena("hermes", { dev3h: true, ...opts });
+const pngSize = file => { const b = fs.readFileSync(path.join(__dirname, "..", "img/characters", file)); return [b.readUInt32BE(16), b.readUInt32BE(20)]; };
+
+test("DEV3H: 主人公は実際に三頭身(頭28px x 3 = 身長84px)。1コマ96x96の専用シートで、拡大で作っていない。頭身はロジックの定数ではない", () => {
+    const gen = require("../tools/gen_dev3h_character.cjs");
+    assert.equal(gen.HEAD_H * 3, gen.HEIGHT, "頭の高さ x 3 = 身長");
+    const w = dev3hArena(); const api = pres(w); const p = api.profileForPlayer();
+    assert.equal(p.id, "protagonist"); assert.equal(p.heads, 3); assert.equal(p.visualScale, 1, "拡大ではなく専用の大きい画像");
+    assert.equal(p.visualHeightPx, gen.HEIGHT); assert.equal(api.visualHeight(), 84);
+    assert.equal(p.hitbox, null, "当たり判定は見た目と別(未指定=変更しない)");
+    assert.equal(p.directions, 4, "4方向(8方向画像は無いので偽装しない)");
+    assert.equal(w.ctx.$gamePlayer.characterName(), "$DEV3H_Idle_f4");
+    assert.equal(json("data/Actors.json")[1].characterName, "$DEV3H_Idle_f4");
+    // Idle/Walk/Run + 行動シート。ファイル名の _fN とプロファイルのframes・実画像の寸法(N x 96, 4 x 96)が一致する
+    const sheets = [p.locomotion.idle, p.locomotion.walk, p.locomotion.run, ...Object.values(p.actions).map(a => a.sprite)];
+    assert.equal(Object.keys(p.actions).sort().join(), "Aim,Damage,Down,GunFire,GunReload,SkillCast,SwordAttack,Ultimate");
+    for (const name of sheets) {
+        const frames = Number(name.match(/_f(\d+)$/)[1]);
+        assert.deepEqual(pngSize(name + ".png"), [frames * gen.W, 4 * gen.H], name);
+    }
+    for (const [action, spec] of Object.entries(p.actions)) assert.equal(spec.frames, Number(spec.sprite.match(/_f(\d+)$/)[1]), action);
+    assert.match(p.locomotion.walk, /Walk/); assert.match(p.locomotion.run, /Run/); assert.match(p.locomotion.idle, /Idle/);
+    for (const name of Object.values(p.actions).map(a => a.sprite)) assert.doesNotMatch(name, /Idle|Walk|Run/, "行動シートは自動切替のキーワードを含まない: " + name);
+    // 他キャラは独立(2.5頭身/3.5頭身/4頭身を並べても主人公に影響しない)。戦闘コードは頭身を参照しない
+    for (const [id, actorId, heads, height] of [["h25", 2, 2.5, 72], ["h35", 3, 3.5, 98], ["h4", 4, 4, 112]]) api.registerProfile({ id, actorId, heads, visualHeightPx: height });
+    assert.deepEqual([2, 3, 4].map(id => api.profileForActor(id).heads), [2.5, 3.5, 4]);
+    assert.equal(api.profileForPlayer().heads, 3); assert.equal(api.visualHeight(), 84);
+    for (const file of ["js/plugins/ProjectR_GunSystem.js", "js/plugins/ProjectR_WeaponPresentation.js", "js/plugins/ProjectR_GodSummonVisual.js"]) {
+        assert.doesNotMatch(read(file), /\.heads\b/, file + " は頭身に依存しない");
+    }
+});
+
+test("DEV3H: 画像は生成スクリプト(tools/gen_dev3h_character.cjs)と一致し、全行動・全4方向が空でなく、行動ごとに見た目が違う(同じ静止画ではない)", () => {
+    const gen = require("../tools/gen_dev3h_character.cjs");
+    const hashes = new Set();
+    for (const name of Object.keys(gen.ACTIONS)) {
+        const sheet = gen.sheetFor(name);
+        const file = fs.readFileSync(path.join(__dirname, "..", "img/characters", gen.fileName(name)));
+        assert.ok(file.equals(gen.encodePng(sheet.w, sheet.h, sheet.px)), gen.fileName(name) + " は生成物と一致");
+        const cell = (frame, row) => { let n = 0; const out = []; for (let y = 0; y < gen.H; y++) for (let x = 0; x < gen.W; x++) { const i = (((row * gen.H + y) * sheet.w) + frame * gen.W + x) * 4; if (sheet.px[i + 3]) n++; out.push(sheet.px[i], sheet.px[i + 3]); } return { n, key: Buffer.from(out).toString("base64") }; };
+        for (let row = 0; row < 4; row++) for (let frame = 0; frame < sheet.frames; frame++) assert.ok(cell(frame, row).n > 400, `${name} f${frame} row${row} は描かれている`);
+        // 同じ行動の中でコマが変化する(Idleは呼吸なので小さい差でよい)。足元(下端)はコマの最下段に届く=浮かない
+        const keys = new Set(Array.from({ length: sheet.frames }, (_, f) => cell(f, 2).key));
+        assert.ok(keys.size >= Math.min(sheet.frames, 2), name + " はコマが変化する");
+        hashes.add(cell(0, 0).key);
+    }
+    assert.equal(hashes.size, Object.keys(gen.ACTIONS).length, "行動ごとに1コマ目の絵が違う");
+    // 足元: 立ち姿(Idle 正面)の最下行に不透明ピクセルがあり、頭頂は身長84pxぶん上
+    const idle = gen.sheetFor("Idle");
+    const rows = []; for (let y = 0; y < gen.H; y++) { let n = 0; for (let x = 0; x < gen.W; x++) if (idle.px[((y * idle.w) + x) * 4 + 3]) n++; rows.push(n); }
+    assert.ok(rows[gen.H - 1] > 0, "足元はコマ最下行(MZは足元が基準なので浮かない)");
+    const top = rows.findIndex(n => n > 0);
+    assert.ok(Math.abs((gen.H - top) - gen.HEIGHT) <= 4, `描かれた高さ≒84px (${gen.H - top})`);
+});
+
+test("Idle/Walk/Run: 公式Animation Solutionの自動切替(導入順の都合で呼ばれない)を橋渡しし、移動でWalk、ダッシュでRun、止まればIdleへ戻る", () => {
+    const w = dev3hArena(); const { ctx } = w; const p = ctx.$gamePlayer;
+    // テストのNodeにはNW.jsのfsがなく、公式の画像検出(非同期)が使えないため、検出結果を実機と同じ名前で与える
+    const detect = () => { p._graphicsDetected = true; p._detectedIdleGraphic = "$DEV3H_Idle_f4"; p._detectedWalkGraphic = "$DEV3H_Walk_f6"; p._detectedRunGraphic = "$DEV3H_Run_f6"; };
+    detect(); w.frames(2);
+    assert.equal(p.characterName(), "$DEV3H_Idle_f4");
+    ctx.Input._currentState.right = true;
+    detect(); w.frames(6);
+    assert.equal(p.characterName(), "$DEV3H_Walk_f6", "歩くとWalk");
+    assert.equal(pres(w).baseline(), "Walk");
+    ctx.Input._currentState.right = false;
+    detect(); w.frames(12);
+    assert.equal(p.characterName(), "$DEV3H_Idle_f4", "止まればIdleへ戻る");
+    p.isDashing = () => true; ctx.Input._currentState.left = true;
+    detect(); w.frames(6);
+    assert.equal(p.characterName(), "$DEV3H_Run_f6", "ダッシュ中はRun");
+    assert.equal(pres(w).baseline(), "Run");
+    ctx.Input._currentState.left = false; delete p.isDashing;
+    detect(); w.frames(12);
+    assert.equal(p.characterName(), "$DEV3H_Idle_f4");
+    // 公式が走る環境では二重に呼ばない: 1フレームに updateMovingState が1回だけ
+    let calls = 0; const original = p.updateMovingState;
+    p.updateMovingState = function() { calls++; return original.apply(this, arguments); };
+    w.frames(5);
+    assert.ok(calls <= 5, "1フレーム1回まで");
+    delete p.updateMovingState;
+});
+
+test("構え/ダウンは基本姿勢の専用シート: 構えでGunAim、行動(発射/リロード)の後は構えへ戻り、構えを解くとIdleへ、倒れている間はDown、復活で戻る", () => {
+    const w = dev3hArena(); const { ctx } = w; const p = ctx.$gamePlayer; const api = pres(w);
+    const idle = p.characterName();
+    api.setAiming(true); w.frames(2);
+    assert.equal(p.characterName(), "$DEV3H_GunAim_f2");
+    api.request("GunFire", { degree: 90 });
+    assert.equal(p.characterName(), "$DEV3H_GunFire_f3", "発射の行動シート");
+    w.frames(10);
+    assert.equal(p.characterName(), "$DEV3H_GunAim_f2", "発射後は構えへ戻る(攻撃フレームに留まらない)");
+    api.request("GunReload", { degree: 90, frames: 40 });
+    assert.equal(p.characterName(), "$DEV3H_GunReload_f6");
+    w.frames(45);
+    assert.equal(p.characterName(), "$DEV3H_GunAim_f2", "リロード後は構えへ戻る");
+    assert.equal(p.isDirectionFixed(), ctx.$gamePlayer.isDirectionFixed());
+    api.setAiming(false); w.frames(2);
+    assert.equal(p.characterName(), idle, "構えを解くとIdleの画像へ");
+    // 倒れる/復活(PlayerDeathの死亡判定を差し替え)
+    ctx.ProjectR.PlayerDeath.isDead = () => true;
+    w.frames(2);
+    assert.equal(p.characterName(), "$DEV3H_Down_f4");
+    assert.equal(api.baseline(), "Down");
+    ctx.ProjectR.PlayerDeath.isDead = () => false;
+    w.frames(2);
+    assert.equal(p.characterName(), idle, "復活したらIdleの画像へ戻る");
+    for (const name of ["SwordAttack", "SkillCast", "Ultimate", "Damage"]) {
+        assert.equal(api.request(name, { degree: 90 }).official, true);
+        assert.equal(p.characterName(), api.profileForPlayer().actions[name].sprite, name);
+        w.frames(80);
+        assert.equal(p.characterName(), idle, name + " の後はIdleの画像へ戻る");
+        assert.equal(api.activeNames().length, 0);
+    }
+});
+
+test("神(常駐)の位置: 召喚アンカーに従い、プレイヤーが動いても同じ相対位置を保つ(生成直後に真上へ重ならない)", () => {
+    const w = dev3hArena(); const { ctx } = w;
+    w.frames(4);
+    const visuals = plain(ctx.ProjectRGodSummonVisual.getVisuals()).filter(v => v.kind === "persistent");
+    assert.equal(visuals.length, 1, "常駐の神が生成されている");
+    const event = ctx.$gameMap.event(visuals[0].eventId);
+    const rel = () => [event._realX - ctx.$gamePlayer._realX, event._realY - ctx.$gamePlayer._realY];
+    const offset = pres(w).scaleSummonOffset({ x: -0.75, y: -0.75 });
+    assert.deepEqual(plain(offset), { x: -0.75, y: -1.3125 }, "高さ84/48=1.75倍");
+    near(rel()[0], offset.x, 0.05, "x"); near(rel()[1], offset.y, 0.05, "y");
+    const startX = ctx.$gamePlayer._realX;
+    ctx.Input._currentState.right = true; w.frames(30); ctx.Input._currentState.right = false; w.frames(10);
+    assert.ok(ctx.$gamePlayer._realX > startX + 0.5, "プレイヤーは動いた");
+    near(rel()[0], offset.x, 0.12, "移動後のx相対位置"); near(rel()[1], offset.y, 0.12, "移動後のy相対位置");
+    assert.equal(event.isThrough(), true, "神は当たり判定を持たない");
+});
+
+test("リロードの見た目: リロード中だけ銃が腰の高さへ下がり銃口が下を向く(0→1→0の山型)。終われば構えの位置へ戻り、蓄積しない", () => {
+    const w = dev3hArena(); const { ctx } = w;
+    equipGun(w, { ammo: 1 });
+    const weaponSprite = w.run("ShxWeaponSpriteH");
+    const base = { x: 300, y: 200, rotation: 0 };
+    const sample = () => { Object.assign(weaponSprite, base); sys(w)._applyKick(); return { dy: weaponSprite.y - base.y, dr: weaponSprite.rotation - base.rotation }; };
+    assert.deepEqual(sample(), { dy: 0, dr: 0 }, "リロード前は何も足さない");
+    press(w, "R");
+    assert.equal(sys(w).isReloading(), true);
+    const dips = [];
+    for (let i = 0; i < 44 && sys(w).isReloading(); i++) { w.frames(1); dips.push(sample()); }
+    const peak = Math.max(...dips.map(d => d.dy));
+    assert.ok(peak > 8 && peak <= 12.01, `銃は最大で約12px下がる (${peak})`);
+    assert.ok(Math.max(...dips.map(d => d.dr)) > 0.3, "右向きの銃は銃口が下(時計回り)へ倒れる");
+    assert.ok(dips[Math.floor(dips.length / 2)].dy > dips[1].dy, "中盤が一番下がる");
+    w.frames(60);
+    assert.deepEqual(sample(), { dy: 0, dr: 0 }, "リロード後は元の位置・角度");
+});
+
+test("セーブ保護: Playtestでは自動セーブを止める(開発セーブを上書きしない)。配布版(Playtestでない)では何もしない", () => {
+    const w = dev3hArena(); const { ctx } = w;
+    assert.equal(ctx.ProjectRCombatTestArenaAnimation.autosaveSuppressed(), true);
+    let saved = 0;
+    const scene = Object.create(ctx.Scene_Base.prototype);
+    scene.executeAutosave = () => { saved++; };
+    scene.isAutosaveEnabled = () => true;
+    scene.requestAutosave();
+    assert.equal(saved, 0, "Playtestでは自動セーブしない");
+    // 配布版: Utils.isOptionValid("test") が偽ならプラグインは何もしない(標準の自動セーブのまま)
+    const prod = buildWorld({ playtest: false });
+    assert.deepEqual(prod.failures, []);
+    let savedProd = 0;
+    const sceneProd = Object.create(prod.ctx.Scene_Base.prototype);
+    sceneProd.executeAutosave = () => { savedProd++; };
+    sceneProd.isAutosaveEnabled = () => true;
+    sceneProd.requestAutosave();
+    assert.equal(savedProd, 1, "配布版は標準どおり自動セーブする");
+    assert.equal(prod.ctx.ProjectRCombatTestArenaAnimation, undefined, "配布版にはDEVアリーナがない");
+});
+
+test("DEVアリーナ(追加): 剣の動作/構え/ダウン/アンカー表示/DEV3Hの端末が動く。アンカー表示は足元・頭頂・武器・照準・近接・VFX・召喚・銃口を描く", () => {
+    const w = dev3hArena(); const { ctx } = w; const api = ctx.ProjectRCombatTestArenaAnimation;
+    for (const [command, expectHistory] of [["animSword", "SwordAttack"], ["animDown", "Down"]]) {
+        const lines = zoneCommand(w, command);
+        assert.match(lines[0], new RegExp(expectHistory)); assert.ok(historyNames(w).includes(expectHistory), command);
+        w.frames(100);
+    }
+    let lines = zoneCommand(w, "animAim");
+    assert.match(lines[0], /ON/); assert.equal(pres(w).isAiming(), true);
+    lines = zoneCommand(w, "animAim");
+    assert.match(lines[0], /OFF/); assert.equal(pres(w).isAiming(), false);
+    // アンカー表示: PIXI.Graphicsに描く(描画APIが呼べて、線の数が揃う)
+    const drawn = [];
+    ctx.PIXI = ctx.PIXI || {};
+    ctx.PIXI.Graphics = class { constructor() { this.parent = null; } clear() { drawn.length = 0; } lineStyle() {} moveTo() { drawn.push("m"); } lineTo() { drawn.push("l"); } beginFill() {} endFill() {} drawCircle() {} };
+    ctx.SceneManager._scene.addChild = function(child) { child.parent = this; };
+    lines = zoneCommand(w, "animAnchors");
+    assert.match(lines[0], /ON/); assert.equal(api.anchorsVisible(), true);
+    api._drawAnchors();
+    assert.ok(drawn.filter(c => c === "m").length >= 8, "足元/頭頂/アンカー/銃口の線が描かれる");
+    lines = zoneCommand(w, "animAnchors");
+    assert.match(lines[0], /OFF/); assert.equal(api.anchorsVisible(), false);
+    // 古いセーブ(主人公がRTPのまま)をDEV3Hへ切り替えて戻す
+    ctx.$gameActors.actor(1).setCharacterImage("Actor1", 0); ctx.$gamePlayer.refresh();
+    api.setAssetCheck(() => true);
+    lines = zoneCommand(w, "animDev3h");
+    assert.equal(ctx.$gameActors.actor(1).characterName(), "$DEV3H_Idle_f4");
+    zoneCommand(w, "animRestore");
+    assert.equal(ctx.$gameActors.actor(1).characterName(), "Actor1", "Restoreで元の保存内容へ");
+});
+
 test("文書・資産: 新銃/キャラ表示の文書、開発用素材(自作)、第三者素材台帳が存在し、旧素材の扱いを書いている", () => {
     for (const doc of ["ProjectR_LegacyGunRemoval", "ProjectR_NewGunSystem", "ProjectR_CharacterAnimation", "ProjectR_ThirdPartyAssets"]) {
         assert.ok(fs.existsSync(path.join(__dirname, "..", "docs", `${doc}.md`)), doc);
@@ -777,4 +992,14 @@ test("文書・資産: 新銃/キャラ表示の文書、開発用素材(自作)
         assert.ok(fs.existsSync(path.join(__dirname, "..", file)), file);
     }
     assert.match(read("docs/ProjectR_ThirdPartyAssets.md"), /ProjectR_G17_Dev/);
+    assert.match(read("docs/ProjectR_ThirdPartyAssets.md"), /\$DEV3H_/, "自作のDEV3Hが台帳にある");
+    assert.match(read("docs/ProjectR_CharacterAnimation.md"), /DEV3H/);
+    const video = read("docs/ProjectR_OfficialVideoNeeded.md");
+    assert.match(video, /nC0W4g6SZzQ/); assert.match(video, /How to use plugin RPG Maker Animation Solution/);
+    // 実機の証跡(小さな画像を少数だけ)
+    const evidence = fs.readdirSync(path.join(__dirname, "..", "docs/evidence"));
+    assert.ok(evidence.length >= 3 && evidence.length <= 6, "証跡は少数: " + evidence.join());
+    for (const name of evidence) assert.ok(fs.statSync(path.join(__dirname, "..", "docs/evidence", name)).size < 600 * 1024, name + " は小さい");
+    // 生成スクリプトが残っている(再現できる)
+    for (const tool of ["tools/gen_dev3h_character.cjs", "tools/gen_dev_bullet.cjs"]) assert.ok(fs.existsSync(path.join(__dirname, "..", tool)), tool);
 });

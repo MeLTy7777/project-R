@@ -231,7 +231,7 @@ test("銃の発光: GunSystemが渡した銃口の点にだけ描く(体の中�
     assert.equal(wp.activeCount(), 0, "銃の攻撃入力ではWeaponPresentationは何も描かない(旧: 体中心の発光)");
     assert.equal(wp.playMuzzle({ degree: 90 }), false, "銃口の点が無ければ描かない");
     assert.equal(wp.playMuzzle({ degree: 90, point: { x: 400, y: 300 } }), true);
-    deepEqual(wp.effects().map(e => e.kind), ["muzzle"], "弾道線(tracer)は撤去");
+    deepEqual(wp.effects().map(e => e.kind), ["muzzle", "smoke"], "弾道線(tracer)は撤去。銃口の閃光と煙だけ");
     const src = read("js/plugins/ProjectR_WeaponPresentation.js");
     assert.ok(!/ammo\s*[-+]=|ammo--|ammo\+\+|setAmmo|_ammo|tracer/.test(src), "独自の弾薬管理・弾道線を持たない");
 });
