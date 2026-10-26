@@ -129,6 +129,27 @@
  * Ultimateのゲーム仕様はこのプラグインでは追加しません。変数または
  * setUltimateを通して、確定済みのゲーム側データを接続してください。
  * Q/R/X/C/VおよびUltimateのRは表示だけで、入力処理は追加しません。
+ *
+ * ---- Phase 5A: カード戦闘HUD（薄い表示アダプタ） ----
+ * ProjectRCardDeck.isCardBattleActive() の間だけ、次の表示に切り替わります。
+ * HUDは状態を持たず、毎回 実行中のAPIから読むだけです（セーブ項目は追加しません）。
+ *   ・5枠 = 手札 hand[0..4]。キー表示は 1～5（入力処理は ProjectR_CardBattleInput のまま）。
+ *     名前/アイコンは、Skillのnote <ProjectRCard: cardId>、無ければ内蔵の既定名から解決します。
+ *     使用不可（所持・指輪条件）のカードは暗く表示。空き枠は「—」。
+ *   ・山札/捨て札/Cooldown山の枚数（CardDeckの戦闘状態から読むだけ）。
+ *   ・Divine HP / 崩壊 / 復帰残り秒: ProjectRGodSummonManager から読むだけ。
+ *   ・Ultimate Gauge: ProjectRUltimateGauge から読むだけ。
+ *       満タンでない=通常 / 満タン＋神が顕現中=READY（キー表示）/
+ *       満タン＋神が崩壊中=GAUGE FULL / UNAVAILABLE（キーを押せるようには見せない）。
+ *   ・Ultimateキー表示: ProjectRUltimateActivation.getInputBinding() の設定値。
+ *   ・Hermes/Apollo Ultimate実行中は ULTIMATE ACTIVE。
+ *   ・Ultimate神が無い戦闘では、Ultimate区画とDivine HP区画を隠します（偽の0/100は出しません）。
+ * カード戦闘以外では従来のHotbar（Q/R/X/C/V）とUltimate表示のままです。
+ *
+ * 差し替え口（実行時のみ・セーブしません。将来の画像もここから）:
+ *   ProjectRBattleHUD.setCardPresentation(cardId, { name, iconIndex, imageName })
+ *   ProjectRBattleHUD.setGodPresentation(godId, { name, imageName })
+ *   ProjectRBattleHUD.getViewModel()   // HUDが今描いている値（Console確認用）
  */
 
 (() => {
@@ -140,6 +161,8 @@
     const BASE_HEIGHT = 1080;
     const FOOTER_TOP = 650;
     const SKILL_KEYS = ["Q", "R", "X", "C", "V"];
+    // Phase 5A: カード戦闘中は同じ5枠が手札hand[0..4]になり、キー表示は1～5になる。
+    const CARD_KEYS = ["1", "2", "3", "4", "5"];
     const SKILL_COUNT = SKILL_KEYS.length;
     const SKILL_SLOT_WIDTH = 172;
     const SKILL_SLOT_HEIGHT = 140;
@@ -439,6 +462,105 @@
         return ImageManager.loadBitmap(assetFolder, String(filename || ""));
     };
 
+    // ---- Phase 5A: 表示名・アイコンの差し替え口（実行時のみ。セーブしない） ----
+    // CardDeckCoreのカード定義には名前もアイコンも無いので、HUD側で次の順に解決する:
+    //   setCardPresentation > Skillのnote <ProjectRCard: cardId> > 下の既定 > cardIdから生成
+    const CARD_PRESENTATION_DEFAULTS = Object.freeze({
+        hermes_swift_movement: Object.freeze({ name: "高速移動" }),
+        hermes_reed_flute_sleep: Object.freeze({ name: "葦笛睡眠" }),
+        hermes_perception_obscure: Object.freeze({ name: "認識阻害" }),
+        hermes_sword_attack: Object.freeze({ name: "ヘルメース剣術" }),
+        apollo_golden_arrow: Object.freeze({ name: "黄金の弓矢" }),
+        apollo_plague_attack: Object.freeze({ name: "アポロン病攻撃" }),
+        apollo_lyre_calm: Object.freeze({ name: "リラの支援" })
+    });
+    const GOD_PRESENTATION_DEFAULTS = Object.freeze({
+        apollo: Object.freeze({ name: "APOLLO" }),
+        hermes: Object.freeze({ name: "HERMES" }),
+        janus: Object.freeze({ name: "JANUS" }),
+        themis: Object.freeze({ name: "THEMIS" }),
+        athena: Object.freeze({ name: "ATHENA" })
+    });
+    const cardPresentationOverrides = new Map();
+    const godPresentationOverrides = new Map();
+    const skillCardIndexCache = new WeakMap();
+
+    const sanitizePresentation = source => {
+        const result = {};
+        if (source && typeof source.name === "string" && source.name) result.name = source.name;
+        if (source && Number.isFinite(Number(source.iconIndex))) {
+            result.iconIndex = Math.max(0, Math.trunc(Number(source.iconIndex)));
+        }
+        if (source && typeof source.imageName === "string") result.imageName = source.imageName;
+        return result;
+    };
+
+    BattleHUD.setCardPresentation = function(cardId, presentation) {
+        const id = String(cardId || "");
+        if (!id) return false;
+        cardPresentationOverrides.set(id, sanitizePresentation(presentation));
+        return true;
+    };
+
+    BattleHUD.clearCardPresentation = function(cardId) {
+        return cardPresentationOverrides.delete(String(cardId || ""));
+    };
+
+    BattleHUD.setGodPresentation = function(godId, presentation) {
+        const id = String(godId || "");
+        if (!id) return false;
+        godPresentationOverrides.set(id, sanitizePresentation(presentation));
+        return true;
+    };
+
+    BattleHUD.clearGodPresentation = function(godId) {
+        return godPresentationOverrides.delete(String(godId || ""));
+    };
+
+    // Skillのnote <ProjectRCard: cardId> を持つSkillを、$dataSkills配列ごとに一度だけ索引化する。
+    const skillForCard = cardId => {
+        if (typeof $dataSkills === "undefined" || !Array.isArray($dataSkills)) return null;
+        let index = skillCardIndexCache.get($dataSkills);
+        if (!index) {
+            index = new Map();
+            for (const skill of $dataSkills) {
+                const match = skill && String(skill.note || "").match(/<ProjectRCard\s*:\s*([^<>\s]+)\s*>/);
+                if (match && !index.has(match[1])) index.set(match[1], skill);
+            }
+            skillCardIndexCache.set($dataSkills, index);
+        }
+        return index.get(cardId) || null;
+    };
+
+    const humanizeId = id => String(id || "").replace(/^[a-z0-9]+_/i, "").replace(/_/g, " ").toUpperCase();
+
+    const resolveCardPresentation = cardId => {
+        const override = cardPresentationOverrides.get(cardId) || {};
+        const skill = skillForCard(cardId);
+        const fallback = CARD_PRESENTATION_DEFAULTS[cardId] || {};
+        return {
+            name: override.name || skill?.name || fallback.name || humanizeId(cardId) || "CARD",
+            iconIndex: override.iconIndex ?? skill?.iconIndex ?? fallback.iconIndex ?? 0,
+            imageName: override.imageName || "",
+            skillId: skill?.id || 0
+        };
+    };
+
+    const resolveGodPresentation = godId => {
+        const override = godPresentationOverrides.get(godId) || {};
+        const fallback = GOD_PRESENTATION_DEFAULTS[godId] || {};
+        return {
+            name: override.name || fallback.name || String(godId || "").toUpperCase() || initialGodLabel,
+            imageName: override.imageName || ""
+        };
+    };
+
+    // 実数をそのまま見せる。整数なら小数なし、そうでなければ小数1桁。
+    const formatNumber = value => {
+        const number = finiteNumber(value, 0);
+        return Number.isInteger(number) ? String(number) : String(Math.round(number * 10) / 10);
+    };
+
     PluginManager.registerCommand(pluginName, "ShowHUD", () => BattleHUD.show());
     PluginManager.registerCommand(pluginName, "HideHUD", () => BattleHUD.hide());
     PluginManager.registerCommand(pluginName, "ToggleHUD", () => BattleHUD.toggle());
@@ -628,7 +750,176 @@
             };
         }
 
+        // ---- Phase 5A: 実行中システムの読み取り専用ビュー。HUDは状態を所有しない ----
+        // プラグイン読込順がCardDeckCoreより前なので、APIは毎回window経由で遅延参照する。
+        api(name) {
+            const target = window[name];
+            return target && typeof target === "object" ? target : null;
+        }
+
+        cardBattleActive() {
+            try {
+                return !!this.api("ProjectRCardDeck")?.isCardBattleActive?.();
+            } catch (error) {
+                return false;
+            }
+        }
+
+        // getBattleState()は深いコピーを返すので、同一frame内では一度だけ呼ぶ。
+        battleSnapshot() {
+            if (!this.cardBattleActive()) {
+                this._snapshot = null;
+                return null;
+            }
+            const frame = typeof Graphics !== "undefined" ? Graphics.frameCount : undefined;
+            if (this._snapshot && frame !== undefined && this._snapshotFrame === frame) {
+                return this._snapshot;
+            }
+            let snapshot = null;
+            try {
+                snapshot = this.api("ProjectRCardDeck").getBattleState() || null;
+            } catch (error) {
+                snapshot = null;
+            }
+            this._snapshot = snapshot;
+            this._snapshotFrame = frame;
+            return snapshot;
+        }
+
+        invalidate() {
+            this._snapshot = null;
+            this._snapshotFrame = undefined;
+            this._usableCache = null;
+        }
+
+        // 所持・指輪条件による「使用不可」。Core側のcanUseCardを15frameに1回だけ引く。
+        cardUsable(cardId) {
+            const deck = this.api("ProjectRCardDeck");
+            if (!deck || typeof deck.canUseCard !== "function") return true;
+            const frame = typeof Graphics !== "undefined" ? Graphics.frameCount : undefined;
+            let cache = this._usableCache;
+            if (!cache || frame === undefined || frame - cache.frame >= 15 || frame < cache.frame) {
+                cache = this._usableCache = { frame, values: new Map() };
+            }
+            if (!cache.values.has(cardId)) {
+                let usable = true;
+                try {
+                    usable = !!deck.canUseCard(cardId);
+                } catch (error) {
+                    usable = false;
+                }
+                cache.values.set(cardId, usable);
+            }
+            return cache.values.get(cardId);
+        }
+
+        cardHand() {
+            const hand = this.battleSnapshot()?.hand || [];
+            return CARD_KEYS.map((key, index) => {
+                const card = hand[index];
+                if (!card) {
+                    return {
+                        mode: "card", key, cardId: "", instanceId: "", skillId: 0, name: "",
+                        iconIndex: 0, imageName: "", available: false, disabled: true,
+                        selected: false, cooldown: { active: false, remaining: 0, total: 0 }
+                    };
+                }
+                const presentation = resolveCardPresentation(card.cardId);
+                return {
+                    mode: "card", key, cardId: card.cardId, instanceId: card.instanceId,
+                    skillId: presentation.skillId, name: presentation.name,
+                    iconIndex: presentation.iconIndex, imageName: presentation.imageName,
+                    available: true, disabled: !this.cardUsable(card.cardId), selected: false,
+                    // 手札のカードはCooldown中にならない（使用後は即補充され、使ったカードはCooldown山へ移る）。
+                    cooldown: { active: false, remaining: 0, total: 0 }
+                };
+            });
+        }
+
+        cardCounts() {
+            const state = this.battleSnapshot();
+            if (!state) return null;
+            return {
+                draw: state.drawPile?.length || 0,
+                discard: state.discardPile?.length || 0,
+                cooldown: state.cooldownPile?.length || 0
+            };
+        }
+
+        divine() {
+            if (!this.cardBattleActive()) return null;
+            const manager = this.api("ProjectRGodSummonManager");
+            if (!manager || !manager.hasPersistentUltimateBattleState?.()) return null;
+            const info = manager.getPersistentUltimateBattleState?.();
+            if (!info) return null;
+            const presentation = resolveGodPresentation(info.godId);
+            const maxHp = Math.max(0, finiteNumber(info.maxDivineHp, 0));
+            const hp = clamp(finiteNumber(info.divineHp, 0), 0, maxHp);
+            return {
+                godId: info.godId,
+                name: presentation.name,
+                imageName: presentation.imageName,
+                status: info.status,
+                collapsed: info.status === "collapsed",
+                hp,
+                maxHp,
+                rate: maxHp > 0 ? hp / maxHp : 0,
+                recoverySeconds: Math.max(0, finiteNumber(info.recoveryRemainingSeconds, 0))
+            };
+        }
+
+        ultimateExecuting() {
+            try {
+                return !!(this.api("ProjectRHermesUltimate")?.isHermesUltimateActive?.() ||
+                    this.api("ProjectRApolloUltimate")?.isApolloUltimateActive?.());
+            } catch (error) {
+                return false;
+            }
+        }
+
+        // Ultimateの表示用ビュー。full（満タン）とready（満タンかつ神が顕現中）は別状態。
+        cardUltimate() {
+            const gauge = this.api("ProjectRUltimateGauge");
+            if (!gauge || !gauge.hasUltimateGaugeState?.()) {
+                return {
+                    mode: "card", available: false, state: "none", value: 0, max: 0, progress: 0,
+                    full: false, ready: false, key: "", keyActive: false, executing: false
+                };
+            }
+            const value = Math.max(0, finiteNumber(gauge.getUltimateGauge(), 0));
+            const max = Math.max(0, finiteNumber(gauge.getUltimateGaugeMax(), 0));
+            const full = !!gauge.isUltimateGaugeFull();
+            const ready = !!gauge.isUltimateReady();
+            const binding = this.api("ProjectRUltimateActivation")?.getInputBinding?.() || null;
+            return {
+                mode: "card",
+                available: true,
+                state: ready ? "ready" : full ? "fullUnavailable" : "charging",
+                value,
+                max,
+                progress: max > 0 ? clamp(value / max, 0, 1) : 0,
+                full,
+                ready,
+                key: binding && binding.key ? String(binding.key) : "",
+                keyActive: !!binding && binding.active !== false,
+                executing: this.ultimateExecuting()
+            };
+        }
+
         god() {
+            if (this.cardBattleActive()) {
+                const manager = this.api("ProjectRGodSummonManager");
+                const godId = manager?.hasPersistentUltimateBattleState?.() ?
+                    manager.getPersistentUltimateGodId?.() : null;
+                if (godId) {
+                    const presentation = resolveGodPresentation(godId);
+                    return {
+                        label: presentation.name,
+                        iconName: presentation.imageName,
+                        available: !!presentation.imageName
+                    };
+                }
+            }
             const state = battleHudState();
             return {
                 label: state.godLabel || initialGodLabel,
@@ -712,6 +1003,9 @@
                 }));
             }
 
+            // カード戦闘中は5枠が手札hand[0..4]。それ以外は従来のHendrix Hotbar表示。
+            if (this.cardBattleActive()) return this.cardHand();
+
             const state = battleHudState();
             const skills = this.hotbarSkills();
             return SKILL_KEYS.map((key, index) => {
@@ -734,8 +1028,11 @@
 
         ultimate() {
             if (debugPreview) {
-                return { value: 72, max: 100, progress: 0.72, available: true };
+                return { mode: "legacy", value: 72, max: 100, progress: 0.72, available: true };
             }
+
+            // カード戦闘中はProjectR_UltimateGaugeが唯一の情報源。変数/手動値は使わない。
+            if (this.cardBattleActive()) return this.cardUltimate();
 
             let value;
             let max;
@@ -753,7 +1050,7 @@
             }
             max = Math.max(1, max);
             value = clamp(value, 0, max);
-            return { value, max, progress: value / max, available };
+            return { mode: "legacy", value, max, progress: value / max, available };
         }
 
         weapon() {
@@ -843,8 +1140,10 @@
 
         shouldShow() {
             if (!battleHudState().visible) return false;
+            // カード戦闘中は敵の画面内判定に関係なく表示する。それ以外は従来のCombatPresenceに従う。
             const combatPresence = window.ProjectRCombatPresence;
-            if (combatPresence && typeof combatPresence.isCombatActive === "function" &&
+            if (!this.cardBattleActive() && combatPresence &&
+                typeof combatPresence.isCombatActive === "function" &&
                 !combatPresence.isCombatActive()) {
                 return false;
             }
@@ -1235,9 +1534,12 @@
             this._nameText.setText(data.name || "—", {
                 color: selected ? rgbaHex(COLORS.cyan) : rgbaHex(COLORS.muted)
             });
-            this._slotText.setText(`SKILL ${this._index + 1}`, {
-                color: selected ? rgbaHex(COLORS.cyan) : rgbaHex(COLORS.text)
-            });
+            this._slotText.setText(
+                `${data.mode === "card" ? "CARD" : "SKILL"} ${this._index + 1}`,
+                { color: selected ? rgbaHex(COLORS.cyan) : rgbaHex(COLORS.text) }
+            );
+            // カード戦闘中は1～5、それ以外はHotbarの従来キー。
+            this._keyText.setText(data.key || this._key);
             if (cooldown) {
                 this._cooldownText.setText(Math.max(0, Math.ceil(data.cooldown.remaining)));
             } else {
@@ -1287,8 +1589,12 @@
         }
 
         setData(data) {
-            const imageName = this._imageResolver.skillImageName(data);
+            const imageName = data.imageName || this._imageResolver.skillImageName(data);
             const signature = JSON.stringify([
+                data.mode,
+                data.key,
+                data.cardId,
+                data.instanceId,
                 data.skillId,
                 data.name,
                 data.iconIndex,
@@ -1329,6 +1635,11 @@
             }
         }
 
+        // 戦闘終了・表示切替で古い描画を残さない（次のsetDataで必ず描き直す）。
+        reset() {
+            for (const slot of this._slots) slot._lastSignature = "";
+        }
+
         update() {
             super.update();
             if (Graphics.frameCount % 4 !== 0) return;
@@ -1336,6 +1647,146 @@
             for (let index = 0; index < this._slots.length; index++) {
                 this._slots[index].setData(data[index]);
             }
+        }
+    }
+
+    // 山札/捨て札/Cooldown山の枚数。値はCardDeckの戦闘状態から毎回読むだけで、HUDは数えない。
+    class Sprite_ProjectRCardCountsHUD extends Sprite {
+        initialize(adapter) {
+            super.initialize();
+            this._adapter = adapter;
+            this._lastSignature = "";
+            const totalWidth = SKILL_SLOT_WIDTH * SKILL_COUNT +
+                SKILL_SLOT_GAP * (SKILL_COUNT - 1);
+            const width = 460;
+            this.x = (BASE_WIDTH + totalWidth) / 2 - width;
+            this.y = SKILL_HUD_Y - 46;
+            this._text = new Sprite_ProjectRText(width, 28, {
+                fontSize: 18,
+                bold: true,
+                color: rgbaHex(COLORS.muted),
+                align: "right"
+            });
+            this.addChild(this._text);
+            this.visible = false;
+        }
+
+        reset() {
+            this._lastSignature = "";
+            this.visible = false;
+        }
+
+        update() {
+            super.update();
+            if (Graphics.frameCount % 4 !== 0) return;
+            const counts = this._adapter.cardCounts();
+            this.visible = !!counts;
+            if (!counts) return;
+            const signature = `${counts.draw}|${counts.discard}|${counts.cooldown}`;
+            if (signature === this._lastSignature) return;
+            this._lastSignature = signature;
+            this._text.setText(
+                `DRAW ${counts.draw}   DISCARD ${counts.discard}   COOLDOWN ${counts.cooldown}`
+            );
+        }
+    }
+
+    // 常駐Ultimate神のDivine HPと崩壊/復帰。値と復帰タイマーはGodSummonManagerのものを読むだけ。
+    class Sprite_ProjectRDivineHUD extends Sprite {
+        initialize(adapter) {
+            super.initialize();
+            this._adapter = adapter;
+            this._lastSignature = "";
+            this.x = 36;
+            this.y = 738;
+            this._panel = new PIXI.Graphics();
+            drawClosedPolygon(
+                this._panel,
+                [0, 0, 330, 0, 330, 64, 0, 64],
+                COLORS.panel,
+                0.92,
+                COLORS.panelLine,
+                2,
+                0.75
+            );
+            this.addChild(this._panel);
+            this._bar = new PIXI.Graphics();
+            this.addChild(this._bar);
+            this._nameText = new Sprite_ProjectRText(150, 28, {
+                fontSize: 20,
+                bold: true,
+                color: rgbaHex(COLORS.gold)
+            });
+            this._nameText.x = 10;
+            this._nameText.y = 3;
+            this.addChild(this._nameText);
+            this._hpText = new Sprite_ProjectRText(170, 28, {
+                fontSize: 18,
+                bold: true,
+                align: "right"
+            });
+            this._hpText.x = 150;
+            this._hpText.y = 5;
+            this.addChild(this._hpText);
+            this._statusText = new Sprite_ProjectRText(310, 22, {
+                fontSize: 16,
+                bold: true,
+                align: "left"
+            });
+            this._statusText.x = 10;
+            this._statusText.y = 42;
+            this.addChild(this._statusText);
+            this.visible = false;
+        }
+
+        reset() {
+            this._lastSignature = "";
+            this.visible = false;
+        }
+
+        redraw(data) {
+            const color = data.collapsed ? COLORS.red : COLORS.green;
+            this._bar.clear();
+            this._bar.lineStyle(2, data.collapsed ? COLORS.red : COLORS.panelLine, 0.9);
+            this._bar.beginFill(0x09111b, 1);
+            this._bar.drawRect(10, 32, 310, 11);
+            this._bar.endFill();
+            if (data.rate > 0) {
+                this._bar.lineStyle(0);
+                this._bar.beginFill(color, 1);
+                this._bar.drawRect(11, 33, 308 * clamp(data.rate, 0, 1), 9);
+                this._bar.endFill();
+            }
+            this._nameText.setText(data.name);
+            this._hpText.setText(
+                `DIVINE HP ${formatNumber(data.hp)} / ${formatNumber(data.maxHp)}`,
+                { color: data.collapsed ? rgbaHex(COLORS.red) : rgbaHex(COLORS.text) }
+            );
+            this._statusText.setText(
+                data.collapsed ?
+                    `COLLAPSED  RECOVERING ${(Math.ceil(data.recoverySeconds * 10 - 1e-9) / 10).toFixed(1)}s` :
+                    "ACTIVE",
+                { color: data.collapsed ? rgbaHex(COLORS.red) : rgbaHex(COLORS.green) }
+            );
+        }
+
+        update() {
+            super.update();
+            if (Graphics.frameCount % 4 !== 0) return;
+            const data = this._adapter.divine();
+            this.visible = !!data;
+            if (!data) return;
+            const signature = JSON.stringify([
+                data.godId,
+                data.name,
+                data.collapsed,
+                data.hp,
+                data.maxHp,
+                Math.ceil(data.recoverySeconds * 10 - 1e-9)
+            ]);
+            if (signature === this._lastSignature) return;
+            this._lastSignature = signature;
+            this.redraw(data);
         }
     }
 
@@ -1415,18 +1866,18 @@
         }
 
         createTexts() {
-            this._titleText = new Sprite_ProjectRText(170, 38, {
+            this._titleText = new Sprite_ProjectRText(240, 38, {
                 fontSize: 20,
                 bold: true,
                 color: rgbaHex(COLORS.gold),
                 align: "right"
             });
-            this._titleText.x = 770;
+            this._titleText.x = 700;
             this._titleText.y = 24;
             this._titleText.setText("ULTIMATE");
             this.addChild(this._titleText);
 
-            this._valueText = new Sprite_ProjectRText(120, 46, {
+            this._valueText = new Sprite_ProjectRText(200, 46, {
                 fontSize: 32,
                 bold: true,
                 color: rgbaHex(COLORS.gold),
@@ -1448,7 +1899,35 @@
             this.addChild(this._keyText);
         }
 
+        // 状態別の配色/文言。ready（満タン＋神が顕現中）とfullUnavailable（満タンだが神が崩壊中）は別物。
+        stylesFor(data) {
+            if (data.mode !== "card") {
+                return {
+                    color: COLORS.gold, title: "ULTIMATE", keyText: "R", keyAlpha: 1, glow: false,
+                    value: data.available ? `${Math.round(clamp(data.progress, 0, 1) * 100)}%` : "--%",
+                    valueColor: data.available ? rgbaHex(COLORS.gold) : rgbaHex(COLORS.muted)
+                };
+            }
+            const keyText = data.keyActive && data.key ? data.key : "—";
+            const value = `${formatNumber(data.value)}/${formatNumber(data.max)}`;
+            if (data.executing) {
+                return { color: COLORS.cyan, title: "ULTIMATE ACTIVE", keyText, keyAlpha: 0.35, glow: false,
+                    value, valueColor: rgbaHex(COLORS.cyan) };
+            }
+            if (data.state === "ready") {
+                return { color: 0xfff0a8, title: `${keyText} - ULTIMATE`, keyText, keyAlpha: data.keyActive ? 1 : 0.35,
+                    glow: true, value, valueColor: rgbaHex(0xfff0a8) };
+            }
+            if (data.state === "fullUnavailable") {
+                return { color: COLORS.purple, title: "GAUGE FULL / UNAVAILABLE", keyText, keyAlpha: 0.35,
+                    glow: false, value, valueColor: rgbaHex(COLORS.purple) };
+            }
+            return { color: COLORS.gold, title: "ULTIMATE", keyText, keyAlpha: 0.6, glow: false,
+                value, valueColor: rgbaHex(COLORS.gold) };
+        }
+
         redrawGauge(data) {
+            const style = this.stylesFor(data);
             const progress = clamp(data.progress, 0, 1);
             const endpoint = ellipsePoint(
                 this._centerX,
@@ -1460,8 +1939,21 @@
                 progress
             );
             this._valueGraphics.clear();
+            if (progress > 0 && style.glow) {
+                this._valueGraphics.lineStyle(30, style.color, 0.25);
+                drawEllipseSegment(
+                    this._valueGraphics,
+                    this._centerX,
+                    this._centerY,
+                    this._radiusX,
+                    this._radiusY,
+                    this._startAngle,
+                    this._endAngle,
+                    progress
+                );
+            }
             if (progress > 0) {
-                this._valueGraphics.lineStyle(18, COLORS.gold, 1);
+                this._valueGraphics.lineStyle(18, style.color, 1);
                 drawEllipseSegment(
                     this._valueGraphics,
                     this._centerX,
@@ -1477,30 +1969,49 @@
             this._valueGraphics.lineStyle(10, 0x2f2208, 0.9);
             this._valueGraphics.moveTo(this._centerX, this._centerY);
             this._valueGraphics.lineTo(endpoint.x, endpoint.y);
-            this._valueGraphics.lineStyle(5, COLORS.gold, 1);
+            this._valueGraphics.lineStyle(5, style.color, 1);
             this._valueGraphics.moveTo(this._centerX, this._centerY);
             this._valueGraphics.lineTo(endpoint.x, endpoint.y);
 
-            this._valueGraphics.beginFill(COLORS.gold, 1);
+            this._valueGraphics.beginFill(style.color, 1);
             this._valueGraphics.drawCircle(endpoint.x, endpoint.y, 10);
             this._valueGraphics.endFill();
-            this._valueGraphics.lineStyle(6, COLORS.gold, 1);
+            this._valueGraphics.lineStyle(6, style.color, 1);
             this._valueGraphics.beginFill(COLORS.panel, 1);
             this._valueGraphics.drawCircle(this._centerX, this._centerY, 15);
             this._valueGraphics.endFill();
 
-            this._valueText.setText(data.available ? `${Math.round(progress * 100)}%` : "--%", {
-                color: data.available ? rgbaHex(COLORS.gold) : rgbaHex(COLORS.muted)
-            });
+            this._valueText.setText(style.value, { color: style.valueColor });
+            this._titleText.setText(style.title, { color: rgbaHex(style.color) });
+            this._keyText.setText(style.keyText);
+            this._keyText.alpha = style.keyAlpha;
+            this._keyGraphics.alpha = style.keyAlpha;
+        }
+
+        reset() {
+            this._lastSignature = "";
         }
 
         update() {
             super.update();
             if (Graphics.frameCount % 4 !== 0) return;
             const data = this._adapter.ultimate();
+            // カード戦闘中に有効なUltimate（ゲージ状態）が無いときは、偽の0/100を出さず区画ごと隠す。
+            this.visible = data.mode !== "card" || data.available;
+            if (!this.visible) {
+                this._lastSignature = "";
+                return;
+            }
             const signature = JSON.stringify([
+                data.mode,
                 Math.round(data.progress * 1000),
-                data.available
+                data.available,
+                data.state,
+                data.value,
+                data.max,
+                data.key,
+                data.keyActive,
+                data.executing
             ]);
             if (signature === this._lastSignature) return;
             this._lastSignature = signature;
@@ -1776,8 +2287,13 @@
             this._playerHUD = new Sprite_ProjectRPlayerHUD(this._adapter, this._imageResolver);
             this._weaponHUD = new Sprite_ProjectRWeaponHUD(this._adapter, this._imageResolver);
             this._statusHUD = new Sprite_ProjectRStatusHUD(this._adapter);
+            this._countsHUD = new Sprite_ProjectRCardCountsHUD(this._adapter);
+            this._divineHUD = new Sprite_ProjectRDivineHUD(this._adapter);
+            this._cardWasActive = false;
             this.addChild(this._ultimateHUD);
             this.addChild(this._skillHUD);
+            this.addChild(this._countsHUD);
+            this.addChild(this._divineHUD);
             this.addChild(this._playerHUD);
             this.addChild(this._weaponHUD);
             this.addChild(this._statusHUD);
@@ -1793,8 +2309,23 @@
             this.scale.set(scaleX, scaleY);
         }
 
+        // カード戦闘が終わった瞬間に、カード/神/Ultimate区画の古い描画と共有snapshotを捨てる。
+        // 次に戦闘が始まれば、実行中のシステムから全て描き直される。
+        resetBattleSections() {
+            this._adapter.invalidate();
+            this._skillHUD.reset();
+            this._countsHUD.reset();
+            this._divineHUD.reset();
+            this._ultimateHUD.reset();
+        }
+
         update() {
             this.updateScale();
+            const cardActive = this._adapter.cardBattleActive();
+            if (cardActive !== this._cardWasActive) {
+                this._cardWasActive = cardActive;
+                this.resetBattleSections();
+            }
             this.visible = this._adapter.shouldShow();
             if (this.visible) super.update();
         }
@@ -1804,6 +2335,20 @@
     BattleHUD.DataAdapter = ProjectRBattleHUDDataAdapter;
     BattleHUD.Manager = ProjectRBattleHUDManager;
     BattleHUD.debugPreview = debugPreview;
+
+    // Console確認用: HUDが今描こうとしている値（実システムから読んだコピー。保存しない）。
+    BattleHUD.getViewModel = function() {
+        const adapter = BattleHUD._manager?._adapter || new ProjectRBattleHUDDataAdapter(null);
+        const cardBattleActive = adapter.cardBattleActive();
+        return JSON.parse(JSON.stringify({
+            visible: adapter.shouldShow(),
+            cardBattleActive,
+            slots: adapter.skills(),
+            counts: adapter.cardCounts(),
+            ultimate: adapter.ultimate(),
+            divine: adapter.divine()
+        }));
+    };
 
     const _Scene_Map_createDisplayObjects = Scene_Map.prototype.createDisplayObjects;
     Scene_Map.prototype.createDisplayObjects = function() {
