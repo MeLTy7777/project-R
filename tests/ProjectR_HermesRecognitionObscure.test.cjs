@@ -67,6 +67,7 @@ function loadGame({ duration = "5.0", production = false } = {}) {
         g.commands.push({ plugin, name, args, eventId: self._eventId });
         return call.apply(this, arguments);
     };
+    require("./GodSummonFixture.cjs")(g);
     run(read(`js/plugins/${PLUGIN}.js`));
     g.obscured = () => g.ProjectRHermesRecognitionObscure.isPlayerRecognitionObscured();
     g.start = () => assert.equal(g.ProjectRCardDeck.startCardBattle().ok, true);

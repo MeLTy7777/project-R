@@ -3,6 +3,7 @@
  * @plugindesc v1.0.0 Phase 2C-1 Hermes「認識阻害」のinstant handler。
  * @author ProjectR
  * @base ProjectR_CardDeckCore
+ * @base ProjectR_GodSummonManager
  * @base Hendrix_Action_Engine
  * @orderAfter ProjectR_CardBattleInput
  * @orderAfter ProjectR_ApolloGoldenArrow
@@ -19,6 +20,9 @@
  * <ProjectRCard: hermes_perception_obscure>のある唯一のDatabase Stateを使用。
  * 公式AddState(target: player, stateId)後、hasState('player', id)で成功確認。
  * 消費・10秒Cooldown・即時ドローは既存Routerへ委譲します。
+ * Phase 3B: 付与前にProjectRGodSummonManagerでHermes一時召喚を作り、成功した場合だけ
+ * 従来のState/タイマー処理を行います（召喚は演出元のcontextのみ。Managerが無い/生成失敗なら
+ * State未付与・非消費）。
  *
  * 効果時間だけをローカル管理。既存InputのupdateCooldown(1/60)に合わせ、
  * 操作可能なマップ時間で進行し、メニュー・会話・フォーカス喪失中は停止。
@@ -84,6 +88,12 @@
                     typeof PluginManager._commands?.[`${ENGINE}:${name}`] === "function")) {
             return { ok: false, reason: "recognitionStateUnavailable" };
         }
+        const summons = root.ProjectRGodSummonManager;
+        if (!summons) return { ok: false, reason: "godSummonUnavailable" };
+        // Hermes一時召喚 → Hermesが認識阻害を付与。召喚失敗時はStateに触れない。
+        return summons.perform({ definition: context.definition, aim: false }, () => apply(id, actor));
+    };
+    const apply = (id, actor) => {
         if (effect && effect.actor !== actor) clearEffect();
         const alreadyAffected = hasState(id);
         try {

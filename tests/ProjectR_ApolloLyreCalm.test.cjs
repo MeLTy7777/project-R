@@ -67,6 +67,7 @@ function loadGame({ duration = "6.0" } = {}) {
         g.commands.push({ plugin, name, args, eventId: self._eventId });
         return call.apply(this, arguments);
     };
+    require("./GodSummonFixture.cjs")(g);
     run(read(`js/plugins/${PLUGIN}.js`));
     g.api = g.ProjectRApolloLyreCalm;
     g.calm = () => g.api.isPlayerCalm();

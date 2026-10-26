@@ -3,6 +3,7 @@
  * @plugindesc v1.0.0 Phase 2C-5 Apollo「病の矢」の弾・Disease State・実時間DoT。
  * @author ProjectR
  * @base ProjectR_CardDeckCore
+ * @base ProjectR_GodSummonManager
  * @base Hendrix_Action_Engine
  * @base DotMoveSystem
  * @orderAfter ProjectR_HermesSwordsmanship
@@ -34,6 +35,9 @@
  * 弾: Map002の専用Prefab「ProjectR Apollo Disease Attack」をspawnEventで
  * 非恒久生成し、発射時のマウス角を一度だけrotateTo(degree)で固定します。
  * 移動はPrefabのmoveToPosition('forward')。追尾・貫通・複数Hitなし。
+ * Phase 3B: 発射前にProjectRGodSummonManagerでApollo一時召喚を作り、召喚context
+ * （プレイヤー位置と固定済みマウス角）から同じ弾を発射します（Golden Arrowと同方式）。
+ * Managerが無い/生成失敗なら弾なし・非消費です。
  * 弾の生成/回転の成功時だけ{ok:true}を返し、消費/12秒Cooldown/即時ドローは
  * 既存Routerが行います。空振りも消費です。
  *
@@ -111,7 +115,7 @@
     const clearProjectiles = () => {
         for (const [id, record] of [...projectiles]) destroy(id, record);
     };
-    const activate = () => {
+    const activate = cardContext => {
         const map = currentMap();
         if (!deck.isCardBattleActive() || !map || !(SceneManager._scene instanceof Scene_Map) ||
                 !$gamePlayer || !SceneManager._scene._spriteset) return { ok: false, reason: "mapUnavailable" };
@@ -131,12 +135,14 @@
                 !template.note.includes(`<dmg: ${skill.name}>`) || !template.note.includes("<attacker: player>")) {
             return { ok: false, reason: "projectileTemplateUnavailable" };
         }
-        // Golden Arrowと同じ画面座標系。Gamepadの有無にかかわらず発射時のマウス角を固定する。
-        const dx = TouchInput.x - $gamePlayer.screenX();
-        const dy = TouchInput.y - $gamePlayer.screenY();
-        const x = $gamePlayer._realX, y = $gamePlayer._realY;
-        if (![dx, dy, x, y].every(Number.isFinite)) return { ok: false, reason: "invalidMousePosition" };
-        const degree = (Math.atan2(dy, dx) * 180 / Math.PI + 450) % 360;
+        const summons = root.ProjectRGodSummonManager;
+        if (!summons) return { ok: false, reason: "godSummonUnavailable" };
+        // Apollo一時召喚 → 召喚アンカーから病の矢を発射。失敗時は召喚も即破棄。
+        return summons.perform({ definition: cardContext?.definition }, summon => fire(map, template, summon));
+    };
+    // Golden Arrowと同じ画面座標系の角度を、召喚contextが発射時に一度だけ固定して渡す。
+    const fire = (map, template, summon) => {
+        const { x, y, degree } = summon;
         const before = new Set(map.events());
         try {
             const id = map.spawnEvent(template.id, x, y, false, degree);
@@ -158,7 +164,7 @@
         }
     };
     deck.registerActivationHandler("direction", context => context.definition.cardId === CARD
-        ? activate() : previousDirection ? previousDirection(context) : { ok: true });
+        ? activate(context) : previousDirection ? previousDirection(context) : { ok: true });
 
     // ---- Disease / DoT ----
     const clear = (event, record) => {

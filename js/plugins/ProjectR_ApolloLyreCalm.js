@@ -3,6 +3,7 @@
  * @plugindesc v1.0.0 Phase 2C-6 Apollo「リラの支援」の精神安定State付与。
  * @author ProjectR
  * @base ProjectR_CardDeckCore
+ * @base ProjectR_GodSummonManager
  * @base Hendrix_Action_Engine
  * @orderAfter ProjectR_ApolloDiseaseAttack
  *
@@ -27,6 +28,9 @@
  * 初期値は睡眠(32)のみ。認識阻害(31)・病(33)は対象外。恐怖・混乱などを足す場合は
  * Databaseでステート無効化を追加するだけで、解除と耐性が同時に対象になります。
  * 耐性はMZ標準のステート無効化なので、独自の付与割込みはありません。
+ *
+ * Phase 3B: 付与・解除の前にProjectRGodSummonManagerでApollo一時召喚を作り、成功した
+ * 場合だけ従来処理を行います（Managerが無い/生成失敗なら何も解除・付与せず非消費）。
  *
  * Stateを先に付与・確認してから解除するため、付与失敗時は何も変更せず
  * activationFailed（非消費）。解除対象が無くても成功です。
@@ -90,7 +94,7 @@
     };
 
     const previousAlly = deck.getActivationHandler("ally");
-    const activate = () => {
+    const activate = cardContext => {
         const id = calmStateId();
         const actor = leader();
         if (!deck.isCardBattleActive() || !id || !actor || typeof root.hasState !== "function" ||
@@ -98,6 +102,12 @@
                     typeof PluginManager._commands?.[`${ENGINE}:${name}`] === "function")) {
             return { ok: false, reason: "calmStateUnavailable" };
         }
+        const summons = root.ProjectRGodSummonManager;
+        if (!summons) return { ok: false, reason: "godSummonUnavailable" };
+        // Apollo一時召喚 → Apolloがリラを奏でる。召喚失敗時は解除もCalm付与もしない。
+        return summons.perform({ definition: cardContext?.definition, aim: false }, () => calm(id, actor));
+    };
+    const calm = (id, actor) => {
         if (effect && effect.actor !== actor) clearEffect();
         const alreadyCalm = hasState(id);
         const mental = mentalStateIds();
@@ -119,7 +129,7 @@
         return { ok: true };
     };
     deck.registerActivationHandler("ally", context => context.definition.cardId === CARD_ID
-        ? activate() : previousAlly ? previousAlly(context) : { ok: true });
+        ? activate(context) : previousAlly ? previousAlly(context) : { ok: true });
 
     const _updateCooldown = deck.updateCooldown;
     deck.updateCooldown = function(seconds) {

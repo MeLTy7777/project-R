@@ -44,6 +44,7 @@ function loadGame({ range = "4", duration = "4.0", production = false } = {}) {
     g.DataManager.makeSaveContents = () => ({ ...save(), map: g.$gameMap });
     const extract = g.DataManager.extractSaveContents;
     g.DataManager.extractSaveContents = function(contents) { extract(contents); g.$gameMap = contents.map; };
+    require("./GodSummonFixture.cjs")(g);
     run(read(`js/plugins/${PLUGIN}.js`));
     g.addEnemy = (x = 2, y = 0, tag = "<enemy>") => {
         const id = g.$gameMap._events.length || 1;

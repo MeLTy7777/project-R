@@ -28,6 +28,8 @@
  *            x, y, center, degree, radians, distance }
  *   x,yはプレイヤーのreal座標（召喚位置=プレイヤー位置）、degreeは発動時の
  *   マウス方向（上=0度・時計回り）。攻撃者は従来どおりplayerです。
+ *   マウス方向を使わない効果は request に aim:false を渡すと、degree/radians/
+ *   distance が null になり、マウス座標の有無で失敗しません。
  *
  * 寿命はmap更新frame（メニュー・会話中は進まない）。終了(endCardBattle)・
  * マップ変更・ロードで全て破棄。複数の同時召喚は別instanceとして共存します。
@@ -54,32 +56,32 @@
     const release = summonId => summons.delete(summonId);
     const clear = () => summons.clear();
 
-    const create = (definition, lifetime) => {
+    const create = (definition, lifetime, aim) => {
         const ringId = definition?.ringId, cardId = definition?.cardId;
         const godId = resolveGodId(ringId);
         if (!godId) return { ok: false, reason: "godUnresolved" };
         if (!deck.isCardBattleActive()) return { ok: false, reason: "battleInactive" };
         const player = typeof $gamePlayer !== "undefined" ? $gamePlayer : null;
-        if (!player || typeof TouchInput === "undefined") return { ok: false, reason: "playerUnavailable" };
-        // 従来のGolden Arrow/Swordsmanshipと同じ画面座標系・角度式。
-        const dx = TouchInput.x - player.screenX(), dy = TouchInput.y - player.screenY();
+        if (!player || (aim && typeof TouchInput === "undefined")) return { ok: false, reason: "playerUnavailable" };
+        // 従来のGolden Arrow/Swordsmanshipと同じ画面座標系・角度式。aim:falseは方向を使わない効果用。
+        const dx = aim ? TouchInput.x - player.screenX() : 0, dy = aim ? TouchInput.y - player.screenY() : 0;
         const x = player._realX, y = player._realY;
-        if (![dx, dy, x, y].every(Number.isFinite)) return { ok: false, reason: "invalidMousePosition" };
+        if (![dx, dy, x, y].every(Number.isFinite)) return { ok: false, reason: aim ? "invalidMousePosition" : "invalidPlayerPosition" };
         let center = null;
         if (typeof player.centerPositionPoint === "function") {
             const point = player.centerPositionPoint();
             if (![point?.x, point?.y].every(Number.isFinite)) return { ok: false, reason: "invalidPlayerPosition" };
             center = { x: point.x, y: point.y };
         }
-        const radians = Math.atan2(dy, dx);
-        const degree = (radians * 180 / Math.PI + 450) % 360;
+        const radians = aim ? Math.atan2(dy, dx) : null;
+        const degree = aim ? (radians * 180 / Math.PI + 450) % 360 : null;
         // HP・AI・衝突・Eventを一切持たない論理アンカー。
         const summon = Object.freeze({ summonId: ++serial, godId, ringId, cardId, owner: "player",
             transient: true, x, y, degree, framesLeft: lifetime });
         const record = { ...summon };
         summons.set(summon.summonId, record);
         const context = Object.freeze({ summonId: summon.summonId, godId, ringId, cardId, owner: "player",
-            summon, x, y, center, degree, radians, distance: Math.hypot(dx, dy) });
+            summon, x, y, center, degree, radians, distance: aim ? Math.hypot(dx, dy) : null });
         return { ok: true, context, record };
     };
 
@@ -90,7 +92,7 @@
             ? Math.floor(request.lifetimeFrames) : defaultLifetime;
         let created;
         try {
-            created = create(request?.definition, lifetime);
+            created = create(request?.definition, lifetime, request?.aim !== false);
         } catch (error) {
             return { ok: false, reason: String(error?.message || error) };
         }

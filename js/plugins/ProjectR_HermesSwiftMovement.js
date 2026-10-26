@@ -3,6 +3,7 @@
  * @plugindesc v1.1.0 Phase 2C-3 Hermes「高速移動」の経路Collision接続。
  * @author ProjectR
  * @base ProjectR_CardDeckCore
+ * @base ProjectR_GodSummonManager
  * @base Hendrix_Action_Engine
  * @base ProjectR_HermesRecognitionObscure
  * @orderAfter ProjectR_HermesRecognitionObscure
@@ -16,7 +17,9 @@
  * 戻り値ではなく移動前後の実座標で成功確認。例外/不正結果は元の位置へ戻します。
  * 成功時のみ既存transactionが消費・6秒Cooldown・即時ドローを行います。
  * 無敵/攻撃/State/VFX/敵移動は行いません。効果や時間の保存項目も追加しません。
- * 後続の召喚/VFXはactivateからmovePlayerに至る前へ追加できます。
+ * Phase 3B: 移動前にProjectRGodSummonManagerでHermes一時召喚を作り、成功した場合だけ
+ * 従来のmovePlayerを実行します。実際に移動するのはPlayerのみで、召喚は移動しません。
+ * Managerが無い/生成失敗なら移動せず非消費です。
  */
 
 (() => {
@@ -98,7 +101,7 @@
         }
     };
 
-    const activate = () => {
+    const activate = context => {
         const player = typeof $gamePlayer !== "undefined" ? $gamePlayer : null;
         const map = typeof $gameMap !== "undefined" ? $gameMap : null;
         if (!deck.isCardBattleActive() || !player || !map ||
@@ -119,9 +122,12 @@
         const vector = { x: (mouse.x - player.screenX()) / map.tileWidth(),
             y: (mouse.y - player.screenY()) / map.tileHeight() };
         if (!finitePoint(vector)) return failure("invalidMousePosition");
-        return movePlayer(player, map, start, vector);
+        const summons = root.ProjectRGodSummonManager;
+        if (!summons) return failure("godSummonUnavailable");
+        // Hermes一時召喚 → Hermesが高速移動を付与。Playerだけが実際に移動する。
+        return summons.perform({ definition: context?.definition }, () => movePlayer(player, map, start, vector));
     };
 
     deck.registerActivationHandler("instant", context =>
-        context.definition.cardId === CARD ? activate() : previousInstant(context));
+        context.definition.cardId === CARD ? activate(context) : previousInstant(context));
 })();

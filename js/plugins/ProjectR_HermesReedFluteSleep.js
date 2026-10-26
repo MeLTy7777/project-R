@@ -3,6 +3,7 @@
  * @plugindesc v1.0.0 Phase 2C-2 Hermes「葦笛睡眠」の範囲State handler。
  * @author ProjectR
  * @base ProjectR_CardDeckCore
+ * @base ProjectR_GodSummonManager
  * @base Hendrix_Action_Engine
  * @orderAfter ProjectR_HermesRecognitionObscure
  *
@@ -22,7 +23,9 @@
  *
  * @help
  * hermes_reed_flute_sleep専用。既存ground登録を維持し、キーだけで即時発動。
- * 将来の召喚演出はactivateからapplySleepへ至る前に挿入できます。
+ * Phase 3B: 検索・付与の前にProjectRGodSummonManagerでHermes一時召喚を作り、成功した
+ * 場合だけ従来の範囲Sleep処理を行います（Managerが無い/生成失敗ならState未付与・非消費）。
+ * 範囲はプレイヤー中心のまま（召喚位置=プレイヤー位置）で、判定ロジックは変更なし。
  * findTargets('<enemy>')で列挙し、checkRange(敵ID, 半径, 'player')で円判定。
  * 導入版1.6.6bはcheckRangeのtargetにイベントIDを扱わないため逆向きで使用。
  * 検索による敵の検知情報は復元します。独自距離計算・Collision・HPはありません。
@@ -108,7 +111,7 @@
             return false;
         }
     };
-    const activate = () => {
+    const activate = context => {
         const map = currentMap(), id = stateId();
         if (!deck.isCardBattleActive() || !map || !id ||
                 !["findTargets", "checkRange", "hasState"].every(name => typeof root[name] === "function") ||
@@ -117,6 +120,12 @@
                     typeof PluginManager._commands?.[`${ENGINE}:${name}`] === "function")) {
             return { ok: false, reason: "sleepStateUnavailable" };
         }
+        const summons = root.ProjectRGodSummonManager;
+        if (!summons) return { ok: false, reason: "godSummonUnavailable" };
+        // Hermes一時召喚 → Hermesが葦笛を吹く。召喚失敗時は検索もStateも触れない。
+        return summons.perform({ definition: context?.definition, aim: false }, () => sleepTargets(map, id));
+    };
+    const sleepTargets = (map, id) => {
         // 先に検索を完了。検索失敗で部分適用を残さない。
         const targets = [...new Set(root.findTargets("<enemy>"))].filter(event => {
             if (!event || event._erased || map.event(event.eventId()) !== event) return false;
@@ -127,7 +136,7 @@
         for (const { event, battler } of targets) if (applySleep(event, id, map, battler)) applied++;
         return applied ? { ok: true } : { ok: false, reason: "noSleepTargetApplied" };
     };
-    deck.registerActivationHandler("ground", context => context.definition.cardId === CARD ? activate() : { ok: true });
+    deck.registerActivationHandler("ground", context => context.definition.cardId === CARD ? activate(context) : { ok: true });
 
     const _update = deck.updateCooldown;
     deck.updateCooldown = function(seconds) {

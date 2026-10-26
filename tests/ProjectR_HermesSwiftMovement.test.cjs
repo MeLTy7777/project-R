@@ -104,6 +104,7 @@ function loadGame() {
     g.$gamePlayer.teleportTo = g.$gamePlayer.findNearestValidPosition = () => { throw Error("Teleport禁止"); };
     g.aim = (x, y) => Object.assign(g.TouchInput, { x: (x - g.scroll.x) * 48 + 24, y: (y - g.scroll.y) * 48 + 48 });
     g.aim(20, 10);
+    require("./GodSummonFixture.cjs")(g);
     run(read(`js/plugins/${PLUGIN}.js`));
     g.prepareSwift = () => { g.start(); g.arrange(0, CARD); g.ProjectRCardDeck.updateCooldown(12); };
     g.fireSwift = () => g.ProjectRCardDeck.requestUseCard(0);
