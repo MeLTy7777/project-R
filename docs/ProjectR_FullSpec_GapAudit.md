@@ -106,3 +106,20 @@
 1. Reed Flute / Lyre（#11）、F（#8）、U（#16）: 上記のとおり実機確認待ち。
 2. 今回追加・変更した画面・見た目（メニュー3画面と指輪画面、ボス/仲間HUD、斬撃、銃口発光、睡眠/精神安定のふきだし）は実機で未確認です。
 3. 製品のカードは7種（コピー上限の合計19枚）で、**30枚デッキは作れず、製品のボス戦は開始が拒否されます。これはコードの不具合ではなく、カード追加待ちの CONTENT BLOCKER です。** 30枚ルールもコピー上限も緩めていません。DEV fixture でボス枠組みを試せます。
+
+## 6. Character Animation Foundation + 新銃(G17)（本フェーズ）
+
+状態の見方: `IMPLEMENTED / AUTOMATED VERIFIED / MZ VERIFICATION REQUIRED`（実機は未確認）。
+
+| 項目 | 状態 | メモ |
+| --- | --- | --- |
+| CharacterVisualProfile（静的・キャラ別・アンカー・hitboxは別管理） | IMPLEMENTED / AUTOMATED VERIFIED / MZ VERIFICATION REQUIRED | `ProjectR_CharacterPresentation.js`。全体倍率は無い。主人公は標準48pxの暫定プロファイル |
+| 三頭身キャラクター | CONTENT NOT YET DEFINED | 仕組みと手順は完成。三頭身の画像・行動シートは未提供（`docs/ProjectR_CharacterAnimation.md`） |
+| Idle / Walk / Run | 公式Animation Solutionの自動検出に委任 | ファイルを置けば動く。専用画像は未提供。実機未確認 |
+| 8方向 | NOT IMPLEMENTED（素材待ち） | 宣言（`directions: 8`）と命名規則の文書のみ。4方向素材を偽の8方向にはしない |
+| 動作コントローラ（SwordAttack/GunFire/GunReload/SkillCast/Ultimate/Damage/Down） | IMPLEMENTED / AUTOMATED VERIFIED / MZ VERIFICATION REQUIRED | 行動シートが無い間は仮の手続き的モーション |
+| 7種のカードのSkillCast（成功時のみ） / Hermes・ApolloのUltimate動作 / 剣の動作 | IMPLEMENTED / AUTOMATED VERIFIED / MZ VERIFICATION REQUIRED | カードの効果・消費・バランスは不変 |
+| 旧銃の撤去 | IMPLEMENTED / AUTOMATED VERIFIED | `docs/ProjectR_LegacyGunRemoval.md`。CE1/CE3/CE4/Map002の旧Prefab・体中心の発光・弾道線・旧リロード音を撤去 |
+| 新銃（公式Easy Gun System + Display Weapon + 専用弾Prefab、銃口アンカー、反動、リロード） | IMPLEMENTED / AUTOMATED VERIFIED / MZ VERIFICATION REQUIRED | `ProjectR_GunSystem.js`。弾数・リロードの持ち主はHendrix |
+| 銃/剣/リロードの専用素材（射撃モーション・最終の銃画像・リロード音・排莢/煙） | CONTENT NOT YET DEFINED | 開発用の自作仮素材のみ（`docs/ProjectR_ThirdPartyAssets.md`） |
+| DEV Animation / Weapon Certification Zone（Map004北東） | IMPLEMENTED / AUTOMATED VERIFIED / MZ VERIFICATION REQUIRED | 既存ゾーンは不変（HEADと同一であることをテスト） |

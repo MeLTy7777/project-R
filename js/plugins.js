@@ -49,4 +49,5 @@ var $plugins =
 ,{"name":"ProjectR_WeaponPresentation","status":true,"description":"v1.2.0 武器・斬撃の見た目(360°斬撃、銃口の発光、睡眠/精神安定のふきだし)。表示専用。","parameters":{}}
 ,{"name":"ProjectR_GunSystem","status":true,"description":"v1.0.0 新銃システム(G17)。公式Easy Gun System + Display Weapon + 専用弾Prefab。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaFullSpec","status":true,"description":"v1.0.0 DEV専用 Combat Test Arena 追加シナリオ(ボス/仲間/メニュー/指輪。Playtest限定)。","parameters":{}}
+,{"name":"ProjectR_CombatTestArenaAnimation","status":true,"description":"v1.0.0 DEV専用 Animation / Weapon Certification Zone(銃・動作・アンカーの確認端末。Playtest限定)。","parameters":{}}
 ];
