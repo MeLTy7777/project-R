@@ -419,6 +419,29 @@ test("状態の見た目: 葦笛で眠った敵にZzz、リラの精神安定に
     assert.deepEqual(plain(seen), [["player", 3]]);
 });
 
+test("状態の見た目: 病(State 33)の敵に汗のふきだしを1秒ごとに出す(MZ実機でDiseaseに表示が無かった。状態は読むだけ)", () => {
+    const w = arena("hermes");
+    const { ctx } = w;
+    const balloons = [];
+    const original = ctx.$gameTemp.requestBalloon;
+    ctx.$gameTemp.requestBalloon = function(target, id) { balloons.push([target === ctx.$gamePlayer ? "player" : target.eventId(), id]); return original.apply(this, arguments); };
+    const diseased = new Set([4]);
+    const real = ctx.ProjectRApolloDiseaseAttack.isEventDiseased;
+    ctx.ProjectRApolloDiseaseAttack.isEventDiseased = id => diseased.has(id);
+    ctx.ProjectRWeaponPresentation._pollStates();
+    assert.deepEqual(plain(balloons.filter(b => b[1] === 6)), [[4, 6]], "病の敵だけに汗");
+    balloons.length = 0;
+    for (let i = 0; i < 59; i++) ctx.ProjectRWeaponPresentation._pollStates();
+    assert.equal(balloons.length, 0, "1秒(60frame)未満は出さない");
+    ctx.ProjectRWeaponPresentation._pollStates();
+    assert.deepEqual(plain(balloons.filter(b => b[1] === 6)), [[4, 6]], "60frameごとに1回");
+    diseased.clear();
+    balloons.length = 0;
+    ctx.ProjectRWeaponPresentation._pollStates();
+    assert.equal(balloons.length, 0, "病が切れたら出さない");
+    ctx.ProjectRApolloDiseaseAttack.isEventDiseased = real;
+});
+
 test("アリーナ診断端末: 依頼された実値(セッション/手札/直近キー/葦笛/Lyre/F/Gauge/U/handler)を短い行で出す", () => {
     const w = arena("hermes");
     const { ctx } = w;

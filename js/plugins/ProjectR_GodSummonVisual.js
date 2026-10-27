@@ -297,9 +297,12 @@
     const pendingSwings = [];
     const SWING_WAIT_FRAMES = 4;
     const runSwing = (swing, eventId) => {
+        const event = eventId ? $gameMap.event(eventId) : null;
+        // 神の表示Eventは向き固定(directionFix)なので setDirection は無視され、MZ実機では振りがいつも同じ向き(右→下)になっていた。
+        // 公式Swing Weaponは生成の瞬間にEventの向きだけを読むので、その間だけ向きを直接差し替え、すぐ元に戻す。
+        const hadDirection = event && Number.isFinite(swing.degree) ? event._direction : undefined;
         try {
-            const event = eventId ? $gameMap.event(eventId) : null;
-            if (event && Number.isFinite(swing.degree)) event.setDirection(directionFromDegree(swing.degree));
+            if (hadDirection !== undefined) event._direction = directionFromDegree(swing.degree);
             const interpreter = new Game_Interpreter();
             PluginManager.callCommand(interpreter, ENGINE, "SwingWeapon", {
                 weaponSprite: swing.weaponSprite, eventId: eventId ? String(eventId) : "player", offset: "0, -15",
@@ -312,6 +315,8 @@
         } catch (error) {
             note(error);
             return false;
+        } finally {
+            if (hadDirection !== undefined) event._direction = hadDirection;
         }
     };
     const flushSwings = () => {

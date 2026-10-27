@@ -65,8 +65,9 @@
  * 【状態の見た目(v1.1.0)】敵にもプレイヤーにも状態アイコンが出ないため、効いたかどうかが見えませんでした。
  *   葦笛睡眠(State 32)が効いている敵: 頭上にZzzのふきだし(約1.5秒ごと)。
  *   リラの精神安定(State 34)が付いた瞬間: プレイヤー頭上に音符のふきだし。
+ *   アポロンの病(State 33)が効いている敵: 頭上に汗のふきだし(1秒ごと=DoTの間隔と同じ)。MZ実機でDiseaseに何の表示も無かったため追加。
  *   状態は読むだけで、付与・解除・時間・AIには一切触れません(ProjectRHermesReedFluteSleep.isEventSleeping /
- *   ProjectRApolloLyreCalm.isPlayerCalm の公開APIを見ます)。ふきだし画像は標準のimg/system/Balloon.pngです。
+ *   ProjectRApolloLyreCalm.isPlayerCalm / ProjectRApolloDiseaseAttack.isEventDiseased の公開APIを見ます)。ふきだし画像は標準のimg/system/Balloon.pngです。
  *
  * 【素材の状況（未解決）】
  *   剣の専用画像はありません。img/pictures/Pan.png は公式Swing Weaponの暫定画像(フライパン)で、
@@ -237,8 +238,9 @@
     };
 
     // ---- 状態の見た目: 公開APIで読むだけ。標準のふきだしを出す(Zzz=10, 音符=3) ----
-    const BALLOON_SLEEP = 10, BALLOON_CALM = 3, SLEEP_REPEAT_FRAMES = 90;
+    const BALLOON_SLEEP = 10, BALLOON_CALM = 3, BALLOON_DISEASE = 6, SLEEP_REPEAT_FRAMES = 90, DISEASE_REPEAT_FRAMES = 60;
     const sleepFrames = new Map(); // eventId -> 経過frame(睡眠中のみ)
+    const diseaseFrames = new Map(); // eventId -> 経過frame(病の間のみ)
     let wasCalm = false;
     const pollStates = () => {
         const temp = typeof $gameTemp !== "undefined" ? $gameTemp : null;
@@ -253,6 +255,17 @@
                 const frame = sleepFrames.get(id) || 0;
                 if (frame % SLEEP_REPEAT_FRAMES === 0) temp.requestBalloon(event, BALLOON_SLEEP);
                 sleepFrames.set(id, frame + 1);
+            }
+        }
+        const plague = root.ProjectRApolloDiseaseAttack;
+        if (plague && typeof plague.isEventDiseased === "function") {
+            for (const event of map.events()) {
+                if (!event || !event.databaseEnemy) continue;
+                const id = event.eventId();
+                if (!plague.isEventDiseased(id)) { diseaseFrames.delete(id); continue; }
+                const frame = diseaseFrames.get(id) || 0;
+                if (frame % DISEASE_REPEAT_FRAMES === 0) temp.requestBalloon(event, BALLOON_DISEASE);
+                diseaseFrames.set(id, frame + 1);
             }
         }
         const calm = !!root.ProjectRApolloLyreCalm?.isPlayerCalm?.();
@@ -323,7 +336,7 @@
     // マップ移動・ロードで残さない。
     if (typeof Game_Map !== "undefined") {
         const _setup = Game_Map.prototype.setup;
-        Game_Map.prototype.setup = function() { for (const e of effects) e.sprite?.parent?.removeChild(e.sprite); effects.length = 0; seenSwordHitboxes.clear(); sleepFrames.clear(); wasCalm = false; return _setup.apply(this, arguments); };
+        Game_Map.prototype.setup = function() { for (const e of effects) e.sprite?.parent?.removeChild(e.sprite); effects.length = 0; seenSwordHitboxes.clear(); sleepFrames.clear(); diseaseFrames.clear(); wasCalm = false; return _setup.apply(this, arguments); };
     }
 
     root.ProjectRWeaponPresentation = {

@@ -352,7 +352,7 @@ function visualWorld(parameters = {}) {
         class Game_Event { constructor(id, x, y) { this._eventId = id; this._realX = x; this._realY = y; this._erased = false;
             this._characterName = ""; this._characterIndex = 0; this._direction = 2; }
             eventId() { return this._eventId; } setImage(n, i) { this._characterName = n; this._characterIndex = i; }
-            setDirection(d) { this._direction = d; } }
+            setDirection(d) { if (!this._directionFix) this._direction = d; } }
         class Game_Interpreter {}
         class Game_Map { constructor() { this._events = [null]; this.spawned = []; }
             setup() { this._events = [null]; }
@@ -363,7 +363,7 @@ function visualWorld(parameters = {}) {
         var $gamePlayer = { _realX: 10, _realY: 10 };
         var calls = [];
         var PluginManager = { _params: ${JSON.stringify(parameters)}, parameters(n) { return this._params; },
-            _commands: {}, callCommand(i, plugin, name, args) { calls.push({ name, args }); this._commands[plugin + ":" + name]?.(args); } };
+            _commands: {}, callCommand(i, plugin, name, args) { calls.push({ name, args, sourceDirection: $gameMap.event(Number(args.eventId))?._direction }); this._commands[plugin + ":" + name]?.(args); } };
         PluginManager._commands["Hendrix_Action_Engine:DestroyEvent"] = args => { const id = Number(args.target); $gameMap._events[id]._erased = true; $gameMap._events[id] = null; };
         var DataManager = { extractSaveContents() {} };
         var $battle = true, $combat = true, $persistent = null, $transients = [];
@@ -454,6 +454,21 @@ test("Hermes剣術の見た目: 公式Swing Weaponを神の表示Eventから出�
     const w2 = visualWorld(); // 召喚の表示が無い(戦闘イベント外など)
     w2.run("window.ProjectRGodSummonVisual.swingWeapon('hermes', 0)"); w2.frame(6);
     assert.equal(w2.calls().find(c => c.name === "SwingWeapon").args.eventId, "player");
+});
+test("Hermes剣術の見た目: 神のEventが向き固定でも、公式Swing Weaponはマウス方向の向きで生成される(MZ実機で振りが常に同じ向きだった不具合)", () => {
+    const expected = [[0, 8], [90, 6], [180, 2], [270, 4]]; // 上=0度・時計回り → MZの向き
+    for (const [degree, direction] of expected) {
+        const w = visualWorld();
+        w.set("$transients", [{ godId: "hermes", summonId: 5, degree }]);
+        w.frame(2);
+        w.run("$gameMap._events[1]._directionFix = true"); // 実機の表示Eventは向き固定(setDirectionが効かない)
+        w.run("$gameMap._events[1]._direction = 2");
+        w.run(`window.ProjectRGodSummonVisual.swingWeapon('hermes', ${degree})`);
+        w.frame(1);
+        const swing = w.calls().find(c => c.name === "SwingWeapon");
+        assert.equal(swing.sourceDirection, direction, `${degree}度 → 向き${direction}で振る`);
+        assert.equal(w.run("$gameMap._events[1]._direction"), 2, "振ったあとEventの向きは元に戻す");
+    }
 });
 test("Hermes剣術: 既存のDynamic Eventヒットボックス・ダメージ経路は不変で、成功時だけ見た目(Swing Weapon)を呼ぶ", () => {
     const sword = prefixOf("tests/ProjectR_HermesSwordsmanship.test.cjs", "loadGame, CARD");

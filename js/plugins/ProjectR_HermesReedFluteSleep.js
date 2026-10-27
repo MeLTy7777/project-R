@@ -89,9 +89,11 @@
         for (const [event, record] of [...effects]) clear(event, record);
     };
     const inRange = event => {
-        const hadRange = Object.hasOwn(event, "_lastCheckRange");
+        // MZ同梱のNW.js(Chromium 85)にはObject.hasOwnが無いので、prototype経由で判定する。
+        const has = key => Object.prototype.hasOwnProperty.call(event, key);
+        const hadRange = has("_lastCheckRange");
         const previousRange = event._lastCheckRange;
-        const hadTarget = Object.hasOwn(event, "_detectedEvent");
+        const hadTarget = has("_detectedEvent");
         const previousTarget = event._detectedEvent;
         // checkRangeはデバッグ用rangeと検知対象を更新するので、AIの検知状態を保存する。
         event._lastCheckRange = { ...previousRange };
