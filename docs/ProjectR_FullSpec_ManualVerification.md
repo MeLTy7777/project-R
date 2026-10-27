@@ -1,5 +1,39 @@
 # ProjectR 全仕様パス MZ実機確認チェックリスト
 
+## 最終Combat Runtime認定パス(2026-10-27, checkpoint d09e6db 以降)
+
+MZ Playtest(NW.js 0.48.4 / Chromium 85)を実際に起動し、DevToolsのリモートデバッグ経由で状態を読み、**実キー(Q E X C V U R F)・実マウス**を送って確認しました
+(セーブは事前にバックアップし、Playtestでは自動セーブを止めたうえで、終了後に全5ファイルのSHA-256が一致することを確認: **セーブ変更なし**)。
+状態語: **MZ VERIFIED** = 実機で確認 / **AUTOMATED VERIFIED / MZ NOT VERIFIED** = 自動テストのみ / **DEFECT** = 不具合 / **CONTENT NOT YET DEFINED** = 内容待ち。
+
+| 項目 | 状態 | 実機で見たこと |
+| --- | --- | --- |
+| 葦笛(Hermes Reed Flute) | **MZ VERIFIED(不具合を修正後)** | 修正前は発動のたびに `Object.hasOwn is not a function` で**常に失敗**していた(MZ同梱のNW.jsはChromium 85でObject.hasOwnが無い。Nodeには有るため自動テストでは見えなかった)。修正後: 4タイル内の2体にState32+Zzz、5タイル離した1体は無影響、約4.0秒で解除、カードはcooldownへ移り補充が1枚引かれる、SkillCast動作、一時Hermes表示。範囲内に敵がいないときは失敗し、手札・cooldownは不変(非消費) |
+| Apollo Lyre(リラの支援) | **MZ VERIFIED** | 睡眠32を解除→精神安定34を付与(状態アイコン+音符のふきだし)、精神安定中は睡眠を再付与できない、約6秒で終了、成功時だけ消費・cooldown、SkillCast、一時Apollo |
+| Golden Arrow(黄金の弓矢) | **MZ VERIFIED** | 弾が体の前から出てマウス方向へ直進(0/90/135/225/270°を確認)。撃った後にマウスを動かしても曲がらない。命中1回(ダメージ33=atk*2-def±10%)、命中後・寿命後に弾が消える。可視性: スロー再生で橙の弾筋が見える(通常速度の静止画では速すぎて写りにくい) |
+| Apollo Disease(病の矢) | **MZ VERIFIED(表示を追加)** | 初撃6、State33、持続6秒、DoTは1秒ごとに6回(各3)試行。敵のEVA 5%でときどき1回が0(公式の回避。DBの設定)。**実機で病の敵に何の表示も無かったため、頭上に水滴のふきだしを1秒ごとに出す表示だけ追加(ゲームプレイは不変)**。弾は命中後に消える。再命中の再付与(非stack)は手札に同じカードが2枚必要で、アリーナの固定手札では作れず **AUTOMATED VERIFIED / MZ NOT VERIFIED** |
+| Hermes剣術 | **MZ VERIFIED(表示の向きを修正後)** | Hitbox(マウス方向)・ProjectRの斬撃の弧・3体に1回ずつダメージ(同じ敵に同一斬撃で2回当たらない)。**公式Swing Weaponの表示だけが、神のEventが向き固定のため常に同じ向き(右→下)に振っていた**ので、生成の瞬間だけ向きを差し替えて上下左右に合わせた |
+| Hermes Ultimate | **MZ VERIFIED** | Gauge100→U→0、Ultimate動作、斬撃ちょうど6回(0, +60, -60, +120, -120, 反対)、Hitbox順=描画順、同じ敵が別の斬撃に当たる(19〜20ヒット)、同一斬撃内の二重ヒットなし、終了後にHitbox・一時Eventが残らず、カードも使える |
+| Apollo Ultimate | **MZ VERIFIED** | Gauge100→U→0、矢ちょうど7本(扇: base, +10, -10, +20, -20, +30, -30)、角度はUを押した瞬間に1回だけ固定(その後にマウスを動かしても不変)、矢は直進、同じ的に別の矢が5回命中、病は付かない、終了後に矢が残らない |
+| 新G17(射撃/リロード) | **MZ VERIFIED(音の聞こえ方は未判定)** | クリック1回: 弾倉7→6、SE「Gun1」が1回、銃口は体の前、GunFire→GunAimへ戻る。R: 弾倉6→7・予備92→91を1回、SE「Gun2」が1回、GunReload→GunAimへ戻る。**音そのものの良し悪しは私は聞けないため未判定**(既存のGun1/Gun2を使用。専用のリロード音は無い) |
+| Idle/Walk/Run/復帰 | **MZ VERIFIED** | Idle→Walk→Idle→Run→Idle。GunFire/GunReload/SkillCast/Ultimate のあと、戦闘中はGunAim、戦闘を終えるとIdleへ戻り、シートが残らない。SwordAttackの復帰は前回パス(d09e6db)で確認 |
+| F(調べる) | **MZ VERIFIED** | 戦闘中、照準が別方向でも 黄色のControl Hub / Gauge端末 / 神の端末 / Full-Spec Status が開き、Fで選択・送り。Action Button化したtransferイベントも戦闘中に実行できた。終了後はGunAimに戻る。**気づき(DEFECTではなく未確認の設計)**: 「プレイヤー接触」のtransferイベント(アリーナの転送ゲート)は戦闘中に踏んでも起動しない(戦闘外では転送できる)。敵・弾を誤って調べないことは自動テストのみ |
+| Vision/Occlusion | **MZ VERIFIED(動いている間のちらつきは客観測定せず)** | Region255の壁で裏が影の形に真っ暗、手前は見える。Region254はマップ画像だけ保持しイベントは隠れる。`<VisionWall>`は壁になり、`<VisionKeepVisible>`は視界外でも表示を保つ(壁の裏では隠れる)。戦闘HUDは暗闇の上に出る。三頭身の主人公は隠れない |
+| メニュー | **MZ VERIFIED** | Esc→SKILL(Deck Builder)/ULTIMATE/ITEM(指輪カテゴリを含む6カテゴリ)を実キーで開き、X(戻る)で毎回戻れる。指輪画面(Scene_ProjectRRings)も開閉。エラー表示なし。SAVE/LOADは触っていない |
+| 30枚デッキ | **CONTENT NOT YET DEFINED** | 製品のコピー上限は合計19枚のまま。コピー上限・30枚ルールは緩めていない(コードの不具合ではない) |
+
+このパスで見つけた不具合(すべて実機でのみ再現し、自動テストは通っていた):
+1. 葦笛が常に失敗(Chromium 85に無い `Object.hasOwn`)→ `ProjectR_HermesReedFluteSleep.js` を修正。再発防止に `tests/ProjectR_Chromium85Compat.test.cjs`(Chromium 86以降のAPIをProjectRプラグインが使わないことを検査)。
+2. 病(State33)の敵に表示が無い → `ProjectR_WeaponPresentation.js` に水滴のふきだしを追加(読むだけ)。
+3. Hermes剣術の公式Swing Weaponが向き固定のため常に同じ向き → `ProjectR_GodSummonVisual.js` で生成の瞬間だけ向きを差し替え。
+
+証跡: `docs/evidence/cert_reed_flute_zzz.png`(葦笛のZzz+一時Hermes)、`docs/evidence/cert_disease_balloon.png`(病の水滴)。
+
+**この認定パスの手順メモ(再現用)**: `nw.exe <project> test --remote-debugging-port=9222` でPlaytestを起動し、Chrome DevTools Protocol(`Runtime.evaluate` / `Input.dispatchKeyEvent` / `Page.captureScreenshot`)で操作・確認した。
+速い演出(矢・斬撃・Ultimate)は、`SceneManager.updateMain`を数フレームに1回だけ呼ぶ一時フックでスロー再生して撮影した(ゲームのファイルは変更していない)。
+
+---
+
 ## 新: Character Animation + 新銃(G17)の確認【MZ MANUAL VERIFICATION REQUIRED】
 
 新銃・キャラクター表示プロファイル・SkillCast/Ultimate/剣の動作は、**実エンジン読み込みテスト(自動)では通っていますが、MZ実機は未確認**です
