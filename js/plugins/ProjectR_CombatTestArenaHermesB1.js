@@ -6,13 +6,15 @@
  * @base ProjectR_HermesSweep
  * @base ProjectR_HermesReedFlute
  * @base ProjectR_HermesZetsu
+ * @base ProjectR_HermesIssen
+ * @base ProjectR_HermesStrength
  * @orderAfter ProjectR_CombatTestArenaZetsu
  *
  * @help
  * ProjectR_CombatTestArenaHermesB1.js
  *
  * Playtest専用。F8のConsoleから使います(アリーナの固定APIは変えません)。
- *   ProjectRHermesTest.start(card, level = 1)   card = "sweep" | "flute" | "zetsu"(または runtime cardId)。
+ *   ProjectRHermesTest.start(card, level = 1)   card = "sweep" | "flute" | "zetsu" | "issen" | "strength"(または runtime cardId)。
  *                                               アリーナでHermesテストを始め、手札5枚すべてをそのカードにして再開始する。
  *   ProjectRHermesTest.setLevel(card, level)    所持データのレベル 1〜3(戦闘中でも反映)
  *   ProjectRHermesTest.status()                 手札・Lv・山札の枚数・直近の結果・睡眠中の敵・ヒットログ(読み取り)
@@ -31,7 +33,9 @@
     const CARDS = Object.freeze({
         sweep: { id: "hermes_sweep", api: () => root.ProjectRHermesSweep },
         flute: { id: "hermes_reed_flute", api: () => root.ProjectRHermesReedFlute },
-        zetsu: { id: "hermes_zetsu", api: () => root.ProjectRHermesZetsu }
+        zetsu: { id: "hermes_zetsu", api: () => root.ProjectRHermesZetsu },
+        issen: { id: "hermes_issen", api: () => root.ProjectRHermesIssen },
+        strength: { id: "hermes_strength", api: () => root.ProjectRHermesStrength }
     });
     const deck = () => root.ProjectRCardDeck;
     const arena = () => root.ProjectRCombatTestArena;
@@ -95,8 +99,11 @@
             hand: state ? state.hand.map(card => card.cardId) : [],
             counts: state ? { draw: state.drawPile.length, discard: state.discardPile.length, cooldown: state.cooldownPile.length } : null,
             last: { sweep: root.ProjectRHermesSweep?.getLastResult?.() ?? null, flute: root.ProjectRHermesReedFlute?.getLastResult?.() ?? null,
-                zetsu: root.ProjectRHermesZetsu?.getLastResult?.() ?? null },
+                zetsu: root.ProjectRHermesZetsu?.getLastResult?.() ?? null,
+                issen: root.ProjectRHermesIssen?.getLastResult?.() ?? null, strength: root.ProjectRHermesStrength?.getLastResult?.() ?? null },
             sleepers: root.ProjectRHermesReedFlute?.getSleepers?.() ?? [],
+            strength: root.ProjectRHermesStrength?.getPending?.() ?? null,
+            splits: root.ProjectRHermesIssen?.getActiveSplits?.() ?? [],
             hits: root.ProjectRCardModifiers?.getWeaponHitLog?.() ?? [],
             cutIn: root.ProjectRCutIn?.getActive?.() ?? [],
             vfx: root.ProjectRPresentationVfx?.diagnostics?.() ?? null

@@ -30,6 +30,8 @@
  *             同じスプライトシートを公式「Show VFX」(showAnimatedPicture)で再生する代替です。
  *   anchor  : "player"  = プレイヤー位置。ライブラリ再生。stick:true なら再生開始時の位置に固定(移動後も残る)、無ければ追従。
  *             "event"   = play時に渡す eventId のEvent位置(Hermesの表示Event等)。ライブラリ再生。stick:true で開始位置に固定。
+ *   route   : true      = play時に渡す degree と length(タイル)で、発動方向へ回し、経路の中央(length/2)へ置き、長さに合わせて拡縮する(一閃の軌跡)。
+ *             スプライトシートは「上向きの11マス」の縦長1コマ。rotate:"aim" と同じく公式Show VFXで再生する。
  *   rotate  : "aim"     = play時に渡す degree(0=上・時計回り)だけ回して再生する。ライブラリ再生は回転の上書きができないため、
  *                         同じスプライトシート・同じ見た目の設定で公式「Show VFX」(showAnimatedPicture)の transformSettings.rotation を使う。
  *                         ライブラリには同じ設定の項目も登録してあり(VFX Designerで見た目を調整できる)、数値を変えるときは両方を合わせる。
@@ -59,6 +61,11 @@
     // H2B-1(自作のDEV素材。tools/gen_dev_h2b1_assets.cjs): 薙ぎ払いの杖の残像(1コマ400px・上向きが基準)と、葦笛の水面の波(1コマ800px=半径8マス)。
     const STAFF_SHEET = Object.freeze({ file: "Animation/ProjectR_Sweep_Staff", rows: 2, columns: 4, fps: 24 });
     const RIPPLE_SHEET = Object.freeze({ file: "Animation/ProjectR_Flute_Ripple", rows: 2, columns: 4, fps: 12 });
+    // H2B-2(自作のDEV素材。tools/gen_dev_h2b2_assets.cjs): 一閃の軌跡と雷(1コマ160x560・上向きの11マス)、ストレングスの魔法陣(1コマ240)と黄金の光(1コマ240x320)。
+    const TRAIL_SHEET = Object.freeze({ file: "Animation/ProjectR_Issen_Trail", rows: 2, columns: 4, fps: 24 });
+    const LIGHTNING_SHEET = Object.freeze({ file: "Animation/ProjectR_Issen_Lightning", rows: 2, columns: 4, fps: 24 });
+    const CIRCLE_SHEET = Object.freeze({ file: "Animation/ProjectR_Strength_Circle", rows: 2, columns: 4, fps: 12 });
+    const LIGHT_SHEET = Object.freeze({ file: "Animation/ProjectR_Strength_Light", rows: 2, columns: 4, fps: 12 });
     const defaults = {
         // 出発点: 予備動作の間(移動の前)にプレイヤーへ出し、stickでその場(出発点)に固定する。移動後もノイズは出発点に残る。
         "hermes_zetsu.departure": { library: "ProjectR_Zetsu_Departure", sheet: NOISE_SHEET, anchor: "player", stick: true, scale: 100, opacity: 255, offsetY: -24 },
@@ -67,6 +74,12 @@
         "hermes_sweep.staff": { library: "ProjectR_Sweep_Staff", sheet: STAFF_SHEET, anchor: "player", rotate: "aim", stick: true, scale: 100, opacity: 235, offsetY: -24 },
         // 葦笛: 白く半透明の水面の波。効果範囲(半径8マス)いっぱいへ広がる。発動した場所に残る。
         "hermes_flute.ripple": { library: "ProjectR_Flute_Ripple", sheet: RIPPLE_SHEET, anchor: "player", stick: true, scale: 100, opacity: 255, offsetY: -12 },
+        // 一閃: 白い斬撃の軌跡と、白黒の雷(経路が壁で短くなれば縮める)。Hermesが通った経路に一瞬光る。
+        "hermes_issen.trail": { library: "ProjectR_Issen_Trail", sheet: TRAIL_SHEET, anchor: "player", route: true, stick: true, scale: 100, opacity: 235, offsetY: -24 },
+        "hermes_issen.lightning": { library: "ProjectR_Issen_Lightning", sheet: LIGHTNING_SHEET, anchor: "player", route: true, stick: true, scale: 100, opacity: 255, offsetY: -24 },
+        // ストレングス: 足元の魔法陣(黄金)と、そこから立ち上る黄金の光。プレイヤーに追従する。
+        "hermes_strength.circle": { library: "ProjectR_Strength_Circle", sheet: CIRCLE_SHEET, anchor: "player", scale: 100, opacity: 235, offsetY: 6 },
+        "hermes_strength.light": { library: "ProjectR_Strength_Light", sheet: LIGHT_SHEET, anchor: "player", scale: 100, opacity: 235, offsetY: -30, blend: "Add" },
         // 神の消失: 神(表示Event)の位置に黒いノイズ。
         "hermes.vanish": { library: "ProjectR_Hermes_Vanish", sheet: NOISE_SHEET, anchor: "event", stick: true, scale: 110, opacity: 255, offsetY: -24 }
     };
@@ -153,6 +166,16 @@
             if (definition.anchor === "origin") {
                 const offset = screenOffset(context.origin);
                 result = offset ? playSheet(key, definition, offset, true) : fail("invalidOrigin", key);
+            } else if (definition.route === true) {
+                // 経路: 発動方向へ回し、経路の中央へ置き、長さに合わせて拡縮する。
+                const degree = Number(context.degree), length = Number(context.length);
+                if (!Number.isFinite(degree) || !(length > 0)) { result = fail("invalidRoute", key); }
+                else {
+                    const tile = typeof $gameMap !== "undefined" && $gameMap?.tileWidth ? $gameMap.tileWidth() : 48;
+                    const half = length / 2 * tile, radians = degree * Math.PI / 180;
+                    const scaled = { ...definition, scale: Math.max(1, Math.round(definition.scale * length / 11)) };
+                    result = playSheet(key, scaled, { x: Math.sin(radians) * half, y: -Math.cos(radians) * half }, !!definition.stick, { rotation: degree });
+                }
             } else if (definition.rotate === "aim") {
                 // 回転はライブラリ再生で上書きできないため、同じ見た目の設定で公式Show VFXを使う。
                 const degree = Number(context.degree);

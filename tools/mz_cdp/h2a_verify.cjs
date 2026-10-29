@@ -61,8 +61,11 @@ const near = (a, b, t) => Math.abs(a - b) <= t;
   await check("B miss+expiry", async () => {
     await start(1); await s.slow(1); await fixedRandom(true); await equip(2); await resetHp(); await sleep(300);
     // 何もいない広間(12,25)から東へ。着地後の斬撃は東=敵なし(外れ)。ポインタは動かさない。
-    await s.place(12, 25); await sleep(500); await s.aim(5, 0); await c.tap("Q"); await wait("ProjectRHermesZetsu.isTeleportPending()", 3000); await wait("!ProjectRHermesZetsu.isTeleportPending()", 8000);
-    const sw = await swordSwings(); await c.tap("J", 100); await sleep(150);
+    await s.place(12, 25); await sleep(500); await s.aim(5, 0); await c.tap("Q");
+    // 予備動作は8frame(約0.13秒)で、ポーリングが窓を取り逃がすことがある。「着地した」ことを直接待つ(取り逃がして3秒待つと0.8秒の強化が先に切れて不安定だった)
+    await wait("$gamePlayer._realX > 16 && !ProjectRHermesZetsu.isTeleportPending()", 5000);
+    const sw = await swordSwings(); await c.keyDown("J"); await sleep(60); await c.keyUp("J");
+    // 0.8秒の窓の中で読む(往復を最小にする。以前は押下後に150ms待ってから読んでおり、負荷が高いと窓を越えて不安定だった)
     const kept = (await s.status()).bonus; const swung = (await swordSwings()) === sw + 1;
     await sleep(1000);
     const gone = (await s.status()).bonus;

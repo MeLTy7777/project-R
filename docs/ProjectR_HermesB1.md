@@ -79,7 +79,7 @@
 - 実機(NW.js 0.48.4 / Chromium 85):
   - `h2b1_verify.cjs` **17/17 PASS**: 絶の取引(予約は未消費・確定で1回消費・着地不可で中止・連続入力・中止後に神/VFX/カットイン/予約が残らない)、薙ぎ払い(別Event ID・斜め・境界80度/115度・壁・外れても消費・Lv2先端+50・Lv3クリティカル・演出の片付け)、葦笛(半径8・壁・対象なしでも消費・起床・Lv2 +50・Lv3確定クリティカル・演出の片付け)、Console異常なし。
   - `h2a_verify.cjs` **23/23 PASS**(再実行): 通常の剣(Event ID 2〜6・6方向・重なった2体に1回ずつ)、G17、絶Lv1/2/3 × 剣/G17、Ultimateカットイン、メニュー、Console。
-  - `regress.cjs`: R1〜R7 **7/7 PASS**(G17・剣・F・U・メニュー・Vision)。冒頭の証跡撮影ステップは旧スクリプトの相対パス(`mz`フォルダ)を読めず `ENOENT` を出すが、検証項目ではなく本Phaseの変更とも無関係(結果JSONに残してある)。
+  - `regress.cjs`: R1〜R7 **7/7 PASS**(G17・剣・F・U・メニュー・Vision)。冒頭の証跡撮影ステップの `ENOENT`(旧スクリプトの相対パス)は、Phase H2B-2で修正した(`docs/ProjectR_HermesB2.md` の7節)。
   - HPは公式HPバーを読み、シーンのフレーム数で待った。
 - セーブ5ファイルのSHA-256は、Playtestの前後で一致(config `2f0a5000…`・file0 `3ff692fc…`・file1 `7534fc6c…`・file2 `b9db7c4f…`・global `9535c150…`)。
 - 証跡: `docs/evidence_h2b1/`(杖の残像・水面の波・Zzzのふきだし・カットイン・中止された絶など)と結果JSON。

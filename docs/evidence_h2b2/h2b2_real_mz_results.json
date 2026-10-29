@@ -1,0 +1,248 @@
+{
+  "chromium": "85.0.4183.121 / nw 0.48.4",
+  "results": [
+    {
+      "id": "0 boot: 新Plugin(ストレングス・一閃)の読み込み",
+      "ok": true,
+      "detail": "Chromium 85 / NW 0.48.4"
+    },
+    {
+      "id": "0b VFX Designerライブラリに新カードの4エントリがある",
+      "ok": true,
+      "detail": "getAnimationFromLibrary"
+    },
+    {
+      "id": "T1 実機: ストレングスLv1(x1.3)/Lv2(x1.45)/Lv3(x1.45+防御無視)の剣ダメージが、攻撃力を式に通した独立計算と一致。3回蓄え→1回で全消費",
+      "ok": true,
+      "detail": {
+        "1": {
+          "base": 98,
+          "boosted": 141,
+          "expectBase": 98,
+          "expectBoost": 141,
+          "stacks": 3,
+          "drawn": 3,
+          "after": null
+        },
+        "2": {
+          "base": 98,
+          "boosted": 163,
+          "expectBase": 98,
+          "expectBoost": 163,
+          "stacks": 3,
+          "drawn": 3,
+          "after": null
+        },
+        "3": {
+          "base": 98,
+          "boosted": 209,
+          "expectBase": 98,
+          "expectBoost": 209,
+          "stacks": 3,
+          "drawn": 3,
+          "after": null
+        }
+      }
+    },
+    {
+      "id": "T2 実機: G17の弾にもストレングスが乗り(Lv3 x1.3・防御無視)、次の弾は通常。弾数が撃った分だけ減る",
+      "ok": true,
+      "detail": {
+        "base": 74,
+        "boosted": 158,
+        "third": 74
+      }
+    },
+    {
+      "id": "T3 実機: 絶 x2.0 とストレングス(x1.3・防御無視)が同じ命中で両方働き(ストレングスで上げた武器ダメージに絶の倍率)、どちらも1回だけ消費される",
+      "ok": true,
+      "detail": {
+        "base": 98,
+        "both": 374,
+        "left": {
+          "zetsu": null,
+          "strength": null
+        }
+      }
+    },
+    {
+      "id": "T4 実機: 1回の剣の斬撃が2体に当たり、2体とも同じ強化(x1.3)で、蓄えは1度だけ消費。次の斬撃は通常",
+      "ok": true,
+      "detail": {
+        "l": {
+          "4": 141,
+          "5": 141
+        },
+        "next": {
+          "4": 98,
+          "5": 98
+        },
+        "lastAttack": {
+          "serial": 6,
+          "attackId": "sword:9",
+          "eventId": 4,
+          "stacks": 3,
+          "multiplier": 1.3,
+          "ignoreDefense": false,
+          "dealt": 141
+        }
+      }
+    },
+    {
+      "id": "T5 実機: 魔法陣・黄金の光(ライブラリ)・カットイン・ガッツポーズ・Hermesが出て、最後は全部片付く(蓄えは使われるまで残る)",
+      "ok": true,
+      "detail": {
+        "log": [
+          "library_ProjectR_Strength_Circle:0",
+          "library_ProjectR_Strength_Light:0"
+        ],
+        "info": {
+          "cut": [
+            "card"
+          ],
+          "act": [
+            "FistPump"
+          ],
+          "hermes": 1
+        },
+        "gone": {
+          "vfx": 0,
+          "hermes": 0,
+          "cut": 0,
+          "act": []
+        }
+      }
+    },
+    {
+      "id": "I1 実機: Lv1 経路上の敵(Event 4・5)に防御無視・クリティカルなしの200ダメージを1回ずつ(乱数0でも200)。経路外(6)・射程外(3)は0。主人公は動かない",
+      "ok": true,
+      "detail": {
+        "lost": {
+          "3": 0,
+          "4": 200,
+          "5": 200,
+          "6": 0
+        },
+        "cooldown": 1
+      }
+    },
+    {
+      "id": "I2 実機: 射程11マス(10マス先は当たり12マス先は届かない)。壁(Region 255)の向こうの敵(5)には当たらず、手前(4)は当たる",
+      "ok": true,
+      "detail": {
+        "reach": {
+          "4": 200,
+          "5": 0
+        },
+        "walled": {
+          "4": 200,
+          "5": 0
+        }
+      }
+    },
+    {
+      "id": "I3 実機: 斜め(右上)のマウス方向へ一直線。外れてもカードは消費される",
+      "ok": true,
+      "detail": {
+        "l1": {
+          "4": 200,
+          "5": 0
+        },
+        "miss": {
+          "4": 0,
+          "5": 0
+        }
+      }
+    },
+    {
+      "id": "I4 実機: 分割ダメージの合計は Lv1 50 / Lv2 100 / Lv3 100(3秒で厳密に保存され、その後は増えない)。期限後に状態・速度係数が残らない",
+      "ok": true,
+      "detail": {
+        "1": {
+          "direct": 200,
+          "marks": [
+            17,
+            34,
+            50,
+            50
+          ],
+          "splits": 0,
+          "speedAfter": 1,
+          "took": 4026
+        },
+        "2": {
+          "direct": 200,
+          "marks": [
+            34,
+            67,
+            100,
+            100
+          ],
+          "splits": 0,
+          "speedAfter": 1,
+          "took": 4058
+        },
+        "3": {
+          "direct": 200,
+          "marks": [
+            34,
+            67,
+            100,
+            100
+          ],
+          "splits": 0,
+          "speedAfter": 1,
+          "took": 4037
+        }
+      }
+    },
+    {
+      "id": "I5 実機: Lv3の移動速度-50%: distancePerFrameが半分になり、実際の移動距離も約半分。3秒後に元へ戻る",
+      "ok": true,
+      "detail": {
+        "base": 0.03125,
+        "slowed": 0.015625,
+        "restored": 0.03125,
+        "dSlow": 0.3125,
+        "dFree": 0.625
+      }
+    },
+    {
+      "id": "I6 実機: 白い斬撃の軌跡・白黒の雷(ライブラリ)がUp向きに経路へ・カットイン・ArmSweep・Hermesが前方(上)へ駆ける。最後は全部片付き、Eventが増えたまま残らない",
+      "ok": true,
+      "detail": {
+        "log": [
+          "ProjectR:hermes_issen.trail:0",
+          "ProjectR:hermes_issen.lightning:0"
+        ],
+        "info": {
+          "cut": [
+            "card"
+          ],
+          "act": []
+        },
+        "ys": [
+          17.575,
+          12.075,
+          12.075,
+          12.075,
+          12.075,
+          12.075
+        ],
+        "gone": {
+          "vfx": 0,
+          "hermes": 0,
+          "cut": 0,
+          "events": 49,
+          "splits": 0
+        },
+        "eventsBefore": 49
+      }
+    },
+    {
+      "id": "Z 全体: Consoleのエラーなし",
+      "ok": true,
+      "detail": []
+    }
+  ]
+}

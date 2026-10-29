@@ -45,6 +45,18 @@
  *      値を - で書き換えます。クリティカル倍率は公式 critDmgMultiplier(SHendrix_Action.applyCritical)です。
  *      固定ダメージは「絶」の武器ヒット強化の対象外です(通常の剣/銃だけが対象)。
  *
+ * 3b. 武器攻撃の「攻撃力」「防御」の一時的な差し替え(H2B-2 ストレングス用)
+ *    prepare(ctx) が { atkMultiplier, ignoreDefense } を返すと、通常の武器攻撃(value に player weapon を含む)の
+ *    その1回の呼び出しの間だけ、攻撃者(主人公)の攻撃力(param 2)に atkMultiplier を掛け、ignoreDefense なら対象の防御(param 3)を0にして、
+ *    Hendrixの武器ダメージ式(a.atk と b.def を使う)に計算させます。最終ダメージへの倍率ではなく、式の中の「攻撃力」を変えます。
+ *    Battlerのインスタンスにだけ一時的に param を差し込み、呼び出しの後に必ず外します(基礎ステータス・装備・Databaseは変更しません)。
+ *    元素耐性・無効・回避・クリティカルなど、防御以外の要素には触れません。
+ *    ctx.attackId は呼び出し側(剣・銃)が渡す projectRAttackId です(1回の攻撃動作=1つのID。複数の敵に当たっても同じ)。
+ *
+ * 3c. キャラクター別の移動速度係数(setCharacterSpeedFactor / clearCharacterSpeedFactor)
+ *    Game_CharacterBase.distancePerFrame に、そのキャラクターに登録中の係数の積を掛けます(敵Eventの移動速度の低下に使う)。
+ *    WeakMapで持つので、セーブデータには入りません。他の係数は個別のidで残るので、解除は自分の係数を外すだけで元に戻ります。
+ *
  * 4. 演出の二重発火防止(skipPresentationOnce / takePresentationSkip)
  *    カードの演出を「予約時」に先に出し、消費の確定時に同じ演出がもう一度出ないようにするための合図です。
  *    CutIn / CharacterPresentation が requestUseCard の成功で演出を出す直前に takePresentationSkip を確認します。
@@ -52,7 +64,8 @@
  * API: ProjectRCardModifiers
  *   armWeaponHitBonus(spec) / clearWeaponHitBonus(reason) / getWeaponHitBonus() / getWeaponHitLog()
  *   setMoveSpeedFactor(id, factor, seconds) / clearMoveSpeedFactor(id) / moveSpeedFactor() / getMoveSpeedModifiers()
- *   registerHitHook(id, { prepare, finish }) / unregisterHitHook(id) / naturalCriticalChance(eventId)
+ *   registerHitHook(id, { prepare, finish }) / unregisterHitHook(id) / naturalCriticalChance(eventId) / eventHp(eventId)(公式HPバーを優先して読む)
+ *   setCharacterSpeedFactor(character, id, factor) / clearCharacterSpeedFactor(character, id) / characterSpeedFactor(character)
  *   skipPresentationOnce(cardId, channels) / takePresentationSkip(cardId, channel) / clearPresentationSkip(cardId)
  *   clearAll(reason) / tick(seconds)
  */
@@ -73,6 +86,7 @@
     const note = entry => { log.push(Object.freeze({ seq: ++seq, ...entry })); if (log.length > LOG_LIMIT) log.shift(); };
 
     const hitHooks = new Map(); // id -> { prepare, finish }
+    const characterSpeeds = typeof WeakMap !== "undefined" ? new WeakMap() : null; // character -> Map(id -> factor)
     const presentationSkips = new Map(); // cardId -> Set(channel)
 
     const positive = (value, fallback) => Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : fallback;
@@ -213,7 +227,7 @@
         return Number.isFinite(value) && value > 0 ? value : 1;
     }, 1);
     const prepareHooks = context => {
-        const out = { flat: 0, forceCritical: false, entries: [] };
+        const out = { flat: 0, forceCritical: false, atkMultiplier: 1, ignoreDefense: false, entries: [] };
         for (const [id, hook] of [...hitHooks]) {
             if (typeof hook.prepare !== "function") continue;
             const result = safely(() => hook.prepare(context), null);
@@ -221,6 +235,9 @@
             const flat = Number(result.flat);
             if (Number.isFinite(flat) && flat > 0) out.flat += flat;
             if (result.forceCritical === true) out.forceCritical = true;
+            const atk = Number(result.atkMultiplier);
+            if (Number.isFinite(atk) && atk > 0) out.atkMultiplier *= atk;
+            if (result.ignoreDefense === true) out.ignoreDefense = true;
             out.entries.push({ id, hook, result });
         }
         return out;
@@ -240,6 +257,26 @@
         return () => { if (had) Action.prototype.itemCri = previous; else delete Action.prototype.itemCri; };
     };
 
+    // 攻撃者の攻撃力 / 対象の防御を、この1回の呼び出しの間だけ差し替える(インスタンスのparamだけ。基礎値は変えない)。
+    const patchParam = (battler, paramId, transform) => {
+        if (!battler || typeof battler.param !== "function") return () => {};
+        const own = Object.prototype.hasOwnProperty.call(battler, "param");
+        const previous = battler.param;
+        battler.param = function(id) { const value = previous.apply(this, arguments); return id === paramId ? transform(value) : value; };
+        return () => { if (own) battler.param = previous; else delete battler.param; };
+    };
+    const patchAttackStats = (id, prepared) => {
+        const restores = [];
+        try {
+            if (prepared.atkMultiplier !== 1) restores.push(patchParam($gameParty.leader(), 2, value => value * prepared.atkMultiplier));
+            if (prepared.ignoreDefense) {
+                const target = typeof SgetBattlerForH === "function" ? SgetBattlerForH($gameMap.event(id)) : null;
+                restores.push(patchParam(target, 3, () => 0));
+            }
+        } catch (_error) { /* 差し替えに失敗したら通常の計算に任せる */ }
+        return () => { for (const restore of restores.reverse()) { try { restore(); } catch (_error) { /* noop */ } } };
+    };
+
     const wrap = () => {
         const key = `${ENGINE}:UpdateEventHp`;
         const original = typeof PluginManager !== "undefined" ? PluginManager._commands?.[key] : null;
@@ -255,8 +292,9 @@
             if (!hooked && !weaponBonus && !fixed) return original.apply(this, arguments);
 
             const kind = fixed ? "fixed" : isWeaponValue(args?.value) ? "weapon" : "expression";
-            const context = { eventId: id, kind, value: String(args?.value ?? ""), source: fixed ? String(fixed.source ?? "") : "" };
-            const prepared = hooked ? prepareHooks(context) : { flat: 0, forceCritical: false, entries: [] };
+            const context = { eventId: id, kind, value: String(args?.value ?? ""), source: fixed ? String(fixed.source ?? "") : "",
+                attackId: args && args.projectRAttackId !== undefined ? String(args.projectRAttackId) : null };
+            const prepared = hooked ? prepareHooks(context) : { flat: 0, forceCritical: false, atkMultiplier: 1, ignoreDefense: false, entries: [] };
             const before = eventHp(id);
             let value = String(args?.value ?? "");
             let critical = null;
@@ -266,7 +304,7 @@
                 baseDamage = Math.max(0, Math.round(Number(fixed.base)));
                 if (!Number.isFinite(baseDamage)) baseDamage = 0;
                 const chance = Math.min(1, Math.max(0, naturalCriticalChance(id) + (Number(fixed.critChanceBonus) || 0)));
-                critical = prepared.forceCritical || Math.random() < chance;
+                critical = fixed.critical === false ? false : (prepared.forceCritical || Math.random() < chance);
                 const own = Math.max(0, Math.round(Number(fixed.flat) || 0)); // 固定ダメージ側の加算(例: 薙ぎ払いLv2の先端+50)
                 const total = (critical ? Math.round(baseDamage * criticalMultiplier()) : baseDamage) + own + prepared.flat;
                 value = `-${total}`;
@@ -280,6 +318,8 @@
             }
             const modified = Object.assign({}, args, { value });
             if (fixed) delete modified.projectRFixed;
+            // 攻撃力・防御の差し替えは、通常の武器攻撃(player weapon)にだけ使う(固定ダメージ・skillの式には使わない)。
+            const restoreStats = !fixed && kind === "weapon" && (prepared.atkMultiplier !== 1 || prepared.ignoreDefense) ? patchAttackStats(id, prepared) : () => {};
             let result;
             try {
                 if (weaponBonus) bonus = null; // 先に外す: 再入しても二重に掛からない
@@ -289,6 +329,7 @@
                 throw error;
             } finally {
                 restore();
+                restoreStats();
             }
             const after = eventHp(id);
             const cm = root.CollisionManager;
@@ -315,10 +356,42 @@
     };
     const installed = wrap();
 
+    // ---------- キャラクター別の移動速度係数 ----------
+    const setCharacterSpeedFactor = (character, id, factor) => {
+        const f = Number(factor);
+        if (!characterSpeeds || !character || typeof character !== "object" || !String(id ?? "") || !Number.isFinite(f) || f <= 0) return { ok: false, reason: "invalidFactor" };
+        let map = characterSpeeds.get(character);
+        if (!map) { map = new Map(); characterSpeeds.set(character, map); }
+        map.set(String(id), f);
+        return { ok: true };
+    };
+    const clearCharacterSpeedFactor = (character, id) => {
+        const map = characterSpeeds && character ? characterSpeeds.get(character) : null;
+        if (!map) return false;
+        const removed = map.delete(String(id));
+        if (!map.size) characterSpeeds.delete(character);
+        return removed;
+    };
+    const characterSpeedFactor = character => {
+        const map = characterSpeeds && character ? characterSpeeds.get(character) : null;
+        let product = 1;
+        if (map) for (const f of map.values()) product *= f;
+        return product;
+    };
+    if (typeof Game_CharacterBase !== "undefined" && characterSpeeds) {
+        const _characterDistance = Game_CharacterBase.prototype.distancePerFrame;
+        Game_CharacterBase.prototype.distancePerFrame = function() {
+            const value = _characterDistance.apply(this, arguments);
+            const map = characterSpeeds.get(this);
+            return map && map.size ? value * characterSpeedFactor(this) : value;
+        };
+    }
+
     root.ProjectRCardModifiers = {
+        setCharacterSpeedFactor, clearCharacterSpeedFactor, characterSpeedFactor,
         armWeaponHitBonus, clearWeaponHitBonus, getWeaponHitBonus, getWeaponHitLog: () => log.map(entry => ({ ...entry })),
         setMoveSpeedFactor, clearMoveSpeedFactor, moveSpeedFactor, getMoveSpeedModifiers,
-        registerHitHook, unregisterHitHook, naturalCriticalChance,
+        registerHitHook, unregisterHitHook, naturalCriticalChance, eventHp,
         skipPresentationOnce, takePresentationSkip, clearPresentationSkip,
         clearAll, tick, isInstalled: () => installed || !!PluginManager._commands?.[`${ENGINE}:UpdateEventHp`]?.__projectRCardModifiers
     };

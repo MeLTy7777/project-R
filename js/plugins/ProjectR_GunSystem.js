@@ -397,7 +397,7 @@
             if (!record || record.map !== m || m.event(sourceId) !== record.event) continue;
             try {
                 trackDamage(enemyId, `gun:${record.serial}`, () =>
-                    command("UpdateEventHp", { eventId: String(enemyId), value: "-player weapon", exceedMaxHealth: "false" }, sourceId));
+                    command("UpdateEventHp", { eventId: String(enemyId), value: "-player weapon", exceedMaxHealth: "false", projectRAttackId: `gun:${record.serial}` }, sourceId));
             } finally {
                 destroyBullet(sourceId, record); // 1発1Hit。貫通なし。
             }
@@ -440,7 +440,7 @@
     };
     // 見た目だけ: 両腕を使う動作(絶のCrossArms)の間は、構えた銃のスプライトを隠す。装備・弾薬・リロード・攻撃可否は変えない。
     // 公式Display Weaponは毎フレーム位置を置き直すので、ここ(公式の後)で隠し、動作が終わったら隠す前の値へ戻す。
-    const HIDE_DURING = ["CrossArms", "ArmSweep"];
+    const HIDE_DURING = ["CrossArms", "ArmSweep", "FistPump"];
     let hiddenState = null; // { visible } 隠す前の値
     const syncPoseHide = sprite => {
         const api = presentation();

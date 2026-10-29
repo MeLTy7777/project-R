@@ -69,13 +69,13 @@
  * @text カード別の一時召喚の位置(JSON)
  * @desc {"cardId":{"x":横tile,"y":縦tile,"forward":前方tile}}。指定したカードだけ、一時召喚の表示位置を変える(未指定は上の既定)。絶は主人公の真後ろ(包む位置)。forwardは発動時の向き(マウス方向。方向を使わないカードは主人公の向き)の前方へ。
  * @type note
- * @default {"hermes_zetsu":{"x":0,"y":-0.25},"hermes_sweep":{"forward":0.95,"y":-0.15},"hermes_reed_flute":{"forward":0.95,"y":-0.15}}
+ * @default {"hermes_zetsu":{"x":0,"y":-0.25},"hermes_sweep":{"forward":0.95,"y":-0.15},"hermes_reed_flute":{"forward":0.95,"y":-0.15},"hermes_issen":{"forward":0.95,"y":-0.15},"hermes_strength":{"x":0,"y":-0.25}}
  *
  * @param VanishNoiseCardIds
  * @text 黒いノイズとともに消える神のカードID(JSON配列)
  * @desc 一時召喚の表示が終わる少し前に、神の位置へ黒いノイズ(PresentationVfx "hermes.vanish")を重ねてから消す。表示のみ。
  * @type note
- * @default ["hermes_sweep","hermes_reed_flute"]
+ * @default ["hermes_sweep","hermes_reed_flute","hermes_issen","hermes_strength"]
  *
  * @help
  * 神の召喚を「見える形」にする表示専用のPluginです。ゲームの状態
@@ -101,6 +101,7 @@
  *   getVisuals()           表示中の一覧 [{kind, godId, eventId, summonId}]
  *   getTransientEventId(godId)  その神の一時召喚の表示EventId(無ければ0)
  *   swingWeapon(godId, degree)  公式Swing Weaponをその神の表示Eventから出す(失敗はfalse)
+ *   dash(godId, degree, tiles, frames)  その神の表示Eventを、発動の向きへ tiles マス、frames かけて移動させる(一閃。表示だけ。Hermesが駆ける見た目)
  *   requestBalloon(godId, balloonId)  標準のふきだし(3=音符 など)をその神の表示Eventへ出す(一時召喚の表示Eventが現れるまで預かる)
  *   getDiagnostics()       最後の失敗理由・生成回数(診断用)
  */
@@ -119,7 +120,7 @@
     const transientOffset = { x: finiteOr(params.TransientOffsetX, 0.75), y: finiteOr(params.TransientOffsetY, -0.75) };
     const holdFrames = Math.max(1, Math.floor(finiteOr(params.TransientHoldFrames, 45)));
     // カード別の位置。表示だけ(Hendrixの親子追従でPlayerと一緒に動くので、移動後もそのまま付いてくる)。
-    const DEFAULT_CARD_OFFSETS = '{"hermes_zetsu":{"x":0,"y":-0.25},"hermes_sweep":{"forward":0.95,"y":-0.15},"hermes_reed_flute":{"forward":0.95,"y":-0.15}}';
+    const DEFAULT_CARD_OFFSETS = '{"hermes_zetsu":{"x":0,"y":-0.25},"hermes_sweep":{"forward":0.95,"y":-0.15},"hermes_reed_flute":{"forward":0.95,"y":-0.15},"hermes_issen":{"forward":0.95,"y":-0.15},"hermes_strength":{"x":0,"y":-0.25}}';
     const cardOffsets = (() => {
         try {
             const raw = JSON.parse(String(params.CardOffsetsJson === undefined ? DEFAULT_CARD_OFFSETS : params.CardOffsetsJson).trim() || "{}");
@@ -135,7 +136,7 @@
     })();
     const vanishCards = (() => {
         try {
-            const list = JSON.parse(String(params.VanishNoiseCardIds === undefined ? '["hermes_sweep","hermes_reed_flute"]' : params.VanishNoiseCardIds).trim() || "[]");
+            const list = JSON.parse(String(params.VanishNoiseCardIds === undefined ? '["hermes_sweep","hermes_reed_flute","hermes_issen","hermes_strength"]' : params.VanishNoiseCardIds).trim() || "[]");
             return new Set(Array.isArray(list) ? list.map(String) : []);
         } catch (_error) { return new Set(); }
     })();
@@ -225,6 +226,8 @@
         for (const key of [...visuals.keys()]) remove(key);
         pendingSwings.length = 0;
         pendingBalloons.length = 0;
+        pendingDashes.length = 0;
+        dashes.clear();
     };
 
     const spawn = (key, kind, godId, summonId, baseOffset, direction, cardId) => {
@@ -348,6 +351,8 @@
     // 表示Eventが現れた時点で実行する(数フレーム待っても現れなければPlayerから振る)。
     const pendingSwings = [];
     const pendingBalloons = [];
+    const pendingDashes = [];
+    const dashes = new Map(); // eventId -> { dx, dy, framesLeft }
     const SWING_WAIT_FRAMES = 4;
     const runSwing = (swing, eventId) => {
         const event = eventId ? $gameMap.event(eventId) : null;
@@ -377,6 +382,27 @@
         pendingBalloons.push({ godId, balloonId: Number(balloonId) || 1, frame });
         return true;
     };
+    // 表示Eventだけを動かす(Hendrixの親子追従は「プレイヤーの移動量」を足すだけなので、そのまま併用できる)。判定・攻撃権限は持たない。
+    const dash = (godId, degree, tiles, frames) => {
+        if (typeof $gameMap === "undefined" || !$gameMap || !Number.isFinite(degree) || !(tiles > 0)) return false;
+        pendingDashes.push({ godId, degree, tiles, frames: Math.max(1, Math.floor(frames) || 8), frame });
+        return true;
+    };
+    const flushDashes = () => {
+        for (const item of pendingDashes.splice(0)) {
+            const eventId = getTransientEventId(item.godId);
+            if (eventId) {
+                const radians = item.degree * Math.PI / 180, step = item.tiles / item.frames;
+                dashes.set(eventId, { dx: Math.sin(radians) * step, dy: -Math.cos(radians) * step, framesLeft: item.frames });
+            } else if (frame - item.frame < SWING_WAIT_FRAMES) pendingDashes.push(item);
+        }
+        for (const [eventId, d] of [...dashes]) {
+            const event = $gameMap.event(eventId);
+            if (!event || event._erased || d.framesLeft <= 0) { dashes.delete(eventId); continue; }
+            try { event.setPosition(event._realX + d.dx, event._realY + d.dy); } catch (error) { note(error); dashes.delete(eventId); continue; }
+            d.framesLeft--;
+        }
+    };
     const flushBalloons = () => {
         for (const item of pendingBalloons.splice(0)) {
             const eventId = getTransientEventId(item.godId);
@@ -387,6 +413,7 @@
     };
     const flushSwings = () => {
         flushBalloons();
+        flushDashes();
         for (const swing of pendingSwings.splice(0)) {
             const eventId = getTransientEventId(swing.godId);
             if (eventId || frame - swing.frame >= SWING_WAIT_FRAMES) runSwing(swing, eventId);
@@ -402,7 +429,7 @@
     root.ProjectRGodSummonVisual = {
         getVisuals: () => [...visuals.values()].map(r => ({ kind: r.kind, godId: r.godId, eventId: r.eventId, summonId: r.summonId })),
         getTransientEventId,
-        swingWeapon, requestBalloon,
+        swingWeapon, requestBalloon, dash,
         getAppearance: godId => ({ ...appearanceFor(godId) }),
         getDiagnostics: () => ({ ...diagnostics, visualCount: visuals.size, templateEventId: templateEventId() })
     };

@@ -204,7 +204,7 @@
                 record.hitEnemies.add(enemy); // 同じ斬撃では1回だけ
                 state.hits++;
                 trackDamage(enemyId, `sword:${record.serial}`, () =>
-                    command("UpdateEventHp", { eventId: String(enemyId), value: "-player weapon", exceedMaxHealth: "false" }, id));
+                    command("UpdateEventHp", { eventId: String(enemyId), value: "-player weapon", exceedMaxHealth: "false", projectRAttackId: `sword:${record.serial}` }, id));
             }
             if (--record.framesLeft <= 0) destroy(id, record);
         }

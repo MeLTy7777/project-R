@@ -1,0 +1,274 @@
+{
+  "chromium": "85.0.4183.121 / nw 0.48.4",
+  "results": [
+    {
+      "id": "0 boot: 新Plugin(薙ぎ払い・葦笛・DEVアリーナ)の読み込み・Library probe",
+      "ok": true,
+      "detail": "Chromium 85 / NW 0.48.4"
+    },
+    {
+      "id": "0b VFX Designerライブラリにはカードの3エントリがある",
+      "ok": true,
+      "detail": "getAnimationFromLibrary"
+    },
+    {
+      "id": "Z1 実機: 予約の間は未消費(手札・山札・Cooldown不変)、予備動作の後に1回だけ消費して移動",
+      "ok": true,
+      "detail": {
+        "pending": true,
+        "midConsumed": false,
+        "cooldown": [
+          0,
+          1
+        ],
+        "draw": [
+          25,
+          25,
+          24
+        ],
+        "x": 17
+      }
+    },
+    {
+      "id": "Z2 実機: 目的地に着けない場合は中止され、カード・Cooldown・補充・強化・速度係数は何も起きない",
+      "ok": true,
+      "detail": {
+        "reason": "noDestination",
+        "cooldown": 0
+      }
+    },
+    {
+      "id": "Z2b 実機: 中止された絶の後に、神の表示・召喚・VFX・カットイン・予約・腕クロスが残らない",
+      "ok": true,
+      "detail": {
+        "hermes": 0,
+        "summons": 0,
+        "vfx": 0,
+        "cut": 0,
+        "pending": false,
+        "act": []
+      }
+    },
+    {
+      "id": "Z3 実機: 連続入力でも消費は1枚・予約は1つ(二重発動なし)",
+      "ok": true,
+      "detail": {
+        "cooldown": 1,
+        "draw": [
+          25,
+          24
+        ]
+      }
+    },
+    {
+      "id": "S1 実機: Lv1 扇の中の敵(Event 3・5・6)に50ダメージを1回ずつ、真後ろ(4)・遠方(2)には当たらない",
+      "ok": true,
+      "detail": {
+        "lost": {
+          "2": 0,
+          "3": 50,
+          "4": 0,
+          "5": 50,
+          "6": 50
+        },
+        "cooldown": 1
+      }
+    },
+    {
+      "id": "S2b 実機: 扇の境界(190度): 80度の内側は当たり、115度の外側は当たらない(左右とも)",
+      "ok": true,
+      "detail": {
+        "3": 0,
+        "4": 50,
+        "5": 0,
+        "6": 50
+      }
+    },
+    {
+      "id": "S2 実機: 斜めのマウス方向(右上・左下)へ扇が向く(4方向の近似ではない)",
+      "ok": true,
+      "detail": {
+        "upRight": {
+          "4": 50,
+          "5": 0
+        },
+        "downLeft": {
+          "4": 0,
+          "5": 50
+        }
+      }
+    },
+    {
+      "id": "S3 実機: Lv2 先端+50(100/50)。Lv3 乱数が低いとクリティカル確定 (50x倍率)+先端50、高いと通常",
+      "ok": true,
+      "detail": {
+        "lv2": {
+          "4": 100,
+          "5": 50
+        },
+        "lv3crit": {
+          "4": 200,
+          "5": 150
+        },
+        "lv3plain": {
+          "4": 100,
+          "5": 50
+        },
+        "mult": 3
+      }
+    },
+    {
+      "id": "S4 実機: 壁(Region 255)の向こうの敵(4)には当たらず手前(5)は当たる。外れてもカードは消費される",
+      "ok": true,
+      "detail": {
+        "walled": {
+          "4": 0,
+          "5": 50
+        },
+        "miss": {
+          "4": 0,
+          "5": 0
+        },
+        "cooldown": [
+          0,
+          1
+        ]
+      }
+    },
+    {
+      "id": "S5 実機: 杖の残像VFX(発動時に固定した扇の向きへ回転)・ArmSweep・カットイン・Hermesが出て、最後は全部片付く",
+      "ok": true,
+      "detail": {
+        "info": {
+          "vfx": [
+            "ProjectR:hermes_sweep.staff:90"
+          ],
+          "cut": [
+            "card"
+          ],
+          "act": [
+            "ArmSweep"
+          ],
+          "hermes": 1
+        },
+        "gone": {
+          "vfx": 0,
+          "hermes": 0,
+          "cut": 0
+        },
+        "degree": 90,
+        "log": [
+          "ProjectR:hermes_sweep.staff:90",
+          "library_ProjectR_Hermes_Vanish:0"
+        ]
+      }
+    },
+    {
+      "id": "F1 実機: 半径8マスの敵(Event 3・4・5)が眠り、範囲外(6)は眠らない。睡眠時間は旧葦笛から引き継いだ4秒",
+      "ok": true,
+      "detail": {
+        "flags": {
+          "3": true,
+          "4": true,
+          "5": true,
+          "6": false
+        },
+        "sleepers": [
+          {
+            "eventId": 3,
+            "remaining": 3.100000000000003,
+            "level": 1,
+            "serial": 1
+          },
+          {
+            "eventId": 4,
+            "remaining": 3.100000000000003,
+            "level": 1,
+            "serial": 1
+          },
+          {
+            "eventId": 5,
+            "remaining": 3.100000000000003,
+            "level": 1,
+            "serial": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "F2 実機: 壁の向こう(4)は眠らず手前(5)は眠る。対象が誰もいなくてもカードは消費され、エラーもない",
+      "ok": true,
+      "detail": {
+        "f": {
+          "4": false,
+          "5": true
+        },
+        "cooldown": [
+          0,
+          1
+        ],
+        "errors": 0
+      }
+    },
+    {
+      "id": "F3 実機: Lv1 加算なしで起きる / Lv2 最初の命中だけ +50 / Lv3 クリティカル確定 + 50。起きた後は通常ダメージ",
+      "ok": true,
+      "detail": {
+        "res": {
+          "1": {
+            "base": 98,
+            "asleep": true,
+            "first": 98,
+            "awoke": true,
+            "second": 98
+          },
+          "2": {
+            "base": 98,
+            "asleep": true,
+            "first": 148,
+            "awoke": true,
+            "second": 98
+          },
+          "3": {
+            "base": 98,
+            "asleep": true,
+            "first": 342,
+            "awoke": true,
+            "second": 98
+          }
+        },
+        "critBase": 292
+      }
+    },
+    {
+      "id": "F4 実機: 水面の波VFX(ライブラリ)・カットイン・Hermesが出る。主人公の動作はなし。最後は全部片付く",
+      "ok": true,
+      "detail": {
+        "info": {
+          "vfx": [
+            "library_ProjectR_Flute_Ripple"
+          ],
+          "cut": [
+            "card"
+          ],
+          "act": [],
+          "hermes": 1
+        },
+        "gone": {
+          "vfx": 0,
+          "hermes": 0,
+          "cut": 0
+        },
+        "log": [
+          "library_ProjectR_Flute_Ripple:0",
+          "library_ProjectR_Hermes_Vanish:0"
+        ]
+      }
+    },
+    {
+      "id": "Z 全体: Consoleのエラーなし",
+      "ok": true,
+      "detail": []
+    }
+  ]
+}

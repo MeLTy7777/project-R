@@ -351,6 +351,14 @@ const ACTIONS = {
         p.aB.a = lerp(-12, 24, t); p.aB.e = 30; p.aB.o = 12;
         p.lean = lerp(-2, 5, t); p.dy = i === 2 ? 1 : 0; p.headDx = lerp(-1, 2, t); p.lF.a = 14 * t; p.lB.a = -12 * t;
         return p; } },
+    // ストレングス(H2B-2)の主人公モーション「ガッツポーズ」: 片腕を曲げて拳を握り、胸の前から上へ引き上げる。
+    FistPump: { frames: 4, make: i => {
+        const p = basePose(), t = [0, 0.45, 1, 1][i];
+        p.aF.a = lerp(8, 20, t); p.aF.e = lerp(12, 128, t); p.aF.o = lerp(7, 40, t); p.aF.oe = lerp(3, -70, t);
+        p.aB.a = lerp(-6, -14, t); p.aB.e = lerp(14, 40, t); p.aB.o = 7;
+        p.dy = -Math.round(2 * t); p.headDy = -Math.round(1 * t); p.lean = -1.5 * t; p.lF.a = 4 * t; p.lB.a = -4 * t;
+        p.sparks = i >= 2 ? [{ x: CX + 20, y: 14 - i, r: 4, c: [255, 220, 120] }, { x: CX - 18, y: 22 - i, r: 3.2, c: [255, 232, 160] }] : [];
+        return p; } },
     Ultimate: { frames: 8, make: i => {
         const p = basePose(), crouch = [0.8, 1, 0.3, 0, 0, 0, 0, 0][i], up = [0, 0, 0.5, 1, 1, 1, 1, 1][i];
         p.dy = Math.round(5 * crouch) - Math.round(3 * up); p.lF.a = 28 * crouch; p.lB.a = -28 * crouch; p.lF.e = -56 * crouch; p.lB.e = -56 * crouch;

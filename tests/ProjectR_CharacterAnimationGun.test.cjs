@@ -150,7 +150,7 @@ test("動作: Idle/Walk/Run/Aim/Downは基本状態、剣/銃/Reload/Cast/Ultima
         assert.deepEqual(plain(api.offsets()), { dx: 0, dy: 0, sy: 1, name: "Idle" });
     }
     assert.equal(api.request("Fly").ok, false);
-    assert.deepEqual(plain(api.PRIORITY), plain({ Idle: 10, Walk: 20, Run: 30, Aim: 40, SwordAttack: 60, GunFire: 60, Damage: 65, GunReload: 70, SkillCast: 80, CrossArms: 80, ArmSweep: 80, Ultimate: 90, Down: 100 }));
+    assert.deepEqual(plain(api.PRIORITY), plain({ Idle: 10, Walk: 20, Run: 30, Aim: 40, SwordAttack: 60, GunFire: 60, Damage: 65, GunReload: 70, SkillCast: 80, CrossArms: 80, ArmSweep: 80, FistPump: 80, Ultimate: 90, Down: 100 }));
     ctx.$gameParty.leader().setHp(0);
     assert.equal(api.baseline(), "Down");
 });
@@ -796,7 +796,7 @@ test("DEV3H: 主人公は実際に三頭身(頭28px x 3 = 身長84px)。1コマ9
     assert.equal(json("data/Actors.json")[1].characterName, "$DEV3H_Idle_f4");
     // Idle/Walk/Run + 行動シート。ファイル名の _fN とプロファイルのframes・実画像の寸法(N x 96, 4 x 96)が一致する
     const sheets = [p.locomotion.idle, p.locomotion.walk, p.locomotion.run, ...Object.values(p.actions).map(a => a.sprite)];
-    assert.equal(Object.keys(p.actions).sort().join(), "Aim,ArmSweep,CrossArms,Damage,Down,GunFire,GunReload,SkillCast,SwordAttack,Ultimate");
+    assert.equal(Object.keys(p.actions).sort().join(), "Aim,ArmSweep,CrossArms,Damage,Down,FistPump,GunFire,GunReload,SkillCast,SwordAttack,Ultimate");
     for (const name of sheets) {
         const frames = Number(name.match(/_f(\d+)$/)[1]);
         assert.deepEqual(pngSize(name + ".png"), [frames * gen.W, 4 * gen.H], name);

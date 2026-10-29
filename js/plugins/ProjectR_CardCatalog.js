@@ -19,6 +19,8 @@
  *   旧7枚のCardDefinitionsパラメータ(plugins.js)は一切変えません。新設計で実装済みのカードだけを、
  *   このPluginが起動時に ProjectRCardDeck.definitions へ追加します(RUNTIME_CARDS)。cardIdが既にあれば何もしません。
  *   所持データ(cardOwnership)は未所持が既定なので、旧セーブ・本番デッキには影響しません。
+ *   追加済み(設計ID → runtime ID): 7 絶 → hermes_zetsu / 5 薙ぎ払い → hermes_sweep / 6 葦笛 → hermes_reed_flute /
+ *   1 一閃 → hermes_issen / 4 ストレングス → hermes_strength。未実装: 2 サイコポンポス / 3 ヴェイル(Cursor対象タイプ未対応)。
  *
  * 【累積レベル規則】
  *   Lv2はLv1の効果を残して追加、Lv3はLv1とLv2を残して追加します。
@@ -74,7 +76,8 @@
     const migration = (legacyCardId, decision, status, note) => Object.freeze({ legacyCardId, decision, status, note });
     const HERMES = Object.freeze([
         design(1, "一閃", "strong", 3, 7, { workbookTargetType: "Direction", targetType: "direction", category: "attack",
-            migration: migration(null, "new", "notImplemented", "旧カードに対応なし。新規。") }),
+            runtimeCardId: "hermes_issen", implemented: true,
+            migration: migration(null, "new", "implemented", "Phase H2B-2で新しいruntime ID hermes_issen として実装。旧カードに対応なし。新規。") }),
         design(2, "サイコポンポス", "normal", 3, 10, { workbookTargetType: "Heal", targetType: "ally", category: "special",
             migration: migration(null, "new", "notImplemented", "旧カードに対応なし。新規。「魂」の仕組みが必要。") }),
         design(3, "ヴェイル", "special", 3, 10, { workbookTargetType: "その他", targetType: "cursor", category: "support", runtimeTargetTypeSupported: false,
@@ -82,7 +85,8 @@
             migration: migration("hermes_perception_obscure", "coexist-pending", "notImplemented",
                 "旧「認識阻害」(プレイヤー自身・5秒)と近いが、新設計は「カーソルに追従する範囲内の味方がターゲットされない」。置換するか別カードにするかはユーザー判断。") }),
         design(4, "ストレングス", "special", 10, 0.1, { workbookTargetType: "Buff", targetType: "instant", category: "buff",
-            migration: migration(null, "new", "notImplemented", "旧カードに対応なし。新規。") }),
+            runtimeCardId: "hermes_strength", implemented: true,
+            migration: migration(null, "new", "implemented", "Phase H2B-2で新しいruntime ID hermes_strength として実装。旧カードに対応なし。新規。") }),
         design(5, "薙ぎ払い", "normal", 3, 0.5, { workbookTargetType: "Direction", targetType: "direction", category: "attack",
             runtimeCardId: "hermes_sweep", implemented: true,
             legacyCandidates: Object.freeze(["hermes_sword_attack"]),
@@ -110,13 +114,19 @@
     // 絶(Zetsu): Hermes / 強力 / 最大5枚 / 最大Lv3 / Cooldown 0.5秒 / Ground(マウス位置)。
     // 薙ぎ払い(H2B-1): Hermes / 通常 / 最大3枚 / 最大Lv3 / Cooldown 0.5秒 / Direction。
     // 葦笛(H2B-1): Hermes / 強力 / 最大3枚 / 最大Lv3 / Cooldown 8秒 / その他(=instant。狙いを使わない)。category "sleep" は旧葦笛睡眠と同じ。
+    // 一閃(H2B-2): Hermes / 強力 / 最大3枚 / 最大Lv3 / Cooldown 7秒 / Direction。
+    // ストレングス(H2B-2): Hermes / 特殊 / 最大10枚 / 最大Lv3 / Cooldown 0.1秒 / Buff(対象なし = instant)。
     const RUNTIME_CARDS = Object.freeze([
         Object.freeze({ cardId: "hermes_zetsu", ringId: "hermes", maxCopies: 5, cooldownSeconds: 0.5, maxLevel: 3,
             rarity: "strong", category: "movement", targetType: "ground" }),
         Object.freeze({ cardId: "hermes_sweep", ringId: "hermes", maxCopies: 3, cooldownSeconds: 0.5, maxLevel: 3,
             rarity: "normal", category: "attack", targetType: "direction" }),
         Object.freeze({ cardId: "hermes_reed_flute", ringId: "hermes", maxCopies: 3, cooldownSeconds: 8, maxLevel: 3,
-            rarity: "strong", category: "sleep", targetType: "instant" })
+            rarity: "strong", category: "sleep", targetType: "instant" }),
+        Object.freeze({ cardId: "hermes_issen", ringId: "hermes", maxCopies: 3, cooldownSeconds: 7, maxLevel: 3,
+            rarity: "strong", category: "attack", targetType: "direction" }),
+        Object.freeze({ cardId: "hermes_strength", ringId: "hermes", maxCopies: 10, cooldownSeconds: 0.1, maxLevel: 3,
+            rarity: "special", category: "buff", targetType: "instant" })
     ]);
     const registerRuntimeCards = () => {
         const registry = root.ProjectRCardDeck?.definitions;

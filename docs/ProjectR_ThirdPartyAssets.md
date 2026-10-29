@@ -54,7 +54,22 @@
 
 効果音: 薙ぎ払いの「ズシャッ」にはRTP同梱の `audio/se/Slash2.ogg` を**仮に**当てています(Pluginパラメータ `SoundEffect` で変更/無音にできる。専用音ができたら差し替え)。葦笛の「笛の音」はRTPに該当する音が無く(Sleep.oggは状態異常のSEで笛ではない)、代用の音は鳴らしていません(**未用意**)。
 
+### 2-d. Phase H2B-2(一閃・ストレングス)で追加したProjectR自作の開発用素材(第三者素材ではない・2026-10-29)
+
+| ファイル | 内容 | 作成 | ライセンス/扱い |
+|---|---|---|---|
+| `img/pictures/Animation/ProjectR_Issen_Trail.png` | 一閃の斬撃の軌跡(白。1コマ160x560、4列x2行=8コマ。上向きの11マス) | `tools/gen_dev_h2b2_assets.cjs`(外部素材なし。固定シード) | 自作・差し替え前提。ライブラリ `ProjectR_Issen_Trail` |
+| `img/pictures/Animation/ProjectR_Issen_Lightning.png` | 白と黒の雷(同寸法) | 同上 | 同上。ライブラリ `ProjectR_Issen_Lightning` |
+| `img/pictures/Animation/ProjectR_Strength_Circle.png` | ストレングスの黄金の魔法陣(1コマ240、8コマ) | 同上 | 同上。ライブラリ `ProjectR_Strength_Circle` |
+| `img/pictures/Animation/ProjectR_Strength_Light.png` | 魔法陣から立ち上る黄金の光(1コマ240x320、8コマ。Add合成) | 同上 | 同上。ライブラリ `ProjectR_Strength_Light` |
+| `img/characters/$DEV3H_FistPump_f4.png` | 主人公のガッツポーズ(4コマ x 4方向、1コマ96x96。腕の表現は暫定で弱い) | `tools/gen_dev3h_character.cjs` の `FistPump` | 自作 |
+| `js/AnimationSolutionLibrary.json` | 上の4項目を追記(既存項目は変更なし) | エディタ互換の形式を直接追記(エディタでの作成ではない) | 自作 |
+
+効果音: 一閃の「風を切る音」・ストレングスの「輝く音」は、RTPに**検証できた**該当の音が無く、代用音は鳴らしていません(**未用意**)。
+
 ## 4. 不足している素材(用意でき次第、ここに記録)
+
+- **一閃(風を切る音)・ストレングス(輝く音)**(Phase H2B-2で確認): 検証済みの素材が無く、代用音も使っていない。内容要件(未用意)。
 
 - **葦笛(新)の「笛の音」**(Phase H2B-1で確認): RTPの`audio/se`に笛の音は無い。第三者素材は取り込まず、代用音も鳴らしていない。内容要件(未用意)。
 

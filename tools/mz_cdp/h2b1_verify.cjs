@@ -144,12 +144,13 @@ const near = (a, b, t) => Math.abs(a - b) <= t;
     await s.aim(3, 0); await s.slow(5); await vfxHook();
     await c.tap("Q");
     await s.sceneFrames(3);
+    const degreeS5 = await ev("ProjectRHermesSweep.getLastResult().degree");
     const info = await ev("JSON.stringify({ vfx: (AnimatedPictureManager._animatedPictures || []).map(function(p) { return String(p.note) + ':' + Math.round(p.rotation * 180 / Math.PI); }), cut: ProjectRCutIn.getActive().map(function(e) { return e.kind; }), act: ProjectRCharacterPresentation.activeNames(), hermes: ProjectRGodSummonVisual.getVisuals().filter(function(v) { return v.kind === 'transient'; }).length })").then(JSON.parse);
     for (const n of [4, 8, 12, 20, 30]) { await s.sceneFrames(2); await s.shot("s5_f" + String(n).padStart(2, "0")); }
     await s.slow(1); await settle(120);
     const gone = await ev("JSON.stringify({ vfx: (AnimatedPictureManager._animatedPictures || []).length, hermes: ProjectRGodSummonVisual.getVisuals().filter(function(v) { return v.kind === 'transient'; }).length, cut: ProjectRCutIn.getActive().length })").then(JSON.parse);
-    rec("S5 実機: 杖の残像VFX(扇の向き=右90度)・ArmSweep・カットイン・Hermesが出て、最後は全部片付く",
-      info.vfx.some(v => /hermes_sweep\.staff:90/.test(v)) && info.cut.includes("card") && info.act.includes("ArmSweep") && info.hermes >= 1 && gone.vfx === 0 && gone.hermes === 0 && gone.cut === 0, { info, gone });
+    rec("S5 実機: 杖の残像VFX(発動時に固定した扇の向きへ回転)・ArmSweep・カットイン・Hermesが出て、最後は全部片付く",
+      (await vfxLog()).some(v => v === `ProjectR:hermes_sweep.staff:${Math.round(degreeS5)}`) && info.cut.includes("card") && info.act.includes("ArmSweep") && info.hermes >= 1 && gone.vfx === 0 && gone.hermes === 0 && gone.cut === 0, { info, gone, degree: degreeS5, log: await vfxLog() });
   });
 
   // ---------------- F. 葦笛 ----------------
@@ -214,7 +215,7 @@ const near = (a, b, t) => Math.abs(a - b) <= t;
     await s.slow(1); await settle(120);
     const gone = await ev("JSON.stringify({ vfx: (AnimatedPictureManager._animatedPictures || []).length, hermes: ProjectRGodSummonVisual.getVisuals().filter(function(v) { return v.kind === 'transient'; }).length, cut: ProjectRCutIn.getActive().length })").then(JSON.parse);
     rec("F4 実機: 水面の波VFX(ライブラリ)・カットイン・Hermesが出る。主人公の動作はなし。最後は全部片付く",
-      ((await vfxLog()).some(v => /Flute_Ripple/.test(v)) || info.vfx.some(v => /Flute_Ripple/.test(v))) && info.cut.includes("card") && info.hermes >= 1 && !info.act.some(n => /SkillCast|CrossArms|ArmSweep/.test(n)) && gone.vfx === 0 && gone.hermes === 0 && gone.cut === 0, { info, gone });
+      ((await vfxLog()).some(v => /Flute_Ripple/.test(v)) || info.vfx.some(v => /Flute_Ripple/.test(v))) && info.cut.includes("card") && info.hermes >= 1 && !info.act.some(n => /SkillCast|CrossArms|ArmSweep/.test(n)) && gone.vfx === 0 && gone.hermes === 0 && gone.cut === 0, { info, gone, log: await vfxLog() });
   });
 
   // ---------------- 後始末と全体 ----------------

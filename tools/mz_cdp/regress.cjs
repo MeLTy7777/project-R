@@ -12,6 +12,14 @@ const { session } = require("./lib.cjs");
   const check = async (id, fn) => { try { await fn(); } catch (e) { rec(id + " (script error)", false, String(e.message).slice(0, 300)); } };
   const wait = async (cond, ms = 6000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await ev(cond)) return true; await sleep(100); } return false; };
   await s.slow(1);
+  // 新しく起動した直後(タイトル画面)でも単独で動くように、アリーナへ入り、G17の弾薬を補充する(検証の判定は変えない)
+  if (!(await ev("SceneManager._scene instanceof Scene_Map && $gameMap && $gameMap.mapId() === 4"))) {
+    await ev("DataManager.setupNewGame(); SceneManager.goto(Scene_Map); 'ok'");
+    await wait("SceneManager._scene instanceof Scene_Map && SceneManager._scene._spriteset && !SceneManager.isSceneChanging()", 20000);
+    await ev("ProjectRCombatTestArena.enter(); 'ok'");
+    await wait("$gameMap.mapId() === 4 && !SceneManager.isSceneChanging() && !$gamePlayer.isTransferring()", 20000); await sleep(1500);
+  }
+  await ev("$gameParty.gainItem($dataItems[31], 60); 'ammo'");
 
   // ---- 証跡: 絶(Lv3)の発動を、カットイン・VFX・腕クロス・Hermesごと撮る ----
   await check("evidence", async () => {
@@ -32,7 +40,7 @@ const { session } = require("./lib.cjs");
     await ev("ProjectRCharacterPresentation.request('CrossArms', { frames: 600, degree: 180, source: 'evidence' }); 'ok'"); await sleep(600);
     await s.shot("22_cross_arms");
     await ev("ProjectRCharacterPresentation.release('CrossArms'); 'ok'");
-    rec("evidence 証跡スクリーンショットを撮影", true, fs.readdirSync("mz").filter(f => /^2[0-2]_/.test(f)));
+    rec("evidence 証跡スクリーンショットを撮影", true, fs.readdirSync(OUT).filter(f => /^2[0-2]_/.test(f)));
   });
 
   // ---- 回帰 ----
