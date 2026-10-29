@@ -1,0 +1,173 @@
+{
+  "note": "旧形式の保存は一時フォルダにだけ書いた。入力はCDPでは送っていない(状態の準備と観測のみ)",
+  "results": [
+    {
+      "id": "M0 前提: 新API(previewGrant / summary / report / previewStarterGrant / cardGenerations)がある",
+      "ok": true
+    },
+    {
+      "id": "M1 付与プレビュー(実機): 何も変更しない。ストレングス2枚 → 加算で12枚 / 補充で10枚。合計は加算30・補充28。方針は加算のまま",
+      "ok": true,
+      "detail": {
+        "row": {
+          "cardId": "hermes_strength",
+          "current": 2,
+          "target": 10,
+          "maxDeckCopies": 10,
+          "additive": {
+            "grant": 10,
+            "after": 12,
+            "deckLimit": 10
+          },
+          "topUp": {
+            "grant": 8,
+            "after": 10,
+            "deckLimit": 10
+          },
+          "differs": true
+        },
+        "totals": {
+          "additive": 30,
+          "topUp": 28
+        }
+      }
+    },
+    {
+      "id": "M2 現在の挙動(加算)の実機確認: 事前に2枚あれば初期10枚が加わり12枚。報酬記録があるので再取得・明示付与・同じ報酬IDの付与でも増えない。プレビューも『付与済み』を示す",
+      "ok": true,
+      "detail": {
+        "granted": {
+          "strength": 12,
+          "issen": 3
+        },
+        "rewardRecorded": true
+      }
+    },
+    {
+      "id": "M3 旧形式の保存を本物のロードで読む: 4つが区別される(確認済み0 / 推定の最小値=剣・高速移動 / 未知ID=ghost_card / 未解放でデッキにある=絶)。エラー無し・デッキは変わらない",
+      "ok": true,
+      "detail": {
+        "sum": {
+          "source": "legacy",
+          "fromLegacy": true,
+          "confirmed": [],
+          "inferred": [
+            "hermes_swift_movement",
+            "hermes_sword_attack"
+          ],
+          "unknownCardIds": [
+            "ghost_card"
+          ],
+          "lockedInDeck": [
+            "hermes_zetsu"
+          ],
+          "deckProblems": {
+            "size": 1,
+            "ownership": 2,
+            "ring": 0,
+            "maxCopies": 0,
+            "unknownCard": 2
+          },
+          "lines": [
+            "定義の無いカードID：ghost_card（デッキと所持の記録はそのまま保存しています）",
+            "未解放のままデッキにあるカード：絶（解放はされません。デッキも変えていません）",
+            "旧セーブから移行：2種の所持枚数は推定の最小値です（実際の過去の所持数ではありません）"
+          ],
+          "note": "confirmed=付与記録・新規の付与で確認できた枚数 / inferred=旧セーブのデッキと解放から推定した最小値（実際の過去の所持数ではない）"
+        },
+        "errs": []
+      }
+    },
+    {
+      "id": "M4 Deck Builder(実Scene)のヘッダー3行目に、推定の最小値と注意の説明が描かれる(先頭=未知ID。『推定の最小値です（実際の過去の所持数ではありません）』も要約に含まれる)",
+      "ok": true,
+      "detail": {
+        "first": "定義の無いカードID：ghost_card（デッキと所持の記録はそのまま保存しています）　ほか2件",
+        "found": true
+      }
+    },
+    {
+      "id": "M5 開発者レポートは文字列で読め(カード別・区分・診断)、デッキ画面の開閉とレポート生成で保存内容は変わらない",
+      "ok": true,
+      "detail": {
+        "reportHead": [
+          "[CardInventory] schema=1 source=legacy totalCopies=3 deck=6",
+          "-- カード別(所持 / デッキ / 上限 / デッキに入れられる最大 / 区分) --",
+          "  hermes_swift_movement (高速移動) owned=1 deck=1 max=3 limit=1 inferred basis=reconstructedMinimum",
+          "  hermes_sword_attack (ヘルメース剣術) owned=2 deck=2 max=3 limit=2 inferred basis=reconstructedMinimum",
+          "  hermes_zetsu (絶) owned=0 deck=1 max=5 limit=0 未解放(デッキにあり) basis=lockedCardInDeck",
+          "  ghost_card (未知のID) deck=2 元の記録を保持"
+        ]
+      }
+    },
+    {
+      "id": "M6 旧セーブの旧カードは削除・置換されず、Levelも保たれる(剣 Lv2 / 高速移動 / 旧デッキの並び)",
+      "ok": true,
+      "detail": {
+        "deck": 6
+      }
+    },
+    {
+      "id": "M7 新しいゲーム: 旧セーブ移行の説明は描かれない(lines空)。付与された7種は確認済み",
+      "ok": true,
+      "detail": {
+        "confirmed": 7
+      }
+    },
+    {
+      "id": "M8 旧カードと新カードの共存(実機): 新Hermesの初回入手は新7枚(3/3/3/10/3/3/5)だけを付与し、旧Hermes4種・Apollo3種の所持とLevelは変わらない",
+      "ok": true,
+      "detail": {
+        "legacyAfter": {
+          "hermes_swift_movement": [
+            3,
+            2
+          ],
+          "hermes_reed_flute_sleep": [
+            2,
+            2
+          ],
+          "hermes_perception_obscure": [
+            3,
+            2
+          ],
+          "hermes_sword_attack": [
+            3,
+            2
+          ],
+          "apollo_golden_arrow": [
+            3,
+            2
+          ],
+          "apollo_plague_attack": [
+            2,
+            2
+          ],
+          "apollo_lyre_calm": [
+            3,
+            2
+          ]
+        }
+      }
+    },
+    {
+      "id": "M9 旧カード/新カードの監査: 新7・旧7・その他0、表示名の完全な重複なし、紛らわしい対応が3組(旧→新)。旧カードの定義は残る",
+      "ok": true,
+      "detail": {
+        "pairs": [
+          "ヘルメース剣術→薙ぎ払い",
+          "葦笛睡眠→葦笛(名前が部分一致)",
+          "認識阻害→ヴェイル"
+        ]
+      }
+    },
+    {
+      "id": "MZ 押されたままのキーがない・Consoleのエラーなし",
+      "ok": true,
+      "detail": {
+        "stuck": [],
+        "errors": []
+      }
+    }
+  ]
+}

@@ -58,6 +58,9 @@
  *   validateDeck(cardIds?)  所持枚数の検証だけ(詳細な理由つき) / deckReport(cardIds?) カードごとの内訳
  *   canAddToDeck(cardId, cardIds?)
  *   diagnostics()           移行の診断・カードごとの所持/根拠(読み取り専用)
+ *   previewGrant(rewardId, {cardId: 目標枚数})  付与の影響プレビュー(加算と補充の比較。何も変更しない。H2C-B3)
+ *   summary()               旧セーブ移行の説明: 確認済み / 推定の最小値 / 未知ID / 未解放でデッキにある / デッキの問題の内訳と、画面用の文(lines)
+ *   report()                開発者向けの読みやすいレポート(文字列)。コンソールで ProjectRCardInventory.report()
  *   state()                 保存データのコピー
  *   (DEV) beginFixture()/endFixture()  テスト用アリーナが一時的な固定デッキを組むときだけ検証を外す
  *
@@ -367,6 +370,125 @@
         });
     };
 
+    // ---- 読み取り専用: 保存領域を作らずに読む(プレビュー・要約・レポート用) -----------------------------------------------------
+    const peekStore = () => {
+        const sys = system();
+        const current = sys ? sys[STATE_KEY] : memoryStore;
+        return isObject(current) && Number.isFinite(current.schema) ? current : migrate(null, productionRaw());
+    };
+    const copiesOf = (state, cardId) => { const v = state.copies[canonical(cardId)]; return isCount(v) ? v : 0; };
+
+    // ---- 付与の影響プレビュー(H2C-B3・何も変更しない) -------------------------------------------------------------------
+    // 「加算(additive)」= 目標の枚数をそのまま足す(現在の方針)。「補充(top-up)」= 目標の枚数に届くまでの不足分だけ足す(提案・未適用)。
+    // 例: ストレングスを2枚持っていて目標10枚 → 加算は+10(12枚)、補充は+8(10枚)。方針の変更はユーザー承認が必要(付与の実装は加算のまま)。
+    const previewGrant = (rewardId, cards) => {
+        const state = peekStore();
+        const id = canonical(rewardId);
+        const rows = [];
+        const problems = [];
+        for (const [rawId, target] of Object.entries(isObject(cards) ? cards : {})) {
+            const cardId = canonical(rawId);
+            const def = definition(cardId);
+            if (!def) { problems.push({ code: CODE.INVALID_CARD_ID, cardId }); continue; }
+            if (typeof target !== "number" || !Number.isInteger(target) || target < 1) { problems.push({ code: CODE.INVALID_COPIES, cardId, copies: target }); continue; }
+            const current = copiesOf(state, cardId);
+            const topUpGrant = Math.max(0, target - current);
+            rows.push({
+                cardId, current, target, maxDeckCopies: def.maxCopies,
+                additive: { grant: target, after: current + target, deckLimit: Math.min(current + target, def.maxCopies) },
+                topUp: { grant: topUpGrant, after: current + topUpGrant, deckLimit: Math.min(current + topUpGrant, def.maxCopies) },
+                differs: topUpGrant !== target
+            });
+        }
+        const sum = pick => rows.reduce((total, row) => total + row[pick].grant, 0);
+        return clone({
+            rewardId: id || null, alreadyGranted: !!(id && isObject(state.rewards[id])), policyInEffect: "additive",
+            rows, problems, totals: { additive: sum("additive"), topUp: sum("topUp") },
+            note: "読み取り専用のプレビューです。所持・報酬記録・デッキは一切変更しません。付与の方針(加算/補充)の変更はユーザーの承認が必要です。", mutated: false
+        });
+    };
+
+    // ---- 旧セーブ移行の説明(H2C-B3・読み取り専用) --------------------------------------------------------------------
+    // 区別する4つ: 確認済みの所持 / 旧デッキから推定した最小値 / 未知・不正なカードID / 所持枚数・指輪のために無効なデッキ。
+    const cardName = cardId => {
+        const info = root.ProjectRMenuCore?.cardInfo?.(cardId);
+        return info && info.defined ? info.name : String(cardId);
+    };
+    const classifyCard = (state, cardId) => {
+        const copies = copiesOf(state, cardId);
+        if (copies <= 0) return null;
+        if (state.legacy.unlocks[cardId]) return "inferred";
+        const known = state.legacy.reconstructed[cardId];
+        if (known && known.basis === "reconstructedMinimum") return "inferred"; // 推定の最小値(その後に実際の付与があっても、推定を含む)
+        return "confirmed"; // 付与記録で確認済み / 新しいゲームや付与APIで実際に付与された枚数
+    };
+    const summary = () => {
+        const api = deck();
+        const state = peekStore();
+        const cards = api.definitions.cardDefinitions().map(def => def.cardId);
+        const confirmed = [];
+        const inferred = [];
+        for (const cardId of cards) {
+            const kind = classifyCard(state, cardId);
+            if (kind === "confirmed") confirmed.push(cardId);
+            else if (kind === "inferred") inferred.push(cardId);
+        }
+        const diagnostics = state.legacy.diagnostics;
+        const ids = code => [...new Set(diagnostics.filter(d => d.code === code).map(d => d.cardId))];
+        const unknownCardIds = [...new Set(ids("UNKNOWN_CARD_IN_DECK").concat(ids("UNKNOWN_OWNERSHIP_PRESERVED")))];
+        const lockedInDeck = ids("LOCKED_CARD_IN_DECK");
+        const reasons = api.getDeckInvalidReasons();
+        const count = pred => reasons.filter(pred).length;
+        const deckProblems = {
+            size: count(r => r.code === "INVALID_DECK_SIZE"),
+            ownership: count(r => r.code === "CARD_COPIES_EXCEEDS_OWNED" || r.code === "CARD_NOT_OWNED"),
+            ring: count(r => r.code === "REQUIRED_RING_NOT_OWNED"),
+            maxCopies: count(r => r.code === "MAX_COPIES_EXCEEDED"),
+            unknownCard: count(r => r.code === "INVALID_CARD_ID")
+        };
+        const fromLegacy = state.legacy.source === "legacy";
+        const lines = [];
+        if (fromLegacy) {
+            if (unknownCardIds.length) lines.push("定義の無いカードID：" + unknownCardIds.join("、") + "（デッキと所持の記録はそのまま保存しています）");
+            if (lockedInDeck.length) lines.push("未解放のままデッキにあるカード：" + lockedInDeck.map(cardName).join("、") + "（解放はされません。デッキも変えていません）");
+            if (inferred.length) lines.push("旧セーブから移行：" + inferred.length + "種の所持枚数は推定の最小値です（実際の過去の所持数ではありません）");
+        }
+        return clone({
+            source: state.legacy.source, fromLegacy, confirmed, inferred, unknownCardIds, lockedInDeck, deckProblems, lines,
+            note: "confirmed=付与記録・新規の付与で確認できた枚数 / inferred=旧セーブのデッキと解放から推定した最小値（実際の過去の所持数ではない）"
+        });
+    };
+    // 開発者向けの読みやすいレポート(文字列)。コンソールで ProjectRCardInventory.report() と打つ。
+    const report = () => {
+        const api = deck();
+        const state = peekStore();
+        const info = summary();
+        const ids = api.getDeck();
+        const out = [];
+        out.push("[CardInventory] schema=" + state.schema + " source=" + state.legacy.source + " totalCopies=" + Object.keys(state.copies).reduce((n, id) => n + (isCount(state.copies[id]) ? state.copies[id] : 0), 0) + " deck=" + ids.length);
+        out.push("-- カード別(所持 / デッキ / 上限 / デッキに入れられる最大 / 区分) --");
+        for (const def of api.definitions.cardDefinitions()) {
+            const owned = copiesOf(state, def.cardId);
+            const inDeck = countIn(ids, def.cardId);
+            if (!owned && !inDeck) continue;
+            const kind = classifyCard(state, def.cardId) || (inDeck ? "未解放(デッキにあり)" : "-");
+            const known = state.legacy.reconstructed[def.cardId];
+            out.push("  " + def.cardId + " (" + cardName(def.cardId) + ") owned=" + owned + " deck=" + inDeck + " max=" + def.maxCopies + " limit=" + Math.min(owned, def.maxCopies)
+                + " " + kind + (known ? " basis=" + known.basis : "") + (state.legacy.unlocks[def.cardId] ? " (解放のみ→最小1枚)" : ""));
+        }
+        const unknownDeck = [...new Set(ids.filter(id => !definition(id)))];
+        for (const id of unknownDeck) out.push("  " + id + " (未知のID) deck=" + countIn(ids, id) + " 元の記録を保持");
+        out.push("-- 区分 -- 確認済み=" + info.confirmed.length + "種 / 推定の最小値=" + info.inferred.length + "種 / 未知のID=" + info.unknownCardIds.length + "種 / 未解放でデッキにある=" + info.lockedInDeck.length + "種");
+        out.push("-- デッキの問題(件数) -- 枚数=" + info.deckProblems.size + " 所持=" + info.deckProblems.ownership + " 指輪=" + info.deckProblems.ring + " コピー上限=" + info.deckProblems.maxCopies + " 不明カード=" + info.deckProblems.unknownCard);
+        if (state.legacy.diagnostics.length) {
+            out.push("-- 診断 --");
+            for (const d of state.legacy.diagnostics) out.push("  [" + d.severity + "] " + d.code + (d.cardId ? " " + d.cardId : "") + " : " + d.message);
+        }
+        const rewardIds = Object.keys(state.rewards);
+        if (rewardIds.length) out.push("-- 報酬記録 -- " + rewardIds.map(id => id + (state.rewards[id].migrated ? "(移行)" : "")).join(", "));
+        return out.join("\n");
+    };
+
     // ---- DEV: テスト用アリーナの一時的な固定デッキ -------------------------------------------------------------------------
     // 開始時に保存領域を控え、終了時に元へ戻す。その間は所持枚数の検証と「解放だけ」の最小1枚処理を行わない。
     const beginFixture = () => {
@@ -427,6 +549,7 @@
         grantCopies, grantBundle, hasReward, rewards,
         validateDeck, deckReport, canAddToDeck,
         diagnostics, state: () => clone(store()),
+        previewGrant, summary, report,
         beginFixture, endFixture, isFixture: () => fixtureDepth > 0,
         migrate, sanitize
     });

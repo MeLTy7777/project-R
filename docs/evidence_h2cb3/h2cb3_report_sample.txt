@@ -1,0 +1,15 @@
+[CardInventory] schema=1 source=legacy totalCopies=3 deck=6
+-- カード別(所持 / デッキ / 上限 / デッキに入れられる最大 / 区分) --
+  hermes_swift_movement (高速移動) owned=1 deck=1 max=3 limit=1 inferred basis=reconstructedMinimum
+  hermes_sword_attack (ヘルメース剣術) owned=2 deck=2 max=3 limit=2 inferred basis=reconstructedMinimum
+  hermes_zetsu (絶) owned=0 deck=1 max=5 limit=0 未解放(デッキにあり) basis=lockedCardInDeck
+  ghost_card (未知のID) deck=2 元の記録を保持
+-- 区分 -- 確認済み=0種 / 推定の最小値=2種 / 未知のID=1種 / 未解放でデッキにある=1種
+-- デッキの問題(件数) -- 枚数=1 所持=2 指輪=0 コピー上限=0 不明カード=2
+-- 診断 --
+  [info] RECONSTRUCTED_MINIMUM hermes_swift_movement : 旧セーブに所持枚数が無いため、解放済みのカードを max(1, デッキ内の枚数) 枚と推定(実際の過去の枚数ではない)。
+  [info] RECONSTRUCTED_MINIMUM hermes_sword_attack : 旧セーブに所持枚数が無いため、解放済みのカードを max(1, デッキ内の枚数) 枚と推定(実際の過去の枚数ではない)。
+  [warning] LOCKED_CARD_IN_DECK hermes_zetsu : 未解放のカードがデッキにあります。デッキは残し、所持0のまま(勝手に解放しません)。
+  [warning] UNKNOWN_CARD_IN_DECK ghost_card : 定義の無いカードIDがデッキにあります。元の記録を残しています。
+  [info] UNKNOWN_OWNERSHIP_PRESERVED ghost_card : 定義の無いカードの所持記録を、そのまま保存領域に残しました。
+  [info] RING_WITHOUT_GRANT_RECORD : Hermesの指輪を持っていますが、30枚の付与記録は確認できません。指輪だけでは付与の証拠にしません(カードは付与しません)。

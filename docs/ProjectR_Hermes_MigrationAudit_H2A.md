@@ -122,3 +122,7 @@
 
 - 旧セーブのカード所持枚数は、解放済み = max(1, デッキ内の枚数)(推定の最小値)、H2C-Aの付与記録が確認できれば記録の30枚(確認済み)として移行します。旧カードと新カードの共存・置換は引き続き未決で、このPhaseでは変更していません。
 - 詳細・テスト・実機の結果: `docs/ProjectR_CardCopyOwnership_H2C_B2.md`。
+
+## 追記(Phase H2C-B3)
+
+旧→新の明示的な移行の道筋(実行していない)と、取り違えやすい3組の対応(認識阻害↔ヴェイル・葦笛睡眠↔葦笛・Hermes剣術↔薙ぎ払い)は `docs/ProjectR_HermesFinalStabilization_H2C_B3.md` §3。`ProjectRHermesProductionDeck.cardGenerations()` が読み取り専用で一覧する。

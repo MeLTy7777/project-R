@@ -1,0 +1,26 @@
+{
+  "note": "tools/mz_cdp の実機検証スクリプトの台帳(H2C-B3)。status=maintained は現行仕様で保守している検証。legacy は置き換え済みで、supersededBy と reason が必要。実行は run_mz.ps1 相当の『新しいNW.jsセッション → スクリプト → NW終了』で、OS入力のスクリプトは前面で実行する(人間の手動確認ではない)。expectedChecks は最後に確認した合計。",
+  "howToRun": "NWを『nw.exe <project> test --remote-debugging-port=9222』で起動し、node tools/mz_cdp/<file> を実行する(MZ_OUT=出力先)。MZ_SAVE_COPY / MZ_TMP_SAVE が要るスクリプトは env に記載。本物のsave/には書かない。",
+  "scripts": [
+    { "file": "cdp.cjs", "kind": "support", "status": "maintained", "covers": "CDP接続・実キー/マウス入力の部品" },
+    { "file": "lib.cjs", "kind": "support", "status": "maintained", "covers": "配置・狙い・状態取得・結果記録の共通部品" },
+    { "file": "os_input.ps1", "kind": "support", "status": "maintained", "covers": "OSレベルのキー/マウス入力サーバー(終了時に押しっぱなしのキーを必ず離す)" },
+    { "file": "verify.cjs", "kind": "verify", "status": "maintained", "input": "cdp", "phase": "H1(H2C-B3で現行仕様に更新)", "expectedChecks": 23,
+      "covers": "絶の移動・壁/地形/Region255/CombatWall/VisionWall・失敗・G17/剣のLv別ダメージ・失効・速度・複数コピー・描画順", "updated": "カード定義の件数の決め打ち(8件)を廃止。絶の結果(ProjectRHermesZetsu.getLastResult)が確定(pending解消)するまで待つ。起動直後の_globalInfo未ロードの競合を回避" },
+    { "file": "regress.cjs", "kind": "verify", "status": "maintained", "input": "cdp", "phase": "H1+", "expectedChecks": 8, "covers": "G17・剣・F・Ultimate・メニュー・Vision の回帰" },
+    { "file": "h2a_verify.cjs", "kind": "verify", "status": "maintained", "input": "cdp", "phase": "H2A", "expectedChecks": 23, "covers": "絶(取引・失敗)・剣・Cooldown・重複" },
+    { "file": "h2b1_verify.cjs", "kind": "verify", "status": "maintained", "input": "cdp", "phase": "H2B-1", "expectedChecks": 17, "covers": "絶の取引・薙ぎ払い・葦笛" },
+    { "file": "h2b2_verify.cjs", "kind": "verify", "status": "maintained", "input": "cdp", "phase": "H2B-2", "expectedChecks": 14, "covers": "ストレングス・一閃" },
+    { "file": "h3a_verify.cjs", "kind": "verify", "status": "maintained", "input": "cdp+mouse", "phase": "H2B-3A", "expectedChecks": 18, "covers": "ヴェイル(Cursor追従・秘匿・速度・クリティカル)・敵の標的選択(R4a/R4b, R4pre診断つき)" },
+    { "file": "h3b_verify.cjs", "kind": "verify", "status": "maintained", "input": "cdp", "phase": "H2B-3B", "expectedChecks": 39, "covers": "サイコポンポス・魂・回復・帰属" },
+    { "file": "h2ca_verify.cjs", "kind": "verify", "status": "maintained", "input": "cdp", "phase": "H2C-A", "expectedChecks": 21, "covers": "指輪の初回入手・7種30枚・デッキ構築・戦闘前検証・7枚の循環・押しっぱなし・指輪の譲渡・旧セーブ" },
+    { "file": "h2cb1_verify.cjs", "kind": "verify", "status": "maintained", "input": "cdp", "phase": "H2C-B1", "env": ["MZ_SAVE_COPY"], "expectedChecks": 11, "covers": "旧セーブのロード(保護コピー・読み取りのみ)・SaveLoadGuard" },
+    { "file": "h2cb2_verify.cjs", "kind": "verify", "status": "maintained", "input": "cdp+key", "phase": "H2C-B2", "env": ["MZ_SAVE_COPY", "MZ_TMP_SAVE"], "expectedChecks": 25, "covers": "物理所持コピー・Deck Builder表示・セーブ往復・指輪の譲渡・旧形式の移行" },
+    { "file": "h2cb3_verify.cjs", "kind": "verify", "status": "maintained", "input": "cdp", "phase": "H2C-B3", "env": ["MZ_TMP_SAVE"], "expectedChecks": 11, "covers": "移行の説明(Deck Builder描画)・付与プレビューの非変更・旧カード/新カードの共存" },
+    { "file": "h2ca_manual_os_input.cjs", "kind": "os-input", "status": "maintained", "input": "os", "phase": "H2C-A", "expectedChecks": 9, "covers": "OS入力でのデッキ構築・戦闘・押しっぱなし(人間の手動確認ではない)" },
+    { "file": "h2cb1_esc.cjs", "kind": "os-input", "status": "maintained", "input": "os", "phase": "H2C-B1", "expectedChecks": 13, "covers": "Deck BuilderのEsc・X/B・右クリック・戦闘中のQ/E/X/C/V" },
+    { "file": "h3a_manual_os_input.cjs", "kind": "os-input", "status": "maintained", "input": "os", "phase": "H2B-3A", "expectedChecks": 9, "covers": "ヴェイルのOS入力(繰り返し発動しない)" },
+    { "file": "h3b_manual_os_input.cjs", "kind": "os-input", "status": "maintained", "input": "os", "phase": "H2B-3B", "expectedChecks": 8, "covers": "サイコポンポスのOS入力" },
+    { "file": "h3a_veil_diag.cjs", "kind": "diagnostic", "status": "maintained", "input": "cdp+mouse", "phase": "H2C-B3", "env": ["MZ_REPEAT", "MZ_JITTER"], "covers": "ヴェイルR4a/R4bの診断(毎フレーム記録・原因の分類・繰り返し)。合否の検証ではなく調査用" }
+  ]
+}

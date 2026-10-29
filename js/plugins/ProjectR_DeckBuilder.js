@@ -166,6 +166,16 @@
                 w.changeTextColor(this._notice ? ColorManager.systemColor() : ColorManager.deathColor());
                 w.drawText(shown || `並び：${sort}`, 0, w.lineHeight() * 1 + 4, width);
                 w.resetTextColor();
+                // H2C-B3: 旧セーブから移行したときの説明(3行目)。確認済みの枚数ではなく「推定の最小値」であることを明記する。他の表示には影響しない。
+                const migration = root.ProjectRCardInventory?.summary?.();
+                if (migration && migration.lines.length) {
+                    const extra = migration.lines.length > 1 ? `　ほか${migration.lines.length - 1}件` : "";
+                    w.changeTextColor(ColorManager.systemColor());
+                    w.contents.fontSize = 20;
+                    w.drawText(migration.lines[0] + extra, 0, w.lineHeight() * 2 + 8, width);
+                    w.resetFontSettings();
+                    w.resetTextColor();
+                }
             });
         }
 

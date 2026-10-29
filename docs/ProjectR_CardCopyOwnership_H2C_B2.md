@@ -171,3 +171,7 @@ H2C-B1 で `h3a_verify` が1回だけ 15/17(R4a/R4b)になり、再実行で2回
 - **D5**: 上限の高いカード(ストレングス10枚)の今後の入手経路(ボス・NPC・ショップ)と価格・報酬ID の命名規則。
 - ヴェイル R4a/R4b の断続的な失敗は原因未特定(§10.5)。
 - 保存領域の読み込み時の診断をユーザーに見せる画面は未実装(API `diagnostics()` のみ)。
+
+## 追記(Phase H2C-B3)
+
+- 初期付与の方針の監査(加算と補充の比較・読み取り専用プレビュー `previewGrant` / `previewStarterGrant`)、旧セーブ移行の説明(Deck Builderヘッダー3行目・`summary()` / `report()`)、旧カードと新カードの共存の監査は `docs/ProjectR_HermesFinalStabilization_H2C_B3.md` を参照。付与の方針(加算)はこのPhaseでは変更していない(補充への変更はユーザー承認待ち)。

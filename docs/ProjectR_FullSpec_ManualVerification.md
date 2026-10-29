@@ -264,3 +264,7 @@ ProjectRProductionTest.legacyOwner()   // 旧セーブ(指輪と旧カード19�
 2. 所持枚数を超えて追加しようとすると拒否され、「所持枚数を超えています」と出る。プラグインコマンド「カードを枚数つきで入手する」で増やすと入る。
 3. Esc / X / B / 右クリックは従来どおり。
 4. これらは **スクリプト入力による自動確認**(`tools/mz_cdp/h2cb2_verify.cjs`・`h2cb1_esc.cjs`)で、人間による手動確認は未実施です。
+
+## 追記(Phase H2C-B3): 実機スクリプトの整理
+
+実機スクリプトの台帳は `tools/mz_cdp/scripts.json`。旧 `verify.cjs` は現行仕様(カード定義の件数の決め打ちを廃止・絶の取引結果の確定を待つ)に更新して保守対象。詳細は `docs/ProjectR_HermesFinalStabilization_H2C_B3.md` §4・§10。

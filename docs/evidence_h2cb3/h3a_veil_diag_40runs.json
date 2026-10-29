@@ -1,0 +1,3054 @@
+{
+ "note": "h3a_veil_diag.cjs の40回の繰り返し(MZ_JITTER=1: Qの保持43〜129ms)。各回の samples は1回目だけ残し、他は分類と主要値のみ。",
+ "repeat": 40,
+ "counts": {
+  "OK": 40
+ },
+ "framesFromKeyToConceal": [
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1,
+  1
+ ],
+ "runs": [
+  {
+   "n": 1,
+   "hold": 77,
+   "keyFrame": {
+    "sf": 144,
+    "gf": 287,
+    "t": 10544.945000001462
+   },
+   "hidden0SampleSf": 163,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 18,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 19,
+    "class": "OK"
+   },
+   "samples": [
+    {
+     "sf": 145,
+     "gf": 288,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 5,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": true,
+     "ai": "chase",
+     "chase": 62,
+     "idle": 0,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      26.16,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 0,
+     "cleared": 0
+    },
+    {
+     "sf": 146,
+     "gf": 289,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.983,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 1,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      26.13,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 1,
+     "cleared": 2
+    },
+    {
+     "sf": 147,
+     "gf": 290,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.967,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 2,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      26.09,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 2,
+     "cleared": 3
+    },
+    {
+     "sf": 148,
+     "gf": 291,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.95,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 3,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      26.06,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 3,
+     "cleared": 4
+    },
+    {
+     "sf": 149,
+     "gf": 292,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.933,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 4,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      26.03,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 4,
+     "cleared": 5
+    },
+    {
+     "sf": 150,
+     "gf": 293,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.917,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 5,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      26,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 5,
+     "cleared": 6
+    },
+    {
+     "sf": 151,
+     "gf": 294,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.9,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 6,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      25.97,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 6,
+     "cleared": 7
+    },
+    {
+     "sf": 152,
+     "gf": 295,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.883,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 7,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      25.94,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 7,
+     "cleared": 8
+    },
+    {
+     "sf": 153,
+     "gf": 296,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.867,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 8,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      25.91,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 8,
+     "cleared": 9
+    },
+    {
+     "sf": 154,
+     "gf": 297,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.85,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 9,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      25.88,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 9,
+     "cleared": 10
+    },
+    {
+     "sf": 155,
+     "gf": 298,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.833,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 10,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      25.84,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 10,
+     "cleared": 11
+    },
+    {
+     "sf": 156,
+     "gf": 299,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.817,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 11,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      25.81,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 11,
+     "cleared": 12
+    },
+    {
+     "sf": 157,
+     "gf": 300,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.8,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 12,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      25.78,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 12,
+     "cleared": 13
+    },
+    {
+     "sf": 158,
+     "gf": 301,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.783,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 13,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      25.75,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 13,
+     "cleared": 14
+    },
+    {
+     "sf": 159,
+     "gf": 302,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.767,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 14,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      25.72,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 14,
+     "cleared": 15
+    },
+    {
+     "sf": 160,
+     "gf": 303,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.75,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 15,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      25.69,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 15,
+     "cleared": 16
+    },
+    {
+     "sf": 161,
+     "gf": 304,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.733,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 16,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      25.66,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 16,
+     "cleared": 17
+    },
+    {
+     "sf": 162,
+     "gf": 305,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.717,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 17,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      25.63,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 17,
+     "cleared": 18
+    },
+    {
+     "sf": 163,
+     "gf": 306,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.7,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 18,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      25.59,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 18,
+     "cleared": 19
+    },
+    {
+     "sf": 164,
+     "gf": 307,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.683,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 19,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      25.56,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 20,
+     "cleared": 21
+    },
+    {
+     "sf": 165,
+     "gf": 308,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.667,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 20,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      25.53,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 21,
+     "cleared": 22
+    },
+    {
+     "sf": 166,
+     "gf": 309,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.65,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 21,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      25.5,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 22,
+     "cleared": 23
+    },
+    {
+     "sf": 167,
+     "gf": 310,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.633,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 22,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      25.47,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 23,
+     "cleared": 24
+    },
+    {
+     "sf": 168,
+     "gf": 311,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.617,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 23,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      25.44,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 24,
+     "cleared": 25
+    },
+    {
+     "sf": 169,
+     "gf": 312,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.6,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 24,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      25.41,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 25,
+     "cleared": 26
+    },
+    {
+     "sf": 170,
+     "gf": 313,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.583,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 25,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      25.38,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 26,
+     "cleared": 27
+    },
+    {
+     "sf": 171,
+     "gf": 314,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.567,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 26,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      25.34,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 27,
+     "cleared": 28
+    },
+    {
+     "sf": 172,
+     "gf": 315,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.55,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 27,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      25.31,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 28,
+     "cleared": 29
+    },
+    {
+     "sf": 173,
+     "gf": 316,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.533,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 28,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      25.28,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 29,
+     "cleared": 30
+    },
+    {
+     "sf": 174,
+     "gf": 317,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.517,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 29,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      25.25,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 30,
+     "cleared": 31
+    },
+    {
+     "sf": 175,
+     "gf": 318,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.5,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 30,
+     "moving": true,
+     "routeForcing": false,
+     "pos": [
+      25.22,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 31,
+     "cleared": 32
+    },
+    {
+     "sf": 176,
+     "gf": 319,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.483,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 31,
+     "moving": false,
+     "routeForcing": false,
+     "pos": [
+      25.19,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 32,
+     "cleared": 33
+    },
+    {
+     "sf": 177,
+     "gf": 320,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.467,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 32,
+     "moving": false,
+     "routeForcing": false,
+     "pos": [
+      25.19,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 33,
+     "cleared": 34
+    },
+    {
+     "sf": 178,
+     "gf": 321,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.45,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 33,
+     "moving": false,
+     "routeForcing": false,
+     "pos": [
+      25.19,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 34,
+     "cleared": 35
+    },
+    {
+     "sf": 179,
+     "gf": 322,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.433,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 34,
+     "moving": false,
+     "routeForcing": false,
+     "pos": [
+      25.19,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 35,
+     "cleared": 36
+    },
+    {
+     "sf": 180,
+     "gf": 323,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.417,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 35,
+     "moving": false,
+     "routeForcing": false,
+     "pos": [
+      25.19,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 36,
+     "cleared": 37
+    },
+    {
+     "sf": 181,
+     "gf": 324,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.4,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 36,
+     "moving": false,
+     "routeForcing": false,
+     "pos": [
+      25.19,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 37,
+     "cleared": 38
+    },
+    {
+     "sf": 182,
+     "gf": 325,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.383,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 37,
+     "moving": false,
+     "routeForcing": false,
+     "pos": [
+      25.19,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 38,
+     "cleared": 39
+    },
+    {
+     "sf": 183,
+     "gf": 326,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.367,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 38,
+     "moving": false,
+     "routeForcing": false,
+     "pos": [
+      25.19,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 39,
+     "cleared": 40
+    },
+    {
+     "sf": 184,
+     "gf": 327,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.35,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 39,
+     "moving": false,
+     "routeForcing": false,
+     "pos": [
+      25.19,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 40,
+     "cleared": 41
+    },
+    {
+     "sf": 185,
+     "gf": 328,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.333,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 40,
+     "moving": false,
+     "routeForcing": false,
+     "pos": [
+      25.19,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 41,
+     "cleared": 42
+    },
+    {
+     "sf": 186,
+     "gf": 329,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.317,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 41,
+     "moving": false,
+     "routeForcing": false,
+     "pos": [
+      25.19,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 42,
+     "cleared": 43
+    },
+    {
+     "sf": 187,
+     "gf": 330,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.3,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 42,
+     "moving": false,
+     "routeForcing": false,
+     "pos": [
+      25.19,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 43,
+     "cleared": 44
+    },
+    {
+     "sf": 188,
+     "gf": 331,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.283,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 43,
+     "moving": false,
+     "routeForcing": false,
+     "pos": [
+      25.19,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 44,
+     "cleared": 45
+    },
+    {
+     "sf": 189,
+     "gf": 332,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.267,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 44,
+     "moving": false,
+     "routeForcing": false,
+     "pos": [
+      25.19,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 45,
+     "cleared": 46
+    },
+    {
+     "sf": 190,
+     "gf": 333,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.25,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 45,
+     "moving": false,
+     "routeForcing": false,
+     "pos": [
+      25.19,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 46,
+     "cleared": 47
+    },
+    {
+     "sf": 191,
+     "gf": 334,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.233,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 46,
+     "moving": false,
+     "routeForcing": false,
+     "pos": [
+      25.19,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 47,
+     "cleared": 48
+    },
+    {
+     "sf": 192,
+     "gf": 335,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.217,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 47,
+     "moving": false,
+     "routeForcing": false,
+     "pos": [
+      25.19,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 48,
+     "cleared": 49
+    },
+    {
+     "sf": 193,
+     "gf": 336,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.2,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 48,
+     "moving": false,
+     "routeForcing": false,
+     "pos": [
+      25.19,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 49,
+     "cleared": 50
+    },
+    {
+     "sf": 194,
+     "gf": 337,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.183,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 49,
+     "moving": false,
+     "routeForcing": false,
+     "pos": [
+      25.19,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 50,
+     "cleared": 51
+    },
+    {
+     "sf": 195,
+     "gf": 338,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.167,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 50,
+     "moving": false,
+     "routeForcing": false,
+     "pos": [
+      25.19,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 51,
+     "cleared": 52
+    },
+    {
+     "sf": 196,
+     "gf": 339,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.15,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 51,
+     "moving": false,
+     "routeForcing": false,
+     "pos": [
+      25.19,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 52,
+     "cleared": 53
+    },
+    {
+     "sf": 197,
+     "gf": 340,
+     "veil": {
+      "c": [
+       12.5,
+       25.5
+      ],
+      "rem": 4.133,
+      "members": 1
+     },
+     "ptr": [
+      12.5,
+      25.5
+     ],
+     "player": [
+      12,
+      25
+     ],
+     "concealed": true,
+     "det": false,
+     "ai": "idle",
+     "chase": 62,
+     "idle": 52,
+     "moving": false,
+     "routeForcing": false,
+     "pos": [
+      25.19,
+      25
+     ],
+     "cd": 1,
+     "hand": 5,
+     "suppressed": 53,
+     "cleared": 54
+    }
+   ]
+  },
+  {
+   "n": 2,
+   "hold": 114,
+   "keyFrame": {
+    "sf": 366,
+    "gf": 509,
+    "t": 14240.319999997155
+   },
+   "hidden0SampleSf": 386,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 19,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 20,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 3,
+   "hold": 61,
+   "keyFrame": {
+    "sf": 592,
+    "gf": 735,
+    "t": 18006.54499999655
+   },
+   "hidden0SampleSf": 609,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 16,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 17,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 4,
+   "hold": 98,
+   "keyFrame": {
+    "sf": 813,
+    "gf": 956,
+    "t": 21687.47999999323
+   },
+   "hidden0SampleSf": 833,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 19,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 20,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 5,
+   "hold": 45,
+   "keyFrame": {
+    "sf": 1036,
+    "gf": 1179,
+    "t": 25405.945000005886
+   },
+   "hidden0SampleSf": 1052,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 15,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 16,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 6,
+   "hold": 82,
+   "keyFrame": {
+    "sf": 1255,
+    "gf": 1398,
+    "t": 29066.520000007586
+   },
+   "hidden0SampleSf": 1274,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 18,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 19,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 7,
+   "hold": 119,
+   "keyFrame": {
+    "sf": 1477,
+    "gf": 1620,
+    "t": 32766.419999999925
+   },
+   "hidden0SampleSf": 1500,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 22,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 23,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 8,
+   "hold": 66,
+   "keyFrame": {
+    "sf": 1705,
+    "gf": 1848,
+    "t": 36556.3700000057
+   },
+   "hidden0SampleSf": 1724,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 18,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 19,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 9,
+   "hold": 103,
+   "keyFrame": {
+    "sf": 1927,
+    "gf": 2070,
+    "t": 40252.91500000458
+   },
+   "hidden0SampleSf": 1945,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 17,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 18,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 10,
+   "hold": 50,
+   "keyFrame": {
+    "sf": 2147,
+    "gf": 2290,
+    "t": 43931.50500000047
+   },
+   "hidden0SampleSf": 2164,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 16,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 17,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 11,
+   "hold": 87,
+   "keyFrame": {
+    "sf": 2366,
+    "gf": 2509,
+    "t": 47572.64500000747
+   },
+   "hidden0SampleSf": 2386,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 1,
+    "iVeil": 1,
+    "iConceal": 1,
+    "iIdle": 2,
+    "iDetClear": 2,
+    "iSample": 20,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 20,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 12,
+   "hold": 124,
+   "keyFrame": {
+    "sf": 2590,
+    "gf": 2733,
+    "t": 51309.86999999732
+   },
+   "hidden0SampleSf": 2610,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 19,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 20,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 13,
+   "hold": 71,
+   "keyFrame": {
+    "sf": 2814,
+    "gf": 2957,
+    "t": 55038.80999999819
+   },
+   "hidden0SampleSf": 2832,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 17,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 18,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 14,
+   "hold": 108,
+   "keyFrame": {
+    "sf": 3034,
+    "gf": 3177,
+    "t": 58707.735000003595
+   },
+   "hidden0SampleSf": 3055,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 20,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 21,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 15,
+   "hold": 55,
+   "keyFrame": {
+    "sf": 3258,
+    "gf": 3401,
+    "t": 62447.00499999453
+   },
+   "hidden0SampleSf": 3275,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 16,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 17,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 16,
+   "hold": 92,
+   "keyFrame": {
+    "sf": 3484,
+    "gf": 3627,
+    "t": 66213.75500000431
+   },
+   "hidden0SampleSf": 3504,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 19,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 20,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 17,
+   "hold": 129,
+   "keyFrame": {
+    "sf": 3712,
+    "gf": 3855,
+    "t": 70007.34999999986
+   },
+   "hidden0SampleSf": 3732,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 19,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 20,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 18,
+   "hold": 76,
+   "keyFrame": {
+    "sf": 3936,
+    "gf": 4079,
+    "t": 73744.2849999934
+   },
+   "hidden0SampleSf": 3956,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 19,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 20,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 19,
+   "hold": 113,
+   "keyFrame": {
+    "sf": 4159,
+    "gf": 4302,
+    "t": 77468.20000000298
+   },
+   "hidden0SampleSf": 4180,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 20,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 21,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 20,
+   "hold": 60,
+   "keyFrame": {
+    "sf": 4383,
+    "gf": 4526,
+    "t": 81188.43500000366
+   },
+   "hidden0SampleSf": 4400,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 16,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 17,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 21,
+   "hold": 97,
+   "keyFrame": {
+    "sf": 4602,
+    "gf": 4745,
+    "t": 84845.49000000698
+   },
+   "hidden0SampleSf": 4623,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 20,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 21,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 22,
+   "hold": 44,
+   "keyFrame": {
+    "sf": 4827,
+    "gf": 4970,
+    "t": 88597.55500000028
+   },
+   "hidden0SampleSf": 4845,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 17,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 18,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 23,
+   "hold": 81,
+   "keyFrame": {
+    "sf": 5048,
+    "gf": 5191,
+    "t": 92270.30499999819
+   },
+   "hidden0SampleSf": 5066,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 1,
+    "iVeil": 1,
+    "iConceal": 1,
+    "iIdle": 2,
+    "iDetClear": 2,
+    "iSample": 18,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 18,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 24,
+   "hold": 118,
+   "keyFrame": {
+    "sf": 5267,
+    "gf": 5410,
+    "t": 95932.67999999807
+   },
+   "hidden0SampleSf": 5288,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 20,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 21,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 25,
+   "hold": 65,
+   "keyFrame": {
+    "sf": 5492,
+    "gf": 5635,
+    "t": 99675.45500000415
+   },
+   "hidden0SampleSf": 5509,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 16,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 17,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 26,
+   "hold": 102,
+   "keyFrame": {
+    "sf": 5713,
+    "gf": 5856,
+    "t": 103366.70500000764
+   },
+   "hidden0SampleSf": 5735,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 21,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 22,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 27,
+   "hold": 49,
+   "keyFrame": {
+    "sf": 5937,
+    "gf": 6080,
+    "t": 107094.40000000177
+   },
+   "hidden0SampleSf": 5955,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 17,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 18,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 28,
+   "hold": 86,
+   "keyFrame": {
+    "sf": 6160,
+    "gf": 6303,
+    "t": 110803.96499999915
+   },
+   "hidden0SampleSf": 6179,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 18,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 19,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 29,
+   "hold": 123,
+   "keyFrame": {
+    "sf": 6381,
+    "gf": 6524,
+    "t": 114498.8849999936
+   },
+   "hidden0SampleSf": 6404,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 22,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 23,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 30,
+   "hold": 70,
+   "keyFrame": {
+    "sf": 6607,
+    "gf": 6750,
+    "t": 118254.96500000008
+   },
+   "hidden0SampleSf": 6625,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 17,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 18,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 31,
+   "hold": 107,
+   "keyFrame": {
+    "sf": 6829,
+    "gf": 6972,
+    "t": 121957.80000000377
+   },
+   "hidden0SampleSf": 6849,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 19,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 20,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 32,
+   "hold": 54,
+   "keyFrame": {
+    "sf": 7052,
+    "gf": 7195,
+    "t": 125669.82999999891
+   },
+   "hidden0SampleSf": 7070,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 17,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 18,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 33,
+   "hold": 91,
+   "keyFrame": {
+    "sf": 7275,
+    "gf": 7418,
+    "t": 129394.53999999387
+   },
+   "hidden0SampleSf": 7294,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 18,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 19,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 34,
+   "hold": 128,
+   "keyFrame": {
+    "sf": 7500,
+    "gf": 7643,
+    "t": 133138.45500000753
+   },
+   "hidden0SampleSf": 7521,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 20,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 21,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 35,
+   "hold": 75,
+   "keyFrame": {
+    "sf": 7727,
+    "gf": 7870,
+    "t": 136919.2250000051
+   },
+   "hidden0SampleSf": 7745,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 1,
+    "iVeil": 1,
+    "iConceal": 1,
+    "iIdle": 2,
+    "iDetClear": 2,
+    "iSample": 18,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 18,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 36,
+   "hold": 112,
+   "keyFrame": {
+    "sf": 7952,
+    "gf": 8095,
+    "t": 140676.26000000746
+   },
+   "hidden0SampleSf": 7971,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 18,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 19,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 37,
+   "hold": 59,
+   "keyFrame": {
+    "sf": 8174,
+    "gf": 8317,
+    "t": 144382.88000000466
+   },
+   "hidden0SampleSf": 8193,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 18,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 19,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 38,
+   "hold": 96,
+   "keyFrame": {
+    "sf": 8396,
+    "gf": 8539,
+    "t": 148079.9549999938
+   },
+   "hidden0SampleSf": 8416,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 19,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 20,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 39,
+   "hold": 43,
+   "keyFrame": {
+    "sf": 8620,
+    "gf": 8763,
+    "t": 151810.37999999535
+   },
+   "hidden0SampleSf": 8639,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 18,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 19,
+    "class": "OK"
+   }
+  },
+  {
+   "n": 40,
+   "hold": 80,
+   "keyFrame": {
+    "sf": 8839,
+    "gf": 8982,
+    "t": 155465.0099999999
+   },
+   "hidden0SampleSf": 8858,
+   "hidden0": {
+    "state": "idle",
+    "detected": false,
+    "checkRange": false
+   },
+   "result": {
+    "iCard": 0,
+    "iVeil": 0,
+    "iConceal": 0,
+    "iIdle": 1,
+    "iDetClear": 1,
+    "iSample": 18,
+    "framesToConceal": 1,
+    "framesToIdle": 2,
+    "sampleFramesAfterKey": 19,
+    "class": "OK"
+   }
+  }
+ ],
+ "results": [
+  {
+   "id": "D0 前提: 診断に必要なAPI(Veil/TargetEligibility/CardTargeting/VeilTest)がある",
+   "ok": true
+  },
+  {
+   "id": "D1 繰り返しの分類(OK以外が出たら詳細を確認)",
+   "ok": true,
+   "detail": {
+    "repeat": 40,
+    "counts": {
+     "OK": 40
+    },
+    "framesFromKeyToConceal": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ]
+   }
+  },
+  {
+   "id": "D2 押されたままのキーがない・Consoleのエラーなし",
+   "ok": true,
+   "detail": {
+    "stuck": [],
+    "errors": []
+   }
+  }
+ ]
+}

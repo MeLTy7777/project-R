@@ -1,4 +1,9 @@
 // 絶(Zetsu)の実機検証(23項目: 移動・壁・失敗・Lv別ダメージ・失効・速度・複数コピー・描画順)
+// 【状態: 保守対象(H2C-B3で現行仕様に更新)】 H1(絶の初期実装)の検証をそのまま保つ単独スクリプト。
+//   H2C-B3で直した古い前提: (1)「カード定義がちょうど8件」→ 現行は新Hermes 7枚が加わっているため、必須カードの存在と絶の定義(最大5枚)を検証、
+//   (2) 絶はH2B-1で「予備動作 → 着地」の取引になり、押下の約0.25秒後はまだ結果が pending なので、結果が確定するまで待ってから ok / 位置を検証。
+//   壁・地形・Region 255・CombatWall/VisionWall の手前で止まる位置の検証値は変えていない。
+//   H2A以降の絶の確認(失敗時の取引・Lv別・複数コピー)は h2a_verify.cjs / h2b1_verify.cjs が担う。スクリプトの一覧は tools/mz_cdp/scripts.json。
 // 使い方: node tools/mz_cdp/verify.cjs
 //   すでに起動している Playtest(nw.exe <project> test --remote-debugging-port=9222)へ接続するだけです。MZを起動・終了しません。
 //   スクリーンショットと結果JSONは環境変数 MZ_OUT(既定: ./mz_out)へ出ます。ゲームのファイルは変更しません。
@@ -14,6 +19,10 @@ const near = (a, b, t) => Math.abs(a - b) <= t;
   const wait = async (cond, ms = 6000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await ev(cond)) return true; await sleep(100); } return false; };
   const start = async lv => { const r = await ev(`JSON.stringify(ProjectRZetsuTest.start(${lv}))`); await sleep(400); return JSON.parse(r); };
   const press = async k => { await c.tap(k); await sleep(250); };
+  // 絶は予備動作 → 着地の取引。結果が pending でなくなる(確定する)まで待つ。待てなければ検証側が失敗する(固定の待ち時間で誤魔化さない)。
+  // 絶の確定結果は ProjectRHermesZetsu.getLastResult()(予約中は pending:true、着地後に ok:true / 失敗は ok:false)。CardBattleInput側の結果は取引中 'pending' のまま。
+  const settleLast = () => wait("(function() { var l = ProjectRHermesZetsu.getLastResult(); return !!l && !l.pending; })()", 5000);
+  const zLast = async () => JSON.parse(await ev("JSON.stringify(ProjectRHermesZetsu.getLastResult())"));
   const info = async () => ({ pos: await s.pos(), st: await s.state(), z: await s.status() });
   const sameState = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const fixedRandom = on => ev(on ? "window.__r0 = Math.random; Math.random = function() { return 0.5; }; 'on'" : "Math.random = window.__r0 || Math.random; 'off'");
@@ -30,16 +39,17 @@ const near = (a, b, t) => Math.abs(a - b) <= t;
 
   // ---- 起動 ----
   console.log("chromium", await ev("process.versions.chromium + ' / nw ' + process.versions.nw"));
-  await ev("DataManager.setupNewGame(); SceneManager.goto(Scene_Map); 'ok'");
+  await wait("typeof DataManager !== 'undefined' && !!SceneManager._scene", 20000); // 起動直後はセーブ一覧(_globalInfo)の読み込みが終わっていないことがある。メモリ上だけ空の一覧にして新しいゲームを始める(ファイルには触れない)
+  await ev("DataManager._globalInfo = DataManager._globalInfo || []; DataManager.setupNewGame(); SceneManager.goto(Scene_Map); 'ok'");
   await wait("SceneManager._scene instanceof Scene_Map && SceneManager._scene._spriteset && !SceneManager.isSceneChanging()", 20000);
   console.log("enter", await ev("JSON.stringify(ProjectRCombatTestArena.enter())"));
   await wait("$gameMap.mapId() === 4 && !SceneManager.isSceneChanging() && !$gamePlayer.isTransferring()", 20000); await sleep(1500);
-  rec("0 boot: 全プラグインが読み込まれカード定義が実機で登録された", await ev("[ProjectRCardCatalog, ProjectRCardModifiers, ProjectRPresentationVfx, ProjectRCutIn, ProjectRHermesZetsu].every(Boolean) && !!ProjectRCardDeck.definitions.card('hermes_zetsu') && ProjectRCardDeck.definitions.cardDefinitions().length === 8"), "Chromium 85 / NW 0.48.4");
+  rec("0 boot: 全プラグインが読み込まれ、絶(最大5枚)と新Hermes 7枚のカード定義が実機で登録された", await ev("[ProjectRCardCatalog, ProjectRCardModifiers, ProjectRPresentationVfx, ProjectRCutIn, ProjectRHermesZetsu].every(Boolean) && !!ProjectRCardDeck.definitions.card('hermes_zetsu') && ProjectRCardDeck.definitions.cardDefinitions().length >= 8 && ProjectRCardDeck.definitions.card('hermes_zetsu').maxCopies === 5 && ['hermes_issen', 'hermes_psychopomp', 'hermes_veil', 'hermes_strength', 'hermes_sweep', 'hermes_reed_flute'].every(function(id) { return !!ProjectRCardDeck.definitions.card(id); })"), "Chromium 85 / NW 0.48.4");
 
   await check("1 ground-success", async () => {
     await start(1); await s.place(12, 25); const b = await info();
     await s.aim(5, 0); await c.tap("Q");
-    const a = await info(); const last = await s.last(); // 直後(約0.1秒後)に読む
+    const a = await info(); await settleLast(); const last = await zLast(); // 状態(a)は直後(約0.1秒後)、結果(last)は絶の確定結果を待って読む
     await s.shot("10_success_t0"); await sleep(120); await s.shot("10_success_t1");
     rec("1a 有効な地面へ成功(5タイル右)", last.ok && near(a.pos.x - b.pos.x, 5, 0.02) && near(a.pos.y, b.pos.y, 0.02), { moved: a.pos.x - b.pos.x, last: last.reason });
     rec("1b カード1枚消費・即時補充・Cooldown", a.st.hand.length === 5 && a.st.drawPile.length === b.st.drawPile.length - 1 && a.st.cooldownPile.length === 1 && a.st.cooldownPile[0].remainingSeconds <= 0.5 && a.st.cooldownPile[0].remainingSeconds > 0.3, { hand: a.st.hand.map(h => h.cardId).join(",") });
@@ -49,21 +59,21 @@ const near = (a, b, t) => Math.abs(a - b) <= t;
     rec("1e 腕クロスの動作が要求された", hist.includes("CrossArms"), hist);
   });
   await check("2 terrain", async () => {
-    await start(1); await s.place(6, 25); await s.aim(0, 4); await press("Q"); const p = await s.pos(); const last = await s.last();
+    await start(1); await s.place(6, 25); await s.aim(0, 4); await press("Q"); await settleLast(); const p = await s.pos(); const last = await zLast();
     rec("2 通行不能な地形の手前で止まる(壁y=28)", last.ok && p.y <= 27.001 && p.y >= 26.8 && near(p.x, 6, 0.02), p);
   });
   await check("3 impassable event", async () => {
-    await start(1); await s.place(15, 3); await s.aim(-6, 0); await press("Q"); const p = await s.pos(); const last = await s.last();
+    await start(1); await s.place(15, 3); await s.aim(-6, 0); await press("Q"); await settleLast(); const p = await s.pos(); const last = await zLast();
     rec("3 通行不能Event(DEV Impassable Event x=11)の手前で止まる", last.ok && p.x >= 11.99 && p.x <= 12.2, p);
   });
   await check("4 region255", async () => {
-    await start(1); await wall.set(16, [23, 24, 25, 26, 27]); await s.place(12, 25); await s.aim(6, 0); await press("Q"); const p = await s.pos(); const last = await s.last();
+    await start(1); await wall.set(16, [23, 24, 25, 26, 27]); await s.place(12, 25); await s.aim(6, 0); await press("Q"); await settleLast(); const p = await s.pos(); const last = await zLast();
     rec("4 Region 255(VisionWall)で止まる(地形は通行可)", last.ok && p.x + 1 <= 16.0001 && p.x >= 14.5, p);
     await wall.restore();
   });
   for (const kind of ["CombatWall", "VisionWall"]) {
     await check("5 " + kind, async () => {
-      await start(1); await wall.events(kind, 16, [23, 24, 25, 26, 27]); await s.place(12, 25); await s.aim(6, 0); await press("Q"); const p = await s.pos(); const last = await s.last();
+      await start(1); await wall.events(kind, 16, [23, 24, 25, 26, 27]); await s.place(12, 25); await s.aim(6, 0); await press("Q"); await settleLast(); const p = await s.pos(); const last = await zLast();
       rec(`5 <${kind}> イベントの壁で止まる`, last.ok && p.x + 1 <= 16.0001 && p.x >= 14.5, p);
       await wall.clearEvents();
     });

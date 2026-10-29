@@ -155,9 +155,14 @@ const near = (a, b, t) => Math.abs(a - b) <= t;
     const moved = Math.hypot(chase1.pos[0] - chase0.pos[0], chase1.pos[1] - chase0.pos[1]);
     // ヴェイル(主人公の位置)
     await mouseTile(12.5, 25.5); await sleep(100);
+    // H2C-B3: 診断。前提(カーソルが狙った位置に届いている)を状態で確認する。待ち時間を足して隠すのではなく、条件が満たされるまで最大2秒だけ観測し、満たせなければ R4pre で記録する。
+    const pre = { ptrOk: await wait("(function() { var w = { x: $gameMap.displayX() + TouchInput.x / $gameMap.tileWidth(), y: $gameMap.displayY() + TouchInput.y / $gameMap.tileHeight() }; return Math.abs(w.x - 12.5) < 0.3 && Math.abs(w.y - 25.5) < 0.3; })()", 2000), world: await mouseWorld(), player: await playerCenter() };
+    rec("R4pre 前提: Qを押す前にカーソルが主人公の位置(12.5,25.5)に届いている(届かなければ、以下の失敗は『ヴェイルが主人公を覆わない位置で発動した』ことによる)", pre.ptrOk, pre);
     await press("Q");
     await settle(6);
     const hidden0 = await json("({ pos: [$gameMap.event(4)._realX, $gameMap.event(4)._realY], st: ProjectRVeilTest.ai.state().enemies[0], detected: !!$gameMap.event(4)._detectedEvent, checkRange: checkRange(4, 60, 'player', 0, 0) })");
+    // 失敗の切り分け(判定には使わない): ヴェイルは発効したか・中心とカーソル・秘匿の判定・Qの結果・フレーム数
+    const diag0 = await json("({ sf: window.__sf || 0, gf: Graphics.frameCount, veil: ProjectRHermesVeil.getActive().map(function(v) { return { center: v.center, remaining: v.remaining, members: v.members, pointerHeld: v.pointerHeld }; }), lastResult: ProjectRHermesVeil.getLastResult(), pointer: ProjectRCardTargeting.pointer(), concealed: ProjectRTargetEligibility.isConcealed($gamePlayer, $gameMap.event(4)), player: [$gamePlayer._realX, $gamePlayer._realY], cooldownPile: (ProjectRCardDeck.getBattleState() || {}).cooldownPile ? ProjectRCardDeck.getBattleState().cooldownPile.length : -1, eligibility: ProjectRTargetEligibility.diagnostics() })");
     await settle(40);
     const hidden1 = await json("({ pos: [$gameMap.event(4)._realX, $gameMap.event(4)._realY], st: ProjectRVeilTest.ai.state().enemies[0] })");
     await settle(40);
@@ -176,10 +181,10 @@ const near = (a, b, t) => Math.abs(a - b) <= t;
     const posRe0 = await json("[$gameMap.event(4)._realX, $gameMap.event(4)._realY]"); await settle(30);
     const posRe1 = await json("[$gameMap.event(4)._realX, $gameMap.event(4)._realY]");
     rec("R4a 実機(秘匿の核): HendrixのcheckRangeは通常は主人公を検知し、ヴェイル中は検知せず(古いキャッシュも外れる)、終われば再び検知する",
-      core.before === true && hidden0.checkRange === false && hidden0.detected === false && re.detected === true, { core, hidden0, re });
+      core.before === true && hidden0.checkRange === false && hidden0.detected === false && re.detected === true, { core, hidden0, re, pre, diag0 });
     rec("R4b 実機(DEV敵AI): 追跡中は動き、ヴェイル中は idle で止まり、範囲を外すと再び追い、戻ると見失い、終了後に再取得して再び動く",
       chase0.st.state === "chase" && moved > 0.3 && hidden0.st.state === "idle" && stillMoved < 0.05 && carry < 1.5 && outside.state === "chase" && inside.state === "idle" && re.st.state === "chase" && Math.hypot(posRe1[0] - posRe0[0], posRe1[1] - posRe0[1]) > 0.3,
-      { moved, carry, stillMoved, outside: outside.state, inside: inside.state, trans: re.trans });
+      { moved, carry, stillMoved, outside: outside.state, inside: inside.state, trans: re.trans, diag0 });
     rec("R4c 製品の敵AIへの接続", true, "未了(製品用の共通敵AIは未実装。マップEventページがHendrixの検知部品を使う限り自動で効く。別の主張として docs に記録)");
     await ev("ProjectRHermesVeil.clearAll('test'); ProjectRVeilTest.ai.disable(); 'ok'");
   });

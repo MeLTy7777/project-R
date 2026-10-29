@@ -51,6 +51,8 @@
  *   hasGranted() / state()                付与の記録
  *   diagnose()                            指輪・新旧カード・デッキの診断(読み取り専用)
  *   legacyMigrationProposal()             旧カード→新カードの移行案とこのセーブへの影響(表示専用。何も変更しない)
+ *   previewStarterGrant()                 初期30枚の付与が今の所持にどう効くか(加算と補充の比較。読み取り専用。H2C-B3)
+ *   cardGenerations()                     旧カード/新カードの区別と、名前が紛らわしい組(読み取り専用。H2C-B3)
  */
 
 (() => {
@@ -340,6 +342,42 @@
         };
     };
 
+    // 初期30枚の付与が、今の所持にどう効くかのプレビュー(読み取り専用・H2C-B3)。付与の方針は「加算」のまま(補充への変更はユーザー承認が必要)。
+    const previewStarterGrant = () => {
+        const inventory = root.ProjectRCardInventory;
+        const bundle = {};
+        for (const card of starterSet()) bundle[card.cardId] = card.copies;
+        const preview = inventory ? inventory.previewGrant(STARTER_REWARD_ID, bundle) : null;
+        const owner = ringOwner(RING_ID);
+        const recorded = hasGranted(RING_ID) || !!preview?.alreadyGranted;
+        return {
+            ringOwner: owner, recordGranted: hasGranted(RING_ID), rewardRecorded: !!preview?.alreadyGranted,
+            willGrantOnNextAcquisition: owner === OWNER_UNOWNED && !recorded,
+            policyInEffect: "additive", preview, mutated: false
+        };
+    };
+
+    // 旧カードと新カードの区別(Deck Builderでの取り違え防止の監査用・読み取り専用)。旧カードは削除も置換もしない。
+    const cardGenerations = () => {
+        const api = deck();
+        const newIds = starterSet().map(card => card.cardId);
+        const legacyIds = [...new Set(LEGACY_MAP.map(row => row.legacy).concat((catalog()?.unmappedLegacyCards?.() || []).map(card => card.cardId)))];
+        const name = id => menu()?.cardInfo?.(id)?.name || id;
+        const cards = (api?.definitions?.cardDefinitions?.() || []).map(def => ({
+            cardId: def.cardId, name: name(def.cardId), ringId: def.ringId, maxCopies: def.maxCopies,
+            generation: newIds.includes(def.cardId) ? "new" : legacyIds.includes(def.cardId) ? "legacy" : "other",
+            ownedCopies: root.ProjectRCardInventory?.getOwnedCopies?.(def.cardId) ?? 0, inDeck: (api?.getDeck?.() || []).filter(id => id === def.cardId).length
+        }));
+        const confusablePairs = LEGACY_MAP.filter(row => row.proposed).map(row => {
+            const legacyName = name(row.legacy), newName = name(row.proposed);
+            const nameOverlap = legacyName.includes(newName) || newName.includes(legacyName);
+            return { legacy: row.legacy, proposed: row.proposed, legacyName, newName, relation: row.relation, nameOverlap, differences: row.differences };
+        });
+        const names = cards.map(card => card.name);
+        const duplicateNames = [...new Set(names.filter((n, i) => names.indexOf(n) !== i))];
+        return { cards, confusablePairs, duplicateNames, note: "旧カードは削除・置換していません。Deck Builder上は別カードとして並びます(共存)。置換するかはユーザー判断(要明示の移行)。" };
+    };
+
     const legacyMigrationProposal = () => {
         const api = deck();
         const cardIds = api ? api.getDeck() : [];
@@ -384,7 +422,7 @@
         starterSet, starterTotal, starterProblems,
         acquireRing, grantStarter, onNewGame,
         hasGranted, state: () => copy(readState()),
-        diagnose, legacyMigrationProposal
+        diagnose, legacyMigrationProposal, previewStarterGrant, cardGenerations
     });
     if (typeof module !== "undefined" && module.exports) module.exports = root.ProjectRHermesProductionDeck;
 })();
