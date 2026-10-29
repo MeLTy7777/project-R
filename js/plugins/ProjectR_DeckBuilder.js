@@ -68,7 +68,7 @@
             const hint = this.calcWindowHeight(1, false);
             const headerH = this.calcWindowHeight(3, false);
             const tabsH = this.calcWindowHeight(1, false);
-            const detailH = Math.max(this.calcWindowHeight(6, false), Math.floor(area.height * 0.3));
+            const detailH = Math.max(this.calcWindowHeight(6, false), Math.floor(area.height * 0.4));
             const bodyY = area.y + headerH + tabsH;
             const bodyH = Math.max(120, area.height - headerH - tabsH - detailH - hint);
             const listW = Math.floor(Graphics.boxWidth * 0.5);
@@ -159,7 +159,8 @@
                 w.drawText(status.header + (status.valid ? "　✔ 使用可能なデッキ" : "　✕ 条件を満たしていません"), 0, 0, width);
                 w.resetFontSettings();
                 w.resetTextColor();
-                const messages = this._notice ? [this._notice] : status.messages;
+                // 無効の理由は、指輪ごとにまとめた説明を優先する(デッキの内容は自動では直さない)。
+                const messages = this._notice ? [this._notice] : (status.groupedMessages && status.groupedMessages.length ? status.groupedMessages : status.messages);
                 const shown = messages.slice(0, 2).join("　/　") + (messages.length > 2 ? `　ほか${messages.length - 2}件` : "");
                 w.changeTextColor(this._notice ? ColorManager.systemColor() : ColorManager.deathColor());
                 w.drawText(shown || `並び：${sort}`, 0, w.lineHeight() * 1 + 4, width);
@@ -220,9 +221,16 @@
                 const line = w.lineHeight();
                 w.drawText(`${info.godName} / ${info.ringName}　分類:${info.categoryLabel}　${info.rarityLabel}`, 0, line, width);
                 w.drawText(`Level ${entry.level} / 最大${entry.maxLevel}　Cooldown ${info.cooldownSeconds}秒　対象:${info.targetLabel}`, 0, line * 2, width);
-                w.drawText(`デッキ内 ${deckCount} / コピー上限 ${info.maxCopies}`, 0, line * 3, width);
+                w.drawText(`デッキ内 ${deckCount} / 所持・コピー上限 ${info.maxCopies}枚`, 0, line * 3, width);
                 let y = line * 4;
                 y = w.drawWrapped(info.description, 0, y, width);
+                // カードごとのLevel別効果(Level N は Level N-1 までの効果に加わる。同じ効果の数値は置き換わる)。現在のLevelを強調する。
+                for (let i = 0; i < info.levels.length; i++) {
+                    const current = i + 1 === entry.level;
+                    if (current) w.changeTextColor(ColorManager.powerUpColor());
+                    y = w.drawWrapped(`${current ? "▶" : "　"}Lv${i + 1}: ${info.levels[i]}`, 0, y, width);
+                    if (current) w.resetTextColor();
+                }
                 if (invalid.length) w.drawWrapped(invalid.join(" / "), 0, y, width, ColorManager.deathColor());
             });
         }

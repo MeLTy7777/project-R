@@ -236,3 +236,18 @@ node tests/ProjectR_FullSpec.menu.test.cjs
 node tests/ProjectR_FullSpec.combat.test.cjs
 node tests/ProjectR_FullSpec.arena.test.cjs
 ```
+
+## 追記(Phase H2C-A): Hermes本番デッキの手動確認
+
+F8のConsoleから(Playtest限定のDEVヘルパー。セーブは触りません):
+
+```js
+ProjectRProductionTest.freshGame()     // メモリ上を新しいゲームに戻す
+// イベントのプラグインコマンド「ヘルメースの指輪を入手する」と同じ入口:
+ProjectRHermesProductionDeck.acquireRing("hermes")    // 初回だけ7種30枚。もう一度呼んでも増えない
+ProjectRHermesProductionDeck.diagnose()                // 指輪・新旧カード・デッキの診断(読み取り専用)
+ProjectRProductionTest.roundTrip()     // セーブ→ロードのメモリ往復(ファイルは作らない)
+ProjectRProductionTest.legacyOwner()   // 旧セーブ(指輪と旧カード19枚)の状態をメモリ上に作る
+```
+
+スキル(デッキ構築)画面で7種の名前・Level別効果・コピー上限を確認し、戦闘を始めて手札5枚を確認してください。この環境のキー割り当てでは、ウィンドウの「戻る」は **X / B / 右クリック** です(Escは「メニュー」キーで、デッキ構築画面の下の説明には Esc:戻る と出ますが、ウィンドウは閉じません)。

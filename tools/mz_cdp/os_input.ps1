@@ -24,7 +24,7 @@ public static class Win {
 }
 "@
 [Win]::SetProcessDPIAware() | Out-Null
-$vk = @{ Q = 0x51; E = 0x45; X = 0x58; C = 0x43; V = 0x56; F = 0x46; U = 0x55; R = 0x52; J = 0x4A; W = 0x57; A = 0x41; S = 0x53; D = 0x44; Esc = 0x1B }
+$vk = @{ Q = 0x51; E = 0x45; X = 0x58; C = 0x43; V = 0x56; F = 0x46; U = 0x55; R = 0x52; J = 0x4A; W = 0x57; A = 0x41; S = 0x53; D = 0x44; Esc = 0x1B; Shift = 0x10; Tab = 0x09 }
 function Get-Hwnd {
   $p = Get-Process nw -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
   if ($p) { return $p.MainWindowHandle } else { return [IntPtr]::Zero }

@@ -252,3 +252,7 @@ ProjectRZetsuTest.end()              // 終了(所持データは開始前へ戻
 ```
 
 手順と実機の結果は [ProjectR_HermesZetsu_H1.md](ProjectR_HermesZetsu_H1.md) を参照してください。テスト中にセーブしないでください。
+
+## 追記(Phase H2C-A): `ProjectRProductionTest`(Hermes本番デッキのDEV検証ヘルパー)
+
+`freshGame()` / `roundTrip()` / `allowAlly(actorId)` / `restoreRings()` / `legacyOwner()` / `report()`(Playtest限定。メモリ上だけで、セーブスロットには書きません)。製品の入口は `ProjectR_HermesProductionDeck` のプラグインコマンド「ヘルメースの指輪を入手する」です。詳細は `docs/ProjectR_HermesProductionDeck_H2C_A.md`。

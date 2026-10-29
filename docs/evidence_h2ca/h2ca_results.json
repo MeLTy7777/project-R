@@ -1,0 +1,391 @@
+[
+ {
+  "id": "P0 実機: Playtest・1920x1080・本番プラグインとDEVヘルパーが読み込まれている",
+  "ok": true,
+  "detail": {
+   "playtest": true,
+   "w": 1920,
+   "h": 1080,
+   "plugins": [
+    true,
+    true
+   ],
+   "helper": "object",
+   "api": "object"
+  }
+ },
+ {
+  "id": "P1 新しいゲーム: Hermesの指輪は未所持・新カードは未所持・デッキは空・何も付与されない・空デッキでは戦闘不可",
+  "ok": true,
+  "detail": {
+   "owner": "unowned",
+   "cards": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false,
+    false
+   ],
+   "deck": 0,
+   "granted": false,
+   "startOk": false
+  }
+ },
+ {
+  "id": "P2 イベント(コマンド357)で指輪を初回入手: ちょうど7種30枚・Lv1・デッキ30枚で初期化・30枚検証OK・ボス戦開始可",
+  "ok": true,
+  "detail": {
+   "owner": "player",
+   "cnt": {
+    "hermes_issen": 3,
+    "hermes_psychopomp": 3,
+    "hermes_veil": 3,
+    "hermes_strength": 10,
+    "hermes_sweep": 3,
+    "hermes_reed_flute": 3,
+    "hermes_zetsu": 5
+   },
+   "valid": {
+    "valid": true,
+    "reasons": [],
+    "boss": true
+   },
+   "record": {
+    "granted": true,
+    "source": "AcquireHermesRing",
+    "version": 1,
+    "cards": {
+     "hermes_issen": 3,
+     "hermes_psychopomp": 3,
+     "hermes_veil": 3,
+     "hermes_strength": 10,
+     "hermes_sweep": 3,
+     "hermes_reed_flute": 3,
+     "hermes_zetsu": 5
+    },
+    "totalCopies": 30,
+    "deckInitialized": true,
+    "ownedBefore": []
+   }
+  }
+ },
+ {
+  "id": "P3 同じ入手イベントを3回再実行(専用コマンド・既存GrantRing): 所持・Level・デッキ・記録が一切変わらない(二重付与なし)",
+  "ok": true,
+  "detail": {
+   "deck": 30
+  }
+ },
+ {
+  "id": "P4 セーブ→ロード(メモリ往復): 記録・所持・デッキが保たれ、ロード後の再入手でも変わらない",
+  "ok": true,
+  "detail": {
+   "bytes": 44532
+  }
+ },
+ {
+  "id": "P5 デッキ構築: 7種すべてが日本語名・所持上限(枚数)・Lv1・使用可で並び、デッキは7種30枚・✔使用可能",
+  "ok": true,
+  "detail": {
+   "items": [
+    [
+     "ヴェイル",
+     3,
+     "支援",
+     "特殊",
+     10,
+     "カーソル追従(マウスに追従する半径5マス)"
+    ],
+    [
+     "サイコポンポス",
+     3,
+     "特殊",
+     "通常",
+     10,
+     "回復(対象なし・即時。魂を拾って回復)"
+    ],
+    [
+     "ストレングス",
+     10,
+     "特殊",
+     "特殊",
+     0.1,
+     "強化(対象なし・即時)"
+    ],
+    [
+     "葦笛",
+     3,
+     "妨害",
+     "強力",
+     8,
+     "その他(対象なし・即時。周囲の敵)"
+    ],
+    [
+     "一閃",
+     3,
+     "攻撃",
+     "強力",
+     7,
+     "方向(マウス方向・最大11マス)"
+    ],
+    [
+     "絶",
+     5,
+     "移動",
+     "強力",
+     0.5,
+     "指定位置(マウス位置・遮蔽物の手前まで)"
+    ],
+    [
+     "薙ぎ払い",
+     3,
+     "攻撃",
+     "通常",
+     0.5,
+     "方向(マウス方向・扇状4マス)"
+    ]
+   ],
+   "status": "DECK 30 / 30"
+  }
+ },
+ {
+  "id": "P6 実キーでの編集: Shift=1枚戻す→29枚(無効の理由を表示)・上限(ストレングス10)で11枚目は拒否されメッセージ・Enter=追加で30枚に復帰",
+  "ok": true,
+  "detail": {
+   "removed": 4,
+   "header1": "DECK 29 / 30",
+   "notice": "コピー上限超過：ストレングス（11/10）",
+   "restoredOk": true
+  }
+ },
+ {
+  "id": "P7 実キー(X = キャンセル)で画面を閉じられ、デッキ編集は保たれる",
+  "ok": true,
+  "detail": {
+   "closed": true,
+   "afterClose": {
+    "hermes_issen": 3,
+    "hermes_psychopomp": 3,
+    "hermes_veil": 3,
+    "hermes_strength": 10,
+    "hermes_sweep": 3,
+    "hermes_reed_flute": 3,
+    "hermes_zetsu": 5
+   }
+  }
+ },
+ {
+  "id": "P8 戦闘開始: 初期30枚デッキで開始でき、手札5枚・山札25枚・組成が正しい。開始しても付与・初期化・デッキのリセットはない。戦闘中はメニュー・編集が拒否される",
+  "ok": true,
+  "detail": {
+   "begin": {
+    "ok": true,
+    "reason": null
+   },
+   "hand": [
+    "hermes_strength",
+    "hermes_strength",
+    "hermes_strength",
+    "hermes_zetsu",
+    "hermes_psychopomp"
+   ],
+   "draw": 25,
+   "lock": {
+    "menu": false,
+    "remove": "inCombat",
+    "grant": "alreadyOwned"
+   }
+  }
+ },
+ {
+  "id": "P9 実キー(Q)で7種すべてを引いて発動: 1回の押下 = 1枚の消費・使った直後に補充・常に30枚・手札5枚",
+  "ok": true,
+  "detail": {
+   "used": [
+    "hermes_issen",
+    "hermes_psychopomp",
+    "hermes_veil",
+    "hermes_strength",
+    "hermes_sweep",
+    "hermes_reed_flute",
+    "hermes_zetsu"
+   ],
+   "failures": []
+  }
+ },
+ {
+  "id": "P10 Cooldown(最長10秒)が切れると全部捨て札へ。山札に混ざらず、30枚が保たれる",
+  "ok": true,
+  "detail": {
+   "cooldown": 0,
+   "discard": 7,
+   "draw": 18,
+   "total": 30
+  }
+ },
+ {
+  "id": "P11 押しっぱなし(約1.4秒のキーリピート): ストレングス(Cooldown 0.1秒)でも1回しか発動しない",
+  "ok": true,
+  "detail": {
+   "before": 0,
+   "during": 1,
+   "after": 1,
+   "stacks": null
+  }
+ },
+ {
+  "id": "P11 押しっぱなし(約1.4秒のキーリピート): 絶(Cooldown 0.5秒)でも1回しか発動しない",
+  "ok": true,
+  "detail": {
+   "before": 0,
+   "during": 1,
+   "after": 1,
+   "stacks": null
+  }
+ },
+ {
+  "id": "P12 戦闘終了(本物のセッション): 戦闘状態(手札・山札)は消え、所持・デッキ・記録は戦闘前のまま(リセットなし)",
+  "ok": true,
+  "detail": {
+   "counts": {
+    "hermes_issen": 3,
+    "hermes_psychopomp": 3,
+    "hermes_veil": 3,
+    "hermes_strength": 10,
+    "hermes_sweep": 3,
+    "hermes_reed_flute": 3,
+    "hermes_zetsu": 5
+   }
+  }
+ },
+ {
+  "id": "P13 指輪を仲間へ渡す: 30枚すべてが無効(理由は指輪ごとにまとめて表示)だが、所持・デッキは消えず、戦闘(ボス戦検証)は拒否される",
+  "ok": true,
+  "detail": {
+   "owner": "actor:4",
+   "msg": "ヘルメースの指輪を主人公が持っていないため使えません：一閃・サイコポンポス・ヴェイル・ストレングス・薙ぎ払い・葦笛・絶（計30枚）。指輪を戻すと再び使えます。",
+   "blocked": {
+    "ok": false,
+    "reason": "invalidDeck"
+   }
+  }
+ },
+ {
+  "id": "P14 指輪を戻す: 再び使えるようになり、30枚の再付与はない(所持・Level・記録・デッキは譲渡前と同一。入手イベントを再実行しても同じ)",
+  "ok": true,
+  "detail": {
+   "valid": true
+  }
+ },
+ {
+  "id": "P15 戦闘中の指輪の譲渡は拒否される(inCombat)",
+  "ok": true,
+  "detail": {
+   "began": true,
+   "transfer": "inCombat"
+  }
+ },
+ {
+  "id": "P16 旧セーブ(指輪と旧カード19枚): ロードや入手イベントで30枚は付与されず、旧カード・Level・保存デッキは一切変わらない。診断は legacy / 19枚 / 無効(30枚必要)",
+  "ok": true,
+  "detail": {
+   "kind": "legacy",
+   "count": 19,
+   "owned": 7
+  }
+ },
+ {
+  "id": "P17 旧→新の移行案は表示専用(applied=false)で、所持・デッキを変えない",
+  "ok": true,
+  "detail": [
+   [
+    "hermes_sword_attack",
+    "hermes_sweep"
+   ],
+   [
+    "hermes_reed_flute_sleep",
+    "hermes_reed_flute"
+   ],
+   [
+    "hermes_perception_obscure",
+    "hermes_veil"
+   ],
+   [
+    "hermes_swift_movement",
+    null
+   ]
+  ]
+ },
+ {
+  "id": "P19 ユーザーの既存セーブ3つ(読み取りのみ): 読み込み・メモリ往復・入手イベントの再実行で、所持・デッキは一切変わらず、30枚は付与されない(指輪を持つ場合)",
+  "ok": true,
+  "detail": [
+   {
+    "slot": 1,
+    "exists": true,
+    "loaded": {
+     "rings": {
+      "hermes": "unowned",
+      "apollo": "unowned",
+      "janus": "unowned",
+      "themis": "unowned",
+      "athena": "unowned"
+     },
+     "owned": [],
+     "deck": 0,
+     "kind": "empty",
+     "valid": false,
+     "productionOwned": 0,
+     "granted": false,
+     "legacyOwned": []
+    },
+    "ringHermes": "unowned",
+    "stable": true,
+    "newCardsAfter": 0,
+    "grantedAfter": false
+   },
+   {
+    "slot": 2,
+    "exists": true,
+    "loaded": {
+     "rings": {
+      "hermes": "unowned",
+      "apollo": "unowned",
+      "janus": "unowned",
+      "themis": "unowned",
+      "athena": "unowned"
+     },
+     "owned": [],
+     "deck": 0,
+     "kind": "empty",
+     "valid": false,
+     "productionOwned": 0,
+     "granted": false,
+     "legacyOwned": []
+    },
+    "ringHermes": "unowned",
+    "stable": true,
+    "newCardsAfter": 0,
+    "grantedAfter": false
+   },
+   {
+    "slot": 3,
+    "exists": false
+   }
+  ]
+ },
+ {
+  "id": "P18 Console(F8)に赤いエラーがない(旧セーブ読み込み時の既存の1件を除く)",
+  "ok": true,
+  "detail": {
+   "total": 1,
+   "knownPreExistingOnRealSaveLoad": 1,
+   "other": 0,
+   "steps": [
+    "real-saves"
+   ]
+  }
+ }
+]

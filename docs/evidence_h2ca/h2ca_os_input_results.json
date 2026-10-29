@@ -1,0 +1,116 @@
+{
+  "note": "CDPの入力を使わないOSレベルの入力(人間の手動プレイの代わりではない)",
+  "results": [
+    {
+      "id": "OS0 準備: 新しいゲーム → 入手イベントで30枚 → 戦闘開始(CDPは準備と観測だけ)",
+      "ok": true,
+      "detail": {
+        "granted": {
+          "owner": "player",
+          "deck": 30,
+          "valid": true
+        },
+        "started": {
+          "ok": true
+        }
+      }
+    },
+    {
+      "id": "OS1 Qを1回押す → ストレングスが1回だけ発動(山札-1・Cooldown中か捨て札に1枚。0.1秒のCooldownは0.7秒後には切れて捨て札)",
+      "ok": true,
+      "detail": {
+        "uses": 1,
+        "s0": 25,
+        "s1": 24,
+        "cooldown": 0,
+        "discard": 1
+      }
+    },
+    {
+      "id": "OS2 Qを1.5秒押し続ける(ストレングスのCooldown 0.1秒の十数倍) → 使用はちょうど+1(合計2回)",
+      "ok": true,
+      "detail": {
+        "uses": [
+          [
+            "hermes_strength",
+            true
+          ],
+          [
+            "hermes_strength",
+            true
+          ]
+        ]
+      }
+    },
+    {
+      "id": "OS3 E・X を1回ずつ → 使用は合計4回で、どれも1回ずつ・成功",
+      "ok": true,
+      "detail": {
+        "uses": [
+          [
+            0,
+            "hermes_strength",
+            true
+          ],
+          [
+            0,
+            "hermes_strength",
+            true
+          ],
+          [
+            1,
+            "hermes_issen",
+            true
+          ],
+          [
+            2,
+            "hermes_issen",
+            true
+          ]
+        ]
+      }
+    },
+    {
+      "id": "OS4 Dを押している間だけ動き、離すと止まる",
+      "ok": true,
+      "detail": {
+        "x0": 12,
+        "x1": 14.625,
+        "x2": 14.625
+      }
+    },
+    {
+      "id": "OS5 4秒放置: 勝手にカードが使われない・カードは常に30枚",
+      "ok": true,
+      "detail": {
+        "uses": 4,
+        "hand": 5
+      }
+    },
+    {
+      "id": "OS6 デッキ構築をOSキーで操作: F=一覧へ・S=移動・Shift=1枚戻す(30→29・理由表示)・F=追加(→30・使用可)・X×2=閉じる(マップへ)",
+      "ok": true,
+      "detail": {
+        "target": "hermes_psychopomp",
+        "deck0": 30,
+        "deck1": 29,
+        "deck2": 30,
+        "msg": "30枚必要（現在29枚）",
+        "scene": "Scene_Map"
+      }
+    },
+    {
+      "id": "OS7 押されたままのキーがない(OS側・ゲーム側とも)",
+      "ok": true,
+      "detail": {
+        "stuckOs": [],
+        "stuckPage": []
+      }
+    },
+    {
+      "id": "OSZ Consoleのエラーなし",
+      "ok": true,
+      "detail": []
+    }
+  ]
+}

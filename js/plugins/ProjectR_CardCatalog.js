@@ -12,7 +12,8 @@
  *   1. ユーザー確定のHermes 7枚の「設計」を読み取り専用のデータとして持つ(設計ID・強さ・最大枚数・Cooldown)。
  *      設計IDはワークブックの識別子で、ランタイムのcardIdやDB IDとは別物です。
  *      実装済み(implemented)になるまで、既存の旧cardIdも置き換えません(旧セーブ互換)。
- *   2. 本番の初期30枚デッキは、7枚すべてが実装されるまで有効にしません(isFinalDeckReady)。
+ *   2. 本番の初期30枚デッキは、7枚すべてが実装されるまで有効にしません(isFinalDeckReady)。実装後(H2C-A)の付与とデッキ初期化は
+ *      ProjectR_HermesProductionDeck(指輪の初回入手時に一度だけ)が行います。このカタログはデッキを適用しません。
  *   3. 全カード共通の「累積レベル」規則を1か所で解決します(resolveLevels)。
  *
  * 【実行時のカード定義の追加(旧カードとセーブの互換)】
@@ -166,7 +167,7 @@
         hermesDesign: () => HERMES,
         hermesTotalMaxCopies: totalMaxCopies,
         isFinalDeckReady, // 設計の7枚がすべて実装済みで合計30枚か(実装の完了のみ。デッキの有効化ではない)
-        isFinalDeckActivated: () => false, // H2B-3B時点でも本番の30枚デッキは有効にしない(有効化はH2C以降・ユーザー判断)。このカタログはデッキを適用しない
+        isFinalDeckActivated: () => false, // このカタログ自体はデッキを適用しない(読み取り専用のデータ)。H2C-A以降の付与・初期化は ProjectR_HermesProductionDeck が指輪の初回入手時に行う
         finalDeckBlockers: blockers,
         buildFinalHermesDeck,
         runtimeCards: () => RUNTIME_CARDS,

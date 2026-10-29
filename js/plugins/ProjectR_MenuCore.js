@@ -49,8 +49,9 @@
         movement: "移動", sleep: "睡眠", concealment: "隠密", attack: "攻撃", ailment: "状態異常",
         support: "支援", normal: "通常"
     };
-    const TARGET_LABEL = { direction: "方向", ground: "指定位置", instant: "即時", ally: "味方" };
-    const RARITY_LABEL = { normal: "通常", strong: "強力", special: "特別" };
+    const TARGET_LABEL = { direction: "方向", ground: "指定位置", instant: "即時", ally: "味方", cursor: "カーソル追従" };
+    // ワークブックの「強さ」の表記(通常 / 強力 / 特殊)に合わせる。
+    const RARITY_LABEL = { normal: "通常", strong: "強力", special: "特殊" };
     const GOD_TEXT = {
         hermes: { name: "ヘルメース", ringName: "ヘルメースの指輪" },
         apollo: { name: "アポロン", ringName: "アポロンの指輪" },
@@ -127,14 +128,18 @@
             godId: ring.godId,
             godName: ring.godName,
             category,
-            categoryLabel: CATEGORY_LABEL[category] || category,
+            // setCardText の categoryLabel / targetLabel / levels は表示だけの上書き(効果・検証は変えない)。
+            categoryLabel: override.categoryLabel || CATEGORY_LABEL[category] || category,
             rarity: definition?.rarity || "",
             rarityLabel: RARITY_LABEL[definition?.rarity] || definition?.rarity || "",
             targetType: definition?.targetType || "",
-            targetLabel: TARGET_LABEL[definition?.targetType] || definition?.targetType || "",
+            targetLabel: override.targetLabel || TARGET_LABEL[definition?.targetType] || definition?.targetType || "",
             cooldownSeconds: definition?.cooldownSeconds ?? 0,
             maxCopies: definition?.maxCopies ?? 0,
-            maxLevel: definition?.maxLevel ?? 1
+            // 所持は「カードの種類」単位で、デッキに入れられる枚数の上限 = 最大コピー数(枚数ごとの在庫は持たない)。
+            ownedCopies: deckApi()?.isCardOwned?.(id) ? (definition?.maxCopies ?? 0) : 0,
+            maxLevel: definition?.maxLevel ?? 1,
+            levels: Array.isArray(override.levels) ? override.levels.map(text) : []
         };
     };
 
@@ -247,14 +252,35 @@
         return entries.sort((a, b) => a.info.godId.localeCompare(b.info.godId) || a.info.name.localeCompare(b.info.name));
     };
 
+    // 同じ指輪が無いことによる無効を、カードごとに並べず「指輪ごと」にまとめる(デッキの内容は変えない)。
+    const groupedMessages = (reasons, cardIds) => {
+        const lines = [];
+        const byRing = new Map();
+        const others = [];
+        for (const reason of reasons || []) {
+            if (reason?.code === "REQUIRED_RING_NOT_OWNED" && reason.ringId) {
+                if (!byRing.has(reason.ringId)) byRing.set(reason.ringId, new Map());
+                const names = byRing.get(reason.ringId);
+                names.set(reason.cardId, (names.get(reason.cardId) || 0) + 1);
+            } else others.push(reason);
+        }
+        for (const [ringId, names] of byRing) {
+            const total = [...names.values()].reduce((a, b) => a + b, 0);
+            const list = [...names.keys()].map(id => cardInfo(id).name).join("・");
+            lines.push(`${ringInfo(ringId).name}を主人公が持っていないため使えません：${list}（計${total}枚）。指輪を戻すと再び使えます。`);
+        }
+        for (const line of describeReasons(others)) if (!lines.includes(line)) lines.push(line);
+        return lines;
+    };
     const deckStatus = () => {
         const deck = deckApi();
-        if (!deck) return { count: 0, size: sizeLimit(), valid: false, reasons: [], messages: [], header: "DECK 0 / 30" };
+        if (!deck) return { count: 0, size: sizeLimit(), valid: false, reasons: [], messages: [], groupedMessages: [], header: "DECK 0 / 30" };
         const cardIds = deck.getDeck();
         const reasons = deck.getDeckInvalidReasons(cardIds);
         return {
             count: cardIds.length, size: sizeLimit(), valid: reasons.length === 0, reasons,
-            messages: describeReasons(reasons), header: `DECK ${cardIds.length} / ${sizeLimit()}`
+            messages: describeReasons(reasons), groupedMessages: groupedMessages(reasons, cardIds),
+            header: `DECK ${cardIds.length} / ${sizeLimit()}`
         };
     };
 

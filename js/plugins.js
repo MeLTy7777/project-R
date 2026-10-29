@@ -66,9 +66,11 @@ var $plugins =
 ,{"name":"ProjectR_HermesIssen","status":true,"description":"v1.0.0 Hermes「一閃」(設計ID 1): マウス方向へ最大11マスの居合斬り。防御無視200 + 3秒の分割ダメージ(Lv3は移動速度-50%)。","parameters":{"PathWidthTiles":"1","SplitTicks":"3"}}
 ,{"name":"ProjectR_HermesVeil","status":true,"description":"v1.0.0 Hermes「ヴェイル」(設計ID 3): マウスに追従する半径5マスの魔法陣。5秒間、範囲内の味方は敵に標的にされず(Lv2 移動速度+30% / Lv3 クリティカル率+50%)。","parameters":{"CriticalMode":"additive","OverlapPolicy":"coexist","RequireFriendlyInside":"false","FriendlyEventTag":"<npc>"}}
 ,{"name":"ProjectR_HermesPsychopomp","status":true,"description":"v1.0.0 Hermes「サイコポンポス」(設計ID 2): 10秒間、主人公が倒した敵が魂を落とす。半径5マスで回収してHP回復(Lv3は攻撃力+3%を3秒・重ね掛け)。","parameters":{"StackingMode":"additive","AfterWindow":"remove","RecastPolicy":"refresh","CollectAtFullHp":"true","MaxHermesVisuals":"3"}}
+,{"name":"ProjectR_HermesProductionDeck","status":true,"description":"v1.0.0 Hermes本番デッキ統合(H2C-A): 指輪の初回入手で7種30枚を一度だけ付与・デッキ初期化・表示・旧セーブ診断。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaZetsu","status":true,"description":"v1.0.0 DEV専用 Combat Test Arena 追加: 絶(Zetsu)テスト開始(Playtest限定)。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaHermesB1","status":true,"description":"v1.0.0 DEV専用 Combat Test Arena 追加: 薙ぎ払い・葦笛・絶のテスト開始(Playtest限定)。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaVeil","status":true,"description":"v1.0.0 DEV専用: ヴェイル用のDEV敵AI(Hendrix検知部品)とDEV味方(<npc>)。製品の敵AIではない。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaPsychopomp","status":true,"description":"v1.0.0 DEV専用: サイコポンポスの検証用フィクスチャ(Event IDの違う敵・距離・壁)。","parameters":{}}
+,{"name":"ProjectR_CombatTestArenaProduction","status":true,"description":"v1.0.0 DEV専用: Hermes本番デッキ(H2C-A)の検証ヘルパー(新しいゲーム・セーブ往復・旧セーブ再現。Playtest限定)。","parameters":{}}
 ,{"name":"ProjectR_SwordSystem","status":true,"description":"v1.0.0 通常の剣(近接)攻撃。マウス方向のDynamic Hitbox + 当たった敵本人へDatabase武器ダメージ。","parameters":{"ForwardTiles":"1.0","HitboxWidth":"1.5","HitboxDepth":"1.2","LifetimeFrames":"3","CooldownFrames":"18"}}
 ];

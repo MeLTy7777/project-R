@@ -157,3 +157,9 @@ console.log(ProjectRCardDeck.getBattleState());
 前の仮仕様でLv4/5を保存していた場合、Phase 1既存の上限処理でLv3へ補正される。所持・指輪・デッキは維持する。
 旧セーブも別途ロードし、既存の進行・所持品を保ちつつ新規指輪が未所持で補完されることを確認する。
 最後に従来の銃・剣・移動・会話等の挙動も目視確認する。自動テストはこのMZ実機確認の代替にはならない。
+
+## 追記(Phase H2C-A): 指輪の入手とカード所持の運用
+
+- カードの所持は「カードの種類」単位(`cardOwnership[cardId] = { owned, level }`)で、デッキに入れられる枚数の上限は各カードの `maxCopies` です。枚数ごとの在庫は持ちません。したがって「Hermesの初期30枚」は、7種を所持にすること(最大コピーの合計 = 30)を意味します。
+- 指輪は `assignRingToPlayer`(低水準)で主人公のものになりますが、これは**カードを付与しません**。進行(イベント)からの入手は、プラグインコマンド `ProjectR_HermesProductionDeck: AcquireHermesRing` か既存の `ProjectR_MenuIntegration: GrantRing`(ringId=hermes)を使います。どちらも、初めての入手のときだけ初期カードを付与します(付与の記録は `$gameSystem._projectRHermesProduction`、version 1。記録の無い旧セーブは未付与として読む)。
+- 詳細・テスト・実機の結果: `docs/ProjectR_HermesProductionDeck_H2C_A.md`。
