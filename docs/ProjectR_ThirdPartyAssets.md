@@ -21,6 +21,17 @@
 | `img/characters/VFX/$ProjectR_G17Bullet.png` | 弾の仮画像(144×192、3×4セルとも同じ縦の弾道=2px幅×15px長の小さな弾筋。回転は`rotateTo`) | `tools/gen_dev_bullet.cjs`で自動生成(外部素材なし) | 同上 |
 | `img/characters/$DEV3H_*.png`(11枚: Idle_f4 / Walk_f6 / Run_f6 / SwordAttack_f6 / GunAim_f2 / GunFire_f3 / GunReload_f6 / SkillCast_f6 / Ultimate_f8 / Damage_f3 / Down_f4) | **三頭身の開発用主人公DEV3H**(1コマ96×96、身長84px=頭28px×3、4方向。髪・顔・上着などはすべてコードで描画) | `tools/gen_dev3h_character.cjs`で自動生成(外部素材・既存キャラの流用なし。オリジナルのデザイン) | プロジェクト内の仮素材。**最終アートに置き換える前提**。商用利用の制約なし。取得日 2026-10-27 |
 
+### 2-b. Phase H1(Hermes「絶」)で追加したProjectR自作の開発用素材(第三者素材ではない・2026-10-29)
+
+| ファイル | 内容 | 作成 | ライセンス/扱い |
+|---|---|---|---|
+| `img/characters/$DEV3H_CrossArms_f4.png` | 絶の「胸の前で両腕をクロス」(4コマ x 4方向、1コマ96x96) | `tools/gen_dev3h_character.cjs` の `CrossArms` で自動生成(既存の`$DEV3H_*`は再生成・上書きしていない。新規ファイルのみ追加) | プロジェクト内の仮素材。**最終アートに置き換える前提**。外部素材なし |
+| `img/pictures/Animation/ProjectR_Zetsu_Noise.png` | 絶の黒白ノイズ(640x320、8コマ=4列x2行、1コマ160px) | `tools/gen_dev_cutin_vfx.cjs`(固定シードの乱数ブロックノイズ) | 同上。VFX Designerのライブラリ(`js/AnimationSolutionLibrary.json`)から参照 |
+| `img/pictures/ProjectR_CutIn_Hermes_Eyes_DEV.png` / `ProjectR_CutIn_Player_Eyes_DEV.png` | カットイン用のHermes/主人公の目元の仮絵(512x128) | 同上(楕円と円だけで描く簡易の目元) | 同上。**Hermesの最終デザインではない**。最終の肖像画ができたら同名ファイルを差し替えるか、`ProjectR_CutIn`のパラメータ(GodEyesJson/PlayerEyesFile)だけを変える |
+| `js/AnimationSolutionLibrary.json` | VFX Designerのライブラリ(`ProjectR_Zetsu_Departure` / `ProjectR_Zetsu_Arrival`) | 導入版Animation Solution v2.0.7が読む項目を直接書いたもの(デザイナーのGUIで保存した形ではない) | データ。外部素材なし |
+
+音(布の擦れる音)の素材は**未用意**です(外部素材は取り込んでいません)。
+
 ## 3. 既存素材の再利用(新規取り込みではない)
 
 | ファイル/データ | 用途 | 備考 |

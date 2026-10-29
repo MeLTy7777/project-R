@@ -1,0 +1,348 @@
+{
+ "environment": {
+  "chromium": "85.0.4183.121",
+  "nw": "0.48.4",
+  "launch": "nw.exe <project> test --remote-debugging-port=9222 (CDP: Runtime.evaluate / Input.dispatchKeyEvent / Input.dispatchMouseEvent / Page.captureScreenshot)",
+  "map": "Map004 (Combat Test Arena)",
+  "date": "2026-10-29"
+ },
+ "verification": [
+  {
+   "id": "0 boot: 全プラグインが読み込まれカード定義が実機で登録された",
+   "ok": true,
+   "detail": "Chromium 85 / NW 0.48.4"
+  },
+  {
+   "id": "1a 有効な地面へ成功(5タイル右)",
+   "ok": true,
+   "detail": {
+    "moved": 5,
+    "last": "success"
+   }
+  },
+  {
+   "id": "1b カード1枚消費・即時補充・Cooldown",
+   "ok": true,
+   "detail": {
+    "hand": "hermes_zetsu,hermes_zetsu,hermes_zetsu,hermes_zetsu,apollo_golden_arrow"
+   }
+  },
+  {
+   "id": "1c 強化Lv1 x1.5が1つ・カットインが1枚",
+   "ok": true,
+   "detail": {
+    "bonus": {
+     "id": "hermes_zetsu",
+     "multiplier": 1.5,
+     "remaining": 0.6666666666666663,
+     "source": "hermes_zetsu"
+    },
+    "cutIn": [
+     {
+      "id": 1,
+      "kind": "card",
+      "godId": "hermes",
+      "cardId": "hermes_zetsu",
+      "frame": 8,
+      "total": 54,
+      "side": "right"
+     }
+    ]
+   }
+  },
+  {
+   "id": "1d VFXはVFX Designerライブラリ経由で再生(2件・失敗0)",
+   "ok": true,
+   "detail": {
+    "plays": 2,
+    "failures": 0,
+    "lastKey": "hermes_zetsu.arrival",
+    "lastMode": "library",
+    "lastReason": null,
+    "cleared": 0,
+    "active": 2,
+    "libraries": {
+     "ProjectR_Zetsu_Departure": true,
+     "ProjectR_Zetsu_Arrival": true
+    }
+   }
+  },
+  {
+   "id": "1e 腕クロスの動作が要求された",
+   "ok": true,
+   "detail": "CrossArms"
+  },
+  {
+   "id": "2 通行不能な地形の手前で止まる(壁y=28)",
+   "ok": true,
+   "detail": {
+    "x": 6,
+    "y": 26.97
+   }
+  },
+  {
+   "id": "3 通行不能Event(DEV Impassable Event x=11)の手前で止まる",
+   "ok": true,
+   "detail": {
+    "x": 12,
+    "y": 3
+   }
+  },
+  {
+   "id": "4 Region 255(VisionWall)で止まる(地形は通行可)",
+   "ok": true,
+   "detail": {
+    "x": 14.969999999999999,
+    "y": 25
+   }
+  },
+  {
+   "id": "5 <CombatWall> イベントの壁で止まる",
+   "ok": true,
+   "detail": {
+    "x": 14.969999999999999,
+    "y": 25
+   }
+  },
+  {
+   "id": "5 <VisionWall> イベントの壁で止まる",
+   "ok": true,
+   "detail": {
+    "x": 14.969999999999999,
+    "y": 25
+   }
+  },
+  {
+   "id": "6 失敗(その場を指す): 消費・Cooldown・補充・強化・移動・演出なし",
+   "ok": true,
+   "detail": {
+    "reason": "activationFailed",
+    "detail": "noDestination"
+   }
+  },
+  {
+   "id": "6 失敗(壁に接して壁を指す): 消費・Cooldown・補充・強化・移動・演出なし",
+   "ok": true,
+   "detail": {
+    "reason": "activationFailed",
+    "detail": "blocked"
+   }
+  },
+  {
+   "id": "7 実弾(G17) Lv1: 最終ダメージ x1.5・次弾は通常",
+   "ok": true,
+   "detail": {
+    "hp": [
+     1000,
+     936,
+     840,
+     776
+    ],
+    "base": 64,
+    "boosted": 96,
+    "third": 64,
+    "fires": [
+     true,
+     true,
+     true
+    ],
+    "bonusBefore": {
+     "id": "hermes_zetsu",
+     "multiplier": 1.5,
+     "remaining": 0.6666666666666663,
+     "source": "hermes_zetsu"
+    }
+   }
+  },
+  {
+   "id": "7 実弾(G17) Lv2: 最終ダメージ x2・次弾は通常",
+   "ok": true,
+   "detail": {
+    "hp": [
+     776,
+     712,
+     584,
+     520
+    ],
+    "base": 64,
+    "boosted": 128,
+    "third": 64,
+    "fires": [
+     true,
+     true,
+     true
+    ],
+    "bonusBefore": {
+     "id": "hermes_zetsu",
+     "multiplier": 2,
+     "remaining": 0.6666666666666663,
+     "source": "hermes_zetsu"
+    }
+   }
+  },
+  {
+   "id": "7 実弾(G17) Lv3: 最終ダメージ x3・次弾は通常",
+   "ok": true,
+   "detail": {
+    "hp": [
+     520,
+     456,
+     264,
+     200
+    ],
+    "base": 64,
+    "boosted": 192,
+    "third": 64,
+    "fires": [
+     true,
+     true,
+     true
+    ],
+    "bonusBefore": {
+     "id": "hermes_zetsu",
+     "multiplier": 3,
+     "remaining": 0.6666666666666663,
+     "source": "hermes_zetsu"
+    }
+   }
+  },
+  {
+   "id": "8a 剣(公式UpdateEventHp -player weapon): Lv2で x2.0、次は通常",
+   "ok": true,
+   "detail": {
+    "base": 84,
+    "boosted": 168,
+    "after": 84
+   }
+  },
+  {
+   "id": "8b 実際の剣(Jキー・共通イベント1)では、敵以外が対象なので強化は消費されない",
+   "ok": true,
+   "detail": {
+    "id": "hermes_zetsu",
+    "multiplier": 2,
+    "remaining": 0.033333333333332604,
+    "source": "hermes_zetsu"
+   }
+  },
+  {
+   "id": "9 0.8秒で自動的に消える(1.3秒後はnull)",
+   "ok": true,
+   "detail": {
+    "armed": {
+     "id": "hermes_zetsu",
+     "multiplier": 1.5,
+     "remaining": 0.46666666666666584,
+     "source": "hermes_zetsu"
+    },
+    "gone": null
+   }
+  },
+  {
+   "id": "10 Lv3: 移動後1秒だけ速度x2.0、解除後は元に戻る(_moveSpeed不変)",
+   "ok": true,
+   "detail": {
+    "base": 0.0625,
+    "during": 0.125,
+    "after": 0.0625,
+    "f": 2,
+    "f2": 1
+   }
+  },
+  {
+   "id": "11 5枚の絶=5回の移動(各1タイル)・強化は1つ",
+   "ok": true,
+   "detail": {
+    "moved": 5,
+    "cooldown": 1,
+    "bonus": {
+     "id": "hermes_zetsu",
+     "multiplier": 2,
+     "remaining": 0.41666666666666585,
+     "source": "hermes_zetsu"
+    }
+   }
+  },
+  {
+   "id": "12 描画順: Tilemap < Vision < CutIn(最前)",
+   "ok": true,
+   "detail": [
+    "ScreenSprite",
+    "TilingSprite",
+    "Tilemap",
+    "Vision",
+    "Graphics",
+    "CutIn"
+   ]
+  },
+  {
+   "id": "13 Console(F8)に赤いエラーなし",
+   "ok": true,
+   "detail": []
+  }
+ ],
+ "regression": [
+  {
+   "id": "R1 G17: 発射・弾数減少・リロード(旧Gunの復活なし)",
+   "ok": true,
+   "detail": {
+    "ammo0": 7,
+    "ammo1": 6,
+    "legacyGun": "undefined"
+   }
+  },
+  {
+   "id": "R2 剣: 通常攻撃(共通イベント1)が例外なく動く",
+   "ok": true,
+   "detail": {
+    "errors": 0
+   }
+  },
+  {
+   "id": "R3 F(調べる): Control Hubの会話/メニューが開き、閉じられる",
+   "ok": true,
+   "detail": {
+    "busy": true
+   }
+  },
+  {
+   "id": "R4 U(Ultimate): 入力が受理され、結果(Gauge不足など)が返る。例外なし",
+   "ok": true,
+   "detail": {
+    "ok": false,
+    "reason": "gaugeNotFull",
+    "started": false,
+    "source": "keyboard",
+    "godId": null,
+    "ringId": null,
+    "consumed": 0,
+    "serial": 1,
+    "gauge": 0,
+    "max": 100
+   }
+  },
+  {
+   "id": "R5 メニュー: 戦闘外でEscで開き、Escで戻る",
+   "ok": true,
+   "detail": {
+    "scene0": "Scene_Map",
+    "scene1": "Scene_ProjectRMenu",
+    "scene2": "Scene_Map"
+   }
+  },
+  {
+   "id": "R6 Vision層: 生成されており、壁タグ操作(invalidateCache)後も動作",
+   "ok": true,
+   "detail": {
+    "layer": true,
+    "api": "object",
+    "children": 4
+   }
+  },
+  {
+   "id": "R7 Console(F8)に赤いエラーなし",
+   "ok": true,
+   "detail": []
+  }
+ ]
+}

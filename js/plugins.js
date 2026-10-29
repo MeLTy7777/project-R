@@ -51,4 +51,10 @@ var $plugins =
 ,{"name":"ProjectR_GunSystem","status":true,"description":"v1.0.0 新銃システム(G17)。公式Easy Gun System + Display Weapon + 専用弾Prefab。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaFullSpec","status":true,"description":"v1.0.0 DEV専用 Combat Test Arena 追加シナリオ(ボス/仲間/メニュー/指輪。Playtest限定)。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaAnimation","status":true,"description":"v1.0.0 DEV専用 Animation / Weapon Certification Zone(銃・動作・アンカーの確認端末。Playtest限定)。","parameters":{}}
+,{"name":"ProjectR_CardCatalog","status":true,"description":"v1.0.0 カード設計カタログ(Hermes 7枚のデータモデル)と累積レベル解決。","parameters":{}}
+,{"name":"ProjectR_CardModifiers","status":true,"description":"v1.0.0 時限モディファイア(通常武器ヒット強化・移動速度係数)。戦闘時間で進み、保存しない。","parameters":{}}
+,{"name":"ProjectR_PresentationVfx","status":true,"description":"v1.0.0 共通VFX層: カードID→VFX Designerライブラリ→ワールド基準→後片付け。表示専用。","parameters":{"MappingsJson":""}}
+,{"name":"ProjectR_CutIn","status":true,"description":"v1.0.0 共通カットイン(通常=ラベル型の神の目元 / Ultimate=中央大型)。表示専用。","parameters":{"CutInCardIds":"[\"hermes_zetsu\"]","GodEyesJson":"{\"hermes\":\"ProjectR_CutIn_Hermes_Eyes_DEV\",\"apollo\":\"ProjectR_CutIn_Hermes_Eyes_DEV\"}","PlayerEyesFile":"ProjectR_CutIn_Player_Eyes_DEV"}}
+,{"name":"ProjectR_HermesZetsu","status":true,"description":"v1.0.0 Hermes「絶」: マウス位置へ瞬間移動 + 通常武器1ヒット強化。","parameters":{}}
+,{"name":"ProjectR_CombatTestArenaZetsu","status":true,"description":"v1.0.0 DEV専用 Combat Test Arena 追加: 絶(Zetsu)テスト開始(Playtest限定)。","parameters":{}}
 ];

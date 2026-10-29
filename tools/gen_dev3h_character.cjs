@@ -337,6 +337,13 @@ const ACTIONS = {
         p.dy = -Math.round(2 * t); p.headDy = -Math.round(1.5 * t); p.lF.a = 4; p.lB.a = -4;
         p.sparks = i < 2 ? [] : [{ x: CX + 18 + i, y: 18 - i, r: 4.5 }, { x: CX - 17 - i, y: 20 - i, r: 4 }, { x: CX + 4, y: 6 + i, r: 3, c: [190, 230, 255] }];
         return p; } },
+    // 絶(Zetsu)の両腕クロス: 胸の前で両腕を交差させる(正面は前腕が反対側の肩へ、側面は両腕を前に折る)。
+    CrossArms: { frames: 4, make: i => {
+        const p = basePose(), t = [0, 0.55, 1, 1][i];
+        p.aF.o = lerp(7, -12, t); p.aB.o = lerp(7, -12, t); p.aF.oe = lerp(3, -100, t); p.aB.oe = lerp(3, -100, t);
+        p.aF.a = lerp(4, 26, t); p.aB.a = lerp(-4, 20, t); p.aF.e = lerp(10, 112, t); p.aB.e = lerp(10, 122, t);
+        p.dy = Math.round(t); p.headDy = Math.round(t); p.lean = 1.5 * t; p.lF.a = 3 * t; p.lB.a = -3 * t;
+        return p; } },
     Ultimate: { frames: 8, make: i => {
         const p = basePose(), crouch = [0.8, 1, 0.3, 0, 0, 0, 0, 0][i], up = [0, 0, 0.5, 1, 1, 1, 1, 1][i];
         p.dy = Math.round(5 * crouch) - Math.round(3 * up); p.lF.a = 28 * crouch; p.lB.a = -28 * crouch; p.lF.e = -56 * crouch; p.lB.e = -56 * crouch;

@@ -237,3 +237,18 @@ ProjectRCombatTestArena.enter()
 - 敵ダミーの見た目は既存のMonster画像の流用です（アートは作っていません）。
 - 玉の色と端末の対応は看板に書いてあります（ラベルを画面上に出す仕組みは作っていません）。
 - 見た目を直したい場合は、MZエディタでマップ4・5を開いてEventの画像・床タイルを自由に変えて構いません。Eventの**名前**と**プラグインコマンド**は変えないでください（自動テストが参照します）。
+
+---
+
+## Phase H1 追加: 絶(Zetsu)テスト
+
+`ProjectR_CombatTestArenaZetsu`(Playtest限定・DEV)を追加しました。アリーナの固定API・既存のテストは変えていません。
+
+```js
+ProjectRCombatTestArena.enter()      // アリーナへ
+ProjectRZetsuTest.start(1)           // 手札5枚すべて絶(Lv1)。Lv2/Lv3は start(2) / start(3)
+ProjectRZetsuTest.status()           // 手札・強化・速度係数・カットイン・VFXの現在値
+ProjectRZetsuTest.end()              // 終了(所持データは開始前へ戻る)
+```
+
+手順と実機の結果は [ProjectR_HermesZetsu_H1.md](ProjectR_HermesZetsu_H1.md) を参照してください。テスト中にセーブしないでください。

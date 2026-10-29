@@ -102,6 +102,7 @@ ProjectRCharacterPresentation.registerProfile({
 | Down | 100 | 主人公のHPが0の間は基本状態として `Down` シートを表示(復活で元へ)。DEV端末の「Down動作」は約1.5秒だけ再生 |
 | Ultimate | 90 | `ProjectRUltimateActivation` の最後の結果が `started`(Hermes/Apollo) |
 | SkillCast | 80 | `ProjectRCardDeck.requestUseCard` が成功(発動成功かつ消費)したカード。失敗では再生しない。`cardActions`で上書き可 |
+| CrossArms | 80 | Phase H1: Hermes「絶」(`cardActions: { hermes_zetsu: "CrossArms" }`)が**成功(消費)したときだけ**。胸の前で両腕をクロス(`$DEV3H_CrossArms_f4`、4コマ)。詳細は [ProjectR_HermesZetsu_H1.md](ProjectR_HermesZetsu_H1.md) |
 | GunReload | 70 | `ProjectR_GunSystem` のリロード開始 |
 | Damage | 65 | 主人公のHPが減った(0にならなかった) |
 | SwordAttack | 60 | 攻撃入力が受理された(剣など非銃武器) |

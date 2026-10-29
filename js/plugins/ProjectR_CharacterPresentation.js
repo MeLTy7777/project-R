@@ -40,7 +40,7 @@
  *   8方向        : $Hero_8dir.png / $Hero_Idle_8dir_f6.png (並び: 下,左下,右下,左,右,上,左上,右上)
  *   行動アニメ    : $hero_sword_f6.png を setImage し、playFrames(1,6,3) で再生(toFrame(n)で1枚指定)
  *
- * 【動作コントローラ】優先度: Down>Ultimate>SkillCast>GunReload>Damage>剣/銃発射>Aim>Run>Walk>Idle
+ * 【動作コントローラ】優先度: Down>Ultimate>SkillCast(=CrossArms: 絶専用の両腕クロス)>GunReload>Damage>剣/銃発射>Aim>Run>Walk>Idle
  *   行動は終わると必ず元(Idle/Walk/Run/Aim)へ戻ります。移動・入力は止めません(表示だけ)。
  *   行動スプライトが未設定の動作は、仮の手続き的モーション(踏み込み/反動/しゃがみ/跳ね)を表示します。
  *   画像が用意できたら、プロファイルの actions に sprite を書くだけで差し替わります(コード変更不要)。
@@ -67,12 +67,12 @@
 
     const PRIORITY = Object.freeze({
         Idle: 10, Walk: 20, Run: 30, Aim: 40, SwordAttack: 60, GunFire: 60,
-        Damage: 65, GunReload: 70, SkillCast: 80, Ultimate: 90, Down: 100
+        Damage: 65, GunReload: 70, SkillCast: 80, CrossArms: 80, Ultimate: 90, Down: 100
     });
     const NAMES = Object.freeze(Object.keys(PRIORITY));
     const BASELINE = new Set(["Idle", "Walk", "Run", "Aim"]);
     // 仮モーションの長さ(frame)。プロファイルのactions[name].framesで上書きできます。
-    const DEFAULT_FRAMES = Object.freeze({ SwordAttack: 14, GunFire: 9, GunReload: 40, SkillCast: 26,
+    const DEFAULT_FRAMES = Object.freeze({ SwordAttack: 14, GunFire: 9, GunReload: 40, SkillCast: 26, CrossArms: 32,
         Ultimate: 42, Damage: 12, Down: Infinity });
     const HISTORY_LIMIT = 40;
 
@@ -162,6 +162,7 @@
             GunFire: { sprite: "$DEV3H_GunFire_f3", frames: 3, speed: 2, hold: 0 },
             GunReload: { sprite: "$DEV3H_GunReload_f6", frames: 6, speed: 6, hold: 4 },
             SkillCast: { sprite: "$DEV3H_SkillCast_f6", frames: 6, speed: 4, hold: 4 },
+            CrossArms: { sprite: "$DEV3H_CrossArms_f4", frames: 4, speed: 5, hold: 12 },
             Ultimate: { sprite: "$DEV3H_Ultimate_f8", frames: 8, speed: 5, hold: 4 },
             Damage: { sprite: "$DEV3H_Damage_f3", frames: 3, speed: 4, hold: 0 },
             Down: { sprite: "$DEV3H_Down_f4", frames: 4, speed: 8, hold: 0 }
@@ -172,6 +173,8 @@
             aim: { x: 0, y: -49 }, melee: { x: 0, y: -46 }, vfx: { x: 0, y: -42 }, summon: { x: 0, y: -50 },
             muzzle: { forward: 40, side: 0 }
         },
+        // カード別の動作(未指定のカードは SkillCast)。絶(Zetsu)は胸の前で両腕をクロス。
+        cardActions: { hermes_zetsu: "CrossArms" },
         notes: "DEV3H: 自作の三頭身(4方向。8方向なし)。最終アートが決まったら画像と上の数値を差し替える。"
     });
     registerProfile({ id: "default", heads: 3, visualScale: 1, visualHeightPx: 0, directions: 4 });
@@ -372,6 +375,7 @@
         }
         case "GunReload": return { dx: 0, dy: 2 * bump, sy: 1 - 0.05 * bump };
         case "SkillCast": return { dx: 0, dy: -4 * bump, sy: 1 + 0.05 * bump };
+        case "CrossArms": return { dx: 0, dy: 1 * bump, sy: 1 - 0.02 * bump };
         case "Ultimate": return { dx: 0, dy: -8 * Math.sin(Math.PI * clamp01(t * 1.15)), sy: 1 + 0.09 * bump };
         case "Damage": return { dx: (Math.floor(t * 8) % 2 ? 1 : -1) * 3 * (1 - t), dy: 0, sy: 1 };
         default: return { dx: 0, dy: 0, sy: 1 };
