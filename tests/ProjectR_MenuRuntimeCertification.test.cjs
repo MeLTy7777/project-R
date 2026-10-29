@@ -39,7 +39,11 @@ function grantReal(w) {
     const d = deckApi(w);
     d.assignRingToPlayer("hermes"); d.assignRingToPlayer("apollo");
     for (const id of ["hermes_swift_movement", "hermes_reed_flute_sleep", "hermes_perception_obscure", "hermes_sword_attack",
-        "apollo_golden_arrow", "apollo_plague_attack", "apollo_lyre_calm"]) d.setCardOwned(id, true);
+        "apollo_golden_arrow", "apollo_plague_attack", "apollo_lyre_calm"]) {
+        d.setCardOwned(id, true);
+        // H2C-B2: 所持は実際のコピー数。デッキ構築画面の上限(maxCopies)の確認のため、各カードの上限枚数を所持させる。
+        if (w.ctx.ProjectRCardInventory) w.ctx.ProjectRCardInventory.grantCopies(id, d.definitions.card(id).maxCopies, { source: "test" });
+    }
 }
 
 test("通常メニューの SKILL / ULTIMATE / ITEM が、それぞれの実Sceneへ接続されている(MenuHUD.commandScenes)", () => {

@@ -151,7 +151,7 @@ test("既存の所持を壊さない: すでに持つカードのLevel・既存�
     const w = world();
     const d = w.deck();
     d.assignRingToPlayer("apollo");
-    for (const id of APOLLO) d.setCardOwned(id, true);
+    for (const id of APOLLO) w.ctx.ProjectRCardInventory.grantCopies(id, d.definitions.card(id).maxCopies, { source: "test" }); // H2C-B2: 実コピーとして所持
     d.setCardOwned("hermes_zetsu", true); d.setCardLevel("hermes_zetsu", 3);
     d.setCardOwned("hermes_sword_attack", true); d.setCardLevel("hermes_sword_attack", 2);
     const existing = ["apollo_golden_arrow", "apollo_golden_arrow", "hermes_sword_attack", "apollo_lyre_calm"];
@@ -315,6 +315,8 @@ test("コピー上限: ストレングス10・絶5・他3。超過はメニュ�
     const d = w.deck();
     assert.deepEqual(plain(LEGACY.concat(APOLLO).map(id => d.definitions.card(id).maxCopies)), [3, 2, 3, 3, 3, 2, 3]);
     d.setCardOwned("hermes_sword_attack", true);
+    // H2C-B2: 解放だけでは最小1枚。コピー上限(3)の確認のため、3枚を実際の所持として加える。
+    w.ctx.ProjectRCardInventory.grantCopies("hermes_sword_attack", 3, { source: "test" });
     core.deck.clear();
     for (let i = 0; i < 3; i++) assert.equal(core.deck.add("hermes_sword_attack").ok, true);
     assert.equal(core.deck.add("hermes_sword_attack").reason, "MAX_COPIES_EXCEEDED");
@@ -325,7 +327,8 @@ test("混在デッキ: 新Hermes + Apollo は30枚で有効。Apolloの指輪を
     const d = w.deck();
     w.grantRing();
     d.assignRingToPlayer("apollo");
-    for (const id of APOLLO) d.setCardOwned(id, true);
+    // H2C-B2: Apolloは独立して入手した実コピー(各カードの上限枚数)。Hermesの初期30枚とは別に数える。
+    for (const id of APOLLO) w.ctx.ProjectRCardInventory.grantCopies(id, d.definitions.card(id).maxCopies, { source: "test" });
     const mixed = [];
     for (const [id, , n] of STARTER) for (let i = 0; i < (id === "hermes_strength" ? 4 : id === "hermes_zetsu" ? 3 : 2) && i < n; i++) mixed.push(id);
     while (mixed.length < 22) mixed.push("hermes_strength");
@@ -490,7 +493,7 @@ test("戦闘開始: 30枚の初期デッキで開始でき、手札5枚・山札
     // Hermes 30枚の組成は一意(合計の最大がちょうど30)なので、別の組成にするにはApolloを混ぜる。
     const d = w.deck(), core = w.menu();
     d.assignRingToPlayer("apollo");
-    for (const id of APOLLO) d.setCardOwned(id, true);
+    for (const id of APOLLO) w.ctx.ProjectRCardInventory.grantCopies(id, d.definitions.card(id).maxCopies, { source: "test" }); // H2C-B2: 実コピーとして所持
     for (let i = 0; i < 5; i++) assert.equal(core.deck.remove("hermes_strength").ok, true);
     for (let i = 0; i < 3; i++) assert.equal(core.deck.remove("hermes_zetsu").ok, true);
     for (const id of ["apollo_golden_arrow", "apollo_golden_arrow", "apollo_golden_arrow", "apollo_plague_attack", "apollo_plague_attack",

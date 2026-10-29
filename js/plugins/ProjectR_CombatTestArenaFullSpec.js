@@ -106,7 +106,10 @@
         return true;
     };
     const takeSnapshot = () => {
-        if (!runtime.snapshot) runtime.snapshot = { system: $gameSystem, data: clone(deck().getPersistentData()) };
+        if (!runtime.snapshot) {
+            runtime.snapshot = { system: $gameSystem, data: clone(deck().getPersistentData()) };
+            root.ProjectRCardInventory?.beginFixture?.(); // H2C-B2: 固定デッキの間だけ所持枚数の検証を外す(DEV専用)
+        }
     };
     const restoreSnapshot = () => {
         if (!runtime.snapshot) return false;
@@ -115,6 +118,7 @@
             $gameSystem._projectRCardDeckData = deck().normalizePersistentData(runtime.snapshot.data, deck().definitions);
         }
         runtime.snapshot = null;
+        root.ProjectRCardInventory?.endFixture?.();
         return true;
     };
 

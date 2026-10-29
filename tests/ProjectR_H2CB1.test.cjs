@@ -225,7 +225,7 @@ test("SaveLoadGuardは保護対象(Vision/CombatOcclusion/Hendrix/DotMove/rmmz_*
 });
 
 // ---------------- (3) 所持モデルの現状(記録) ----------------
-test("所持モデルの現状: 所持は「種類ごとのowned/level」だけで、コピー数を持たない。1枚所持でもmaxCopies枚までデッキに入れられる", () => {
+test("所持モデル(H2C-B1の監査 → H2C-B2で置き換え済み): Coreの所持は種類ごとのowned/levelのまま。デッキに入る枚数は別領域の実所持枚数で決まる", () => {
     const w = world();
     const d = w.ctx.ProjectRCardDeck;
     d.assignRingToPlayer("hermes");
@@ -236,14 +236,16 @@ test("所持モデルの現状: 所持は「種類ごとのowned/level」だけ�
     core.deck.clear();
     let added = 0, last = null;
     for (let i = 0; i < 12; i++) { last = core.deck.add("hermes_strength"); if (last.ok) added++; }
-    assert.equal(added, 10, "ストレングスは所持の登録が1回だけでも、maxCopies=10枚までデッキに入る");
+    // H2C-B2: 解放だけの操作は最小1枚。ストレングス(上限10)でもデッキには1枚しか入らない(H2C-B1の監査時は10枚入った)。
+    assert.equal(added, 1, "解放だけ(旧来の操作)では最小1枚");
     assert.equal(last.ok, false);
-    assert.equal(last.reason, "MAX_COPIES_EXCEEDED");
-    assert.equal(d.getDeck().filter(id => id === "hermes_strength").length, 10);
-    // Core自体も「所持枚数」ではなく maxCopies だけで判定する(11枚のデッキは上限超過の理由だけ。所持数の理由は無い)
+    assert.equal(last.reason, "CARD_COPIES_EXCEEDS_OWNED");
+    assert.equal(d.getDeck().filter(id => id === "hermes_strength").length, 1);
+    // Coreの保存形式は変わらない(コピー数は別の版つき領域)。
+    assert.deepEqual(Object.keys(state.cardOwnership.hermes_strength).sort(), ["level", "owned"]);
     const reasons = plain(d.getDeckInvalidReasons(Array(11).fill("hermes_strength"))).map(r => r.code);
     assert.ok(reasons.includes("MAX_COPIES_EXCEEDED"));
-    assert.equal(reasons.some(code => /OWNED_COPIES|NOT_ENOUGH_COPIES/.test(code)), false, "所持コピー数の検査は存在しない");
+    assert.ok(reasons.includes("CARD_COPIES_EXCEEDS_OWNED"));
 });
 
 console.log(`\n${passed} tests passed`);

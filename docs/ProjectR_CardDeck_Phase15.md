@@ -169,3 +169,8 @@ console.log(ProjectRCardDeck.getBattleState());
 - `ownedCopies` は保存値ではなく派生値です(所持していれば `maxCopies`、未所持は 0)。所持の保存は `owned` と `level` のみ。デッキ構築画面の表示は「デッキ内 N / コピー上限 M枚」に変更しました。
 - 将来の枚数管理案(別の版つき領域)は未実装です。
 - 詳細・テスト・実機の結果: `docs/ProjectR_HermesProductionDeck_H2C_B1.md`。
+
+## 追記(Phase H2C-B2): 保存互換
+
+- CardDeckCoreの保存(`_projectRCardDeckData`)は変更なし。所持枚数は別の版つき領域 `_projectRCardInventory`(schema 1)で、旧セーブには領域が無く、ロード時に1回だけ移行します(ファイルは次にセーブするまで書き換わりません)。
+- 詳細・テスト・実機の結果: `docs/ProjectR_CardCopyOwnership_H2C_B2.md`。

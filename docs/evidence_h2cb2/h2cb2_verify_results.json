@@ -1,0 +1,338 @@
+{
+  "note": "A部: 新しいゲームを一時フォルダでセーブ/ロード。B部: 保護コピーを読み取りのみで読み込み。入力: 戦闘のQ/Eだけ実キー(CDP)",
+  "legacyReports": {
+    "1": {
+      "source": "legacy",
+      "total": 0,
+      "deckProblems": [],
+      "diagnostics": [],
+      "cards": []
+    },
+    "2": {
+      "source": "legacy",
+      "total": 0,
+      "deckProblems": [],
+      "diagnostics": [],
+      "cards": []
+    }
+  },
+  "results": [
+    {
+      "id": "A0 前提: CardInventoryが読み込まれ、Playtestで動いている(Coreは変更していない)",
+      "ok": true
+    },
+    {
+      "id": "A1 Hermesの指輪の初回入手(イベントのプラグインコマンド)で、実コピーがちょうど 3/3/3/10/3/3/5",
+      "ok": true,
+      "detail": {
+        "before": {
+          "copies": 0,
+          "owner": "unowned"
+        },
+        "got": {
+          "hermes_zetsu": 5,
+          "hermes_sweep": 3,
+          "hermes_reed_flute": 3,
+          "hermes_issen": 3,
+          "hermes_strength": 10,
+          "hermes_veil": 3,
+          "hermes_psychopomp": 3
+        }
+      }
+    },
+    {
+      "id": "A2 所持している物理コピーの合計は30枚",
+      "ok": true,
+      "detail": 30
+    },
+    {
+      "id": "A3 初期化されたデッキは30枚で、所持枚数の検証も含めて有効",
+      "ok": true,
+      "detail": {
+        "n": 30,
+        "valid": true,
+        "reasons": [],
+        "inv": []
+      }
+    },
+    {
+      "id": "A4 デッキ構築画面(実Scene)の詳細に「ストレングス：所持10枚 / デッキ10枚 / 上限10枚」が描かれ、一覧には「10/10枚」が描かれる",
+      "ok": true,
+      "detail": {
+        "detail": "ストレングス：所持10枚 / デッキ10枚 / 上限10枚",
+        "hasRow": true
+      }
+    },
+    {
+      "id": "A13 有効な30枚デッキで戦闘が始まる(手札5枚・山札25枚)",
+      "ok": true,
+      "detail": {
+        "begin": {
+          "ok": true,
+          "reason": null
+        },
+        "hand": 5,
+        "draw": 25
+      }
+    },
+    {
+      "id": "A14 実キー(Q/E)でカードを使っても、物理所持・報酬記録・デッキは戦闘中も戦闘後も変わらない(使えたカード>=1)",
+      "ok": true,
+      "detail": {
+        "used": 4
+      }
+    },
+    {
+      "id": "A14b 押されたままのキーがない",
+      "ok": true,
+      "detail": []
+    },
+    {
+      "id": "A5 デッキからストレングスを6枚外しても、所持は10枚のまま(カードは消えない)",
+      "ok": true,
+      "detail": {
+        "r": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "deck": 24
+      }
+    },
+    {
+      "id": "A6 所持2枚のカードは2枚まで追加でき、3枚目は拒否される(CARD_COPIES_EXCEEDS_OWNED・日本語の理由つき)",
+      "ok": true,
+      "detail": {
+        "r": [
+          "ok",
+          "ok",
+          "CARD_COPIES_EXCEEDS_OWNED"
+        ],
+        "msg": "所持枚数を超えています：黄金の弓矢（所持2枚・デッキ3枚）"
+      }
+    },
+    {
+      "id": "A7 同じ報酬IDの再付与は増えず、別の報酬IDで1枚増やすと3枚目が入る。上限(3)を超える4枚目は拒否(MAX_COPIES_EXCEEDED)",
+      "ok": true,
+      "detail": {
+        "dup": false,
+        "granted": true,
+        "add": true,
+        "over": "MAX_COPIES_EXCEEDED",
+        "owned": 3
+      }
+    },
+    {
+      "id": "A8 ストレングスを15枚所持しても、デッキに入るのは上限の10枚まで。15枚の所持は保存されたまま",
+      "ok": true,
+      "detail": {
+        "r": [
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "MAX_COPIES_EXCEEDED",
+          "MAX_COPIES_EXCEEDED"
+        ],
+        "owned": 15,
+        "limit": 10,
+        "inDeck": 10
+      }
+    },
+    {
+      "id": "A9 実際のセーブ(一時フォルダ)→新しいゲーム→本物のロードを2回: 所持枚数・報酬記録・デッキ・Levelが完全に同じ",
+      "ok": true,
+      "detail": {
+        "saved": "ok",
+        "files": [
+          "file1.rmmzsave",
+          "global.rmmzsave"
+        ],
+        "afterFresh": 0,
+        "total": 38
+      }
+    },
+    {
+      "id": "A10 ロード後の再入手(2種のコマンドとAPI)でも、物理コピーは増えない(30+追加分のまま)・デッキも変わらない",
+      "ok": true,
+      "detail": {
+        "dup": "alreadyOwned",
+        "total": 38
+      }
+    },
+    {
+      "id": "A11 指輪を仲間へ渡すと、Hermesのカード30枚は無効(REQUIRED_RING_NOT_OWNED)になるが、所持もデッキも消えない(所持枚数の理由は出ない)",
+      "ok": true,
+      "detail": {
+        "ok": true,
+        "codes": {
+          "REQUIRED_RING_NOT_OWNED": 30
+        },
+        "deck": 30,
+        "valid": false
+      }
+    },
+    {
+      "id": "A12 指輪を戻すとデッキは再び有効。コピーは増えない",
+      "ok": true,
+      "detail": {
+        "ok": true,
+        "valid": true
+      }
+    },
+    {
+      "id": "C1 旧形式の保存(旧カード7種19枚のデッキ・Level2)を本物のロードで読む: 所持枚数が max(1, デッキ内の枚数) に移行され、旧デッキは並びも含めて変わらない。新Hermesは付与されない",
+      "ok": true,
+      "detail": {
+        "saved": "ok",
+        "errs": [],
+        "copies": {
+          "hermes_swift_movement": 3,
+          "hermes_reed_flute_sleep": 2,
+          "hermes_perception_obscure": 3,
+          "hermes_sword_attack": 3,
+          "apollo_golden_arrow": 3,
+          "apollo_plague_attack": 2,
+          "apollo_lyre_calm": 3
+        },
+        "deck": 19,
+        "diag": [
+          "RECONSTRUCTED_MINIMUM",
+          "RECONSTRUCTED_MINIMUM",
+          "RECONSTRUCTED_MINIMUM",
+          "RECONSTRUCTED_MINIMUM",
+          "RECONSTRUCTED_MINIMUM",
+          "RECONSTRUCTED_MINIMUM",
+          "RECONSTRUCTED_MINIMUM",
+          "RING_WITHOUT_GRANT_RECORD"
+        ]
+      }
+    },
+    {
+      "id": "C1b 旧デッキは自動で削除・補完されない(19枚のまま=30枚に足りない理由だけ)。所持枚数の検証は満たす。Levelは保たれる。保存→読込を繰り返しても所持枚数は同じ",
+      "ok": true,
+      "detail": {
+        "problems": [],
+        "valid": false,
+        "reasons": [
+          "INVALID_DECK_SIZE"
+        ],
+        "level": 2
+      }
+    },
+    {
+      "id": "C2 H2C-Aの付与記録(30枚)つきの旧形式の保存: 記録の7種30枚が所持枚数になる(verifiedGrant)。デッキ30枚は有効のまま。再取得・明示付与でも増えない",
+      "ok": true,
+      "detail": {
+        "copies": {
+          "hermes_zetsu": 5,
+          "hermes_sweep": 3,
+          "hermes_reed_flute": 3,
+          "hermes_issen": 3,
+          "hermes_strength": 10,
+          "hermes_veil": 3,
+          "hermes_psychopomp": 3
+        },
+        "basis": "verifiedGrant",
+        "dup": [
+          "alreadyOwned",
+          "alreadyGranted"
+        ]
+      }
+    },
+    {
+      "id": "C3 未解放のカード・未知のカードIDがデッキにある旧形式の保存: デッキは残り、未解放は所持0のまま・勝手に解放されない・診断に出る。未知IDのデッキ記録は保存領域に残る",
+      "ok": true,
+      "detail": {
+        "copies": {
+          "hermes_sword_attack": 1
+        },
+        "deck": [
+          "hermes_sword_attack",
+          "hermes_zetsu",
+          "ghost_card",
+          "ghost_card"
+        ],
+        "diag": [
+          "RECONSTRUCTED_MINIMUM:hermes_sword_attack",
+          "LOCKED_CARD_IN_DECK:hermes_zetsu",
+          "UNKNOWN_CARD_IN_DECK:ghost_card",
+          "UNKNOWN_OWNERSHIP_PRESERVED:ghost_card",
+          "RING_WITHOUT_GRANT_RECORD:undefined"
+        ]
+      }
+    },
+    {
+      "id": "B1 保護コピーのslot1を本物のロード経路で読み込み: エラー無し・ゲームループが動く。所持枚数が移行され(source=legacy)、保存デッキは削除・並べ替えされない",
+      "ok": true,
+      "detail": {
+        "errs": [],
+        "frames": 72,
+        "deck": 0,
+        "report": {
+          "source": "legacy",
+          "total": 0,
+          "deckProblems": [],
+          "diagnostics": [],
+          "cards": []
+        },
+        "details": {
+          "scene": "Scene_ProjectRDeckBuilder",
+          "items": 0
+        }
+      }
+    },
+    {
+      "id": "B1b 移行は1回だけで、指輪・解放・Level・デッキは読込前後と画面の開閉後で同じ。メモリ上のセーブ往復を挟んでも所持枚数は同じ(増えない)。新Hermesは付与されない(新Hermes所持: 0種)",
+      "ok": true,
+      "detail": {
+        "copies": {}
+      }
+    },
+    {
+      "id": "B2 保護コピーのslot2を本物のロード経路で読み込み: エラー無し・ゲームループが動く。所持枚数が移行され(source=legacy)、保存デッキは削除・並べ替えされない",
+      "ok": true,
+      "detail": {
+        "errs": [],
+        "frames": 72,
+        "deck": 0,
+        "report": {
+          "source": "legacy",
+          "total": 0,
+          "deckProblems": [],
+          "diagnostics": [],
+          "cards": []
+        },
+        "details": {
+          "scene": "Scene_ProjectRDeckBuilder",
+          "items": 0
+        }
+      }
+    },
+    {
+      "id": "B2b 移行は1回だけで、指輪・解放・Level・デッキは読込前後と画面の開閉後で同じ。メモリ上のセーブ往復を挟んでも所持枚数は同じ(増えない)。新Hermesは付与されない(新Hermes所持: 0種)",
+      "ok": true,
+      "detail": {
+        "copies": {}
+      }
+    },
+    {
+      "id": "BZ 押されたままのキーがない・Consoleのエラーなし",
+      "ok": true,
+      "detail": {
+        "stuck": [],
+        "errors": [],
+        "errorLog": []
+      }
+    }
+  ]
+}

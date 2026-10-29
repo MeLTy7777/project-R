@@ -105,6 +105,7 @@
             equipActorIds: ring ? [...ring.equipActorIds] : [], defined: !!ring
         };
     };
+    const inventory = () => root.ProjectRCardInventory || null;
     const skillFor = cardId => {
         const skillId = hud()?.getCardPresentation?.(cardId)?.skillId;
         return skillId && typeof $dataSkills !== "undefined" ? $dataSkills[skillId] || null : null;
@@ -136,9 +137,11 @@
             targetLabel: override.targetLabel || TARGET_LABEL[definition?.targetType] || definition?.targetType || "",
             cooldownSeconds: definition?.cooldownSeconds ?? 0,
             maxCopies: definition?.maxCopies ?? 0,
-            // 所持は「カードの種類」単位で、デッキに入れられる枚数の上限 = 最大コピー数(枚数ごとの在庫は持たない)。
-            // 所持コピー数はまだ保存されていない(H2C-B1の監査)。所持している種類は、デッキに入れられる上限(maxCopies)まで使える。
-            ownedCopies: deckApi()?.isCardOwned?.(id) ? (definition?.maxCopies ?? 0) : 0,
+            // H2C-B2: ownedCopies は実際の所持コピー数(ProjectR_CardInventory)。デッキに入れられる最大は min(所持, maxCopies)。
+            // CardInventory が無い環境(古いテスト等)では、従来どおり「解放済みならmaxCopies」と読む。
+            ownedCopies: inventory() ? inventory().getOwnedCopies(id) : (deckApi()?.isCardOwned?.(id) ? (definition?.maxCopies ?? 0) : 0),
+            deckLimit: inventory() ? inventory().getDeckLimit(id) : (deckApi()?.isCardOwned?.(id) ? (definition?.maxCopies ?? 0) : 0),
+            ownershipBasis: inventory() ? inventory().basisOf(id) : "legacyDerived",
             maxLevel: definition?.maxLevel ?? 1,
             levels: Array.isArray(override.levels) ? override.levels.map(text) : []
         };
@@ -165,6 +168,7 @@
             case "CARD_NOT_OWNED": return `所持していないカード：${name}`;
             case "REQUIRED_RING_NOT_OWNED": return `必要な指輪を所持していない：${name}（${ring}）`;
             case "MAX_COPIES_EXCEEDED": return `コピー上限超過：${name}（${reason.actual}/${reason.maximum}）`;
+            case "CARD_COPIES_EXCEEDS_OWNED": return `所持枚数を超えています：${name}（所持${reason.owned}枚・デッキ${reason.actual}枚）`;
             case "INVALID_CARD_ID": return `不明なカード：${reason.cardId}`;
             case "INVALID_RING_ID": return `不明な指輪：${reason.ringId}`;
             case "ACTOR_NOT_ALLOWED": return "この仲間はその指輪を装備できません。";
@@ -222,6 +226,7 @@
                 cardId: definition.cardId, info, level: levelOf(definition.cardId), maxLevel: definition.maxLevel,
                 ringId: definition.ringId, godId: info.godId, ringOwned, usable: invalid.length === 0,
                 invalidReasons: invalid, copiesInDeck: copiesIn(current, definition.cardId),
+                ownedCopies: info.ownedCopies, deckLimit: info.deckLimit, ownershipBasis: info.ownershipBasis,
                 maxCopies: definition.maxCopies, add: addCheck(definition.cardId)
             });
         }

@@ -179,7 +179,11 @@
     const takeSnapshot = () => {
         if (runtime.snapshot) return;
         const d = deck();
-        if (d) runtime.snapshot = clone(d.getPersistentData());
+        if (d) {
+            runtime.snapshot = clone(d.getPersistentData());
+            // H2C-B2: 固定デッキの間だけ所持枚数の検証を外す(終了時に保存領域を元へ戻す)。DEVアリーナ専用。
+            root.ProjectRCardInventory?.beginFixture?.();
+        }
     };
 
     const restoreSnapshot = () => {
@@ -188,6 +192,7 @@
         if (!runtime.snapshot || !system || !d) return false;
         system._projectRCardDeckData = d.normalizePersistentData(runtime.snapshot, d.definitions);
         runtime.snapshot = null;
+        root.ProjectRCardInventory?.endFixture?.();
         return true;
     };
 

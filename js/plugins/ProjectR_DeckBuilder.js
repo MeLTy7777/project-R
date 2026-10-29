@@ -9,7 +9,7 @@
  * ProjectR_DeckBuilder.js
  *
  * 主人公のデッキ（30枚）を作る画面 Scene_ProjectRDeckBuilder です。
- * 検証（30枚・所持・コピー上限・指輪）はすべて ProjectR_CardDeckCore の結果を表示するだけで、
+ * 検証（30枚・所持・コピー上限・指輪）はすべて ProjectR_CardDeckCore の結果を表示するだけで(H2C-B2: 所持枚数の検証は ProjectR_CardInventory がCoreの結果に加える)、
  * この画面は独自の検証を持ちません。無効なデッキは自動修復せず、理由をそのまま表示します。
  * カードは CardDefinitions から自動で並びます（カード名はコードに書きません）。
  *
@@ -129,8 +129,9 @@
             w.drawText(info.name, nameX, rect.y, rect.width - 40 - tail);
             w.resetTextColor();
             w.drawText(`Lv${entry.level}/${entry.maxLevel}`, rect.x + rect.width - tail, rect.y, 70, "right");
-            w.changeTextColor(entry.copiesInDeck >= entry.maxCopies ? ColorManager.crisisColor() : ColorManager.normalColor());
-            w.drawText(`${entry.copiesInDeck}/${entry.maxCopies}枚`, rect.x + rect.width - tail + 74, rect.y, 70, "right");
+            // 一覧の右端は「デッキ内 / 所持」。コピー上限は下の詳細に出す。所持かコピー上限に達したら強調する。
+            w.changeTextColor(entry.copiesInDeck >= Math.min(entry.ownedCopies, entry.maxCopies) ? ColorManager.crisisColor() : ColorManager.normalColor());
+            w.drawText(`${entry.copiesInDeck}/${entry.ownedCopies}枚`, rect.x + rect.width - tail + 74, rect.y, 70, "right");
             w.resetTextColor();
             if (!entry.ringOwned) {
                 w.changeTextColor(ColorManager.deathColor());
@@ -221,7 +222,10 @@
                 const line = w.lineHeight();
                 w.drawText(`${info.godName} / ${info.ringName}　分類:${info.categoryLabel}　${info.rarityLabel}`, 0, line, width);
                 w.drawText(`Level ${entry.level} / 最大${entry.maxLevel}　Cooldown ${info.cooldownSeconds}秒　対象:${info.targetLabel}`, 0, line * 2, width);
-                w.drawText(`デッキ内 ${deckCount} / コピー上限 ${info.maxCopies}枚`, 0, line * 3, width);
+                // H2C-B2: 実際の所持枚数 / デッキ内の枚数 / コピー上限。旧セーブから推定した最小値は、そのことを明記する。
+                const estimate = info.ownershipBasis === "reconstructedMinimum" ? "　(旧セーブからの推定最小値)" : "";
+                const surplus = info.ownedCopies > info.maxCopies ? `　(上限を超える${info.ownedCopies - info.maxCopies}枚は保管)` : "";
+                w.drawText(`${info.name}：所持${info.ownedCopies}枚 / デッキ${deckCount}枚 / 上限${info.maxCopies}枚${surplus}${estimate}`, 0, line * 3, width);
                 let y = line * 4;
                 y = w.drawWrapped(info.description, 0, y, width);
                 // カードごとのLevel別効果(Level N は Level N-1 までの効果に加わる。同じ効果の数値は置き換わる)。現在のLevelを強調する。

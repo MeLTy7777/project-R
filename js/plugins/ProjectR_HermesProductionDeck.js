@@ -1,13 +1,15 @@
 /*:
  * @target MZ
- * @plugindesc v1.0.0 Hermes本番デッキ統合(H2C-A): 指輪の初回入手で7種30枚を一度だけ付与・デッキ初期化・表示名/説明/Level別効果・旧セーブの診断。
+ * @plugindesc v1.1.0 Hermes本番デッキ統合(H2C-A/H2C-B2): 指輪の初回入手で7種30枚を一度だけ付与・デッキ初期化・表示名/説明/Level別効果・旧セーブの診断。
  * @author ProjectR
  * @base ProjectR_CardDeckCore
  * @base ProjectR_CardCatalog
+ * @base ProjectR_CardInventory
  * @base ProjectR_BattleHUD
  * @base ProjectR_MenuCore
  * @base ProjectR_MenuIntegration
  * @orderAfter ProjectR_CardCatalog
+ * @orderAfter ProjectR_CardInventory
  * @orderAfter ProjectR_MenuIntegration
  * @orderAfter ProjectR_HermesPsychopomp
  *
@@ -27,7 +29,8 @@
  *     ・既存のプラグインコマンド ProjectR_MenuIntegration「指輪を主人公に入手させる」で ringId=hermes(本プラグインが包んで連動)
  *     ・API ProjectRHermesProductionDeck.acquireRing("hermes")
  *   付与 = 一閃3 / サイコポンポス3 / ヴェイル3 / ストレングス10 / 薙ぎ払い3 / 葦笛3 / 絶5 = 7種30枚(正本はProjectR_CardCatalogの設計データ)。
- *   所持は「カードの種類」単位で、デッキに入れられる枚数の上限は各カードのmaxCopiesです(枚数ごとの在庫は持ちません)。
+ *   H2C-B2: 付与は実際の所持コピー数(ProjectR_CardInventory)として加算します(30枚の物理コピー)。デッキに入れられる枚数は min(所持枚数, maxCopies)。
+ *   すでに独立して持っているコピーは減らしも上書きもせず、その上に初期コピーを加えます(報酬ID hermes.ring.starter で一度だけ)。
  *   すでに所持しているカードのLevelは下げません。デッキが空のときだけ、付与した30枚でデッキを初期化します。既存のデッキは上書きしません。
  *   付与の記録は $gameSystem._projectRHermesProduction(version 1)に保存します。記録が無い旧セーブは「未付与」と読みます。
  *   2回目の入手・セーブ/ロード・指輪を仲間に渡して戻した場合・別の経路での再入手では、付与も初期化もしません(二重付与なし)。
@@ -57,6 +60,7 @@
     const RING_ID = "hermes";
     const STATE_KEY = "_projectRHermesProduction";
     const STATE_VERSION = 1;
+    const STARTER_REWARD_ID = "hermes.ring.starter";
 
     const deck = () => root.ProjectRCardDeck;
     const catalog = () => root.ProjectRCardCatalog;
@@ -203,12 +207,17 @@
         const problems = starterProblems();
         if (problems.length) return { ok: false, granted: false, reason: "definitionsInvalid", problems };
 
+        const inventory = root.ProjectRCardInventory;
+        if (!inventory) return { ok: false, granted: false, reason: "noInventory" };
         const set = starterSet();
         const ownedBefore = set.filter(card => api.isCardOwned(card.cardId)).map(card => card.cardId);
-        for (const card of set) {
-            const result = api.setCardOwned(card.cardId, true); // 既存のLevelは変えない(setCardOwnedは現在のLevelを保つ)
-            if (!result.ok) return { ok: false, granted: false, reason: "grantFailed", detail: result.reasons };
-        }
+        const copiesBefore = {};
+        const bundle = {};
+        for (const card of set) { copiesBefore[card.cardId] = inventory.getOwnedCopies(card.cardId); bundle[card.cardId] = card.copies; }
+        // 実際の所持コピーとして加算する(解放も同時に行い、既存のLevelは変えない)。報酬IDで二重付与を防ぐ。
+        const granted = inventory.grantBundle(STARTER_REWARD_ID, bundle, { source: "hermesStarter:" + source });
+        if (!granted.ok) return { ok: false, granted: false, reason: "grantFailed", detail: granted.reasons };
+        if (!granted.granted) return { ok: true, granted: false, reason: "alreadyGranted" };
         // デッキが空で、指輪を主人公が持つときだけ初期化する。既存のデッキ(不正でも)は上書きしない。
         let deckInitialized = false;
         if (api.getDeck().length === 0 && ringOwner(RING_ID) === OWNER_PLAYER) {
@@ -221,9 +230,9 @@
         const cards = {};
         for (const card of set) cards[card.cardId] = card.copies;
         readState().rings[RING_ID] = {
-            granted: true, source, version: STATE_VERSION, cards, totalCopies: starterTotal(), deckInitialized, ownedBefore
+            granted: true, source, version: STATE_VERSION, cards, totalCopies: starterTotal(), deckInitialized, ownedBefore, copiesBefore
         };
-        return { ok: true, granted: true, reason: "granted", source, cards, totalCopies: starterTotal(), deckInitialized, ownedBefore };
+        return { ok: true, granted: true, reason: "granted", source, cards, totalCopies: starterTotal(), deckInitialized, ownedBefore, copiesBefore };
     };
     // 公開の grantStarter は「明示的な付与」専用。指輪をすでに持つ旧セーブを読み込んだだけでは呼ばれない。
     const grantStarter = (options = {}) => {
@@ -315,9 +324,10 @@
             ring: { id: RING_ID, owner: ringOwner(RING_ID), granted: !!record?.granted, record: record ? copy(record) : null },
             production: {
                 cards: production.map(card => ({ cardId: card.cardId, name: card.name, owned: !!api?.isCardOwned(card.cardId),
-                    level: api?.getPersistentData?.().cardOwnership?.[card.cardId]?.level ?? 1, copies: card.copies, inDeck: count(card.cardId) })),
+                    level: api?.getPersistentData?.().cardOwnership?.[card.cardId]?.level ?? 1, copies: card.copies, inDeck: count(card.cardId),
+                    ownedCopies: root.ProjectRCardInventory?.getOwnedCopies?.(card.cardId) ?? 0 })),
                 ownedKinds: production.filter(card => api?.isCardOwned(card.cardId)).length,
-                totalCopies: production.reduce((sum, card) => sum + (api?.isCardOwned(card.cardId) ? card.copies : 0), 0),
+                totalCopies: production.reduce((sum, card) => sum + (root.ProjectRCardInventory?.getOwnedCopies?.(card.cardId) ?? 0), 0),
                 problems: starterProblems()
             },
             legacy: {
@@ -364,7 +374,8 @@
     const presented = registerPresentation();
 
     root.ProjectRHermesProductionDeck = Object.freeze({
-        VERSION: "1.0.0",
+        VERSION: "1.1.0",
+        STARTER_REWARD_ID,
         RING_ID,
         STATE_KEY,
         display: () => DISPLAY,

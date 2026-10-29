@@ -69,6 +69,8 @@
             for (let i = 0; i < copies; i++) ids.push(id);
         }
         d.setDeck(ids);
+        // 旧セーブには所持枚数が無い。ロード時と同じ移行(解放済み= max(1, デッキ内の枚数))をやり直させる。
+        if (typeof $gameSystem !== "undefined" && $gameSystem) delete $gameSystem._projectRCardInventory;
         return { ok: true, owner: d.getRingOwner("hermes"), granted: production().hasGranted(), deck: d.getDeck().length };
     };
 
