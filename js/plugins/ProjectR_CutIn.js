@@ -32,8 +32,9 @@
  *
  * 【通常カード】発動に成功し消費されたときだけ(requestUseCardがok)、画面の左上または右上(ランダム)に
  *   短いラベル型で神の目元を出します。出すカードは CutInCardIds で明示したものだけです(既存カードの見た目は変えません)。
- * 【Ultimate】show({kind:"ultimate", godId}) で、画面中央に大きく神と主人公の目元を出します。向きは
- *   横または縦をランダムに選びます。※ProjectR_UltimateActivationとの接続は次Phase(現在は呼び出し口のみ)。
+ * 【Ultimate】ProjectR_UltimateActivationが「発動した(ok かつ started)」と記録したときだけ、画面中央に大きく
+ *   神と主人公の目元を出します(向きは横/縦をランダム)。結果を読むだけで、Gauge・Divine HP・神・ダメージ・クールダウンには触れません。
+ *   無効な試行(Gauge不足など)では出ません。show({kind:"ultimate", godId}) の直接呼び出しも可能です。
  *
  * 【描画順】Map/背景 → カットイン → 操作キャラクター。カットインはVision(暗幕)層より上に出し、
  *   その上に操作キャラクター本体の複製を重ねます(カットインが主人公を隠さないため)。戦闘HUDはさらに上のWindow層です。
@@ -234,6 +235,25 @@
         };
     }
 
+    // Ultimate: 既存の発動経路(ProjectR_UltimateActivation)が「発動した(started)」と記録した結果だけを、読み取って出す。
+    // Gauge・Divine HP・神の状態・ダメージ・Ultimateのクールダウンには一切触れない(読むだけ)。無効な試行(ok=false)では出さない。
+    let lastUltimateSerial; // 最初の確認では現在値を覚えるだけ(ロード直後の古い結果で出さない)
+    const pollUltimate = () => {
+        const result = root.ProjectRUltimateActivation?.getLastUltimateActivationResult?.();
+        const serial = Number.isFinite(result?.serial) ? result.serial : null;
+        if (lastUltimateSerial === undefined || serial === lastUltimateSerial) { lastUltimateSerial = serial; return null; }
+        lastUltimateSerial = serial;
+        if (result.ok === true && result.started === true && result.godId) return show({ kind: "ultimate", godId: String(result.godId) });
+        return null;
+    };
+    if (typeof Game_Map !== "undefined") {
+        const _mapUpdate = Game_Map.prototype.update;
+        Game_Map.prototype.update = function(sceneActive) {
+            _mapUpdate.apply(this, arguments);
+            if (sceneActive) { try { pollUltimate(); } catch (_error) { /* 表示のみ */ } }
+        };
+    }
+
     // 発動に成功し消費されたときだけ(失敗・拒否では出さない)。
     if (deck?.requestUseCard) {
         const _requestUseCard = deck.requestUseCard;
@@ -263,7 +283,7 @@
     }
 
     root.ProjectRCutIn = {
-        show, tick, clear,
+        show, tick, clear, pollUltimate,
         getActive: () => active.map(e => ({ ...e })),
         setRandom: fn => { random = typeof fn === "function" ? fn : Math.random; },
         assets: () => ({ gods: { ...GOD_EYES }, player: PLAYER_EYES }),

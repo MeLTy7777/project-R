@@ -28,7 +28,7 @@
  *   library : VFX Designerのライブラリ名(Show VFX from Libraryに渡す)
  *   sheet   : { file(img/pictures/からの相対・拡張子なし), rows, columns, fps }。ライブラリに登録が無いとき、
  *             同じスプライトシートを公式「Show VFX」(showAnimatedPicture)で再生する代替です。
- *   anchor  : "player"  = 発動後のプレイヤー位置(追従)。ライブラリ再生。
+ *   anchor  : "player"  = プレイヤー位置。ライブラリ再生。stick:true なら再生開始時の位置に固定(移動後も残る)、無ければ追従。
  *             "origin"  = play時に渡す origin(出発点の実座標)に固定。公式Show VFXの位置オフセット+stickModeで再生。
  *                         (ライブラリ再生はプレイヤー移動後に非同期で作られるため、出発点には置けないため)
  *   scale / opacity / offsetX / offsetY / blend / loop は任意。
@@ -53,7 +53,8 @@
     // 絶(Zetsu)の黒白ノイズ。DEV用の自作スプライトシート(8コマ・4列x2行)。最終素材はlibraryの画像を差し替えるだけ。
     const NOISE_SHEET = Object.freeze({ file: "Animation/ProjectR_Zetsu_Noise", rows: 2, columns: 4, fps: 30 });
     const defaults = {
-        "hermes_zetsu.departure": { library: "ProjectR_Zetsu_Departure", sheet: NOISE_SHEET, anchor: "origin", scale: 100, opacity: 255, offsetY: -24 },
+        // 出発点: 予備動作の間(移動の前)にプレイヤーへ出し、stickでその場(出発点)に固定する。移動後もノイズは出発点に残る。
+        "hermes_zetsu.departure": { library: "ProjectR_Zetsu_Departure", sheet: NOISE_SHEET, anchor: "player", stick: true, scale: 100, opacity: 255, offsetY: -24 },
         "hermes_zetsu.arrival": { library: "ProjectR_Zetsu_Arrival", sheet: NOISE_SHEET, anchor: "player", scale: 120, opacity: 255, offsetY: -24 }
     };
     const mappings = new Map();
@@ -136,11 +137,11 @@
                 result = offset ? playSheet(key, definition, offset, true) : fail("invalidOrigin", key);
             } else if (definition.library && libraryKnown.get(definition.library) !== false && hasCommand("showAnimationFromLibrary")) {
                 call("showAnimationFromLibrary", { animationName: definition.library, eventId: "player",
-                    loopCount: String(definition.loop || 1), stickMode: "false" });
+                    loopCount: String(definition.loop || 1), stickMode: String(!!definition.stick) });
                 active.push({ key, note: null, library: definition.library });
                 result = { ok: true, mode: "library" };
             } else {
-                result = playSheet(key, definition, { x: 0, y: 0 }, false);
+                result = playSheet(key, definition, { x: 0, y: 0 }, !!definition.stick);
             }
             if (result.ok) stats.lastMode = result.mode;
             return result;

@@ -313,6 +313,11 @@
         state.displayed = key;
     };
     const stopAll = () => {
+        try {
+            const sprite = typeof ShxWeaponSpriteH !== "undefined" ? ShxWeaponSpriteH : null;
+            if (hiddenState && sprite) sprite.visible = hiddenState.visible;
+            hiddenState = null;
+        } catch (_error) { /* 表示のみ */ }
         cancelReload();
         clearBullets();
         state.cooldown = 0;
@@ -433,8 +438,24 @@
         sprite.rotation += Math.sign(delta) * 0.5 * ease;
         return true;
     };
+    // 見た目だけ: 両腕を使う動作(絶のCrossArms)の間は、構えた銃のスプライトを隠す。装備・弾薬・リロード・攻撃可否は変えない。
+    // 公式Display Weaponは毎フレーム位置を置き直すので、ここ(公式の後)で隠し、動作が終わったら隠す前の値へ戻す。
+    const HIDE_DURING = ["CrossArms"];
+    let hiddenState = null; // { visible } 隠す前の値
+    const syncPoseHide = sprite => {
+        const api = presentation();
+        const hide = !!sprite && !!api && HIDE_DURING.some(name => api.isActive?.(name) === true);
+        if (hide) {
+            if (!hiddenState) hiddenState = { visible: sprite.visible };
+            sprite.visible = false;
+        } else if (hiddenState) {
+            if (sprite) sprite.visible = hiddenState.visible;
+            hiddenState = null;
+        }
+    };
     const applyKick = () => {
         const sprite = typeof ShxWeaponSpriteH !== "undefined" ? ShxWeaponSpriteH : null;
+        try { syncPoseHide(sprite); } catch (_error) { /* 表示のみ */ }
         if (sprite) applyReloadDip(sprite);
         if (state.kick <= 0) return false;
         state.kick = Math.max(0, state.kick - 1 / 9);
@@ -485,7 +506,7 @@
         status: () => ({ equipped: !!equippedGun(), ammo: ammo(), capacity: capacity(), reserve: reserve(),
             reloading: state.reloading, cooldown: state.cooldown, shots: state.shots, dryFires: state.dryFires,
             reloads: state.reloads, lastShot: state.lastShot && { ...state.lastShot }, lastReload: state.lastReload && { ...state.lastReload },
-            displayed: state.displayed, bullets: bullets.size }),
+            displayed: state.displayed, bullets: bullets.size, weaponHidden: !!hiddenState }),
         getActiveBullets: () => [...bullets].map(([eventId, r]) => ({ eventId, age: r.age, degree: r.degree, rotation: r.event._rotation })),
         diagnostics: () => ({ weapon: leaderWeapon()?.name || null, gun: !!equippedGun(), canUse: canUseWeapon(), ...root.ProjectRGunSystem.status() }),
         _sync: syncDisplay, _stop: stopAll, _applyKick: applyKick

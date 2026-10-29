@@ -12,6 +12,13 @@
  * @orderAfter ProjectR_CardModifiers
  * @orderAfter ProjectR_CutIn
  *
+ * @param WindupFrames
+ * @text 予備動作のフレーム数(map更新)
+ * @desc 成功確定から実際の移動までの間(腕クロス・Hermes・出発点のノイズ)。0なら即移動。操作・Cooldownは止めません。
+ * @type number
+ * @min 0
+ * @default 8
+ *
  * @help
  * ProjectR_HermesZetsu.js
  *
@@ -35,9 +42,12 @@
  *   外れでは消費せず、時間切れで消えます。カードの攻撃・Ultimate・継続ダメージは対象外。
  *   連続使用でも強化は1つだけ(置換)。戦闘終了・マップ移動・ロード・メニュー等で残りません。
  *
- * 【演出】成功が確定した後にだけ、(1)DEV3Hの両腕クロス(CharacterPresentation: CrossArms)、(2)Hermesの一時召喚表示
- *   (GodSummonVisual)、(3)出発点と到着点の黒白ノイズ(ProjectR_PresentationVfx → VFX Designerライブラリ)、
- *   (4)通常カットイン(ProjectR_CutIn)が出ます。いずれも表示だけで、移動・ダメージ・Cooldownを決めません。
+ * 【流れと演出】計画(状態を変えない)→ ルーターがカードを消費(=成功確定)→ 予備動作(WindupFrames、既定8 map frame)→ 権威ある移動。
+ *   成功確定から予備動作の間に、(1)DEV3Hの両腕クロス(CrossArms。銃のスプライトは隠れる)、(2)Hermesが主人公の真後ろに現れる
+ *   (GodSummonVisualのカード別位置)、(3)出発点の黒白ノイズ(VFX Designerライブラリ。移動後もその場に残る)、(4)通常カットイン、が出る。
+ *   移動の瞬間に強化・速度係数が用意され、到着点の黒白ノイズが出る。Hermesと動作は少し後に消える。いずれも表示だけで、判定を決めない。
+ *   予備動作中も操作・Cooldownは止まらず、無敵でもない。移動先は発動時に固定。予備動作中の別の絶は「teleportPending」で非消費の失敗。
+ *   戦闘終了・マップ移動・ロードで予備動作は破棄(後から移動しない)。実行時に着地できない稀な場合は、カード消費済みと記録して動かない。
  *
  * API: ProjectRHermesZetsu
  *   plan(mouse?)         移動先を計算するだけ(状態変更なし)。{ ok, start, land, requested, travelled, limiter, reason }
@@ -82,7 +92,8 @@
     };
 
     // ---------- 移動先の計算(状態を変えない) ----------
-    const environment = mouseOverride => {
+    // vectorOverride: 予備動作の後の再計算用に、現在地から固定の移動先へ向かうベクトル(タイル)を直接渡す。
+    const environment = (mouseOverride, vectorOverride = null) => {
         const player = typeof $gamePlayer !== "undefined" ? $gamePlayer : null;
         const map = typeof $gameMap !== "undefined" ? $gameMap : null;
         if (!player || !map || typeof TouchInput === "undefined" || typeof Graphics === "undefined" ||
@@ -100,7 +111,7 @@
         // 範囲は「現在見えている画面」の中だけ。
         const mouse = { x: clamp(raw.x, 0, Graphics.width), y: clamp(raw.y, 0, Graphics.height) };
         const start = { x: player._realX, y: player._realY };
-        const vector = { x: (mouse.x - player.screenX()) / map.tileWidth(), y: (mouse.y - player.screenY()) / map.tileHeight() };
+        const vector = vectorOverride || { x: (mouse.x - player.screenX()) / map.tileWidth(), y: (mouse.y - player.screenY()) / map.tileHeight() };
         if (!finitePoint(start) || !finitePoint(vector)) return failure("invalidMousePosition");
         return { ok: true, player, map, occlusion, start, vector, mouse };
     };
@@ -172,8 +183,14 @@
     };
 
     // ---------- 発動 ----------
-    let pending = null; // 発動handlerが移動した直後〜requestUseCardの結果確定まで
+    // 流れ: 計画(状態を変えない) → ルーターがカードを消費(= 成功確定) → 予備動作(WindupFrames) → 権威ある移動。
+    //   予備動作中も操作・Cooldown・入力は止めません。無敵にもしません。移動先は発動時に固定し、実行時に現在地から再計算します。
+    //   予備動作中に別の絶を使うと「teleportPending」で失敗(非消費)。二重発動・二重強化を作りません。
+    let pending = null; // handlerが計画を立てた直後〜requestUseCardの結果確定まで
+    let teleport = null; // 成功確定後〜移動実行まで { dest, start, level, effects, framesLeft, summonId }
     let lastResult = null;
+    const configured = Number(PluginManager.parameters("ProjectR_HermesZetsu").WindupFrames);
+    let windupFrames = Number.isFinite(configured) && configured >= 0 ? Math.floor(configured) : 8;
 
     const commit = (plan, level, effects) => {
         const player = $gamePlayer;
@@ -197,31 +214,46 @@
             player.setPosition(plan.start.x, plan.start.y);
             modifiers.clearWeaponHitBonus("commitFailed");
             modifiers.clearMoveSpeedFactor(SPEED_ID);
-            return failure(String(error?.message || error));
+            return failure(String(error && error.message || error));
         }
     };
 
-    const rollback = (tx, reason) => {
-        try { $gamePlayer.setPosition(tx.start.x, tx.start.y); $gamePlayer.cancelMove?.(); } catch (_error) { /* 位置は最善で戻す */ }
-        root.ProjectRCardModifiers?.clearWeaponHitBonus("rollback");
-        root.ProjectRCardModifiers?.clearMoveSpeedFactor(SPEED_ID);
-        try { root.ProjectRGodSummonManager?.release?.(tx.summonId); } catch (_error) { /* 表示のみ */ }
-        try { root.ProjectRPresentationVfx?.clear?.(); } catch (_error) { /* 表示のみ */ }
-        lastResult = { ok: false, reason, rolledBack: true };
+    const releaseSummon = id => { try { root.ProjectRGodSummonManager?.release?.(id); } catch (_error) { /* 表示のみ */ } };
+    const discardTeleport = reason => {
+        if (!teleport) return;
+        releaseSummon(teleport.summonId);
+        teleport = null;
+        lastResult = { ok: false, reason, cancelled: true };
     };
 
-    // 成功が確定してから(消費・Cooldown・補充が済んだ後)、表示だけを出す。失敗は結果に影響しない。
+    // 予備動作の終わりに、権威ある移動を行う。失敗してもカードは既に消費済み(結果に記録し、到着の表示は出さない)。
+    const executeTeleport = () => {
+        const tx = teleport;
+        teleport = null;
+        if (!tx) return;
+        const player = typeof $gamePlayer !== "undefined" ? $gamePlayer : null;
+        const here = player ? { x: player._realX, y: player._realY } : null;
+        const env = here ? environment(null, { x: tx.dest.x - here.x, y: tx.dest.y - here.y }) : failure("movementUnavailable");
+        const plan = env.ok ? computePlan(env) : env;
+        if (!plan.ok) { lastResult = { ok: false, reason: plan.reason, wasted: true, level: tx.level }; return; }
+        const done = commit(plan, tx.level, tx.effects);
+        if (!done.ok) { lastResult = { ok: false, reason: done.reason, wasted: true, level: tx.level }; return; }
+        lastResult = { ok: true, level: tx.level, start: plan.start, land: plan.land, effects: tx.effects, windupFrames: tx.windup,
+            travelled: Math.hypot(plan.land.x - plan.start.x, plan.land.y - plan.start.y) };
+        try { root.ProjectRPresentationVfx?.play("hermes_zetsu.arrival", {}); } catch (_error) { /* 表示のみ */ }
+    };
+
+    // 成功が確定してから(消費・Cooldown・補充が済んだ後)。予備動作を始め、出発点の黒白ノイズを出す。
     const finalize = tx => {
-        lastResult = { ok: true, level: tx.level, start: tx.start, land: tx.land, effects: tx.effects,
-            travelled: Math.hypot(tx.land.x - tx.start.x, tx.land.y - tx.start.y) };
-        const vfx = root.ProjectRPresentationVfx;
-        if (!vfx) return;
-        try { vfx.play("hermes_zetsu.departure", { origin: tx.start }); } catch (_error) { /* 表示のみ */ }
-        try { vfx.play("hermes_zetsu.arrival", {}); } catch (_error) { /* 表示のみ */ }
+        teleport = { dest: tx.land, start: tx.start, level: tx.level, effects: tx.effects, framesLeft: windupFrames, windup: windupFrames, summonId: tx.summonId };
+        lastResult = { ok: true, pending: true, level: tx.level, start: tx.start, land: tx.land, effects: tx.effects };
+        try { root.ProjectRPresentationVfx?.play("hermes_zetsu.departure", {}); } catch (_error) { /* 表示のみ */ }
+        if (windupFrames <= 0) executeTeleport();
     };
 
     const activate = context => {
         if (!deck.isCardBattleActive() || !root.ProjectRCardCatalog) return failure("battleInactive");
+        if (teleport) return failure("teleportPending");
         const env = environment();
         if (!env.ok) return failure(env.reason);
         const plan = computePlan(env);
@@ -229,14 +261,10 @@
         const summons = root.ProjectRGodSummonManager;
         if (!summons) return failure("godSummonUnavailable");
         const level = cardLevel(), effects = effectsForLevel(level);
-        let committed = null;
-        // Hermes一時召喚 → 移動。召喚は表示用の論理アンカーで、移動するのはPlayerだけ。失敗時は召喚も破棄される。
-        const result = summons.perform({ definition: context?.definition, aim: false }, () => {
-            committed = commit(plan, level, effects);
-            return committed.ok ? { ok: true } : committed;
-        });
-        if (!result?.ok || !committed?.ok) return failure(result?.reason || committed?.reason || "activationFailed");
-        pending = { ...committed, summonId: result.summonId };
+        // Hermes一時召喚(表示用の論理アンカー)。移動するのはPlayerだけ。失敗したら召喚も破棄される。
+        const result = summons.perform({ definition: context?.definition, aim: false, lifetimeFrames: Math.max(12, windupFrames + 12) }, () => ({ ok: true }));
+        if (!result?.ok) return failure(result?.reason || "activationFailed");
+        pending = { start: plan.start, land: plan.land, level, effects, summonId: result.summonId };
         return { ok: true };
     };
 
@@ -244,7 +272,7 @@
     deck.registerActivationHandler("ground", context => context.definition.cardId === CARD
         ? activate(context) : previousGround ? previousGround(context) : { ok: true });
 
-    // ルーターがカードを消費して初めて「成功」。そうでなければ移動・強化・召喚を元に戻す。
+    // ルーターがカードを消費して初めて「成功」。そうでなければ(何も動かしていないので)召喚だけを片付ける。
     const _requestUseCard = deck.requestUseCard;
     deck.requestUseCard = function() {
         pending = null;
@@ -252,7 +280,7 @@
         try {
             result = _requestUseCard.apply(this, arguments);
         } catch (error) {
-            if (pending) rollback(pending, "exception");
+            if (pending) releaseSummon(pending.summonId);
             pending = null;
             throw error;
         }
@@ -260,15 +288,36 @@
         pending = null;
         if (tx) {
             if (result?.ok === true && result.cardId === CARD) finalize(tx);
-            else rollback(tx, result?.detail || result?.reason || "notConsumed");
+            else {
+                releaseSummon(tx.summonId);
+                lastResult = { ok: false, reason: result?.detail || result?.reason || "notConsumed", rolledBack: true };
+            }
         }
         return result;
     };
+
+    // 予備動作はmap更新frameで数える(メニュー・会話中は進まない)。
+    const _mapUpdate = Game_Map.prototype.update;
+    Game_Map.prototype.update = function(sceneActive) {
+        _mapUpdate.apply(this, arguments);
+        if (!teleport || !sceneActive || this.eventsPaused) return;
+        if (!deck.isCardBattleActive()) { discardTeleport("battleInactive"); return; }
+        if (--teleport.framesLeft <= 0) executeTeleport();
+    };
+    const _endBattle = deck.endBattle;
+    deck.endBattle = function() { discardTeleport("battleEnd"); return _endBattle.apply(this, arguments); };
+    const _mapSetup = Game_Map.prototype.setup;
+    Game_Map.prototype.setup = function() { discardTeleport("mapSetup"); return _mapSetup.apply(this, arguments); };
+    const _extract = DataManager.extractSaveContents;
+    DataManager.extractSaveContents = function() { discardTeleport("load"); return _extract.apply(this, arguments); };
 
     root.ProjectRHermesZetsu = Object.freeze({
         CARD, LEVELS,
         plan: mouse => { const env = environment(mouse); return env.ok ? computePlan(env) : env; },
         getLastResult: () => lastResult ? JSON.parse(JSON.stringify(lastResult)) : null,
+        isTeleportPending: () => !!teleport, getWindupFrames: () => windupFrames,
+        // DEV/テスト用。予備動作のframe数(0なら成功確定と同時に移動)。保存しない。
+        setWindupFrames: frames => { windupFrames = Math.max(0, Math.floor(Number(frames) || 0)); return windupFrames; },
         effectsForLevel, cardLevel
     });
 })();

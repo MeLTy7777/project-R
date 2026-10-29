@@ -45,7 +45,8 @@ function restartWithOrder(w, order) {
 
 // level: 絶のCard Level。order: 引き順(既定は手札5枚すべて絶)。x,y: 出発点。
 // 既定の出発点(12,25)は、アリーナの端末Eventから離れた何もない地面(左の広間)。
-function zetsuWorld({ level = 1, x = 12, y = 25, order = [ZETSU, ZETSU, ZETSU, ZETSU, ZETSU, ...OTHER] } = {}) {
+// windup: 予備動作のframe数。既定0 = 成功確定と同時に移動(権威ロジックの検証用)。本番既定(8)は windup テストで確認する。
+function zetsuWorld({ level = 1, x = 12, y = 25, windup = 0, order = [ZETSU, ZETSU, ZETSU, ZETSU, ZETSU, ...OTHER] } = {}) {
     const w = buildWorld();
     assert.deepEqual(w.failures, [], "全pluginが本番順で読み込める");
     w.enterMap(4, x, y);
@@ -57,6 +58,7 @@ function zetsuWorld({ level = 1, x = 12, y = 25, order = [ZETSU, ZETSU, ZETSU, Z
     assert.equal(d.setCardOwned(ZETSU, true).ok, true);
     assert.equal(d.setCardLevel(ZETSU, level).ok, true);
     restartWithOrder(w, order);
+    w.ctx.ProjectRHermesZetsu.setWindupFrames(windup);
     w.frames(2);
     w.calls = [];
     const original = w.ctx.PluginManager.callCommand;

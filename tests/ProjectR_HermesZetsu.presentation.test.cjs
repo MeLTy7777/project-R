@@ -16,24 +16,20 @@ const stripComments = source => source.replace(/\/\*[\s\S]*?\*\//g, "").replace(
 const pngSize = file => { const b = fs.readFileSync(path.join(project, file)); assert.equal(b.toString("latin1", 1, 4), "PNG"); return { w: b.readUInt32BE(16), h: b.readUInt32BE(20) }; };
 
 // ---------------- VFX(VFX Designerライブラリ) ----------------
-test("VFX: 成功が確定した後にだけ、出発点(Show VFX+位置固定)と到着点(Show VFX from Library)の2つが出る。ライブラリ名・対象はデータ駆動", () => {
+test("VFX: 成功が確定した後にだけ、出発点(ライブラリ+位置固定)と到着点(ライブラリ+追従)の2つが出る。ライブラリ名・対象はデータ駆動", () => {
     const w = zetsuWorld();
     assert.equal(animCalls(w).length, 0);
     const start = pos(w);
     assert.equal(teleport(w, 5, 0).ok, true);
     const calls = animCalls(w);
-    assert.deepEqual(calls.map(c => c.name), ["showAnimatedPicture", "showAnimationFromLibrary"]);
+    assert.deepEqual(calls.map(c => c.name), ["showAnimationFromLibrary", "showAnimationFromLibrary"]);
     const [departure, arrival] = calls;
+    assert.equal(departure.args.animationName, "ProjectR_Zetsu_Departure");
+    assert.equal(departure.args.eventId, "player");
+    assert.equal(departure.args.stickMode, "true", "出発点は再生開始(=移動の前)の位置に固定");
     assert.equal(arrival.args.animationName, "ProjectR_Zetsu_Arrival");
     assert.equal(arrival.args.eventId, "player");
     assert.equal(arrival.args.stickMode, "false", "到着点はプレイヤーに追従");
-    const position = JSON.parse(departure.args.positionSettings);
-    assert.equal(position.eventId, "player");
-    assert.equal(position.stickMode, "true", "出発点はワールドに固定(stickMode)");
-    assert.equal(departure.args.note, "ProjectR:hermes_zetsu.departure");
-    near(Number(position.offsetX), -5 * 48, 2, "プレイヤー(到着点)から見て出発点は5タイル左(px)");
-    const sheet = JSON.parse(departure.args.spritesheetSettings);
-    assert.deepEqual([sheet.spritesheetFile, sheet.row, sheet.column], ["Animation/ProjectR_Zetsu_Noise", "2", "4"]);
     assert.equal(w.ctx.ProjectRPresentationVfx.diagnostics().failures, 0);
     assert.notEqual(pos(w).x, start.x);
 });
@@ -53,7 +49,7 @@ test("VFXの対応表: カードID→ライブラリ名→基準→画像が揃�
         assert.deepEqual([size.w / mapping.sheet.columns, size.h / mapping.sheet.rows], [160, 160], "1コマ160px x 8コマ");
         assert.equal(entry.rows * entry.columns, 8);
     }
-    assert.equal(vfx.mapping("hermes_zetsu.departure").anchor, "origin");
+    assert.deepEqual([vfx.mapping("hermes_zetsu.departure").anchor, vfx.mapping("hermes_zetsu.departure").stick], ["player", true]);
     assert.equal(vfx.mapping("hermes_zetsu.arrival").anchor, "player");
 });
 

@@ -65,6 +65,12 @@
  * @min 1
  * @default 45
  *
+ * @param CardOffsetsJson
+ * @text カード別の一時召喚の位置(JSON)
+ * @desc {"cardId":{"x":横tile,"y":縦tile}}。指定したカードだけ、一時召喚の表示位置を変える(未指定は上の既定)。絶は主人公の真後ろ(包む位置)。
+ * @type note
+ * @default {"hermes_zetsu":{"x":0,"y":-0.25}}
+ *
  * @help
  * 神の召喚を「見える形」にする表示専用のPluginです。ゲームの状態
  * (Divine HP・崩壊・復帰・一時召喚の寿命・カード消費)は一切持たず、
@@ -105,6 +111,15 @@
     const persistentOffset = { x: finiteOr(params.PersistentOffsetX, -0.75), y: finiteOr(params.PersistentOffsetY, -0.75) };
     const transientOffset = { x: finiteOr(params.TransientOffsetX, 0.75), y: finiteOr(params.TransientOffsetY, -0.75) };
     const holdFrames = Math.max(1, Math.floor(finiteOr(params.TransientHoldFrames, 45)));
+    // カード別の位置。表示だけ(Hendrixの親子追従でPlayerと一緒に動くので、移動後もそのまま付いてくる)。
+    const cardOffsets = (() => {
+        try {
+            const raw = JSON.parse(String(params.CardOffsetsJson === undefined ? '{"hermes_zetsu":{"x":0,"y":-0.25}}' : params.CardOffsetsJson).trim() || "{}");
+            const out = {};
+            for (const [id, o] of Object.entries(raw || {})) if (o && Number.isFinite(Number(o.x)) && Number.isFinite(Number(o.y))) out[id] = { x: Number(o.x), y: Number(o.y) };
+            return out;
+        } catch (_error) { return {}; }
+    })();
 
     const visuals = new Map(); // key -> {key, kind, godId, summonId, eventId, map, expireAt}
     const diagnostics = { spawned: 0, removed: 0, swings: 0, lastSwingSource: null, lastError: null, templateEventId: 0 };
@@ -228,7 +243,7 @@
         }
         for (const summon of m.getActiveSummons?.() || []) {
             wanted.push({ key: `transient:${summon.summonId}`, kind: "transient", godId: summon.godId,
-                summonId: summon.summonId, offset: transientOffset, direction: directionFromDegree(summon.degree) });
+                summonId: summon.summonId, offset: cardOffsets[summon.cardId] || transientOffset, direction: directionFromDegree(summon.degree) });
         }
         return wanted;
     };

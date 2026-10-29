@@ -325,7 +325,9 @@ test("剣: 攻撃入力が受理されるとSwordAttack動作+斬撃。戦闘外
     assert.deepEqual(historyNames(w).slice(-1), ["SwordAttack"]);
     assert.equal(plain(ctx.ProjectRWeaponPresentation.effects()).filter(e => e.kind === "slash").length, 1);
     assert.ok(!historyNames(w).includes("GunFire"));
-    assert.equal(ctx.$gameTemp._commonEventQueue.length, 1, "剣は従来どおり共通イベント1を実行する");
+    // Phase H2A: 旧CE1(Event 1固定の判定・ダメージ)は予約せず、ProjectR_SwordSystemが敵本人へ当てる。見た目の要求(上のSwordAttack・斬撃)は従来どおり。
+    assert.equal(ctx.$gameTemp._commonEventQueue.length, 0, "剣は旧CE1ではなくProjectR_SwordSystemが行う");
+    assert.equal(ctx.ProjectRSwordSystem.status().swings, 1);
     ctx.$gameTemp.clearCommonEvent?.(); ctx.$gameTemp._commonEventQueue.length = 0;
     // 被弾
     pres(w).clear();

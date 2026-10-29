@@ -57,4 +57,5 @@ var $plugins =
 ,{"name":"ProjectR_CutIn","status":true,"description":"v1.0.0 共通カットイン(通常=ラベル型の神の目元 / Ultimate=中央大型)。表示専用。","parameters":{"CutInCardIds":"[\"hermes_zetsu\"]","GodEyesJson":"{\"hermes\":\"ProjectR_CutIn_Hermes_Eyes_DEV\",\"apollo\":\"ProjectR_CutIn_Hermes_Eyes_DEV\"}","PlayerEyesFile":"ProjectR_CutIn_Player_Eyes_DEV"}}
 ,{"name":"ProjectR_HermesZetsu","status":true,"description":"v1.0.0 Hermes「絶」: マウス位置へ瞬間移動 + 通常武器1ヒット強化。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaZetsu","status":true,"description":"v1.0.0 DEV専用 Combat Test Arena 追加: 絶(Zetsu)テスト開始(Playtest限定)。","parameters":{}}
+,{"name":"ProjectR_SwordSystem","status":true,"description":"v1.0.0 通常の剣(近接)攻撃。マウス方向のDynamic Hitbox + 当たった敵本人へDatabase武器ダメージ。","parameters":{"ForwardTiles":"1.0","HitboxWidth":"1.5","HitboxDepth":"1.2","LifetimeFrames":"3","CooldownFrames":"18"}}
 ];

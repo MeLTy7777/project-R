@@ -17,8 +17,10 @@ async function session() {
   const status = () => ev("JSON.stringify(ProjectRZetsuTest.status())").then(JSON.parse);
   const state = () => ev("JSON.stringify(ProjectRCardDeck.getBattleState())").then(JSON.parse);
   const errors = () => c.events.filter(e => e.method === "Runtime.exceptionThrown" || (e.method === "Runtime.consoleAPICalled" && e.params.type === "error")).map(e => JSON.stringify(e.params).slice(0, 400));
-  const slow = n => ev(`(() => { if (!window.__slowInstalled) { const orig = SceneManager.updateScene; let k = 0; SceneManager.updateScene = function() { if (window.__slow > 1 && (++k % window.__slow)) return; return orig.apply(this, arguments); }; window.__slowInstalled = true; } window.__slow = ${n}; return window.__slow; })()`);
+  const slow = n => ev(`(() => { if (!window.__slowInstalled) { const orig = SceneManager.updateScene; let k = 0; SceneManager.updateScene = function() { if (window.__slow > 1 && (++k % window.__slow)) return; window.__sf = (window.__sf || 0) + 1; return orig.apply(this, arguments); }; window.__slowInstalled = true; } window.__slow = ${n}; return window.__slow; })()`);
+  // シーンが実際に進んだフレーム数で待つ(スロー再生中も正しい。HP表示は「次のフレーム」で更新されるため)
+  const sceneFrames = async n => { const t0 = await ev("window.__sf || 0"); const t = Date.now(); while (Date.now() - t < 30000) { if ((await ev("window.__sf || 0")) - t0 >= n) return true; await sleep(30); } return false; };
   const results = []; const rec = (id, ok, detail) => { results.push({ id, ok: !!ok, detail }); console.log((ok ? "PASS " : "FAIL ") + id + "  " + (typeof detail === "string" ? detail : JSON.stringify(detail))); };
-  return { c, ev, place, foot, aim, pos, last, status, state, errors, slow, rec, results, sleep, shot: (n) => c.shot(`${OUT}/${n}.png`) };
+  return { sceneFrames, c, ev, place, foot, aim, pos, last, status, state, errors, slow, rec, results, sleep, shot: (n) => c.shot(`${OUT}/${n}.png`) };
 }
 module.exports = { session };

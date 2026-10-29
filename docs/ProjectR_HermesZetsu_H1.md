@@ -1,5 +1,7 @@
 # ProjectR Phase H1 — Hermes「絶」(Zetsu)・VFX層・カットイン層
 
+> **Phase H2A(2026-10-29)で更新**: 正本のワークブックを確認し(絶の数値はH1の実装と一致)、通常の剣の不具合修復・絶の予備動作・Ultimateカットイン接続を行い、H1の`ProjectR_CardModifiers`の欠陥1件を修正しました。最新は [ProjectR_HermesZetsu_H2A.md](ProjectR_HermesZetsu_H2A.md) と [ProjectR_Hermes_MigrationAudit_H2A.md](ProjectR_Hermes_MigrationAudit_H2A.md) を参照してください。このH1文書の「依拠した仕様」(空のテンプレートを使用)と「既知の事実」(剣はEvent 1固定)は、H2Aで置き換わっています。
+
 2026-10-29。基準コミット `6062d39`。ブランチ `chore/update-action-combat-plugins-2026-09`。
 対象は **Hermesの新設計7枚のうち「絶」1枚の完成**と、その上に載る**共通の演出基盤(VFX層・カットイン層)**です。
 残りの6枚は実装していません(Phase H2以降)。

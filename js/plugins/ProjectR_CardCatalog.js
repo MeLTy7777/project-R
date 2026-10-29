@@ -27,7 +27,8 @@
  *
  * API: ProjectRCardCatalog
  *   resolveLevels(rows, level)   rows=[{level, effects:{...}}]  → 凍結された解決済みeffects
- *   hermesDesign()               7枚の設計(凍結)
+ *   hermesDesign()               7枚の設計(凍結。ワークブックの強さ・最大コピー数・Cooldown・対象タイプ・初回入手枚数)
+ *   migrationAudit() / unmappedLegacyCards()  設計ID ↔ 旧(現行)カードID の対応と、設計7枚に含まれない現行カード
  *   hermesTotalMaxCopies()       最大コピー数の合計(30)
  *   isFinalDeckReady()           7枚すべて実装済みか
  *   finalDeckBlockers()          未実装カードの名前一覧
@@ -54,20 +55,53 @@
         return Object.freeze(resolved);
     };
 
-    // 強さ: strong=強力 / normal=通常 / special=特殊。runtimeCardIdが null のものは未実装(旧cardIdとは別管理)。
-    // legacyCandidates は「どの旧カードが近いか」の参考情報で、ユーザー確定前なので何にも使いません。
+    // 正本: C:\\Users\\hmats\\Documents\\RMMZ\\_ProjectR_DesignSources\\ProjectR_CardManagement_Template(3).xlsx(「カード一覧」行2〜8・47列)。
+    //   SHA-256 babd70c70f3ce0f52f622c4464835eacb4df3d305ecc48a53e84b627505dd32c。ここは数値の転記で、効果の仕様はXLSXが正です。
+    // 強さ: strong=強力 / normal=通常 / special=特殊。標準のコピー上限は 通常3 / 強力2 / 特殊1(記入ガイド)。
+    //   標準と違う最大コピー数は「例外」として、カード側のデータ(maxCopies)で持ちます。全体の上限規則は変えません。
+    // targetType: ワークブックの対象タイプ。ヴェイルの「その他」は、ユーザー確認済みの「カーソル追従(Cursor)」として扱う。
+    //   runtimeTargetTypeSupported=false の間は、CardDeckCoreがそのtargetTypeを受け付けない(H2Bで対応が必要)。
+    // migration: 旧(現行ランタイム)カードとの対応。decisionはユーザー判断が済むまで「coexist(共存)」で、旧カードは1枚も消さない。
+    const STANDARD_COPIES = Object.freeze({ normal: 3, strong: 2, special: 1 });
     const design = (designId, name, classification, maxCopies, cooldownSeconds, extra = {}) => Object.freeze({
         designId, name, classification, maxCopies, cooldownSeconds,
-        runtimeCardId: null, implemented: false, legacyCandidates: Object.freeze([]), ...extra
+        standardMaxCopies: STANDARD_COPIES[classification], copyLimitException: maxCopies !== STANDARD_COPIES[classification],
+        maxLevel: 3, firstGrantCopies: maxCopies,
+        runtimeCardId: null, implemented: false, legacyCandidates: Object.freeze([]),
+        migration: Object.freeze({ legacyCardId: null, decision: "new", status: "notImplemented", note: "" }),
+        runtimeTargetTypeSupported: true, ...extra
     });
+    const migration = (legacyCardId, decision, status, note) => Object.freeze({ legacyCardId, decision, status, note });
     const HERMES = Object.freeze([
-        design(1, "一閃", "strong", 3, 7),
-        design(2, "サイコポンポス", "normal", 3, 10),
-        design(3, "ヴェイル", "special", 3, 10, { legacyCandidates: Object.freeze(["hermes_perception_obscure"]) }),
-        design(4, "ストレングス", "special", 10, 0.1),
-        design(5, "薙ぎ払い", "normal", 3, 0.5, { legacyCandidates: Object.freeze(["hermes_sword_attack"]) }),
-        design(6, "葦笛", "strong", 3, 8, { legacyCandidates: Object.freeze(["hermes_reed_flute_sleep"]) }),
-        design(7, "絶", "strong", 5, 0.5, { runtimeCardId: "hermes_zetsu", implemented: true })
+        design(1, "一閃", "strong", 3, 7, { workbookTargetType: "Direction", targetType: "direction", category: "attack",
+            migration: migration(null, "new", "notImplemented", "旧カードに対応なし。新規。") }),
+        design(2, "サイコポンポス", "normal", 3, 10, { workbookTargetType: "Heal", targetType: "ally", category: "special",
+            migration: migration(null, "new", "notImplemented", "旧カードに対応なし。新規。「魂」の仕組みが必要。") }),
+        design(3, "ヴェイル", "special", 3, 10, { workbookTargetType: "その他", targetType: "cursor", category: "support", runtimeTargetTypeSupported: false,
+            legacyCandidates: Object.freeze(["hermes_perception_obscure"]),
+            migration: migration("hermes_perception_obscure", "coexist-pending", "notImplemented",
+                "旧「認識阻害」(プレイヤー自身・5秒)と近いが、新設計は「カーソルに追従する範囲内の味方がターゲットされない」。置換するか別カードにするかはユーザー判断。") }),
+        design(4, "ストレングス", "special", 10, 0.1, { workbookTargetType: "Buff", targetType: "instant", category: "buff",
+            migration: migration(null, "new", "notImplemented", "旧カードに対応なし。新規。") }),
+        design(5, "薙ぎ払い", "normal", 3, 0.5, { workbookTargetType: "Direction", targetType: "direction", category: "attack",
+            legacyCandidates: Object.freeze(["hermes_sword_attack"]),
+            migration: migration("hermes_sword_attack", "coexist-pending", "notImplemented",
+                "旧「Hermes剣術」(前方の短い矩形・Cooldown 3秒)が最も近い(通常・方向・3枚)。新設計は扇状190°・4マス・0.5秒。拡張で置換するか共存かはユーザー判断。") }),
+        design(6, "葦笛", "strong", 3, 8, { workbookTargetType: "その他", targetType: "instant", category: "sleep",
+            legacyCandidates: Object.freeze(["hermes_reed_flute_sleep"]),
+            migration: migration("hermes_reed_flute_sleep", "coexist-pending", "notImplemented",
+                "名前と系統が一致する旧「葦笛睡眠」(最大2枚・12秒・半径4・睡眠4秒)。新設計は最大3枚・8秒・半径8・被ダメージで起床・対象なしでも消費。同じhandlerの拡張候補だが、旧セーブの所持枚数・デッキがあるため移行計画が必要。") }),
+        design(7, "絶", "strong", 5, 0.5, { workbookTargetType: "Ground", targetType: "ground", category: "movement",
+            runtimeCardId: "hermes_zetsu", implemented: true,
+            migration: migration("hermes_zetsu", "new-runtime-id", "implemented",
+                "新しいruntime ID。旧「高速移動」(hermes_swift_movement)は設計7枚に含まれないが、削除せず共存(扱いはユーザー判断)。") })
+    ]);
+    // 設計7枚に含まれない現行カード(削除・変更しない)。Apolloはこのワークブックの対象外(集計シートでApollo 0枚)。
+    const UNMAPPED_LEGACY = Object.freeze([
+        Object.freeze({ cardId: "hermes_swift_movement", name: "高速移動", decision: "coexist-pending", note: "絶の近縁だが別カード。設計7枚に無い。" }),
+        Object.freeze({ cardId: "apollo_golden_arrow", name: "黄金の弓矢", decision: "keep", note: "Apollo。ワークブック対象外。" }),
+        Object.freeze({ cardId: "apollo_plague_attack", name: "疫病攻撃", decision: "keep", note: "Apollo。ワークブック対象外。" }),
+        Object.freeze({ cardId: "apollo_lyre_calm", name: "竪琴の鎮静", decision: "keep", note: "Apollo。ワークブック対象外。" })
     ]);
 
     // 実装済みの新設計カードの実行時定義。CardDeckCoreのDefinitionRegistryと同じ正規化・凍結で追加する。
@@ -108,6 +142,8 @@
         finalDeckBlockers: blockers,
         buildFinalHermesDeck,
         runtimeCards: () => RUNTIME_CARDS,
+        unmappedLegacyCards: () => UNMAPPED_LEGACY,
+        migrationAudit: () => HERMES.map(card => ({ designId: card.designId, name: card.name, runtimeCardId: card.runtimeCardId, ...card.migration, implemented: card.implemented })),
         registeredRuntimeCards: () => [...registered]
     });
 })();

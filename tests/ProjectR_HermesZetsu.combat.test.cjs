@@ -325,19 +325,20 @@ test("操作できない間(メッセージ表示中)は戦闘時間が進まず
     assert.ok(bonus(w).remaining < before, "再開すれば進む");
 });
 
-test("ルーター側で消費に失敗した場合は、移動・強化・速度・召喚をすべて元に戻す", () => {
+test("ルーター側で消費に失敗した場合は、移動・強化・速度・召喚が一切残らない(予備動作を始めない)", () => {
     const w = zetsuWorld({ level: 3 });
     const start = pos(w);
-    const m = modifiers(w), original = m.armWeaponHitBonus;
+    const m = modifiers(w);
+    const summons = w.ctx.ProjectRGodSummonManager, originalPerform = summons.perform;
     // 発動handlerが成功を返した直後に手札が変わる(= ルーターが消費に失敗する)状況を作る
-    m.armWeaponHitBonus = function() {
-        const result = original.apply(this, arguments);
+    summons.perform = function() {
+        const result = originalPerform.apply(this, arguments);
         deckApi(w).useBattleCard(deckApi(w).getBattleState().hand[0].instanceId);
         return result;
     };
     aim(w, 3, 0);
     const result = plain(deckApi(w).requestUseCard(0));
-    m.armWeaponHitBonus = original;
+    summons.perform = originalPerform;
     assert.equal(result.ok, false);
     assert.equal(result.reason, "activationFailed");
     assert.deepEqual(pos(w), start, "位置を戻す");
@@ -345,6 +346,9 @@ test("ルーター側で消費に失敗した場合は、移動・強化・速�
     assert.equal(m.moveSpeedFactor(), 1, "速度係数を外す");
     assert.equal(w.ctx.ProjectRGodSummonManager.getActiveSummons().length, 0, "召喚を片付ける");
     assert.equal(zetsuApi(w).getLastResult().rolledBack, true);
+    assert.equal(zetsuApi(w).isTeleportPending(), false, "予備動作も始まらない");
+    w.frames(30);
+    assert.deepEqual(pos(w), start, "後から移動することもない");
     assert.deepEqual(plain(w.ctx.ProjectRCutIn.getActive()), [], "成功演出は出ない");
     assert.equal(w.calls.filter(c => /Animation_Solution/.test(c.plugin)).length, 0, "VFXも出ない");
 });

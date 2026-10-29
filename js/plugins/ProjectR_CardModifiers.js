@@ -143,8 +143,16 @@
         const event = typeof $gameMap !== "undefined" ? $gameMap.event(id) : null;
         return !!event && !event._erased && !event._isMinionActor && !event.linkedActorId;
     };
+    // 公式のHPバー(Spritesetの_eventHpBars)の currentHp は、UpdateEventHpの中で即時に更新される。
+    // $gameMap.getCurrentEventHp は保存先の変数を読み、その変数はバーの次の更新(次フレーム)で書かれるため、
+    // 実機ではダメージ直後に読むと「減っていない」ように見える(H2Aの実機検証で判明)。バーがあれば必ずバーを読む。
     const eventHp = id => {
-        const hp = typeof $gameMap !== "undefined" && typeof $gameMap.getCurrentEventHp === "function" ? $gameMap.getCurrentEventHp(id) : null;
+        if (typeof $gameMap === "undefined") return null;
+        const event = $gameMap.event(id);
+        const bars = typeof SceneManager !== "undefined" ? SceneManager._scene?._spriteset?._eventHpBars : null;
+        const bar = event && Array.isArray(bars) ? bars.find(b => b && b._event === event) : null;
+        if (bar && Number.isFinite(bar.currentHp)) return Math.max(0, bar.currentHp);
+        const hp = typeof $gameMap.getCurrentEventHp === "function" ? $gameMap.getCurrentEventHp(id) : null;
         return Number.isFinite(hp) ? hp : null;
     };
     // 公式のクリティカル抽選だけを、この1回の呼び出しの間止める(強化がクリティカル相当なので二重に掛けない)。
