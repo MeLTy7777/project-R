@@ -20,7 +20,7 @@
  *   このPluginが起動時に ProjectRCardDeck.definitions へ追加します(RUNTIME_CARDS)。cardIdが既にあれば何もしません。
  *   所持データ(cardOwnership)は未所持が既定なので、旧セーブ・本番デッキには影響しません。
  *   追加済み(設計ID → runtime ID): 7 絶 → hermes_zetsu / 5 薙ぎ払い → hermes_sweep / 6 葦笛 → hermes_reed_flute /
- *   1 一閃 → hermes_issen / 4 ストレングス → hermes_strength。未実装: 2 サイコポンポス / 3 ヴェイル(Cursor対象タイプ未対応)。
+ *   1 一閃 → hermes_issen / 4 ストレングス → hermes_strength / 3 ヴェイル → hermes_veil(Cursor)。未実装: 2 サイコポンポス。
  *
  * 【累積レベル規則】
  *   Lv2はLv1の効果を残して追加、Lv3はLv1とLv2を残して追加します。
@@ -80,10 +80,11 @@
             migration: migration(null, "new", "implemented", "Phase H2B-2で新しいruntime ID hermes_issen として実装。旧カードに対応なし。新規。") }),
         design(2, "サイコポンポス", "normal", 3, 10, { workbookTargetType: "Heal", targetType: "ally", category: "special",
             migration: migration(null, "new", "notImplemented", "旧カードに対応なし。新規。「魂」の仕組みが必要。") }),
-        design(3, "ヴェイル", "special", 3, 10, { workbookTargetType: "その他", targetType: "cursor", category: "support", runtimeTargetTypeSupported: false,
+        design(3, "ヴェイル", "special", 3, 10, { workbookTargetType: "その他", targetType: "cursor", category: "support",
+            runtimeCardId: "hermes_veil", implemented: true,
             legacyCandidates: Object.freeze(["hermes_perception_obscure"]),
-            migration: migration("hermes_perception_obscure", "coexist-pending", "notImplemented",
-                "旧「認識阻害」(プレイヤー自身・5秒)と近いが、新設計は「カーソルに追従する範囲内の味方がターゲットされない」。置換するか別カードにするかはユーザー判断。") }),
+            migration: migration("hermes_perception_obscure", "coexist-pending", "implemented-as-new-id",
+                "Phase H2B-3Aで新しいruntime ID hermes_veil として実装(Cursor対象)。旧「認識阻害」(プレイヤー自身・5秒・Stateによる)は削除・上書きせず共存(挙動も不変)。置換するか共存のままかはユーザー判断(未決)。") }),
         design(4, "ストレングス", "special", 10, 0.1, { workbookTargetType: "Buff", targetType: "instant", category: "buff",
             runtimeCardId: "hermes_strength", implemented: true,
             migration: migration(null, "new", "implemented", "Phase H2B-2で新しいruntime ID hermes_strength として実装。旧カードに対応なし。新規。") }),
@@ -116,6 +117,7 @@
     // 葦笛(H2B-1): Hermes / 強力 / 最大3枚 / 最大Lv3 / Cooldown 8秒 / その他(=instant。狙いを使わない)。category "sleep" は旧葦笛睡眠と同じ。
     // 一閃(H2B-2): Hermes / 強力 / 最大3枚 / 最大Lv3 / Cooldown 7秒 / Direction。
     // ストレングス(H2B-2): Hermes / 特殊 / 最大10枚 / 最大Lv3 / Cooldown 0.1秒 / Buff(対象なし = instant)。
+    // ヴェイル(H2B-3A): Hermes / 特殊 / 最大3枚 / 最大Lv3 / Cooldown 10秒 / Cursor(マウスに追従する半径5マス)。
     const RUNTIME_CARDS = Object.freeze([
         Object.freeze({ cardId: "hermes_zetsu", ringId: "hermes", maxCopies: 5, cooldownSeconds: 0.5, maxLevel: 3,
             rarity: "strong", category: "movement", targetType: "ground" }),
@@ -126,7 +128,9 @@
         Object.freeze({ cardId: "hermes_issen", ringId: "hermes", maxCopies: 3, cooldownSeconds: 7, maxLevel: 3,
             rarity: "strong", category: "attack", targetType: "direction" }),
         Object.freeze({ cardId: "hermes_strength", ringId: "hermes", maxCopies: 10, cooldownSeconds: 0.1, maxLevel: 3,
-            rarity: "special", category: "buff", targetType: "instant" })
+            rarity: "special", category: "buff", targetType: "instant" }),
+        Object.freeze({ cardId: "hermes_veil", ringId: "hermes", maxCopies: 3, cooldownSeconds: 10, maxLevel: 3,
+            rarity: "special", category: "support", targetType: "cursor" })
     ]);
     const registerRuntimeCards = () => {
         const registry = root.ProjectRCardDeck?.definitions;

@@ -82,3 +82,13 @@
 | 4 | ストレングス | `hermes_strength` | 実装済み(旧カードに対応なし・新規) |
 
 実装済み: 設計ID 1・4・5・6・7(5枚)。残り(サイコポンポス・ヴェイル)は未実装で、最終30枚デッキは引き続き有効にしていません(`finalDeckBlockers()` = サイコポンポス・ヴェイル)。旧カード・保存デッキ・指輪・Apolloは変更していません。詳細は `docs/ProjectR_HermesB2.md`。
+
+## 7. 追記(Phase H2B-3A): ヴェイル(Cursor対象)
+
+| 設計ID | カード | ランタイムID | 状態 | 旧カードとの関係 |
+|---|---|---|---|---|
+| 3 | ヴェイル | `hermes_veil` | 実装済み(`implemented-as-new-id`。対象は `cursor`) | 旧「認識阻害」`hermes_perception_obscure`(プレイヤー自身・5秒・Stateによる)は削除・上書きせず**共存**(挙動も不変。置換するか共存のままかはユーザー判断・未決) |
+
+実装済み: 設計ID 1・3・4・5・6・7(6枚)。残りは **サイコポンポス(設計ID 2)だけ**で、最終30枚デッキは引き続き有効にしていません(`finalDeckBlockers()` = サイコポンポス)。
+旧カード・保存デッキ・指輪・Apolloは変更していません。新カードは既定で未所持です。`CardDeckCore`(保護対象)は変更せず、`cursor` の発動handlerは `ProjectR_CardTargeting` が受け持ちます。
+詳細は `docs/ProjectR_HermesB3A.md`(暫定の解釈・未確定事項・未了を分けて記録)、`docs/ProjectR_CardTargeting.md`、`docs/ProjectR_EnemyTargetSelection.md`。

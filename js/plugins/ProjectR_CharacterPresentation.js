@@ -177,7 +177,7 @@
         },
         // カード別の動作(未指定のカードは SkillCast)。絶(Zetsu)は胸の前で両腕をクロス、薙ぎ払いは腕を前に振り払う、
         // 葦笛(新)はワークブックで主人公モーション「なにもしない」なので "None"(動作を出さない)。
-        cardActions: { hermes_zetsu: "CrossArms", hermes_sweep: "ArmSweep", hermes_reed_flute: "None", hermes_issen: "ArmSweep", hermes_strength: "FistPump" },
+        cardActions: { hermes_zetsu: "CrossArms", hermes_sweep: "ArmSweep", hermes_reed_flute: "None", hermes_issen: "ArmSweep", hermes_strength: "FistPump", hermes_veil: "None" },
         notes: "DEV3H: 自作の三頭身(4方向。8方向なし)。最終アートが決まったら画像と上の数値を差し替える。"
     });
     registerProfile({ id: "default", heads: 3, visualScale: 1, visualHeightPx: 0, directions: 4 });

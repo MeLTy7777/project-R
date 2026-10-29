@@ -57,6 +57,14 @@
  *    Game_CharacterBase.distancePerFrame に、そのキャラクターに登録中の係数の積を掛けます(敵Eventの移動速度の低下に使う)。
  *    WeakMapで持つので、セーブデータには入りません。他の係数は個別のidで残るので、解除は自分の係数を外すだけで元に戻ります。
  *
+ * 3d. クリティカル発生率の調整(H2B-3A ヴェイル Lv3)
+ *    prepare(ctx) が { critChanceBonus, critChanceScale } を返すと、その1回の命中の実効クリティカル率を
+ *    「(自然な率 x critChanceScale) + critChanceBonus」(0〜1に丸める)にします。公式のクリティカル抽選は1回だけで、二重に掛けません。
+ *    ・通常の武器攻撃: 公式 itemCri をその1回の呼び出しの間だけ差し替える。固定ダメージ(projectRFixed): 同じ式で抽選する。
+ *    ・確定クリティカル(forceCritical。葦笛)があるときは確定が優先で、確率の調整は使わない(倍率の二重適用なし)。
+ *    ・絶の武器ヒット強化(クリティカルを止める)があるときは、そちらを優先する(絶の仕様: 強化はクリティカル相当)。
+ *    ・ctx.attacker は呼び出し側が渡す攻撃者の参照(未指定 = "player")。複数hookの値は、ポイントは加算・倍率は乗算。
+ *
  * 4. 演出の二重発火防止(skipPresentationOnce / takePresentationSkip)
  *    カードの演出を「予約時」に先に出し、消費の確定時に同じ演出がもう一度出ないようにするための合図です。
  *    CutIn / CharacterPresentation が requestUseCard の成功で演出を出す直前に takePresentationSkip を確認します。
@@ -172,7 +180,9 @@
     if (typeof Game_Player !== "undefined") {
         const _distancePerFrame = Game_Player.prototype.distancePerFrame;
         Game_Player.prototype.distancePerFrame = function() {
-            return _distancePerFrame.apply(this, arguments) * (speeds.size ? moveSpeedFactor() : 1);
+            // Game_Playerのこの上書きは、Game_CharacterBase側の包み(キャラクター別の係数)より前の関数を呼ぶので、主人公のキャラクター別の係数(ヴェイルの+30%等)もここで掛ける。
+            const own = characterSpeeds && characterSpeeds.has(this) ? characterSpeedFactor(this) : 1;
+            return _distancePerFrame.apply(this, arguments) * (speeds.size ? moveSpeedFactor() : 1) * own;
         };
     }
 
@@ -227,7 +237,7 @@
         return Number.isFinite(value) && value > 0 ? value : 1;
     }, 1);
     const prepareHooks = context => {
-        const out = { flat: 0, forceCritical: false, atkMultiplier: 1, ignoreDefense: false, entries: [] };
+        const out = { flat: 0, forceCritical: false, atkMultiplier: 1, ignoreDefense: false, critPoints: 0, critScale: 1, entries: [] };
         for (const [id, hook] of [...hitHooks]) {
             if (typeof hook.prepare !== "function") continue;
             const result = safely(() => hook.prepare(context), null);
@@ -238,6 +248,10 @@
             const atk = Number(result.atkMultiplier);
             if (Number.isFinite(atk) && atk > 0) out.atkMultiplier *= atk;
             if (result.ignoreDefense === true) out.ignoreDefense = true;
+            // クリティカル発生率の調整(H2B-3A ヴェイル): critChanceBonus = 確率ポイントの加算(+0.5 = +50ポイント) / critChanceScale = 自然な確率への倍率。
+            const points = Number(result.critChanceBonus), scale = Number(result.critChanceScale);
+            if (Number.isFinite(points) && points !== 0) out.critPoints += points;
+            if (Number.isFinite(scale) && scale > 0 && scale !== 1) out.critScale *= scale;
             out.entries.push({ id, hook, result });
         }
         return out;
@@ -254,6 +268,18 @@
         const had = Object.prototype.hasOwnProperty.call(Action.prototype, "itemCri");
         const previous = Action.prototype.itemCri;
         Action.prototype.itemCri = function() { return force ? 1 : 0; };
+        return () => { if (had) Action.prototype.itemCri = previous; else delete Action.prototype.itemCri; };
+    };
+
+    // 公式のクリティカル率を「自然な率 x 倍率 + ポイント」に置き換える(この1回の呼び出しの間だけ)。確定クリティカル(patchCritical)があるときは使わない。
+    const adjustChance = (natural, prepared) => Math.min(1, Math.max(0, natural * prepared.critScale + prepared.critPoints));
+    let lastCritChance = null; // 診断のみ: 直近に公式の抽選へ渡した実効クリティカル率
+    const patchCriticalChance = prepared => {
+        const Action = typeof SHendrix_Action !== "undefined" ? SHendrix_Action : null;
+        if (!Action) return () => {};
+        const had = Object.prototype.hasOwnProperty.call(Action.prototype, "itemCri");
+        const previous = Action.prototype.itemCri;
+        Action.prototype.itemCri = function() { const natural = previous.apply(this, arguments); lastCritChance = adjustChance(Number(natural) || 0, prepared); return lastCritChance; };
         return () => { if (had) Action.prototype.itemCri = previous; else delete Action.prototype.itemCri; };
     };
 
@@ -293,8 +319,11 @@
 
             const kind = fixed ? "fixed" : isWeaponValue(args?.value) ? "weapon" : "expression";
             const context = { eventId: id, kind, value: String(args?.value ?? ""), source: fixed ? String(fixed.source ?? "") : "",
-                attackId: args && args.projectRAttackId !== undefined ? String(args.projectRAttackId) : null };
-            const prepared = hooked ? prepareHooks(context) : { flat: 0, forceCritical: false, atkMultiplier: 1, ignoreDefense: false, entries: [] };
+                attackId: args && args.projectRAttackId !== undefined ? String(args.projectRAttackId) : null,
+                attacker: args && args.projectRAttacker !== undefined ? String(args.projectRAttacker) : "player" };
+            const prepared = hooked ? prepareHooks(context) : { flat: 0, forceCritical: false, atkMultiplier: 1, ignoreDefense: false, critPoints: 0, critScale: 1, entries: [] };
+            const adjustsCrit = prepared.critPoints !== 0 || prepared.critScale !== 1;
+            let usedChance = null;
             const before = eventHp(id);
             let value = String(args?.value ?? "");
             let critical = null;
@@ -303,7 +332,8 @@
             if (fixed) {
                 baseDamage = Math.max(0, Math.round(Number(fixed.base)));
                 if (!Number.isFinite(baseDamage)) baseDamage = 0;
-                const chance = Math.min(1, Math.max(0, naturalCriticalChance(id) + (Number(fixed.critChanceBonus) || 0)));
+                const chance = adjustChance(naturalCriticalChance(id) + (Number(fixed.critChanceBonus) || 0), prepared);
+                usedChance = prepared.forceCritical ? 1 : chance;
                 critical = fixed.critical === false ? false : (prepared.forceCritical || Math.random() < chance);
                 const own = Math.max(0, Math.round(Number(fixed.flat) || 0)); // 固定ダメージ側の加算(例: 薙ぎ払いLv2の先端+50)
                 const total = (critical ? Math.round(baseDamage * criticalMultiplier()) : baseDamage) + own + prepared.flat;
@@ -315,6 +345,7 @@
                 // 絶の強化中は公式の抽選を止める(強化がクリティカル相当)。確定クリティカルの指定があればそちらを優先する。
                 if (prepared.forceCritical) { restore = patchCritical(true); critical = true; }
                 else if (weaponBonus) restore = patchCritical(false);
+                else if (adjustsCrit && kind === "weapon") { lastCritChance = null; restore = patchCriticalChance(prepared); }
             }
             const modified = Object.assign({}, args, { value });
             if (fixed) delete modified.projectRFixed;
@@ -345,7 +376,8 @@
                 }
             }
             if (fixed || prepared.entries.length || prepared.flat) {
-                note({ type: "hit", source: context.source || kind, eventId: id, base: baseDamage, critical, flat: landed ? prepared.flat : 0, landed, dealt });
+                note({ type: "hit", source: context.source || kind, eventId: id, base: baseDamage, critical, flat: landed ? prepared.flat : 0, landed, dealt,
+                    critChance: usedChance !== null ? usedChance : (adjustsCrit && !prepared.forceCritical && !weaponBonus ? lastCritChance : null) });
             }
             if (hooked) finishHooks(context, prepared, { dealt, before, after, landed });
             return result;
@@ -391,7 +423,7 @@
         setCharacterSpeedFactor, clearCharacterSpeedFactor, characterSpeedFactor,
         armWeaponHitBonus, clearWeaponHitBonus, getWeaponHitBonus, getWeaponHitLog: () => log.map(entry => ({ ...entry })),
         setMoveSpeedFactor, clearMoveSpeedFactor, moveSpeedFactor, getMoveSpeedModifiers,
-        registerHitHook, unregisterHitHook, naturalCriticalChance, eventHp,
+        registerHitHook, unregisterHitHook, naturalCriticalChance, eventHp, adjustChance,
         skipPresentationOnce, takePresentationSkip, clearPresentationSkip,
         clearAll, tick, isInstalled: () => installed || !!PluginManager._commands?.[`${ENGINE}:UpdateEventHp`]?.__projectRCardModifiers
     };

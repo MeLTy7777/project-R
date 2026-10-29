@@ -103,6 +103,9 @@
  *   swingWeapon(godId, degree)  公式Swing Weaponをその神の表示Eventから出す(失敗はfalse)
  *   dash(godId, degree, tiles, frames)  その神の表示Eventを、発動の向きへ tiles マス、frames かけて移動させる(一閃。表示だけ。Hermesが駆ける見た目)
  *   requestBalloon(godId, balloonId)  標準のふきだし(3=音符 など)をその神の表示Eventへ出す(一時召喚の表示Eventが現れるまで預かる)
+ *   spawnFollower(godId, point, { cardId })  { ok, id, eventId }  任意のマップ位置(タイル単位の中心)に神の表示Eventを出す(ヴェイル: マウスに追従する神。Playerの子にはならない。表示だけ)
+ *   moveFollower(id, point) / vanishFollower(id) / removeFollower(id) / getFollowers()
+ *     vanishFollower は黒いノイズ(hermes.vanish)を重ねてから短いframe後に破棄する。毎フレーム、位置はこのAPIで渡された点に合わせる。
  *   getDiagnostics()       最後の失敗理由・生成回数(診断用)
  */
 (() => {
@@ -223,6 +226,7 @@
     };
 
     const clearAll = () => {
+        for (const id of [...followers.keys()]) removeFollower(id);
         for (const key of [...visuals.keys()]) remove(key);
         pendingSwings.length = 0;
         pendingBalloons.length = 0;
@@ -312,7 +316,7 @@
     Game_Map.prototype.update = function(sceneActive) {
         _Game_Map_update.apply(this, arguments);
         try {
-            if (sceneActive) sync();
+            if (sceneActive) { sync(); updateFollowers(); }
         } catch (error) {
             note(error);
         }
@@ -322,6 +326,7 @@
     const _Game_Map_setup = Game_Map.prototype.setup;
     Game_Map.prototype.setup = function() {
         visuals.clear(); // 旧マップのEventはマップごと破棄される。
+        followers.clear();
         pendingSwings.length = 0;
         return _Game_Map_setup.apply(this, arguments);
     };
@@ -336,7 +341,69 @@
     const _extract = DataManager.extractSaveContents;
     DataManager.extractSaveContents = function() {
         visuals.clear();
+        followers.clear();
         return _extract.apply(this, arguments);
+    };
+
+    // ---- 追従する神(カーソル)。一時召喚(論理アンカー)とは別管理で、位置は呼び出し側が毎フレーム渡す点に合わせる。 ----
+    const followers = new Map(); // id -> { id, godId, eventId, map, point, cardId, vanishFrames }
+    let followerSerial = 0;
+    const FOLLOWER_VANISH_FRAMES = 8;
+    const placeFollower = record => {
+        const event = liveEvent(record);
+        if (!event || !record.point) return;
+        event.isPlayerChild = false; // 雛形の <child of: player> を打ち消す(Playerの移動量を足さない)
+        event.theParent = null;
+        event.setPosition(record.point.x - 0.5, record.point.y - 0.5);
+        applyAppearance(record, event);
+    };
+    const spawnFollower = (godId, point, options = {}) => {
+        const tid = templateEventId();
+        if (typeof $gameMap === "undefined" || !$gameMap || !tid || typeof $gameMap.spawnEvent !== "function") return { ok: false, reason: tid ? "mapUnavailable" : "templateMissing" };
+        if (!point || ![point.x, point.y].every(Number.isFinite) || !appearanceFor(godId)) return { ok: false, reason: "invalidPoint" };
+        try {
+            const eventId = $gameMap.spawnEvent(tid, point.x - 0.5, point.y - 0.5, false);
+            if (!eventId) { diagnostics.lastError = "spawnFailed"; return { ok: false, reason: "spawnFailed" }; }
+            const id = ++followerSerial;
+            const record = { id, key: "follower:" + id, kind: "follower", godId, eventId, map: $gameMap, point: { x: point.x, y: point.y }, direction: 2,
+                cardId: options.cardId || null, vanishFrames: null };
+            followers.set(id, record);
+            diagnostics.spawned++;
+            placeFollower(record);
+            return { ok: true, id, eventId };
+        } catch (error) {
+            note(error);
+            return { ok: false, reason: String(error?.message || error) };
+        }
+    };
+    const moveFollower = (id, point) => {
+        const record = followers.get(id);
+        if (!record || !point || ![point.x, point.y].every(Number.isFinite)) return false;
+        record.point = { x: point.x, y: point.y };
+        placeFollower(record); // その場で合わせる(次のマップ更新を待たず、1フレーム遅れない)
+        return true;
+    };
+    const removeFollower = id => {
+        const record = followers.get(id);
+        if (!record) return false;
+        followers.delete(id);
+        destroyEvent(record);
+        diagnostics.removed++;
+        return true;
+    };
+    const vanishFollower = id => {
+        const record = followers.get(id);
+        if (!record || record.vanishFrames !== null) return false;
+        record.vanishFrames = FOLLOWER_VANISH_FRAMES;
+        try { root.ProjectRPresentationVfx?.play?.("hermes.vanish", { eventId: record.eventId }); } catch (error) { note(error); }
+        return true;
+    };
+    const updateFollowers = () => {
+        for (const [id, record] of [...followers]) {
+            if (record.map !== $gameMap || !liveEvent(record)) { followers.delete(id); continue; }
+            placeFollower(record);
+            if (record.vanishFrames !== null && --record.vanishFrames <= 0) removeFollower(id);
+        }
     };
 
     const getTransientEventId = godId => {
@@ -430,6 +497,8 @@
         getVisuals: () => [...visuals.values()].map(r => ({ kind: r.kind, godId: r.godId, eventId: r.eventId, summonId: r.summonId })),
         getTransientEventId,
         swingWeapon, requestBalloon, dash,
+        spawnFollower, moveFollower, vanishFollower, removeFollower,
+        getFollowers: () => [...followers.values()].map(r => ({ id: r.id, godId: r.godId, eventId: r.eventId, point: { ...r.point }, vanishing: r.vanishFrames !== null })),
         getAppearance: godId => ({ ...appearanceFor(godId) }),
         getDiagnostics: () => ({ ...diagnostics, visualCount: visuals.size, templateEventId: templateEventId() })
     };

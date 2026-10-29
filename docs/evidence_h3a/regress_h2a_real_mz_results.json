@@ -1,0 +1,298 @@
+[
+ {
+  "id": "0 boot: 新プラグイン読み込み(SwordSystem含む)・予備動作の既定8frame",
+  "ok": true,
+  "detail": "Chromium 85 / NW 0.48.4"
+ },
+ {
+  "id": "A 実機: 絶Lv1 × 通常の剣: 命中の最終ダメージ x1.5、1回で消費",
+  "ok": true,
+  "detail": {
+   "base": 84,
+   "boosted": 126,
+   "consumed": [
+    [
+     4,
+     126
+    ]
+   ],
+   "x": 9,
+   "after": null
+  }
+ },
+ {
+  "id": "A 実機: 絶Lv2 × 通常の剣: 命中の最終ダメージ x2、1回で消費",
+  "ok": true,
+  "detail": {
+   "base": 84,
+   "boosted": 168,
+   "consumed": [
+    [
+     4,
+     168
+    ]
+   ],
+   "x": 9,
+   "after": null
+  }
+ },
+ {
+  "id": "A 実機: 絶Lv3 × 通常の剣: 命中の最終ダメージ x3、1回で消費",
+  "ok": true,
+  "detail": {
+   "base": 84,
+   "boosted": 252,
+   "consumed": [
+    [
+     4,
+     252
+    ]
+   ],
+   "x": 9,
+   "after": null
+  }
+ },
+ {
+  "id": "B 実機: 外れの斬撃では強化は消費されず、0.8秒で失効する",
+  "ok": true,
+  "detail": {
+   "swung": true,
+   "kept": 1.5,
+   "gone": null
+  }
+ },
+ {
+  "id": "C 実機: G17 × 絶Lv1(予備動作つき): x1.5、次弾は通常",
+  "ok": true,
+  "detail": {
+   "base": 64,
+   "boosted": 96,
+   "third": 64
+  }
+ },
+ {
+  "id": "C 実機: G17 × 絶Lv2(予備動作つき): x2、次弾は通常",
+  "ok": true,
+  "detail": {
+   "base": 64,
+   "boosted": 128,
+   "third": 64
+  }
+ },
+ {
+  "id": "C 実機: G17 × 絶Lv3(予備動作つき): x3、次弾は通常",
+  "ok": true,
+  "detail": {
+   "base": 64,
+   "boosted": 192,
+   "third": 64
+  }
+ },
+ {
+  "id": "D1 実機: 予備動作の間(移動前)に、腕クロス・Hermes・出発点のノイズ・カットインが同時に出ている",
+  "ok": true,
+  "detail": {
+   "frames": 42,
+   "sample": {
+    "x": 12,
+    "pending": true,
+    "motion": "CrossArms",
+    "hermes": 81,
+    "gunVisible": false,
+    "gunHidden": true,
+    "pics": "",
+    "cut": 1
+   }
+  }
+ },
+ {
+  "id": "D2 実機: 銃のスプライトは腕クロスの間だけ隠れ(見えない)、終わると戻る。弾薬・装備は不変",
+  "ok": true,
+  "detail": {
+   "ammo0": 4,
+   "last": {
+    "x": 17,
+    "pending": false,
+    "motion": "Aim",
+    "hermes": 0,
+    "gunVisible": true,
+    "gunHidden": false,
+    "pics": "",
+    "cut": 0
+   }
+  }
+ },
+ {
+  "id": "D3 実機: 移動の後に到着点のノイズ。Hermesは最後に消える",
+  "ok": true,
+  "detail": {
+   "x": 17,
+   "pending": false,
+   "motion": "CrossArms",
+   "hermes": 81,
+   "gunVisible": false,
+   "gunHidden": true,
+   "pics": "library_ProjectR_Zetsu_Arrival",
+   "cut": 1
+  }
+ },
+ {
+  "id": "E1 実機: 無効なUltimate(Gauge不足)ではカットインが出ず、Gauge・Divine HPも変わらない",
+  "ok": true,
+  "detail": {
+   "ok": false,
+   "reason": "gaugeNotFull",
+   "started": false,
+   "source": "keyboard",
+   "godId": null,
+   "ringId": null,
+   "consumed": 0,
+   "serial": 1,
+   "gauge": 0,
+   "max": 100
+  }
+ },
+ {
+  "id": "E2 実機: 発動に成功したときだけ、中央大型のカットイン(横・縦)が出る",
+  "ok": true,
+  "detail": [
+   {
+    "ok": true,
+    "cut": [
+     [
+      "ultimate",
+      "hermes",
+      "horizontal"
+     ]
+    ]
+   },
+   {
+    "ok": true,
+    "cut": [
+     [
+      "ultimate",
+      "hermes",
+      "vertical"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "id": "E3 実機: 描画順 Tilemap < Vision < CutIn(最前)、CutIn層の最上段=操作キャラ複製",
+  "ok": true,
+  "detail": "HUDはWindow層でさらに上"
+ },
+ {
+  "id": "F1 再現(実機): 旧CE1は剣を振っても隣の敵(Event 4)に当たらない(Event 1固定)",
+  "ok": true,
+  "detail": {
+   "before": 1000,
+   "after": 1000
+  }
+ },
+ {
+  "id": "F2 実機: 任意のEvent ID(2,3,4,5,6)の敵に、斬った相手だけダメージ(IDに依らない)",
+  "ok": true,
+  "detail": {
+   "2": [
+    2
+   ],
+   "3": [
+    3
+   ],
+   "4": [
+    4
+   ],
+   "5": [
+    5
+   ],
+   "6": [
+    6
+   ]
+  }
+ },
+ {
+  "id": "F3 実機: マウス方向(東西南北・斜め)へHitboxが回り、狙った側の敵だけに当たる",
+  "ok": true,
+  "detail": {
+   "東": [
+    2
+   ],
+   "西": [
+    3
+   ],
+   "北": [
+    4
+   ],
+   "南": [
+    5
+   ],
+   "北東": [
+    6
+   ],
+   "南西": [
+    2
+   ]
+  }
+ },
+ {
+  "id": "F4a 実機: 重なった2体(Event 4,5)に1回ずつ。Hitboxが残る間も繰り返し当たらない",
+  "ok": true,
+  "detail": {
+   "before": [
+    1000,
+    1000
+   ],
+   "after": [
+    916,
+    916
+   ],
+   "later": [
+    916,
+    916
+   ]
+  }
+ },
+ {
+  "id": "F4b 実機: 対象が居なくても例外なし・どこにもダメージなし・Event 1も無傷(斬撃は実行された)",
+  "ok": true,
+  "detail": {
+   "errors": 0,
+   "swings": [
+    19,
+    20
+   ]
+  }
+ },
+ {
+  "id": "G1 実機: G17の発射・F(調べる)が従来どおり",
+  "ok": true,
+  "detail": {
+   "shotOk": true,
+   "busy": true
+  }
+ },
+ {
+  "id": "G2 実機: 予備動作中に戦闘を終えると破棄され、後から移動しない・強化も残らない",
+  "ok": true,
+  "detail": {
+   "pending": true,
+   "pend2": false,
+   "x": 12
+  }
+ },
+ {
+  "id": "G3 実機: 戦闘外でメニューを開閉できる",
+  "ok": true,
+  "detail": {
+   "scene0": "Scene_Map",
+   "scene1": "Scene_ProjectRMenu"
+  }
+ },
+ {
+  "id": "H Console(F8)に赤いエラーなし",
+  "ok": true,
+  "detail": []
+ }
+]

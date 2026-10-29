@@ -1,0 +1,168 @@
+{
+  "note": "CDPの入力を使わないOSレベルの入力(人間の手動プレイの代わりではない)",
+  "results": [
+    {
+      "id": "OS0 OSレベルのマウス移動がゲームのTouchInputに届く(CDPの入力ではない)",
+      "ok": true,
+      "detail": {
+        "x": 696,
+        "y": 576,
+        "dx": 0,
+        "dy": 13.5
+      }
+    },
+    {
+      "id": "OS1 Qを1回押す → カード使用は1回だけ(繰り返さない)。山札-1・Cooldown+1・ヴェイル1つ",
+      "ok": true,
+      "detail": {
+        "uses": 1,
+        "s0": {
+          "draw": 25,
+          "discard": 0,
+          "cooldown": 0,
+          "hand": [
+            "hermes_veil",
+            "hermes_veil",
+            "hermes_veil",
+            "hermes_veil",
+            "hermes_veil"
+          ]
+        },
+        "s1": {
+          "draw": 24,
+          "discard": 0,
+          "cooldown": 1,
+          "hand": [
+            "hermes_veil",
+            "hermes_veil",
+            "hermes_veil",
+            "hermes_veil",
+            "apollo_golden_arrow"
+          ]
+        },
+        "veil": 1
+      }
+    },
+    {
+      "id": "OS2 OSマウスで円が追従し、その間カードは再使用されない(使用1回のまま・手札/山札/Cooldown不変)",
+      "ok": true,
+      "detail": {
+        "follow": [
+          {
+            "m": {
+              "x": 16.5,
+              "y": 26.5
+            },
+            "c": {
+              "x": 16.5,
+              "y": 26.5
+            }
+          },
+          {
+            "m": {
+              "x": 18.5,
+              "y": 25.5
+            },
+            "c": {
+              "x": 18.5,
+              "y": 25.5
+            }
+          },
+          {
+            "m": {
+              "x": 18.5,
+              "y": 28.5
+            },
+            "c": {
+              "x": 18.5,
+              "y": 28.5
+            }
+          },
+          {
+            "m": {
+              "x": 14.5,
+              "y": 28.5
+            },
+            "c": {
+              "x": 14.5,
+              "y": 28.5
+            }
+          },
+          {
+            "m": {
+              "x": 11.5,
+              "y": 27.5
+            },
+            "c": {
+              "x": 11.5,
+              "y": 27.5
+            }
+          }
+        ],
+        "uses": 1
+      }
+    },
+    {
+      "id": "OS3 効果は終わり、Hermesの表示・速度係数が残らず、もう一度勝手に発動しない",
+      "ok": true,
+      "detail": {
+        "followers": 0,
+        "speed": 1
+      }
+    },
+    {
+      "id": "OS4 Jを1回押す → 剣は1回だけ振られ、動作(モーション)が繰り返されない。ダメージも1回分",
+      "ok": true,
+      "detail": {
+        "swings0": 0,
+        "swings1": 1,
+        "acts": [
+          "SwordAttack",
+          ""
+        ],
+        "hp": 77
+      }
+    },
+    {
+      "id": "OS5 Dを押している間だけ動き、離すと止まる(勝手に走り続けない)",
+      "ok": true,
+      "detail": {
+        "x0": 12,
+        "x1": 14.625,
+        "x2": 14.625
+      }
+    },
+    {
+      "id": "OS6 Qをもう1回押す → カード使用はちょうど+1(合計2回)。ヴェイルは1つ",
+      "ok": true,
+      "detail": {
+        "uses": 2,
+        "state": {
+          "draw": 23,
+          "discard": 1,
+          "cooldown": 1,
+          "hand": [
+            "hermes_veil",
+            "hermes_veil",
+            "hermes_veil",
+            "apollo_golden_arrow",
+            "apollo_plague_attack"
+          ]
+        }
+      }
+    },
+    {
+      "id": "OS7 押されたままのキーがない(OS側・ゲーム側とも)",
+      "ok": true,
+      "detail": {
+        "stuckOs": [],
+        "stuckPage": []
+      }
+    },
+    {
+      "id": "OSZ Consoleのエラーなし",
+      "ok": true,
+      "detail": []
+    }
+  ]
+}

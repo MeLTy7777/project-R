@@ -1,0 +1,335 @@
+{
+  "chromium": "85.0.4183.121 / nw 0.48.4",
+  "results": [
+    {
+      "id": "0 boot: 新Plugin(Cursor・秘匿・ヴェイル・DEV敵AI)の読み込み",
+      "ok": true,
+      "detail": "Chromium 85 / NW 0.48.4"
+    },
+    {
+      "id": "0b VFX Designerライブラリにヴェイルの3エントリがある",
+      "ok": true,
+      "detail": "getAnimationFromLibrary"
+    },
+    {
+      "id": "0c 登録: cursor対象・特殊・最大3枚・Cooldown 10秒",
+      "ok": true,
+      "detail": "definitions"
+    },
+    {
+      "id": "R1 実機: 円とHermesが実マウスに毎回追従する。発動点に残らない。カード消費・手札の入れ替え・Cooldownは1回だけ",
+      "ok": true,
+      "detail": {
+        "castCenter": {
+          "x": 14.5,
+          "y": 25.5
+        },
+        "rows": [
+          {
+            "m": {
+              "x": 16.5,
+              "y": 26.5
+            },
+            "c": {
+              "x": 16.5,
+              "y": 26.5
+            },
+            "h": {
+              "x": 16.5,
+              "y": 26.5
+            }
+          },
+          {
+            "m": {
+              "x": 18.5,
+              "y": 25.5
+            },
+            "c": {
+              "x": 18.5,
+              "y": 25.5
+            },
+            "h": {
+              "x": 18.5,
+              "y": 25.5
+            }
+          },
+          {
+            "m": {
+              "x": 18.5,
+              "y": 29.5
+            },
+            "c": {
+              "x": 18.5,
+              "y": 29.5
+            },
+            "h": {
+              "x": 18.5,
+              "y": 29.5
+            }
+          },
+          {
+            "m": {
+              "x": 13.5,
+              "y": 29.5
+            },
+            "c": {
+              "x": 13.5,
+              "y": 29.5
+            },
+            "h": {
+              "x": 13.5,
+              "y": 29.5
+            }
+          },
+          {
+            "m": {
+              "x": 10.5,
+              "y": 27.5
+            },
+            "c": {
+              "x": 10.5,
+              "y": 27.5
+            },
+            "h": {
+              "x": 10.5,
+              "y": 27.5
+            }
+          }
+        ],
+        "once": true,
+        "circleFollows": true
+      }
+    },
+    {
+      "id": "R1b 実機: 魔法陣のVFX(VFX Designer設定)はHermesの表示Eventに結び付き(固定しない)、ループは止めるまで",
+      "ok": true,
+      "detail": [
+        {
+          "note": "ProjectR:hermes_veil.circle#1",
+          "loop": "Infinity",
+          "stick": false,
+          "target": 50
+        }
+      ]
+    },
+    {
+      "id": "R2 実機: 効果は300フレーム(5秒)で終わり、Hermesは黒いノイズ(vanish)の後に消え、魔法陣・Eventが残らない",
+      "ok": true,
+      "detail": {
+        "frames": 301,
+        "wall": 4848,
+        "afterExpire": {
+          "followers": 0,
+          "speed": 1,
+          "concealed": false
+        },
+        "gone": {
+          "followers": 0,
+          "pictures": 0,
+          "events": 49,
+          "veil": 0
+        },
+        "eventsBefore": 49
+      }
+    },
+    {
+      "id": "R3 実機: 範囲を動かすと、味方(主人公・DEV味方)の速度x1.3と標的の秘匿が入った/出た瞬間(数フレーム以内)に付く・外れる。時間はやり直さない",
+      "ok": true,
+      "detail": [
+        {
+          "label": "player-in",
+          "player": 1.3,
+          "ally": 1,
+          "pc": true,
+          "ac": false
+        },
+        {
+          "label": "ally-in",
+          "player": 1,
+          "ally": 1.3,
+          "pc": false,
+          "ac": true
+        },
+        {
+          "label": "both",
+          "player": 1.3,
+          "ally": 1.3,
+          "pc": true,
+          "ac": true
+        },
+        {
+          "label": "player-out(4)",
+          "player": 1.3,
+          "ally": 1,
+          "pc": true,
+          "ac": false
+        },
+        {
+          "label": "far",
+          "player": 1,
+          "ally": 1,
+          "pc": false,
+          "ac": false
+        },
+        {
+          "label": "back",
+          "player": 1.3,
+          "ally": 1,
+          "pc": true,
+          "ac": false
+        }
+      ]
+    },
+    {
+      "id": "R3b 実機: 出入りの間も効果時間は1本のまま進む(やり直さない)",
+      "ok": true,
+      "detail": {
+        "remaining": 3.816666666666671
+      }
+    },
+    {
+      "id": "R4a 実機(秘匿の核): HendrixのcheckRangeは通常は主人公を検知し、ヴェイル中は検知せず(古いキャッシュも外れる)、終われば再び検知する",
+      "ok": true,
+      "detail": {
+        "core": {
+          "before": true
+        },
+        "hidden0": {
+          "pos": [
+            24.34375,
+            25
+          ],
+          "st": {
+            "id": 4,
+            "state": "idle",
+            "seen": false,
+            "detected": null,
+            "chaseFrames": 82,
+            "idleFrames": 18
+          },
+          "detected": false,
+          "checkRange": false
+        },
+        "re": {
+          "st": {
+            "id": 4,
+            "state": "chase",
+            "seen": true,
+            "detected": "player",
+            "chaseFrames": 99,
+            "idleFrames": 292
+          },
+          "detected": true,
+          "trans": [
+            "idle>chase",
+            "chase>idle",
+            "idle>chase",
+            "chase>idle",
+            "idle>chase"
+          ]
+        }
+      }
+    },
+    {
+      "id": "R4b 実機(DEV敵AI): 追跡中は動き、ヴェイル中は idle で止まり、範囲を外すと再び追い、戻ると見失い、終了後に再取得して再び動く",
+      "ok": true,
+      "detail": {
+        "moved": 3.1875,
+        "carry": 0.40625,
+        "stillMoved": 0,
+        "outside": "chase",
+        "inside": "idle",
+        "trans": [
+          "idle>chase",
+          "chase>idle",
+          "idle>chase",
+          "chase>idle",
+          "idle>chase"
+        ]
+      }
+    },
+    {
+      "id": "R4c 製品の敵AIへの接続",
+      "ok": true,
+      "detail": "未了(製品用の共通敵AIは未実装。マップEventページがHendrixの検知部品を使う限り自動で効く。別の主張として docs に記録)"
+    },
+    {
+      "id": "R5 実機: Lv2 範囲内の主人公の実際の移動速度(フレームあたりの移動量)が約1.3倍。範囲外では元に戻る",
+      "ok": true,
+      "detail": {
+        "free": 0.04963235294117647,
+        "boosted": 0.06347894668579102,
+        "out": 0.04924242424242424,
+        "ratio": 1.2789832221137154,
+        "ratioOut": 0.9921436588103255
+      }
+    },
+    {
+      "id": "R6 実機: Lv3 範囲内の実際の剣攻撃だけ、公式のクリティカル抽選の実効率が +50ポイントになりクリティカル(約3倍)。範囲外・ヴェイルなしでは出ない",
+      "ok": true,
+      "detail": {
+        "natural": 0.1,
+        "r": 0.35,
+        "plain": 78,
+        "boosted": 236,
+        "outside": 78,
+        "bonus": 0.5,
+        "outsideState": {
+          "center": {
+            "x": 19.5,
+            "y": 25.375
+          },
+          "bonus": 0
+        },
+        "log": {
+          "seq": 1,
+          "type": "hit",
+          "source": "weapon",
+          "eventId": 4,
+          "base": null,
+          "critical": null,
+          "flat": 0,
+          "landed": true,
+          "dealt": 236,
+          "critChance": 0.6
+        }
+      }
+    },
+    {
+      "id": "R7 実機: 通常カットイン・主人公は何もしない(特別なモーションなし)・味方にオーラ(範囲内の味方の識別)",
+      "ok": true,
+      "detail": {
+        "early": {
+          "cut": [
+            "card"
+          ],
+          "act": []
+        },
+        "auras": [
+          "ProjectR:hermes_veil.aura#event:66.20"
+        ]
+      }
+    },
+    {
+      "id": "R9 実機: 戦闘終了(テスト終了)で、効果・Hermesの表示・速度係数・秘匿・VFXがすべて消える",
+      "ok": true,
+      "detail": {
+        "veil": 0,
+        "followers": 0,
+        "speed": 1,
+        "concealed": false,
+        "pictures": 0
+      }
+    },
+    {
+      "id": "Y 入力: 押しっぱなしのキー/マウスが残っていない",
+      "ok": true,
+      "detail": "Input.clear"
+    },
+    {
+      "id": "Z 全体: Consoleのエラーなし",
+      "ok": true,
+      "detail": []
+    }
+  ]
+}

@@ -37,7 +37,7 @@ test("VFX: 成功が確定した後にだけ、出発点(ライブラリ+位置�
 test("VFXの対応表: カードID→ライブラリ名→基準→画像が揃い、ライブラリJSON(js/AnimationSolutionLibrary.json)とスプライトシートの実体と一致する", () => {
     const w = zetsuWorld();
     const vfx = w.ctx.ProjectRPresentationVfx;
-    assert.deepEqual(plain(vfx.keys()).sort(), ["hermes.vanish", "hermes_flute.ripple", "hermes_issen.lightning", "hermes_issen.trail", "hermes_strength.circle", "hermes_strength.light", "hermes_sweep.staff", "hermes_zetsu.arrival", "hermes_zetsu.departure"]);
+    assert.deepEqual(plain(vfx.keys()).sort(), ["hermes.vanish", "hermes_flute.ripple", "hermes_issen.lightning", "hermes_issen.trail", "hermes_strength.circle", "hermes_strength.light", "hermes_sweep.staff", "hermes_veil.aura", "hermes_veil.circle", "hermes_veil.touch", "hermes_zetsu.arrival", "hermes_zetsu.departure"]);
     const library = JSON.parse(read("js/AnimationSolutionLibrary.json"));
     for (const key of vfx.keys()) {
         const mapping = vfx.mapping(key);
@@ -47,7 +47,8 @@ test("VFXの対応表: カードID→ライブラリ名→基準→画像が揃�
         assert.deepEqual([entry.rows, entry.columns, entry.fps], [mapping.sheet.rows, mapping.sheet.columns, mapping.sheet.fps]);
         const size = pngSize(`img/pictures/${mapping.sheet.file}.png`);
         const frame = { "Animation/ProjectR_Zetsu_Noise": 160, "Animation/ProjectR_Sweep_Staff": 400, "Animation/ProjectR_Flute_Ripple": 800 }[mapping.sheet.file];
-        const rect = { "Animation/ProjectR_Issen_Trail": [160, 560], "Animation/ProjectR_Issen_Lightning": [160, 560], "Animation/ProjectR_Strength_Circle": [240, 240], "Animation/ProjectR_Strength_Light": [240, 320] }[mapping.sheet.file] || [frame, frame];
+        const rect = { "Animation/ProjectR_Issen_Trail": [160, 560], "Animation/ProjectR_Issen_Lightning": [160, 560], "Animation/ProjectR_Strength_Circle": [240, 240], "Animation/ProjectR_Strength_Light": [240, 320],
+            "Animation/ProjectR_Veil_Circle": [480, 480], "Animation/ProjectR_Veil_Touch": [144, 144], "Animation/ProjectR_Veil_Aura": [96, 96] }[mapping.sheet.file] || [frame, frame];
         assert.deepEqual([size.w / mapping.sheet.columns, size.h / mapping.sheet.rows], rect, `1コマ${rect.join("x")}px x 8コマ`);
         assert.equal(entry.rows * entry.columns, 8);
     }

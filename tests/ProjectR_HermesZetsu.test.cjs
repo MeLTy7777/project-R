@@ -18,8 +18,8 @@ test("旧7枚のCardDefinitions(plugins.js)は変えず、絶は実行時に追�
     const def = deckApi(w).definitions.card(ZETSU);
     assert.deepEqual(plain(def), { cardId: ZETSU, ringId: "hermes", maxCopies: 5, cooldownSeconds: 0.5, maxLevel: 3, rarity: "strong", category: "movement", targetType: "ground" });
     assert.equal(Object.isFrozen(def), true);
-    assert.equal(deckApi(w).definitions.cardDefinitions().length, 12, "旧7 + 実行時に追加した5(絶・薙ぎ払い・葦笛・一閃・ストレングス)");
-    assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.registeredRuntimeCards()), [ZETSU, "hermes_sweep", "hermes_reed_flute", "hermes_issen", "hermes_strength"]);
+    assert.equal(deckApi(w).definitions.cardDefinitions().length, 13, "旧7 + 実行時に追加した6(絶・薙ぎ払い・葦笛・一閃・ストレングス・ヴェイル)");
+    assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.registeredRuntimeCards()), [ZETSU, "hermes_sweep", "hermes_reed_flute", "hermes_issen", "hermes_strength", "hermes_veil"]);
     // 旧カードの定義は一切変わっていない
     const reed = deckApi(w).definitions.card("hermes_reed_flute_sleep");
     assert.deepEqual([reed.maxCopies, reed.cooldownSeconds, reed.rarity], [2, 12, "strong"]);
@@ -38,8 +38,8 @@ test("設計カタログ: Hermes 7枚の分類・最大コピー数・Cooldown�
         [5, "薙ぎ払い", "normal", 3, 0.5], [6, "葦笛", "strong", 3, 8], [7, "絶", "strong", 5, 0.5]]);
     assert.equal(catalog.hermesTotalMaxCopies(), 30);
     const implemented = plain(catalog.hermesDesign()).filter(c => c.implemented);
-    assert.deepEqual(implemented.map(c => [c.designId, c.runtimeCardId]), [[1, "hermes_issen"], [4, "hermes_strength"], [5, "hermes_sweep"], [6, "hermes_reed_flute"], [7, ZETSU]],
-        "実装済みは薙ぎ払い・葦笛・絶。設計IDはランタイムIDとは別の識別子");
+    assert.deepEqual(implemented.map(c => [c.designId, c.runtimeCardId]), [[1, "hermes_issen"], [3, "hermes_veil"], [4, "hermes_strength"], [5, "hermes_sweep"], [6, "hermes_reed_flute"], [7, ZETSU]],
+        "実装済みは一閃・ヴェイル・ストレングス・薙ぎ払い・葦笛・絶。設計IDはランタイムIDとは別の識別子");
     // 未実装の2枚は旧cardIdへ紐付けない(候補は参考情報のみ)
     for (const card of plain(catalog.hermesDesign()).filter(c => !c.implemented)) assert.equal(card.runtimeCardId, null);
     assert.deepEqual(plain(catalog.hermesDesign()[5].legacyCandidates), ["hermes_reed_flute_sleep"]);
@@ -50,7 +50,7 @@ test("本番の最終30枚デッキは、7枚すべてが実装されるまで�
     const w = buildWorld();
     const catalog = w.ctx.ProjectRCardCatalog;
     assert.equal(catalog.isFinalDeckReady(), false);
-    assert.deepEqual(plain(catalog.finalDeckBlockers()), ["サイコポンポス", "ヴェイル"]);
+    assert.deepEqual(plain(catalog.finalDeckBlockers()), ["サイコポンポス"]);
     assert.equal(catalog.buildFinalHermesDeck(), null);
     w.enterMap(4, 25, 26);
     assert.deepEqual(plain(deckApi(w).getDeck()), [], "保存デッキは空のまま(自動設定しない)");

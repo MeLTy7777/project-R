@@ -45,6 +45,8 @@
  * API: ProjectRPresentationVfx
  *   play(key, { origin?:{x,y} })  → { ok, mode, reason? }
  *   clear()                       自分が出したVFXだけを除去
+ *   stop(note)                    play() が返した note の1件だけを除去(ヴェイルの範囲・オーラ)
+ *   anchor:"target" = play時の eventId("player" または Event ID)へ結び付け、止めるまで付いていく。area:true なら radiusTiles で拡縮。instance で再生ごとにnoteを分ける。
  *   mapping(key) / keys() / register(key, definition)
  *   probeLibrary()                ライブラリ登録の有無を非同期に調べる(診断用)
  *   diagnostics()                 再生・失敗の件数と直近の理由
@@ -66,6 +68,10 @@
     const LIGHTNING_SHEET = Object.freeze({ file: "Animation/ProjectR_Issen_Lightning", rows: 2, columns: 4, fps: 24 });
     const CIRCLE_SHEET = Object.freeze({ file: "Animation/ProjectR_Strength_Circle", rows: 2, columns: 4, fps: 12 });
     const LIGHT_SHEET = Object.freeze({ file: "Animation/ProjectR_Strength_Light", rows: 2, columns: 4, fps: 12 });
+    // H2B-3A(自作のDEV素材。tools/gen_dev_h2b3a_assets.cjs): ヴェイルの魔法陣(1コマ480px=半径5マス@48px・暗い紫)、神の手の波紋(1コマ144px)、効果を受けている味方のオーラ(1コマ96px)。
+    const VEIL_CIRCLE_SHEET = Object.freeze({ file: "Animation/ProjectR_Veil_Circle", rows: 2, columns: 4, fps: 10 });
+    const VEIL_TOUCH_SHEET = Object.freeze({ file: "Animation/ProjectR_Veil_Touch", rows: 2, columns: 4, fps: 12 });
+    const VEIL_AURA_SHEET = Object.freeze({ file: "Animation/ProjectR_Veil_Aura", rows: 2, columns: 4, fps: 8 });
     const defaults = {
         // 出発点: 予備動作の間(移動の前)にプレイヤーへ出し、stickでその場(出発点)に固定する。移動後もノイズは出発点に残る。
         "hermes_zetsu.departure": { library: "ProjectR_Zetsu_Departure", sheet: NOISE_SHEET, anchor: "player", stick: true, scale: 100, opacity: 255, offsetY: -24 },
@@ -80,6 +86,11 @@
         // ストレングス: 足元の魔法陣(黄金)と、そこから立ち上る黄金の光。プレイヤーに追従する。
         "hermes_strength.circle": { library: "ProjectR_Strength_Circle", sheet: CIRCLE_SHEET, anchor: "player", scale: 100, opacity: 235, offsetY: 6 },
         "hermes_strength.light": { library: "ProjectR_Strength_Light", sheet: LIGHT_SHEET, anchor: "player", scale: 100, opacity: 235, offsetY: -30, blend: "Add" },
+        // ヴェイル: マウスに追従する神(表示Event)に結び付けた暗い紫の魔法陣(半径5マス)。follow: 結び付けたEventの動きに毎フレーム付いていく。
+        //   area: true = play時の radiusTiles(半径のタイル数)に合わせて拡縮する(frame = 1コマのピクセル数・半径5マス@48px = 480)。再生中は止めるまで繰り返す。
+        "hermes_veil.circle": { library: "ProjectR_Veil_Circle", sheet: VEIL_CIRCLE_SHEET, anchor: "target", area: true, frame: 480, frameTiles: 10, loop: "infinite", scale: 100, opacity: 215, offsetY: 0 },
+        "hermes_veil.touch": { library: "ProjectR_Veil_Touch", sheet: VEIL_TOUCH_SHEET, anchor: "target", scale: 100, opacity: 235, offsetY: 0 },
+        "hermes_veil.aura": { library: "ProjectR_Veil_Aura", sheet: VEIL_AURA_SHEET, anchor: "target", loop: "infinite", scale: 100, opacity: 200, offsetY: 4 },
         // 神の消失: 神(表示Event)の位置に黒いノイズ。
         "hermes.vanish": { library: "ProjectR_Hermes_Vanish", sheet: NOISE_SHEET, anchor: "event", stick: true, scale: 110, opacity: 255, offsetY: -24 }
     };
@@ -137,7 +148,7 @@
         const sheet = definition.sheet;
         if (!sheet?.file) return fail("noSheet", key);
         if (!hasCommand("showAnimatedPicture")) return fail("vfxCommandMissing", key);
-        const note = NOTE_PREFIX + key;
+        const note = NOTE_PREFIX + key + (extra.instance !== undefined ? "#" + extra.instance : "");
         const args = {
             note, fps: String(sheet.fps || 30), loopCount: String(definition.loop || 1),
             spritesheetSettings: JSON.stringify({ spritesheetFile: sheet.file, row: String(sheet.rows), column: String(sheet.columns), frameRange: "" }),
@@ -151,7 +162,7 @@
         }
         call("showAnimatedPicture", args);
         active.push({ key, note, library: null });
-        return { ok: true, mode: "sheet" };
+        return { ok: true, mode: "sheet", note };
     };
 
     const play = (key, context = {}) => {
@@ -180,6 +191,19 @@
                 // 回転はライブラリ再生で上書きできないため、同じ見た目の設定で公式Show VFXを使う。
                 const degree = Number(context.degree);
                 result = playSheet(key, definition, { x: 0, y: 0 }, !!definition.stick, { rotation: Number.isFinite(degree) ? degree : 0 });
+            } else if (definition.anchor === "target") {
+                // 結び付ける先: "player"(既定) または Event ID。範囲の魔法陣・オーラ・手の波紋。ライブラリと同じ設定の公式Show VFXで再生する(拡縮・個別停止のため)。
+                const target = context.eventId === undefined || context.eventId === "player" ? "player" : Number(context.eventId);
+                if (target !== "player" && !(Number.isInteger(target) && target > 0)) { result = fail("invalidEvent", key); }
+                else {
+                    let shaped = definition;
+                    if (definition.area === true) {
+                        const radius = Number(context.radiusTiles), tile = typeof $gameMap !== "undefined" && $gameMap?.tileWidth ? $gameMap.tileWidth() : 48;
+                        if (!(radius > 0)) { result = fail("invalidRadius", key); }
+                        else shaped = { ...definition, scale: Math.max(1, Math.round(definition.scale * (radius * 2 * tile) / (definition.frame || 480))) };
+                    }
+                    if (!result) result = playSheet(key, shaped, { x: 0, y: 0 }, false, { eventId: target, instance: context.instance });
+                }
             } else if (definition.anchor === "event" && !(Number.isInteger(Number(context.eventId)) && Number(context.eventId) > 0)) {
                 result = fail("invalidEvent", key);
             } else if (definition.library && libraryKnown.get(definition.library) !== false && hasCommand("showAnimationFromLibrary")) {
@@ -195,6 +219,23 @@
         } catch (error) {
             return fail(String(error?.message || error), key);
         }
+    };
+
+    // 1つの再生だけを止める(ヴェイルの範囲・オーラ)。play() が返した note を渡す。ほかのVFXには触れない。
+    const stop = note => {
+        const manager = root.AnimatedPictureManager;
+        let removed = 0;
+        const wanted = String(note ?? "");
+        if (!wanted.startsWith(NOTE_PREFIX)) return 0;
+        for (let i = active.length - 1; i >= 0; i--) if (active[i].note === wanted) active.splice(i, 1);
+        try {
+            for (const picture of [...(manager?._animatedPictures || [])]) {
+                if (String(picture?.note ?? "") === wanted) { picture.dispose?.(); removed++; stats.cleared++; }
+            }
+        } catch (error) {
+            stats.lastReason = String(error?.message || error);
+        }
+        return removed;
     };
 
     // 自分が出したVFXだけを公式のdisposeで外す。ほかのVFXには触れない。
@@ -237,9 +278,9 @@
     }
 
     root.ProjectRPresentationVfx = {
-        play, clear, register, probeLibrary,
+        play, clear, stop, register, probeLibrary,
         mapping: key => mappings.has(key) ? { ...mappings.get(key) } : null,
         keys: () => [...mappings.keys()],
-        diagnostics: () => ({ ...stats, active: active.length, libraries: Object.fromEntries(libraryKnown) })
+        diagnostics: () => ({ ...stats, active: active.length, activeKeys: active.map(item => item.key), libraries: Object.fromEntries(libraryKnown) })
     };
 })();

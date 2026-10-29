@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const base = require("./ProjectR_HermesZetsuFixture.cjs");
 const { buildWorld, plain, deckApi, restartWithOrder, attachHpBars, OTHER, player, KEYS } = base;
 
-const SWEEP = "hermes_sweep", FLUTE = "hermes_reed_flute", ZETSU = base.ZETSU, STRENGTH = "hermes_strength", ISSEN = "hermes_issen";
+const SWEEP = "hermes_sweep", FLUTE = "hermes_reed_flute", ZETSU = base.ZETSU, STRENGTH = "hermes_strength", ISSEN = "hermes_issen", VEIL = "hermes_veil";
 const ENEMIES = [3, 4, 5, 6]; // 実マップの<enemy>(Event IDは固定にしない。各テストで配置し直す)
 const HP = 100000;
 
@@ -18,7 +18,7 @@ function hermesWorld({ card = SWEEP, level = 1, x = 12, y = 25, windup = 0, orde
     const started = w.ctx.ProjectRCombatTestArena.startScenario("hermes");
     assert.equal(started.ok, true, JSON.stringify(started));
     const d = deckApi(w);
-    for (const id of [SWEEP, FLUTE, ZETSU, STRENGTH, ISSEN]) assert.equal(d.setCardOwned(id, true).ok, true, id);
+    for (const id of [SWEEP, FLUTE, ZETSU, STRENGTH, ISSEN, VEIL]) assert.equal(d.setCardOwned(id, true).ok, true, id);
     assert.equal(d.setCardLevel(card, level).ok, true);
     restartWithOrder(w, order || [card, card, card, card, card, ...OTHER]);
     w.__card = card;
@@ -76,5 +76,5 @@ const useCard = (w, option = null) => {
 const countCommands = (w, plugin, name) => w.calls.filter(c => c.plugin === plugin && c.name === name);
 const runFrames = (w, n) => { for (let i = 0; i < n; i++) w.frames(1); };
 
-module.exports = { ...base, SWEEP, FLUTE, STRENGTH, ISSEN, ENEMIES, HP, hermesWorld, center, placeEnemy, placePolar, parkOthers, aimDegree, barHp, lost, resetHp, sleeping, handIds,
+module.exports = { ...base, SWEEP, FLUTE, STRENGTH, ISSEN, VEIL, ENEMIES, HP, hermesWorld, center, placeEnemy, placePolar, parkOthers, aimDegree, barHp, lost, resetHp, sleeping, handIds,
     useCard, countCommands, runFrames, assert, plain };
