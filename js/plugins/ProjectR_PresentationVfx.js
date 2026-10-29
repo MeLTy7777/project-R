@@ -46,6 +46,7 @@
  *   play(key, { origin?:{x,y} })  → { ok, mode, reason? }
  *   clear()                       自分が出したVFXだけを除去
  *   stop(note)                    play() が返した note の1件だけを除去(ヴェイルの範囲・オーラ)
+ *   anchor:"origin" + instance = 再生ごとに固有のnote(ProjectR:<key>#<instance>)が付き、play() が返す note で stop() できる(H2B-3B 魂)。
  *   anchor:"target" = play時の eventId("player" または Event ID)へ結び付け、止めるまで付いていく。area:true なら radiusTiles で拡縮。instance で再生ごとにnoteを分ける。
  *   mapping(key) / keys() / register(key, definition)
  *   probeLibrary()                ライブラリ登録の有無を非同期に調べる(診断用)
@@ -72,6 +73,11 @@
     const VEIL_CIRCLE_SHEET = Object.freeze({ file: "Animation/ProjectR_Veil_Circle", rows: 2, columns: 4, fps: 10 });
     const VEIL_TOUCH_SHEET = Object.freeze({ file: "Animation/ProjectR_Veil_Touch", rows: 2, columns: 4, fps: 12 });
     const VEIL_AURA_SHEET = Object.freeze({ file: "Animation/ProjectR_Veil_Aura", rows: 2, columns: 4, fps: 8 });
+    // H2B-3B(自作のDEV素材。tools/gen_dev_h2b3b_assets.cjs): 魂の出現(1コマ192px)・漂う魂(1コマ96px・ループ)・回収の光(1コマ192px)・Hermesの斬撃の閃光(1コマ192px)。青白い。
+    const SOUL_MANIFEST_SHEET = Object.freeze({ file: "Animation/ProjectR_Soul_Manifest", rows: 2, columns: 4, fps: 14 });
+    const SOUL_HOVER_SHEET = Object.freeze({ file: "Animation/ProjectR_Soul_Hover", rows: 2, columns: 4, fps: 8 });
+    const SOUL_COLLECT_SHEET = Object.freeze({ file: "Animation/ProjectR_Soul_Collect", rows: 2, columns: 4, fps: 16 });
+    const PSYCHO_STRIKE_SHEET = Object.freeze({ file: "Animation/ProjectR_Psychopomp_Strike", rows: 2, columns: 4, fps: 20 });
     const defaults = {
         // 出発点: 予備動作の間(移動の前)にプレイヤーへ出し、stickでその場(出発点)に固定する。移動後もノイズは出発点に残る。
         "hermes_zetsu.departure": { library: "ProjectR_Zetsu_Departure", sheet: NOISE_SHEET, anchor: "player", stick: true, scale: 100, opacity: 255, offsetY: -24 },
@@ -91,6 +97,12 @@
         "hermes_veil.circle": { library: "ProjectR_Veil_Circle", sheet: VEIL_CIRCLE_SHEET, anchor: "target", area: true, frame: 480, frameTiles: 10, loop: "infinite", scale: 100, opacity: 215, offsetY: 0 },
         "hermes_veil.touch": { library: "ProjectR_Veil_Touch", sheet: VEIL_TOUCH_SHEET, anchor: "target", scale: 100, opacity: 235, offsetY: 0 },
         "hermes_veil.aura": { library: "ProjectR_Veil_Aura", sheet: VEIL_AURA_SHEET, anchor: "target", loop: "infinite", scale: 100, opacity: 200, offsetY: 4 },
+        // サイコポンポス(H2B-3B): 倒した敵の跡に青白い魂。画像なしの錨Event(ProjectR_GodSummonVisual.spawnAnchor)に結び付ける(play時の eventId)。soul は止めるまでループ(stop(note))。
+        //   (公式のstickMode+位置オフセットは、プレイヤーの絵の拡縮によってオフセットの効き方が変わる(実機で約2倍)ため、ワールドの位置の指定には使わない)
+        "hermes_psychopomp.manifest": { library: "ProjectR_Soul_Manifest", sheet: SOUL_MANIFEST_SHEET, anchor: "target", scale: 100, opacity: 255, offsetY: -14, blend: "Add" },
+        "hermes_psychopomp.soul": { library: "ProjectR_Soul_Hover", sheet: SOUL_HOVER_SHEET, anchor: "target", loop: "infinite", scale: 100, opacity: 240, offsetY: -18, blend: "Add" },
+        "hermes_psychopomp.collect": { library: "ProjectR_Soul_Collect", sheet: SOUL_COLLECT_SHEET, anchor: "target", scale: 100, opacity: 255, offsetY: -16, blend: "Add" },
+        "hermes_psychopomp.strike": { library: "ProjectR_Psychopomp_Strike", sheet: PSYCHO_STRIKE_SHEET, anchor: "target", scale: 100, opacity: 255, offsetY: -22, blend: "Add" },
         // 神の消失: 神(表示Event)の位置に黒いノイズ。
         "hermes.vanish": { library: "ProjectR_Hermes_Vanish", sheet: NOISE_SHEET, anchor: "event", stick: true, scale: 110, opacity: 255, offsetY: -24 }
     };
@@ -176,7 +188,7 @@
             let result;
             if (definition.anchor === "origin") {
                 const offset = screenOffset(context.origin);
-                result = offset ? playSheet(key, definition, offset, true) : fail("invalidOrigin", key);
+                result = offset ? playSheet(key, definition, offset, true, { instance: context.instance }) : fail("invalidOrigin", key);
             } else if (definition.route === true) {
                 // 経路: 発動方向へ回し、経路の中央へ置き、長さに合わせて拡縮する。
                 const degree = Number(context.degree), length = Number(context.length);
@@ -221,7 +233,11 @@
         }
     };
 
-    // 1つの再生だけを止める(ヴェイルの範囲・オーラ)。play() が返した note を渡す。ほかのVFXには触れない。
+    // 1つの再生だけを止める(ヴェイルの範囲・オーラ・魂)。play() が返した note を渡す。ほかのVFXには触れない。
+    // 公式のShow VFXは絵の登録が少し遅れることがある(実機: 魂が出た直後に回収されると、止める時点でまだ登録されていない)。
+    //   見つからなかった note は「止める予約」として覚え、登録されたらすぐ止める(最長 PENDING_STOP_FRAMES)。
+    const PENDING_STOP_FRAMES = 600;
+    const pendingStops = new Map(); // note -> 残りframe
     const stop = note => {
         const manager = root.AnimatedPictureManager;
         let removed = 0;
@@ -235,11 +251,24 @@
         } catch (error) {
             stats.lastReason = String(error?.message || error);
         }
+        if (removed === 0) pendingStops.set(wanted, PENDING_STOP_FRAMES);
         return removed;
+    };
+    const sweepPendingStops = () => {
+        const manager = root.AnimatedPictureManager;
+        const pictures = manager?._animatedPictures || [];
+        for (const [wanted, left] of [...pendingStops]) {
+            let found = false;
+            for (const picture of [...pictures]) {
+                if (String(picture?.note ?? "") === wanted) { try { picture.dispose?.(); } catch (_error) { /* 表示のみ */ } found = true; stats.cleared++; }
+            }
+            if (found || left <= 1) pendingStops.delete(wanted); else pendingStops.set(wanted, left - 1);
+        }
     };
 
     // 自分が出したVFXだけを公式のdisposeで外す。ほかのVFXには触れない。
     const clear = () => {
+        pendingStops.clear();
         const manager = root.AnimatedPictureManager;
         const libraryNotes = new Set(active.filter(a => a.library).map(a => "library_" + a.library));
         active.length = 0;
@@ -264,6 +293,11 @@
     if (typeof Game_Map !== "undefined") {
         const _setup = Game_Map.prototype.setup;
         Game_Map.prototype.setup = function() { clear(); return _setup.apply(this, arguments); };
+        const _update = Game_Map.prototype.update;
+        Game_Map.prototype.update = function(sceneActive) {
+            _update.apply(this, arguments);
+            if (sceneActive !== false && pendingStops.size) { try { sweepPendingStops(); } catch (_error) { /* 表示のみ */ } }
+        };
     }
     if (typeof DataManager !== "undefined") {
         const _extract = DataManager.extractSaveContents;

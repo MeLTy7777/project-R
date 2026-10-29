@@ -348,7 +348,12 @@
                 else if (adjustsCrit && kind === "weapon") { lastCritChance = null; restore = patchCriticalChance(prepared); }
             }
             const modified = Object.assign({}, args, { value });
-            if (fixed) delete modified.projectRFixed;
+            if (fixed) {
+                delete modified.projectRFixed;
+                // 内側の窓口(ProjectR_KillAttribution)は固定ダメージの印を見られないので、攻撃者と出どころを明示して渡す(撃破の帰属。ダメージの値には影響しない)。
+                if (modified.projectRAttacker === undefined) modified.projectRAttacker = context.attacker;
+                if (modified.projectRSource === undefined) modified.projectRSource = context.source;
+            }
             // 攻撃力・防御の差し替えは、通常の武器攻撃(player weapon)にだけ使う(固定ダメージ・skillの式には使わない)。
             const restoreStats = !fixed && kind === "weapon" && (prepared.atkMultiplier !== 1 || prepared.ignoreDefense) ? patchAttackStats(id, prepared) : () => {};
             let result;

@@ -10,7 +10,7 @@
  * @text カットインを出すカードID(JSON配列)
  * @desc 発動成功時に通常カットインを出すカード。他カードの既存の見た目を勝手に変えないため、明示したものだけ。
  * @type note
- * @default ["hermes_zetsu","hermes_sweep","hermes_reed_flute","hermes_issen","hermes_strength","hermes_veil"]
+ * @default ["hermes_zetsu","hermes_sweep","hermes_reed_flute","hermes_issen","hermes_strength","hermes_veil","hermes_psychopomp"]
  *
  * @param GodEyesJson
  * @text 神ごとの目元画像(JSON: {"hermes":"ファイル名"})
@@ -56,7 +56,7 @@
     const params = typeof PluginManager !== "undefined" && PluginManager.parameters ? PluginManager.parameters("ProjectR_CutIn") : {};
     const parseJson = (text, fallback) => { try { return JSON.parse(String(text || "").trim() || "null") ?? fallback; } catch (_e) { return fallback; } };
 
-    const CARD_IDS = new Set((() => { const list = parseJson(params.CutInCardIds, ["hermes_zetsu", "hermes_sweep", "hermes_reed_flute", "hermes_issen", "hermes_strength", "hermes_veil"]); return Array.isArray(list) ? list.map(String) : []; })());
+    const CARD_IDS = new Set((() => { const list = parseJson(params.CutInCardIds, ["hermes_zetsu", "hermes_sweep", "hermes_reed_flute", "hermes_issen", "hermes_strength", "hermes_veil", "hermes_psychopomp"]); return Array.isArray(list) ? list.map(String) : []; })());
     const GOD_EYES = Object.freeze(Object.assign({ hermes: "ProjectR_CutIn_Hermes_Eyes_DEV" }, parseJson(params.GodEyesJson, {})));
     const PLAYER_EYES = String(params.PlayerEyesFile || "ProjectR_CutIn_Player_Eyes_DEV");
     const ACCENT = Object.freeze({ hermes: 0x3fd0c9, apollo: 0xf2c14e, default: 0xffffff });

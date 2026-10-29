@@ -359,6 +359,15 @@ const ACTIONS = {
         p.dy = -Math.round(2 * t); p.headDy = -Math.round(1 * t); p.lean = -1.5 * t; p.lF.a = 4 * t; p.lB.a = -4 * t;
         p.sparks = i >= 2 ? [{ x: CX + 20, y: 14 - i, r: 4, c: [255, 220, 120] }, { x: CX - 18, y: 22 - i, r: 3.2, c: [255, 232, 160] }] : [];
         return p; } },
+    // サイコポンポス(H2B-3B)の主人公モーション「指をはじく」: 片手を肩の高さへ上げ、3コマ目で指を弾く(青白い小さな火花)、4コマ目で戻す。
+    FingerSnap: { frames: 4, make: i => {
+        const p = basePose(), t = [0.45, 0.9, 1, 0.55][i];
+        p.aF.a = lerp(8, 36, t); p.aF.e = lerp(12, 118, t); p.aF.o = lerp(7, 52, t); p.aF.oe = lerp(3, -48, t);
+        p.aB.a = -6; p.aB.e = 14; p.aB.o = 7;
+        p.headDy = i === 2 ? 1 : 0; p.headTilt = i === 2 ? 5 : 0; p.lean = i === 2 ? 1.5 : 0; p.dy = 0;
+        p.sparks = i === 2 ? [{ x: CX + 21, y: 17, r: 3.4, c: [200, 232, 255] }, { x: CX + 26, y: 12, r: 2.4, c: [235, 246, 255] }, { x: CX + 17, y: 11, r: 2, c: [200, 232, 255] }] :
+            i === 3 ? [{ x: CX + 24, y: 14, r: 2, c: [200, 232, 255] }] : [];
+        return p; } },
     Ultimate: { frames: 8, make: i => {
         const p = basePose(), crouch = [0.8, 1, 0.3, 0, 0, 0, 0, 0][i], up = [0, 0, 0.5, 1, 1, 1, 1, 1][i];
         p.dy = Math.round(5 * crouch) - Math.round(3 * up); p.lF.a = 28 * crouch; p.lB.a = -28 * crouch; p.lF.e = -56 * crouch; p.lB.e = -56 * crouch;

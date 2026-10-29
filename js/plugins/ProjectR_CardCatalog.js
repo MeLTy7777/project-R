@@ -20,7 +20,7 @@
  *   このPluginが起動時に ProjectRCardDeck.definitions へ追加します(RUNTIME_CARDS)。cardIdが既にあれば何もしません。
  *   所持データ(cardOwnership)は未所持が既定なので、旧セーブ・本番デッキには影響しません。
  *   追加済み(設計ID → runtime ID): 7 絶 → hermes_zetsu / 5 薙ぎ払い → hermes_sweep / 6 葦笛 → hermes_reed_flute /
- *   1 一閃 → hermes_issen / 4 ストレングス → hermes_strength / 3 ヴェイル → hermes_veil(Cursor)。未実装: 2 サイコポンポス。
+ *   1 一閃 → hermes_issen / 4 ストレングス → hermes_strength / 3 ヴェイル → hermes_veil(Cursor)。2 サイコポンポス → hermes_psychopomp(H2B-3B。ワークブックの対象タイプ Heal は魂を拾う意味で、実行時は instant)。設計の全7枚が実装済み。
  *
  * 【累積レベル規則】
  *   Lv2はLv1の効果を残して追加、Lv3はLv1とLv2を残して追加します。
@@ -78,8 +78,10 @@
         design(1, "一閃", "strong", 3, 7, { workbookTargetType: "Direction", targetType: "direction", category: "attack",
             runtimeCardId: "hermes_issen", implemented: true,
             migration: migration(null, "new", "implemented", "Phase H2B-2で新しいruntime ID hermes_issen として実装。旧カードに対応なし。新規。") }),
-        design(2, "サイコポンポス", "normal", 3, 10, { workbookTargetType: "Heal", targetType: "ally", category: "special",
-            migration: migration(null, "new", "notImplemented", "旧カードに対応なし。新規。「魂」の仕組みが必要。") }),
+        // ワークブックの対象タイプ「Heal」は、魂を拾って主人公を回復する意味。既存の ally/Heal(最寄りの味方を選ぶ)の意味ではないので、実行時は対象を選ばない instant。
+        design(2, "サイコポンポス", "normal", 3, 10, { workbookTargetType: "Heal", targetType: "instant", category: "support",
+            runtimeCardId: "hermes_psychopomp", implemented: true,
+            migration: migration(null, "new", "implemented", "Phase H2B-3Bで新しいruntime ID hermes_psychopomp として実装。旧カードに対応なし。新規。ワークブックのHealは既存のallの選択ではなく、魂の回収による主人公の回復。") }),
         design(3, "ヴェイル", "special", 3, 10, { workbookTargetType: "その他", targetType: "cursor", category: "support",
             runtimeCardId: "hermes_veil", implemented: true,
             legacyCandidates: Object.freeze(["hermes_perception_obscure"]),
@@ -118,6 +120,7 @@
     // 一閃(H2B-2): Hermes / 強力 / 最大3枚 / 最大Lv3 / Cooldown 7秒 / Direction。
     // ストレングス(H2B-2): Hermes / 特殊 / 最大10枚 / 最大Lv3 / Cooldown 0.1秒 / Buff(対象なし = instant)。
     // ヴェイル(H2B-3A): Hermes / 特殊 / 最大3枚 / 最大Lv3 / Cooldown 10秒 / Cursor(マウスに追従する半径5マス)。
+    // サイコポンポス(H2B-3B): Hermes / 通常 / 最大3枚 / 最大Lv3 / Cooldown 10秒 / ワークブックはHeal(実行時は対象を選ばない instant。魂を拾って回復)。
     const RUNTIME_CARDS = Object.freeze([
         Object.freeze({ cardId: "hermes_zetsu", ringId: "hermes", maxCopies: 5, cooldownSeconds: 0.5, maxLevel: 3,
             rarity: "strong", category: "movement", targetType: "ground" }),
@@ -130,7 +133,9 @@
         Object.freeze({ cardId: "hermes_strength", ringId: "hermes", maxCopies: 10, cooldownSeconds: 0.1, maxLevel: 3,
             rarity: "special", category: "buff", targetType: "instant" }),
         Object.freeze({ cardId: "hermes_veil", ringId: "hermes", maxCopies: 3, cooldownSeconds: 10, maxLevel: 3,
-            rarity: "special", category: "support", targetType: "cursor" })
+            rarity: "special", category: "support", targetType: "cursor" }),
+        Object.freeze({ cardId: "hermes_psychopomp", ringId: "hermes", maxCopies: 3, cooldownSeconds: 10, maxLevel: 3,
+            rarity: "normal", category: "support", targetType: "instant" })
     ]);
     const registerRuntimeCards = () => {
         const registry = root.ProjectRCardDeck?.definitions;
@@ -160,7 +165,8 @@
         resolveLevels,
         hermesDesign: () => HERMES,
         hermesTotalMaxCopies: totalMaxCopies,
-        isFinalDeckReady,
+        isFinalDeckReady, // 設計の7枚がすべて実装済みで合計30枚か(実装の完了のみ。デッキの有効化ではない)
+        isFinalDeckActivated: () => false, // H2B-3B時点でも本番の30枚デッキは有効にしない(有効化はH2C以降・ユーザー判断)。このカタログはデッキを適用しない
         finalDeckBlockers: blockers,
         buildFinalHermesDeck,
         runtimeCards: () => RUNTIME_CARDS,

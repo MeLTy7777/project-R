@@ -105,6 +105,8 @@
  *   requestBalloon(godId, balloonId)  標準のふきだし(3=音符 など)をその神の表示Eventへ出す(一時召喚の表示Eventが現れるまで預かる)
  *   spawnFollower(godId, point, { cardId })  { ok, id, eventId }  任意のマップ位置(タイル単位の中心)に神の表示Eventを出す(ヴェイル: マウスに追従する神。Playerの子にはならない。表示だけ)
  *   moveFollower(id, point) / vanishFollower(id) / removeFollower(id) / getFollowers()
+ *   spawnAnchor(point, { cardId }) / removeAnchor(id) / getAnchors()  画像なしの「錨」Event(魂のVFXをワールドの位置に結び付ける。through。getFollowers() には含めない。H2B-3B)
+ *   swingFollower(id, degree, weaponSprite)  追従する神の表示Eventから公式Swing Weaponを出す(H2B-3B。vanish中は出さない。表示だけ)
  *     vanishFollower は黒いノイズ(hermes.vanish)を重ねてから短いframe後に破棄する。毎フレーム、位置はこのAPIで渡された点に合わせる。
  *   getDiagnostics()       最後の失敗理由・生成回数(診断用)
  */
@@ -188,6 +190,10 @@
     };
 
     const applyAppearance = (record, event) => {
+        if (record.anchor && event) { // 画像なしの錨: 常に空の画像のまま(テンプレートのrefreshで戻っても空)
+            if (event._characterName !== "" || event._characterIndex !== 0) event.setImage("", 0);
+            return;
+        }
         const look = appearanceFor(record.godId);
         if (!look || !event) return;
         // Eventのrefreshで画像がテンプレートの空画像に戻るので、毎フレーム確認して戻す。
@@ -360,13 +366,13 @@
     const spawnFollower = (godId, point, options = {}) => {
         const tid = templateEventId();
         if (typeof $gameMap === "undefined" || !$gameMap || !tid || typeof $gameMap.spawnEvent !== "function") return { ok: false, reason: tid ? "mapUnavailable" : "templateMissing" };
-        if (!point || ![point.x, point.y].every(Number.isFinite) || !appearanceFor(godId)) return { ok: false, reason: "invalidPoint" };
+        if (!point || ![point.x, point.y].every(Number.isFinite) || (!options.invisible && !appearanceFor(godId))) return { ok: false, reason: "invalidPoint" };
         try {
             const eventId = $gameMap.spawnEvent(tid, point.x - 0.5, point.y - 0.5, false);
             if (!eventId) { diagnostics.lastError = "spawnFailed"; return { ok: false, reason: "spawnFailed" }; }
             const id = ++followerSerial;
             const record = { id, key: "follower:" + id, kind: "follower", godId, eventId, map: $gameMap, point: { x: point.x, y: point.y }, direction: 2,
-                cardId: options.cardId || null, vanishFrames: null };
+                cardId: options.cardId || null, vanishFrames: null, anchor: options.invisible === true };
             followers.set(id, record);
             diagnostics.spawned++;
             placeFollower(record);
@@ -397,6 +403,12 @@
         record.vanishFrames = FOLLOWER_VANISH_FRAMES;
         try { root.ProjectRPresentationVfx?.play?.("hermes.vanish", { eventId: record.eventId }); } catch (error) { note(error); }
         return true;
+    };
+    // 追従する神の表示Eventから公式Swing Weaponを出す(サイコポンポス: Hermesが敵にとどめを刺したように見せる)。表示だけで、ダメージ・撃破の権限は持たない。
+    const swingFollower = (id, degree, weaponSprite = "Pan") => {
+        const record = followers.get(id);
+        if (!record || !liveEvent(record) || record.vanishFrames !== null) return false;
+        return runSwing({ degree, weaponSprite }, record.eventId);
     };
     const updateFollowers = () => {
         for (const [id, record] of [...followers]) {
@@ -497,8 +509,11 @@
         getVisuals: () => [...visuals.values()].map(r => ({ kind: r.kind, godId: r.godId, eventId: r.eventId, summonId: r.summonId })),
         getTransientEventId,
         swingWeapon, requestBalloon, dash,
-        spawnFollower, moveFollower, vanishFollower, removeFollower,
-        getFollowers: () => [...followers.values()].map(r => ({ id: r.id, godId: r.godId, eventId: r.eventId, point: { ...r.point }, vanishing: r.vanishFrames !== null })),
+        spawnFollower, moveFollower, vanishFollower, removeFollower, swingFollower,
+        spawnAnchor: (point, options = {}) => spawnFollower("anchor", point, { ...options, invisible: true }),
+        removeAnchor: id => { const record = followers.get(id); return record && record.anchor ? removeFollower(id) : false; },
+        getFollowers: () => [...followers.values()].filter(r => !r.anchor).map(r => ({ id: r.id, godId: r.godId, eventId: r.eventId, point: { ...r.point }, vanishing: r.vanishFrames !== null })),
+        getAnchors: () => [...followers.values()].filter(r => r.anchor).map(r => ({ id: r.id, eventId: r.eventId, point: { ...r.point } })),
         getAppearance: godId => ({ ...appearanceFor(godId) }),
         getDiagnostics: () => ({ ...diagnostics, visualCount: visuals.size, templateEventId: templateEventId() })
     };

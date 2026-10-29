@@ -33,8 +33,9 @@ test("登録: 特殊 / 最大3枚 / 最大Lv3 / Cooldown 10秒 / Cursor。設計
     assert.deepEqual(plain(deckApi(w).definitions.card(VEIL)), { cardId: VEIL, ringId: "hermes", maxCopies: 3, cooldownSeconds: 10, maxLevel: 3, rarity: "special", category: "support", targetType: "cursor" });
     const design = plain(w.ctx.ProjectRCardCatalog.hermesDesign()).find(c => c.designId === 3);
     assert.deepEqual([design.runtimeCardId, design.implemented, design.targetType, design.runtimeTargetTypeSupported, design.workbookTargetType], [VEIL, true, "cursor", true, "その他"]);
-    assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.finalDeckBlockers()), ["サイコポンポス"]);
-    assert.equal(w.ctx.ProjectRCardCatalog.isFinalDeckReady(), false, "本番の30枚デッキは有効にしない");
+    // H2B-3B: サイコポンポスも実装済み。実装は揃ったが、本番の30枚デッキは有効にしない。
+    assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.finalDeckBlockers()), []);
+    assert.equal(w.ctx.ProjectRCardCatalog.isFinalDeckActivated(), false, "本番の30枚デッキは有効にしない");
     assert.ok(deckApi(w).definitions.card("hermes_perception_obscure"), "旧カードは残る");
     const migration = plain(w.ctx.ProjectRCardCatalog.migrationAudit()).find(m => m.designId === 3);
     assert.equal(migration.legacyCardId, "hermes_perception_obscure");

@@ -92,3 +92,13 @@
 実装済み: 設計ID 1・3・4・5・6・7(6枚)。残りは **サイコポンポス(設計ID 2)だけ**で、最終30枚デッキは引き続き有効にしていません(`finalDeckBlockers()` = サイコポンポス)。
 旧カード・保存デッキ・指輪・Apolloは変更していません。新カードは既定で未所持です。`CardDeckCore`(保護対象)は変更せず、`cursor` の発動handlerは `ProjectR_CardTargeting` が受け持ちます。
 詳細は `docs/ProjectR_HermesB3A.md`(暫定の解釈・未確定事項・未了を分けて記録)、`docs/ProjectR_CardTargeting.md`、`docs/ProjectR_EnemyTargetSelection.md`。
+
+## 8. 追記(Phase H2B-3B): サイコポンポス(魂)・設計の7枚がすべて実装済み
+
+| 設計ID | カード | ランタイムID | 状態 | 旧カードとの関係 |
+|---|---|---|---|---|
+| 2 | サイコポンポス | `hermes_psychopomp` | 実装済み(`implemented`。実行時の対象は `instant`。ワークブックの対象タイプ表記 `Heal` は `workbookTargetType` に保持) | 旧カードに対応なし(新規) |
+
+実装済み: 設計ID 1〜7の**全7枚**(`finalDeckBlockers()` は空・`isFinalDeckReady()` = true)。ただし **本番の30枚デッキは有効にしていません**(`isFinalDeckActivated()` は常に false。`buildFinalHermesDeck()` は一覧を返すだけで、保存デッキへ適用しない。新カードは既定で未所持)。旧カード・保存デッキ・指輪・Apolloは変更していません(`ProjectR_ApolloDiseaseAttack` を含む保護対象のPluginは変更なし)。
+未決のまま残る移行判断(H2Cでユーザーが決める): 認識阻害 / 葦笛睡眠 / Hermes剣術 / 高速移動 の置換か共存、30枚デッキの有効化。
+詳細は `docs/ProjectR_HermesB3B.md`(確定・暫定・検証済み・未対応を分けて記録)、`docs/ProjectR_KillAttribution.md`(撃破の帰属と攻撃経路の対応表)。

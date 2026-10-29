@@ -52,19 +52,23 @@ var $plugins =
 ,{"name":"ProjectR_CombatTestArenaFullSpec","status":true,"description":"v1.0.0 DEV専用 Combat Test Arena 追加シナリオ(ボス/仲間/メニュー/指輪。Playtest限定)。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaAnimation","status":true,"description":"v1.0.0 DEV専用 Animation / Weapon Certification Zone(銃・動作・アンカーの確認端末。Playtest限定)。","parameters":{}}
 ,{"name":"ProjectR_CardCatalog","status":true,"description":"v1.0.0 カード設計カタログ(Hermes 7枚のデータモデル)と累積レベル解決。","parameters":{}}
+,{"name":"ProjectR_KillAttribution","status":true,"description":"v1.0.0 撃破の帰属(誰が倒したか)と敵の死亡通知。HP・報酬・ドロップは変えない。","parameters":{"EnemyTag":"<enemy>"}}
 ,{"name":"ProjectR_CardModifiers","status":true,"description":"v1.0.0 時限モディファイア(通常武器ヒット強化・移動速度係数)。戦闘時間で進み、保存しない。","parameters":{}}
 ,{"name":"ProjectR_CardTargeting","status":true,"description":"v1.0.0 ProjectR カード対象指定の共通層: Cursor(マウスに追従する範囲)の座標変換と円の判定。","parameters":{}}
 ,{"name":"ProjectR_TargetEligibility","status":true,"description":"v1.0.0 ProjectR 敵の標的選択の適格性(秘匿): Hendrixの検知・キャッシュに接続。","parameters":{"HostileTag":"<enemy>"}}
 ,{"name":"ProjectR_PresentationVfx","status":true,"description":"v1.0.0 共通VFX層: カードID→VFX Designerライブラリ→ワールド基準→後片付け。表示専用。","parameters":{"MappingsJson":""}}
-,{"name":"ProjectR_CutIn","status":true,"description":"v1.0.0 共通カットイン(通常=ラベル型の神の目元 / Ultimate=中央大型)。表示専用。","parameters":{"CutInCardIds":"[\"hermes_zetsu\",\"hermes_sweep\",\"hermes_reed_flute\",\"hermes_issen\",\"hermes_strength\",\"hermes_veil\"]","GodEyesJson":"{\"hermes\":\"ProjectR_CutIn_Hermes_Eyes_DEV\",\"apollo\":\"ProjectR_CutIn_Hermes_Eyes_DEV\"}","PlayerEyesFile":"ProjectR_CutIn_Player_Eyes_DEV"}}
+,{"name":"ProjectR_SoulCollection","status":true,"description":"v1.0.0 魂の収集基盤: 戦闘中だけの一時オブジェクト。生成・範囲内の回収(壁越え不可)・1回だけの回収・後片付け。","parameters":{"MaxSouls":"60","MaxSoulVfx":"30"}}
+,{"name":"ProjectR_CutIn","status":true,"description":"v1.0.0 共通カットイン(通常=ラベル型の神の目元 / Ultimate=中央大型)。表示専用。","parameters":{"CutInCardIds":"[\"hermes_zetsu\",\"hermes_sweep\",\"hermes_reed_flute\",\"hermes_issen\",\"hermes_strength\",\"hermes_veil\",\"hermes_psychopomp\"]","GodEyesJson":"{\"hermes\":\"ProjectR_CutIn_Hermes_Eyes_DEV\",\"apollo\":\"ProjectR_CutIn_Hermes_Eyes_DEV\"}","PlayerEyesFile":"ProjectR_CutIn_Player_Eyes_DEV"}}
 ,{"name":"ProjectR_HermesZetsu","status":true,"description":"v1.0.0 Hermes「絶」: マウス位置へ瞬間移動 + 通常武器1ヒット強化。","parameters":{}}
 ,{"name":"ProjectR_HermesSweep","status":true,"description":"v1.0.0 Hermes「薙ぎ払い」(設計ID 5): マウス方向の190度・4マスの扇。Lv2先端+50 / Lv3クリティカル率+50%。","parameters":{"SoundEffect":"Slash2"}}
 ,{"name":"ProjectR_HermesReedFlute","status":true,"description":"v1.0.0 Hermes「葦笛」(設計ID 6): 半径8マスの敵を眠らせる。ダメージで起床。Lv2睡眠中+50 / Lv3クリティカル確定。","parameters":{"SleepSeconds":"0"}}
 ,{"name":"ProjectR_HermesStrength","status":true,"description":"v1.0.0 Hermes「ストレングス」(設計ID 4): 次の物理攻撃の攻撃力を蓄える(重ね掛け可・一度にすべて消費・Lv3防御無視)。","parameters":{"StackingMode":"additive"}}
 ,{"name":"ProjectR_HermesIssen","status":true,"description":"v1.0.0 Hermes「一閃」(設計ID 1): マウス方向へ最大11マスの居合斬り。防御無視200 + 3秒の分割ダメージ(Lv3は移動速度-50%)。","parameters":{"PathWidthTiles":"1","SplitTicks":"3"}}
 ,{"name":"ProjectR_HermesVeil","status":true,"description":"v1.0.0 Hermes「ヴェイル」(設計ID 3): マウスに追従する半径5マスの魔法陣。5秒間、範囲内の味方は敵に標的にされず(Lv2 移動速度+30% / Lv3 クリティカル率+50%)。","parameters":{"CriticalMode":"additive","OverlapPolicy":"coexist","RequireFriendlyInside":"false","FriendlyEventTag":"<npc>"}}
+,{"name":"ProjectR_HermesPsychopomp","status":true,"description":"v1.0.0 Hermes「サイコポンポス」(設計ID 2): 10秒間、主人公が倒した敵が魂を落とす。半径5マスで回収してHP回復(Lv3は攻撃力+3%を3秒・重ね掛け)。","parameters":{"StackingMode":"additive","AfterWindow":"remove","RecastPolicy":"refresh","CollectAtFullHp":"true","MaxHermesVisuals":"3"}}
 ,{"name":"ProjectR_CombatTestArenaZetsu","status":true,"description":"v1.0.0 DEV専用 Combat Test Arena 追加: 絶(Zetsu)テスト開始(Playtest限定)。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaHermesB1","status":true,"description":"v1.0.0 DEV専用 Combat Test Arena 追加: 薙ぎ払い・葦笛・絶のテスト開始(Playtest限定)。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaVeil","status":true,"description":"v1.0.0 DEV専用: ヴェイル用のDEV敵AI(Hendrix検知部品)とDEV味方(<npc>)。製品の敵AIではない。","parameters":{}}
+,{"name":"ProjectR_CombatTestArenaPsychopomp","status":true,"description":"v1.0.0 DEV専用: サイコポンポスの検証用フィクスチャ(Event IDの違う敵・距離・壁)。","parameters":{}}
 ,{"name":"ProjectR_SwordSystem","status":true,"description":"v1.0.0 通常の剣(近接)攻撃。マウス方向のDynamic Hitbox + 当たった敵本人へDatabase武器ダメージ。","parameters":{"ForwardTiles":"1.0","HitboxWidth":"1.5","HitboxDepth":"1.2","LifetimeFrames":"3","CooldownFrames":"18"}}
 ];

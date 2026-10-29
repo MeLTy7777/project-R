@@ -1,0 +1,120 @@
+{
+  "note": "CDPの入力を使わないOSレベルの入力(人間の手動プレイの代わりではない)",
+  "results": [
+    {
+      "id": "OS0 OSレベルのマウス移動がゲームのTouchInputに届く(CDPの入力ではない)",
+      "ok": true,
+      "detail": {
+        "x": 744,
+        "y": 576,
+        "dx": 0,
+        "dy": 13.5
+      }
+    },
+    {
+      "id": "OS1 Qを1回押す → カード使用は1回だけ(繰り返さない)。山札-1・Cooldown+1・窓は1つ・回復なし",
+      "ok": true,
+      "detail": {
+        "uses": 1,
+        "s0": {
+          "draw": 25,
+          "cooldown": 0,
+          "hand": [
+            "hermes_psychopomp",
+            "hermes_psychopomp",
+            "hermes_psychopomp",
+            "hermes_psychopomp",
+            "hermes_psychopomp"
+          ]
+        },
+        "s1": {
+          "draw": 24,
+          "cooldown": 1,
+          "hand": [
+            "hermes_psychopomp",
+            "hermes_psychopomp",
+            "hermes_psychopomp",
+            "hermes_psychopomp",
+            "apollo_golden_arrow"
+          ]
+        },
+        "windows": 1
+      }
+    },
+    {
+      "id": "OS2 Jを1回押す → 剣は1回だけ振られ、敵は倒れ、魂は1つ・指をはじく動作は1回(繰り返さない)・回復は1回(HP 100 → 250)",
+      "ok": true,
+      "detail": {
+        "swings0": 0,
+        "swings1": 1,
+        "kills": 1,
+        "spawned": 1,
+        "snaps": 1,
+        "heals": [
+          {
+            "soulId": 1,
+            "enemyKey": "m4:e4#1/1",
+            "level": 3,
+            "requested": 150,
+            "applied": 150,
+            "hpBefore": 100,
+            "hpAfter": 250
+          }
+        ],
+        "hpAfter": 250
+      }
+    },
+    {
+      "id": "OS3 Dを押している間だけ動き、離すと止まる(勝手に走り続けない)",
+      "ok": true,
+      "detail": {
+        "x0": 12,
+        "x1": 14.625,
+        "x2": 14.625
+      }
+    },
+    {
+      "id": "OS4 Qをもう1回押す → カード使用はちょうど+1(合計2回)。効果中の再発動なので窓は1つのまま、残り時間が戻る",
+      "ok": true,
+      "detail": {
+        "uses": 2,
+        "windows": [
+          {
+            "serial": 1,
+            "level": 3,
+            "remaining": 8.416666666666588,
+            "effects": {
+              "healAmount": 150,
+              "collectRadiusTiles": 5,
+              "durationSeconds": 10,
+              "attackBonus": 0.03,
+              "attackBuffSeconds": 3
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "OS5 効果が終わり(窓0・魂0)、その後も勝手にカードが使われず、動作も繰り返されない",
+      "ok": true,
+      "detail": {
+        "windows": 0,
+        "souls": 0,
+        "uses": 2
+      }
+    },
+    {
+      "id": "OS6 押されたままのキーがない(OS側・ゲーム側とも)",
+      "ok": true,
+      "detail": {
+        "stuckOs": [],
+        "stuckPage": []
+      }
+    },
+    {
+      "id": "OSZ Consoleのエラーなし",
+      "ok": true,
+      "detail": []
+    }
+  ]
+}

@@ -78,6 +78,19 @@
 
 Hermesの表示は既存の暫定マーカー `!Crystal`(RTP)のままで、「膝をついて地面に手を付く」姿のアートは**未用意**です。効果音: ヴェイルの「重低音」は、RTPに**検証できた**該当の音が無く、代用音は鳴らしていません(**未用意**)。
 
+### 2-f. Phase H2B-3B(サイコポンポス)で追加したProjectR自作の開発用素材(第三者素材ではない・2026-10-30)
+
+| ファイル | 内容 | 作成 | ライセンス/扱い |
+|---|---|---|---|
+| `img/pictures/Animation/ProjectR_Soul_Manifest.png` | 魂の出現(青白い光の輪が収束して玉になる。1コマ192x192、4列x2行=8コマ。1回再生) | `tools/gen_dev_h2b3b_assets.cjs`(外部素材なし) | 自作・差し替え前提。ライブラリ `ProjectR_Soul_Manifest` |
+| `img/pictures/Animation/ProjectR_Soul_Hover.png` | 漂う魂(涙形の青白い光。1コマ96x96、8コマ。ループ) | 同上 | 同上。ライブラリ `ProjectR_Soul_Hover` |
+| `img/pictures/Animation/ProjectR_Soul_Collect.png` | 回収の光(1コマ192x192、8コマ。1回) | 同上 | 同上。ライブラリ `ProjectR_Soul_Collect` |
+| `img/pictures/Animation/ProjectR_Psychopomp_Strike.png` | Hermesの斬撃の閃光(1コマ192x192、8コマ。1回) | 同上 | 同上。ライブラリ `ProjectR_Psychopomp_Strike` |
+| `img/characters/$DEV3H_FingerSnap_f4.png` | 主人公の「指をはじく」(4コマ x 4方向) | `tools/gen_dev3h_character.cjs` の `FingerSnap`(生成は `gen_dev_h2b3b_assets.cjs`) | 自作・DEV3Hと同じ生成系 |
+| `js/AnimationSolutionLibrary.json` | 上の4項目を追記(既存項目は変更なし) | エディタ互換の形式を直接追記(エディタでの作成ではない) | 自作 |
+
+Hermesの攻撃の見た目は既存の暫定マーカー `!Crystal`(RTP)+ 公式Swing Weapon + 上の斬撃の閃光で、専用アートは**未用意**です。効果音: ワークブックの「閃光の音」と指をはじく音は、検証できた素材が無く**用意していません**(代用音は鳴らしていません)。
+
 ## 4. 不足している素材(用意でき次第、ここに記録)
 
 - **一閃(風を切る音)・ストレングス(輝く音)**(Phase H2B-2で確認): 検証済みの素材が無く、代用音も使っていない。内容要件(未用意)。

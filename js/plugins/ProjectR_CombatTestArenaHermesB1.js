@@ -9,13 +9,14 @@
  * @base ProjectR_HermesIssen
  * @base ProjectR_HermesStrength
  * @base ProjectR_HermesVeil
+ * @base ProjectR_HermesPsychopomp
  * @orderAfter ProjectR_CombatTestArenaZetsu
  *
  * @help
  * ProjectR_CombatTestArenaHermesB1.js
  *
  * Playtest専用。F8のConsoleから使います(アリーナの固定APIは変えません)。
- *   ProjectRHermesTest.start(card, level = 1)   card = "sweep" | "flute" | "zetsu" | "issen" | "strength" | "veil"(または runtime cardId)。
+ *   ProjectRHermesTest.start(card, level = 1)   card = "sweep" | "flute" | "zetsu" | "issen" | "strength" | "veil" | "psychopomp"(または runtime cardId)。
  *                                               アリーナでHermesテストを始め、手札5枚すべてをそのカードにして再開始する。
  *   ProjectRHermesTest.setLevel(card, level)    所持データのレベル 1〜3(戦闘中でも反映)
  *   ProjectRHermesTest.status()                 手札・Lv・山札の枚数・直近の結果・睡眠中の敵・ヒットログ(読み取り)
@@ -37,7 +38,8 @@
         zetsu: { id: "hermes_zetsu", api: () => root.ProjectRHermesZetsu },
         issen: { id: "hermes_issen", api: () => root.ProjectRHermesIssen },
         strength: { id: "hermes_strength", api: () => root.ProjectRHermesStrength },
-        veil: { id: "hermes_veil", api: () => root.ProjectRHermesVeil }
+        veil: { id: "hermes_veil", api: () => root.ProjectRHermesVeil },
+        psychopomp: { id: "hermes_psychopomp", api: () => root.ProjectRHermesPsychopomp }
     });
     const deck = () => root.ProjectRCardDeck;
     const arena = () => root.ProjectRCombatTestArena;

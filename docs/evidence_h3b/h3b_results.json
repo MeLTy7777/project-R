@@ -1,0 +1,485 @@
+{
+  "chromium": "85.0.4183.121 / nw 0.48.4",
+  "results": [
+    {
+      "id": "0 boot: 新Plugin(帰属・魂・サイコポンポス・DEV)の読み込み",
+      "ok": true,
+      "detail": "Chromium 85 / NW 0.48.4"
+    },
+    {
+      "id": "0b VFX Designerライブラリに魂・Hermesの4エントリがある",
+      "ok": true,
+      "detail": "getAnimationFromLibrary"
+    },
+    {
+      "id": "0c 登録: instant・通常・最大3枚・Cooldown 10秒・設計ID2 = Heal(メタデータ)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "0d 3Dアセット: 指をはじく動作(FingerSnap)のスプライトが実機で読み込める",
+      "ok": true,
+      "detail": "$DEV3H_FingerSnap_f4"
+    },
+    {
+      "id": "R1 実キーQを1回: カードは1回だけ消費(山札-1・Cooldown+1)・10秒の窓が1つ・回復なし・魂なし・最大HPは変わらない",
+      "ok": true,
+      "detail": {
+        "before": 25,
+        "after": 24,
+        "windows": [
+          {
+            "serial": 1,
+            "level": 1,
+            "remaining": 9.783333333333323,
+            "effects": {
+              "healAmount": 50,
+              "collectRadiusTiles": 5,
+              "durationSeconds": 10
+            }
+          }
+        ],
+        "hp": 100
+      }
+    },
+    {
+      "id": "R2 窓の間、敵を倒さなければ回復しない(魂を拾うまで回復しない)",
+      "ok": true,
+      "detail": {
+        "hp": 100,
+        "remaining": 7.749999999999902
+      }
+    },
+    {
+      "id": "R2b 10秒(約600フレーム)で窓は終わる",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "R3 実際の剣(Jキー)で倒す → 主人公の撃破として魂1つ(倒れた場所)・指をはじく・Hermesが現れる",
+      "ok": true,
+      "detail": {
+        "hp": 0,
+        "kills": [
+          {
+            "key": "m4:e4#1",
+            "deathKey": "m4:e4#1/1",
+            "eventId": 4,
+            "attacker": "player",
+            "source": "weapon",
+            "soul": 1,
+            "soulReason": null,
+            "windowSerial": 2
+          }
+        ],
+        "snaps": 1,
+        "hermes": 1,
+        "enemy": {
+          "x": 13.5,
+          "y": 25.5
+        }
+      }
+    },
+    {
+      "id": "R3b 近い魂は自動回収: Lv2で+100回復(HP 100 → 200)・魂は消える・二重回復なし",
+      "ok": true,
+      "detail": {
+        "hp": 200,
+        "heals": [
+          {
+            "soulId": 1,
+            "enemyKey": "m4:e4#1/1",
+            "level": 2,
+            "requested": 100,
+            "applied": 100,
+            "hpBefore": 100,
+            "hpAfter": 200
+          }
+        ]
+      }
+    },
+    {
+      "id": "R4 重複なし: 倒れた敵を何度殴っても、魂・通知は増えない",
+      "ok": true,
+      "detail": {
+        "notified": 1
+      }
+    },
+    {
+      "id": "R4b Hermesの表示Eventは演出の後に黒いノイズで消え、残らない",
+      "ok": true,
+      "detail": {
+        "followers": 0
+      }
+    },
+    {
+      "id": "R5 範囲外(約6.5マス)の魂は回収されず残る・回復なし",
+      "ok": true,
+      "detail": {
+        "d0": 7,
+        "soul": {
+          "x": 19.5,
+          "y": 25.5
+        }
+      }
+    },
+    {
+      "id": "R5a 魂のVFXは魂の位置に出る: 結び付けた錨Eventの画面位置が、魂の位置(画面座標)と一致する(Yは公式の足元基準 +18px)",
+      "ok": true,
+      "detail": {
+        "tx": 936,
+        "ty": 594,
+        "wantX": 936,
+        "wantY": 576
+      }
+    },
+    {
+      "id": "R5b 歩いて中心距離が5マス以内に入った瞬間に回収される(直前は5マス超、回収は5マス付近)",
+      "ok": true,
+      "detail": {
+        "collectedAt": {
+          "distanceWhenSeen": 5,
+          "previous": 5.0625
+        },
+        "last": 5.0625
+      }
+    },
+    {
+      "id": "R5c 回収で回復は1回(Lv1 +50)・魂は消え、窓の間に二重回復しない",
+      "ok": true,
+      "detail": {
+        "hp": 150
+      }
+    },
+    {
+      "id": "R6 壁(Region 255)の向こうの魂(範囲内3マス)は回収できず、魂は残る・回復なし",
+      "ok": true,
+      "detail": {
+        "blocked": 95
+      }
+    },
+    {
+      "id": "R6b 壁を外すと回収され、回復する(Lv1 +50)",
+      "ok": true,
+      "detail": {
+        "hp": 150
+      }
+    },
+    {
+      "id": "R7 Lv1 +50 / Lv2 +100 / Lv3 +150(最大HPは変わらない)",
+      "ok": true,
+      "detail": {
+        "1": {
+          "hp": 150,
+          "expected": 150,
+          "mhp": 691
+        },
+        "2": {
+          "hp": 200,
+          "expected": 200,
+          "mhp": 691
+        },
+        "3": {
+          "hp": 250,
+          "expected": 250,
+          "mhp": 691
+        }
+      }
+    },
+    {
+      "id": "R7b 最大HPを超えない: 不足20だけ回復(要求150・適用20)・最大HP不変",
+      "ok": true,
+      "detail": {
+        "log": [
+          {
+            "soulId": 7,
+            "enemyKey": "m4:e3#7/1",
+            "level": 3,
+            "requested": 150,
+            "applied": 20,
+            "hpBefore": 671,
+            "hpAfter": 691
+          }
+        ]
+      }
+    },
+    {
+      "id": "R8 Lv3: 魂1つ目で+3%(x1.03)・3秒。1.5秒後の2つ目で2重(x1.06)・共有の残り時間が3秒へ戻る",
+      "ok": true,
+      "detail": {
+        "one": {
+          "stacks": 1,
+          "values": [
+            0.03
+          ],
+          "multiplier": 1.03,
+          "remaining": 2.9333333333333336
+        },
+        "mid": {
+          "stacks": 1,
+          "values": [
+            0.03
+          ],
+          "multiplier": 1.03,
+          "remaining": 1.433333333333339
+        },
+        "two": {
+          "stacks": 2,
+          "values": [
+            0.03,
+            0.03
+          ],
+          "multiplier": 1.06,
+          "remaining": 2.9333333333333336
+        }
+      }
+    },
+    {
+      "id": "R9 攻撃力x1.06が通常の武器ダメージに効く(公式式で独立に計算した値と一致)。攻撃しても消費されない・基礎ATKは変わらない",
+      "ok": true,
+      "detail": {
+        "base": 120,
+        "buffed": 129,
+        "buffed2": 129,
+        "exp1": 129,
+        "atk0": 35
+      }
+    },
+    {
+      "id": "R9b 3秒で全スタックが消え、攻撃力の影響は元に戻る(ダメージ = 基準と同じ)",
+      "ok": true,
+      "detail": {
+        "restored": 120,
+        "base": 120
+      }
+    },
+    {
+      "id": "R10 準備: 手札にサイコポンポス2枚・ストレングス3枚",
+      "ok": true,
+      "detail": {
+        "ok": true,
+        "hand": [
+          "hermes_psychopomp",
+          "hermes_psychopomp",
+          "hermes_strength",
+          "hermes_strength",
+          "hermes_strength"
+        ]
+      }
+    },
+    {
+      "id": "R10 ストレングス(+10%x2)とサイコポンポス(+3%x2)は掛け合わさる: 攻撃力 x1.2 x 1.06。ストレングスは消費・サイコポンポスは残る",
+      "ok": true,
+      "detail": {
+        "used": {
+          "ok": true,
+          "cardId": "hermes_psychopomp",
+          "i": 0
+        },
+        "d1": 165,
+        "e1": 165,
+        "pending": {
+          "stacks": 2,
+          "values": [
+            0.1,
+            0.1
+          ],
+          "multiplier": 1.2,
+          "ignoreDefense": false
+        },
+        "after": {
+          "stacks": 2,
+          "values": [
+            0.03,
+            0.03
+          ],
+          "multiplier": 1.06,
+          "remaining": 2.8166666666666673
+        }
+      }
+    },
+    {
+      "id": "R10b 次の攻撃はサイコポンポスだけ(x1.06)",
+      "ok": true,
+      "detail": {
+        "d2": 129
+      }
+    },
+    {
+      "id": "R10c 絶の強化(x2)との併用: (攻撃力x1.06の武器ダメージ) x 2。絶は1回で消費・サイコポンポスは残る・ダメージは二重に入らない",
+      "ok": true,
+      "detail": {
+        "d3": 258,
+        "e3": 258
+      }
+    },
+    {
+      "id": "R11 環境・味方・直接HP0の撃破では魂が出ない(主人公の撃破だけが魂を落とす)",
+      "ok": true,
+      "detail": {
+        "ignored": [
+          {
+            "key": "m4:e3#12",
+            "attacker": "environment",
+            "reason": "notCredited",
+            "basis": "explicit"
+          },
+          {
+            "key": "m4:e2#13",
+            "attacker": "event:ally",
+            "reason": "notCredited",
+            "basis": "explicit"
+          },
+          {
+            "key": "m4:e6#14",
+            "attacker": "unknown",
+            "reason": "notCredited",
+            "basis": "sweep"
+          }
+        ],
+        "attr": {
+          "lethalHits": 2,
+          "sweepDeaths": 1,
+          "notified": 3,
+          "credited": 0,
+          "uncredited": 3,
+          "duplicates": 0,
+          "revived": 0,
+          "listenerErrors": 0,
+          "classifyErrors": 0,
+          "installed": true,
+          "listeners": 1,
+          "logged": 3
+        }
+      }
+    },
+    {
+      "id": "R11b 同じ窓の中でも、主人公が倒した敵だけが魂を落とす",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "R12 5体が同じフレームに倒れても、魂は5つ(重複なし)・独立した回復・Hermesは3体まで・魂のVFXは魂の数",
+      "ok": true,
+      "detail": {
+        "spawned": 5,
+        "hermes": 3,
+        "hover": 1,
+        "diag": {
+          "windows": 1,
+          "kills": 5,
+          "ignoredKills": 0,
+          "soulsSpawned": 5,
+          "healEvents": 4,
+          "healApplied": 200,
+          "buffStacks": 0,
+          "hermesShown": 3,
+          "hermesSkipped": 2,
+          "presentationErrors": 0,
+          "buff": null,
+          "strikes": 3,
+          "hookRegistered": true
+        }
+      }
+    },
+    {
+      "id": "R12b 範囲内の魂は回収され、回収した魂のVFXは止まる(残る魂の数 = 魂のVFX)",
+      "ok": true,
+      "detail": {
+        "heals": 4,
+        "souls": 1,
+        "hover": 1
+      }
+    },
+    {
+      "id": "R12c Hermesの表示Eventは全員消えた・追加のダメージなし",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "R12d 10秒の窓の終了で、未回収の魂とそのVFXが消える(暫定ポリシー AfterWindow=remove)",
+      "ok": true,
+      "detail": {
+        "souls": 0
+      }
+    },
+    {
+      "id": "R14 見た目の証拠: 魂の出現・Hermesの攻撃・指をはじく・漂う魂のスクリーンショットを撮った(漂う魂 = 範囲外の魂)",
+      "ok": true,
+      "detail": {
+        "souls": 2,
+        "hover": 2,
+        "hermes": 3,
+        "spawned": 5,
+        "kills": 5,
+        "ignored": [],
+        "attr": {
+          "lethalHits": 5,
+          "sweepDeaths": 0,
+          "notified": 5,
+          "credited": 5,
+          "uncredited": 0,
+          "duplicates": 0,
+          "revived": 0,
+          "listenerErrors": 0,
+          "classifyErrors": 0,
+          "installed": true,
+          "listeners": 1,
+          "logged": 5
+        }
+      }
+    },
+    {
+      "id": "R14b 回収の光: 近づくと魂を回収し、回復イベントが増える",
+      "ok": true,
+      "detail": {
+        "before": 3,
+        "after": 4
+      }
+    },
+    {
+      "id": "R13 準備: 窓・魂・攻撃力上昇がある(魂のVFXの錨Eventが1つ)",
+      "ok": true,
+      "detail": {
+        "souls": 1,
+        "buff": {
+          "stacks": 1,
+          "values": [
+            0.03
+          ],
+          "multiplier": 1.03,
+          "remaining": 2.866666666666667
+        },
+        "anchors": 2,
+        "hover": 1
+      }
+    },
+    {
+      "id": "R13b 戦闘終了で窓・魂・攻撃力上昇・Hermes・魂VFXがすべて消える",
+      "ok": true,
+      "detail": {
+        "ended": {
+          "w": 0,
+          "s": 0
+        }
+      }
+    },
+    {
+      "id": "R13c マップ移動で窓・魂・攻撃力上昇・Hermes・魂VFXがすべて消える",
+      "ok": true,
+      "detail": {
+        "mapId": 1
+      }
+    },
+    {
+      "id": "Z 押しっぱなしのキーが無い",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ZZ Consoleのエラーなし",
+      "ok": true,
+      "detail": []
+    }
+  ]
+}
