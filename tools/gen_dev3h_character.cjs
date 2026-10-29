@@ -344,6 +344,13 @@ const ACTIONS = {
         p.aF.a = lerp(4, 26, t); p.aB.a = lerp(-4, 20, t); p.aF.e = lerp(10, 112, t); p.aB.e = lerp(10, 122, t);
         p.dy = Math.round(t); p.headDy = Math.round(t); p.lean = 1.5 * t; p.lF.a = 3 * t; p.lB.a = -3 * t;
         return p; } },
+    // 薙ぎ払い(H2B-1)の主人公モーション: 後ろへ引いた前腕を、体の前へ大きく振り払う(正面は横へ、側面は前へ)。
+    ArmSweep: { frames: 4, make: i => {
+        const p = basePose(), t = [0, 0.4, 0.85, 1][i];
+        p.aF.a = lerp(-70, 105, t); p.aF.e = lerp(26, 4, t); p.aF.o = lerp(60, 150, t); p.aF.oe = lerp(18, 2, t);
+        p.aB.a = lerp(-12, 24, t); p.aB.e = 30; p.aB.o = 12;
+        p.lean = lerp(-2, 5, t); p.dy = i === 2 ? 1 : 0; p.headDx = lerp(-1, 2, t); p.lF.a = 14 * t; p.lB.a = -12 * t;
+        return p; } },
     Ultimate: { frames: 8, make: i => {
         const p = basePose(), crouch = [0.8, 1, 0.3, 0, 0, 0, 0, 0][i], up = [0, 0, 0.5, 1, 1, 1, 1, 1][i];
         p.dy = Math.round(5 * crouch) - Math.round(3 * up); p.lF.a = 28 * crouch; p.lB.a = -28 * crouch; p.lF.e = -56 * crouch; p.lB.e = -56 * crouch;

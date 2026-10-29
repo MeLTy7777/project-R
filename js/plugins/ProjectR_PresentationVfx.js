@@ -29,6 +29,10 @@
  *   sheet   : { file(img/pictures/からの相対・拡張子なし), rows, columns, fps }。ライブラリに登録が無いとき、
  *             同じスプライトシートを公式「Show VFX」(showAnimatedPicture)で再生する代替です。
  *   anchor  : "player"  = プレイヤー位置。ライブラリ再生。stick:true なら再生開始時の位置に固定(移動後も残る)、無ければ追従。
+ *             "event"   = play時に渡す eventId のEvent位置(Hermesの表示Event等)。ライブラリ再生。stick:true で開始位置に固定。
+ *   rotate  : "aim"     = play時に渡す degree(0=上・時計回り)だけ回して再生する。ライブラリ再生は回転の上書きができないため、
+ *                         同じスプライトシート・同じ見た目の設定で公式「Show VFX」(showAnimatedPicture)の transformSettings.rotation を使う。
+ *                         ライブラリには同じ設定の項目も登録してあり(VFX Designerで見た目を調整できる)、数値を変えるときは両方を合わせる。
  *             "origin"  = play時に渡す origin(出発点の実座標)に固定。公式Show VFXの位置オフセット+stickModeで再生。
  *                         (ライブラリ再生はプレイヤー移動後に非同期で作られるため、出発点には置けないため)
  *   scale / opacity / offsetX / offsetY / blend / loop は任意。
@@ -52,10 +56,19 @@
 
     // 絶(Zetsu)の黒白ノイズ。DEV用の自作スプライトシート(8コマ・4列x2行)。最終素材はlibraryの画像を差し替えるだけ。
     const NOISE_SHEET = Object.freeze({ file: "Animation/ProjectR_Zetsu_Noise", rows: 2, columns: 4, fps: 30 });
+    // H2B-1(自作のDEV素材。tools/gen_dev_h2b1_assets.cjs): 薙ぎ払いの杖の残像(1コマ400px・上向きが基準)と、葦笛の水面の波(1コマ800px=半径8マス)。
+    const STAFF_SHEET = Object.freeze({ file: "Animation/ProjectR_Sweep_Staff", rows: 2, columns: 4, fps: 24 });
+    const RIPPLE_SHEET = Object.freeze({ file: "Animation/ProjectR_Flute_Ripple", rows: 2, columns: 4, fps: 12 });
     const defaults = {
         // 出発点: 予備動作の間(移動の前)にプレイヤーへ出し、stickでその場(出発点)に固定する。移動後もノイズは出発点に残る。
         "hermes_zetsu.departure": { library: "ProjectR_Zetsu_Departure", sheet: NOISE_SHEET, anchor: "player", stick: true, scale: 100, opacity: 255, offsetY: -24 },
-        "hermes_zetsu.arrival": { library: "ProjectR_Zetsu_Arrival", sheet: NOISE_SHEET, anchor: "player", scale: 120, opacity: 255, offsetY: -24 }
+        "hermes_zetsu.arrival": { library: "ProjectR_Zetsu_Arrival", sheet: NOISE_SHEET, anchor: "player", scale: 120, opacity: 255, offsetY: -24 },
+        // 薙ぎ払い: 白い杖の残像。発動時のマウス方向へ回して再生(プレイヤーに追従せず、振った位置に残る)。
+        "hermes_sweep.staff": { library: "ProjectR_Sweep_Staff", sheet: STAFF_SHEET, anchor: "player", rotate: "aim", stick: true, scale: 100, opacity: 235, offsetY: -24 },
+        // 葦笛: 白く半透明の水面の波。効果範囲(半径8マス)いっぱいへ広がる。発動した場所に残る。
+        "hermes_flute.ripple": { library: "ProjectR_Flute_Ripple", sheet: RIPPLE_SHEET, anchor: "player", stick: true, scale: 100, opacity: 255, offsetY: -12 },
+        // 神の消失: 神(表示Event)の位置に黒いノイズ。
+        "hermes.vanish": { library: "ProjectR_Hermes_Vanish", sheet: NOISE_SHEET, anchor: "event", stick: true, scale: 110, opacity: 255, offsetY: -24 }
     };
     const mappings = new Map();
     const register = (key, definition) => {
@@ -107,18 +120,23 @@
     const visual = definition => JSON.stringify({ scalePercent: String(definition.scale), opacity: String(definition.opacity),
         hue: "0", blendMode: definition.blend || "Normal", playInReverse: "false" });
 
-    const playSheet = (key, definition, offset, stick) => {
+    const playSheet = (key, definition, offset, stick, extra = {}) => {
         const sheet = definition.sheet;
         if (!sheet?.file) return fail("noSheet", key);
         if (!hasCommand("showAnimatedPicture")) return fail("vfxCommandMissing", key);
         const note = NOTE_PREFIX + key;
-        call("showAnimatedPicture", {
+        const args = {
             note, fps: String(sheet.fps || 30), loopCount: String(definition.loop || 1),
             spritesheetSettings: JSON.stringify({ spritesheetFile: sheet.file, row: String(sheet.rows), column: String(sheet.columns), frameRange: "" }),
-            positionSettings: JSON.stringify({ eventId: "player", offsetX: String(offset.x + (definition.offsetX || 0)),
+            positionSettings: JSON.stringify({ eventId: String(extra.eventId ?? "player"), offsetX: String(offset.x + (definition.offsetX || 0)),
                 offsetY: String(offset.y + (definition.offsetY || 0)), zIndex: "auto", origin: "center", stickMode: String(stick) }),
             visualSettings: visual(definition)
-        });
+        };
+        if (Number.isFinite(extra.rotation)) {
+            args.transformSettings = JSON.stringify({ flip: "false", flipY: "false", randomFlipX: "false", randomFlipY: "false",
+                rotation: String(extra.rotation), randomRotation: "false", openingAnimation: "none", endingAnimation: "none", animationDuration: "30" });
+        }
+        call("showAnimatedPicture", args);
         active.push({ key, note, library: null });
         return { ok: true, mode: "sheet" };
     };
@@ -135,13 +153,19 @@
             if (definition.anchor === "origin") {
                 const offset = screenOffset(context.origin);
                 result = offset ? playSheet(key, definition, offset, true) : fail("invalidOrigin", key);
+            } else if (definition.rotate === "aim") {
+                // 回転はライブラリ再生で上書きできないため、同じ見た目の設定で公式Show VFXを使う。
+                const degree = Number(context.degree);
+                result = playSheet(key, definition, { x: 0, y: 0 }, !!definition.stick, { rotation: Number.isFinite(degree) ? degree : 0 });
+            } else if (definition.anchor === "event" && !(Number.isInteger(Number(context.eventId)) && Number(context.eventId) > 0)) {
+                result = fail("invalidEvent", key);
             } else if (definition.library && libraryKnown.get(definition.library) !== false && hasCommand("showAnimationFromLibrary")) {
-                call("showAnimationFromLibrary", { animationName: definition.library, eventId: "player",
+                call("showAnimationFromLibrary", { animationName: definition.library, eventId: definition.anchor === "event" ? String(context.eventId) : "player",
                     loopCount: String(definition.loop || 1), stickMode: String(!!definition.stick) });
                 active.push({ key, note: null, library: definition.library });
                 result = { ok: true, mode: "library" };
             } else {
-                result = playSheet(key, definition, { x: 0, y: 0 }, !!definition.stick);
+                result = playSheet(key, definition, { x: 0, y: 0 }, !!definition.stick, definition.anchor === "event" ? { eventId: Number(context.eventId) } : {});
             }
             if (result.ok) stats.lastMode = result.mode;
             return result;

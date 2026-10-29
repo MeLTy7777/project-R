@@ -1,0 +1,69 @@
+[
+ {
+  "id": "evidence (script error)",
+  "ok": false,
+  "detail": "ENOENT: no such file or directory, scandir 'C:\\Users\\hmats\\Documents\\RMMZ\\ProjectR_Rebuild\\mz'"
+ },
+ {
+  "id": "R1 G17: 発射・弾数減少・リロード(旧Gunの復活なし)",
+  "ok": true,
+  "detail": {
+   "ammo0": 7,
+   "ammo1": 6,
+   "legacyGun": "undefined"
+  }
+ },
+ {
+  "id": "R2 剣: 通常攻撃(共通イベント1)が例外なく動く",
+  "ok": true,
+  "detail": {
+   "errors": 0
+  }
+ },
+ {
+  "id": "R3 F(調べる): Control Hubの会話/メニューが開き、閉じられる",
+  "ok": true,
+  "detail": {
+   "busy": true
+  }
+ },
+ {
+  "id": "R4 U(Ultimate): 入力が受理され、結果(Gauge不足など)が返る。例外なし",
+  "ok": true,
+  "detail": {
+   "ok": false,
+   "reason": "gaugeNotFull",
+   "started": false,
+   "source": "keyboard",
+   "godId": null,
+   "ringId": null,
+   "consumed": 0,
+   "serial": 4,
+   "gauge": 0,
+   "max": 100
+  }
+ },
+ {
+  "id": "R5 メニュー: 戦闘外でEscで開き、Escで戻る",
+  "ok": true,
+  "detail": {
+   "scene0": "Scene_Map",
+   "scene1": "Scene_ProjectRMenu",
+   "scene2": "Scene_Map"
+  }
+ },
+ {
+  "id": "R6 Vision層: 生成されており、壁タグ操作(invalidateCache)後も動作",
+  "ok": true,
+  "detail": {
+   "layer": true,
+   "api": "object",
+   "children": 4
+  }
+ },
+ {
+  "id": "R7 Console(F8)に赤いエラーなし",
+  "ok": true,
+  "detail": []
+ }
+]

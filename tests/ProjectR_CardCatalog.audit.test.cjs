@@ -61,11 +61,12 @@ test("ヴェイルの対象は「その他」ではなくカーソル追従(Curs
     assert.equal(deckApi(w).registerActivationHandler("cursor", () => ({ ok: true })), false);
 });
 
-test("移行監査: 設計ID ↔ ランタイムID。実装済みは絶だけ。旧カードは1枚も消さず、対応は「共存(判断待ち)」で残す", () => {
+test("移行監査: 設計ID ↔ ランタイムID。実装済みは薙ぎ払い・葦笛・絶。旧カードは1枚も消さず、対応は「共存(判断待ち)」で残す", () => {
     const w = buildWorld();
     const audit = plain(w.ctx.ProjectRCardCatalog.migrationAudit());
     assert.equal(audit.length, 7);
-    assert.deepEqual(audit.filter(a => a.implemented).map(a => [a.designId, a.runtimeCardId]), [[7, "hermes_zetsu"]]);
+    assert.deepEqual(audit.filter(a => a.implemented).map(a => [a.designId, a.runtimeCardId]), [[5, "hermes_sweep"], [6, "hermes_reed_flute"], [7, "hermes_zetsu"]]);
+    assert.deepEqual(audit.filter(a => a.implemented).map(a => a.status), ["implemented-as-new-id", "implemented-as-new-id", "implemented"]);
     const byName = Object.fromEntries(audit.map(a => [a.name, a]));
     assert.deepEqual([byName["薙ぎ払い"].legacyCardId, byName["薙ぎ払い"].decision], ["hermes_sword_attack", "coexist-pending"]);
     assert.deepEqual([byName["葦笛"].legacyCardId, byName["葦笛"].decision], ["hermes_reed_flute_sleep", "coexist-pending"]);
@@ -76,7 +77,7 @@ test("移行監査: 設計ID ↔ ランタイムID。実装済みは絶だけ。
     const mapped = new Set(audit.map(a => a.legacyCardId).filter(Boolean));
     const unmapped = plain(w.ctx.ProjectRCardCatalog.unmappedLegacyCards()).map(c => c.cardId);
     for (const id of [...mapped, ...unmapped]) assert.ok(registry.has(id), `${id} は残っている`);
-    const accounted = new Set([...mapped, ...unmapped, "hermes_zetsu"]);
+    const accounted = new Set([...mapped, ...unmapped, "hermes_zetsu", "hermes_sweep", "hermes_reed_flute"]);
     assert.deepEqual([...registry].filter(id => !accounted.has(id)), [], "監査に載っていないカードは無い");
     assert.deepEqual(unmapped.filter(id => id.startsWith("apollo_")).sort(), ["apollo_golden_arrow", "apollo_lyre_calm", "apollo_plague_attack"], "Apolloは対象外・保持");
 });
@@ -85,7 +86,7 @@ test("重複・二重発動の防止: 同じcardIdの定義は1つ。1つのcard
     const w = buildWorld();
     const ids = deckApi(w).definitions.cardDefinitions().map(c => c.cardId);
     assert.equal(new Set(ids).size, ids.length);
-    assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.registeredRuntimeCards()), ["hermes_zetsu"]);
+    assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.registeredRuntimeCards()), ["hermes_zetsu", "hermes_sweep", "hermes_reed_flute"]);
     // runtime追加の登録は、既存cardIdがあれば何もしない(同じ関数を再実行相当: 既存定義を保つ)
     const before = deckApi(w).definitions.card("hermes_zetsu");
     assert.equal(deckApi(w).definitions.cards.has("hermes_zetsu"), true);

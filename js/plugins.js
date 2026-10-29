@@ -54,8 +54,11 @@ var $plugins =
 ,{"name":"ProjectR_CardCatalog","status":true,"description":"v1.0.0 カード設計カタログ(Hermes 7枚のデータモデル)と累積レベル解決。","parameters":{}}
 ,{"name":"ProjectR_CardModifiers","status":true,"description":"v1.0.0 時限モディファイア(通常武器ヒット強化・移動速度係数)。戦闘時間で進み、保存しない。","parameters":{}}
 ,{"name":"ProjectR_PresentationVfx","status":true,"description":"v1.0.0 共通VFX層: カードID→VFX Designerライブラリ→ワールド基準→後片付け。表示専用。","parameters":{"MappingsJson":""}}
-,{"name":"ProjectR_CutIn","status":true,"description":"v1.0.0 共通カットイン(通常=ラベル型の神の目元 / Ultimate=中央大型)。表示専用。","parameters":{"CutInCardIds":"[\"hermes_zetsu\"]","GodEyesJson":"{\"hermes\":\"ProjectR_CutIn_Hermes_Eyes_DEV\",\"apollo\":\"ProjectR_CutIn_Hermes_Eyes_DEV\"}","PlayerEyesFile":"ProjectR_CutIn_Player_Eyes_DEV"}}
+,{"name":"ProjectR_CutIn","status":true,"description":"v1.0.0 共通カットイン(通常=ラベル型の神の目元 / Ultimate=中央大型)。表示専用。","parameters":{"CutInCardIds":"[\"hermes_zetsu\",\"hermes_sweep\",\"hermes_reed_flute\"]","GodEyesJson":"{\"hermes\":\"ProjectR_CutIn_Hermes_Eyes_DEV\",\"apollo\":\"ProjectR_CutIn_Hermes_Eyes_DEV\"}","PlayerEyesFile":"ProjectR_CutIn_Player_Eyes_DEV"}}
 ,{"name":"ProjectR_HermesZetsu","status":true,"description":"v1.0.0 Hermes「絶」: マウス位置へ瞬間移動 + 通常武器1ヒット強化。","parameters":{}}
+,{"name":"ProjectR_HermesSweep","status":true,"description":"v1.0.0 Hermes「薙ぎ払い」(設計ID 5): マウス方向の190度・4マスの扇。Lv2先端+50 / Lv3クリティカル率+50%。","parameters":{"SoundEffect":"Slash2"}}
+,{"name":"ProjectR_HermesReedFlute","status":true,"description":"v1.0.0 Hermes「葦笛」(設計ID 6): 半径8マスの敵を眠らせる。ダメージで起床。Lv2睡眠中+50 / Lv3クリティカル確定。","parameters":{"SleepSeconds":"0"}}
 ,{"name":"ProjectR_CombatTestArenaZetsu","status":true,"description":"v1.0.0 DEV専用 Combat Test Arena 追加: 絶(Zetsu)テスト開始(Playtest限定)。","parameters":{}}
+,{"name":"ProjectR_CombatTestArenaHermesB1","status":true,"description":"v1.0.0 DEV専用 Combat Test Arena 追加: 薙ぎ払い・葦笛・絶のテスト開始(Playtest限定)。","parameters":{}}
 ,{"name":"ProjectR_SwordSystem","status":true,"description":"v1.0.0 通常の剣(近接)攻撃。マウス方向のDynamic Hitbox + 当たった敵本人へDatabase武器ダメージ。","parameters":{"ForwardTiles":"1.0","HitboxWidth":"1.5","HitboxDepth":"1.2","LifetimeFrames":"3","CooldownFrames":"18"}}
 ];

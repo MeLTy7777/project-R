@@ -325,7 +325,7 @@ test("操作できない間(メッセージ表示中)は戦闘時間が進まず
     assert.ok(bonus(w).remaining < before, "再開すれば進む");
 });
 
-test("ルーター側で消費に失敗した場合は、移動・強化・速度・召喚が一切残らない(予備動作を始めない)", () => {
+test("確定の直前に手札からカードが消えた場合は、移動・強化・速度・召喚が一切残らない(中止)", () => {
     const w = zetsuWorld({ level: 3 });
     const start = pos(w);
     const m = modifiers(w);
@@ -345,12 +345,13 @@ test("ルーター側で消費に失敗した場合は、移動・強化・速�
     assert.equal(bonus(w), null, "強化を外す");
     assert.equal(m.moveSpeedFactor(), 1, "速度係数を外す");
     assert.equal(w.ctx.ProjectRGodSummonManager.getActiveSummons().length, 0, "召喚を片付ける");
-    assert.equal(zetsuApi(w).getLastResult().rolledBack, true);
+    assert.equal(zetsuApi(w).getLastResult().aborted, true);
+    assert.equal(zetsuApi(w).getLastResult().consumed, false);
     assert.equal(zetsuApi(w).isTeleportPending(), false, "予備動作も始まらない");
     w.frames(30);
     assert.deepEqual(pos(w), start, "後から移動することもない");
     assert.deepEqual(plain(w.ctx.ProjectRCutIn.getActive()), [], "成功演出は出ない");
-    assert.equal(w.calls.filter(c => /Animation_Solution/.test(c.plugin)).length, 0, "VFXも出ない");
+    assert.equal(w.calls.filter(c => /Animation_Solution/.test(c.plugin) && /Arrival/.test(JSON.stringify(c.args))).length, 0, "到着のVFXは出ない(出発のノイズは予約時の表示で、中止で片付く)");
 });
 
 test("他のgroundカード(葦笛)は絶の追加で影響を受けず、そのまま既存handlerへ渡る", () => {

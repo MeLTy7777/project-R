@@ -67,12 +67,12 @@
 
     const PRIORITY = Object.freeze({
         Idle: 10, Walk: 20, Run: 30, Aim: 40, SwordAttack: 60, GunFire: 60,
-        Damage: 65, GunReload: 70, SkillCast: 80, CrossArms: 80, Ultimate: 90, Down: 100
+        Damage: 65, GunReload: 70, SkillCast: 80, CrossArms: 80, ArmSweep: 80, Ultimate: 90, Down: 100
     });
     const NAMES = Object.freeze(Object.keys(PRIORITY));
     const BASELINE = new Set(["Idle", "Walk", "Run", "Aim"]);
     // 仮モーションの長さ(frame)。プロファイルのactions[name].framesで上書きできます。
-    const DEFAULT_FRAMES = Object.freeze({ SwordAttack: 14, GunFire: 9, GunReload: 40, SkillCast: 26, CrossArms: 32,
+    const DEFAULT_FRAMES = Object.freeze({ SwordAttack: 14, GunFire: 9, GunReload: 40, SkillCast: 26, CrossArms: 32, ArmSweep: 22,
         Ultimate: 42, Damage: 12, Down: Infinity });
     const HISTORY_LIMIT = 40;
 
@@ -163,6 +163,7 @@
             GunReload: { sprite: "$DEV3H_GunReload_f6", frames: 6, speed: 6, hold: 4 },
             SkillCast: { sprite: "$DEV3H_SkillCast_f6", frames: 6, speed: 4, hold: 4 },
             CrossArms: { sprite: "$DEV3H_CrossArms_f4", frames: 4, speed: 5, hold: 12 },
+            ArmSweep: { sprite: "$DEV3H_ArmSweep_f4", frames: 4, speed: 4, hold: 6 },
             Ultimate: { sprite: "$DEV3H_Ultimate_f8", frames: 8, speed: 5, hold: 4 },
             Damage: { sprite: "$DEV3H_Damage_f3", frames: 3, speed: 4, hold: 0 },
             Down: { sprite: "$DEV3H_Down_f4", frames: 4, speed: 8, hold: 0 }
@@ -173,8 +174,9 @@
             aim: { x: 0, y: -49 }, melee: { x: 0, y: -46 }, vfx: { x: 0, y: -42 }, summon: { x: 0, y: -50 },
             muzzle: { forward: 40, side: 0 }
         },
-        // カード別の動作(未指定のカードは SkillCast)。絶(Zetsu)は胸の前で両腕をクロス。
-        cardActions: { hermes_zetsu: "CrossArms" },
+        // カード別の動作(未指定のカードは SkillCast)。絶(Zetsu)は胸の前で両腕をクロス、薙ぎ払いは腕を前に振り払う、
+        // 葦笛(新)はワークブックで主人公モーション「なにもしない」なので "None"(動作を出さない)。
+        cardActions: { hermes_zetsu: "CrossArms", hermes_sweep: "ArmSweep", hermes_reed_flute: "None" },
         notes: "DEV3H: 自作の三頭身(4方向。8方向なし)。最終アートが決まったら画像と上の数値を差し替える。"
     });
     registerProfile({ id: "default", heads: 3, visualScale: 1, visualHeightPx: 0, directions: 4 });
@@ -376,6 +378,7 @@
         case "GunReload": return { dx: 0, dy: 2 * bump, sy: 1 - 0.05 * bump };
         case "SkillCast": return { dx: 0, dy: -4 * bump, sy: 1 + 0.05 * bump };
         case "CrossArms": return { dx: 0, dy: 1 * bump, sy: 1 - 0.02 * bump };
+        case "ArmSweep": return { dx: fx * 3 * bump, dy: fy * 3 * bump, sy: 1 };
         case "Ultimate": return { dx: 0, dy: -8 * Math.sin(Math.PI * clamp01(t * 1.15)), sy: 1 + 0.09 * bump };
         case "Damage": return { dx: (Math.floor(t * 8) % 2 ? 1 : -1) * 3 * (1 - t), dy: 0, sy: 1 };
         default: return { dx: 0, dy: 0, sy: 1 };
@@ -432,10 +435,11 @@
             const result = _requestUseCard.apply(this, arguments);
             try {
                 // SUCCESS(発動成功かつ消費)のときだけ。失敗/拒否では再生しない。
-                if (result?.ok === true) {
+                // 予約時に動作を先に出したカード(絶)は、消費確定の成功では出し直さない(ProjectRCardModifiers.takePresentationSkip)。
+                if (result?.ok === true && !root.ProjectRCardModifiers?.takePresentationSkip?.(result.cardId, "action")) {
                     const definition = deck.definitions?.card?.(result.cardId);
-                    request(cardAction(profileForPlayer(), result.cardId, definition?.category),
-                        { source: "card", detail: result.cardId });
+                    const action = cardAction(profileForPlayer(), result.cardId, definition?.category);
+                    if (action !== "None") request(action, { source: "card", detail: result.cardId });
                 }
             } catch (_error) { /* 表示のみ。カード結果は変えない */ }
             return result;

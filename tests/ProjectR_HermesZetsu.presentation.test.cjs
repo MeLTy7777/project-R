@@ -37,7 +37,7 @@ test("VFX: 成功が確定した後にだけ、出発点(ライブラリ+位置�
 test("VFXの対応表: カードID→ライブラリ名→基準→画像が揃い、ライブラリJSON(js/AnimationSolutionLibrary.json)とスプライトシートの実体と一致する", () => {
     const w = zetsuWorld();
     const vfx = w.ctx.ProjectRPresentationVfx;
-    assert.deepEqual(plain(vfx.keys()).sort(), ["hermes_zetsu.arrival", "hermes_zetsu.departure"]);
+    assert.deepEqual(plain(vfx.keys()).sort(), ["hermes.vanish", "hermes_flute.ripple", "hermes_sweep.staff", "hermes_zetsu.arrival", "hermes_zetsu.departure"]);
     const library = JSON.parse(read("js/AnimationSolutionLibrary.json"));
     for (const key of vfx.keys()) {
         const mapping = vfx.mapping(key);
@@ -46,7 +46,8 @@ test("VFXの対応表: カードID→ライブラリ名→基準→画像が揃�
         assert.equal(entry.spritesheetFile, mapping.sheet.file);
         assert.deepEqual([entry.rows, entry.columns, entry.fps], [mapping.sheet.rows, mapping.sheet.columns, mapping.sheet.fps]);
         const size = pngSize(`img/pictures/${mapping.sheet.file}.png`);
-        assert.deepEqual([size.w / mapping.sheet.columns, size.h / mapping.sheet.rows], [160, 160], "1コマ160px x 8コマ");
+        const frame = { "Animation/ProjectR_Zetsu_Noise": 160, "Animation/ProjectR_Sweep_Staff": 400, "Animation/ProjectR_Flute_Ripple": 800 }[mapping.sheet.file];
+        assert.deepEqual([size.w / mapping.sheet.columns, size.h / mapping.sheet.rows], [frame, frame], `1コマ${frame}px x 8コマ`);
         assert.equal(entry.rows * entry.columns, 8);
     }
     assert.deepEqual([vfx.mapping("hermes_zetsu.departure").anchor, vfx.mapping("hermes_zetsu.departure").stick], ["player", true]);

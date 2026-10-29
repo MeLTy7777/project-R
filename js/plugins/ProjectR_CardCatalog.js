@@ -84,13 +84,15 @@
         design(4, "ストレングス", "special", 10, 0.1, { workbookTargetType: "Buff", targetType: "instant", category: "buff",
             migration: migration(null, "new", "notImplemented", "旧カードに対応なし。新規。") }),
         design(5, "薙ぎ払い", "normal", 3, 0.5, { workbookTargetType: "Direction", targetType: "direction", category: "attack",
+            runtimeCardId: "hermes_sweep", implemented: true,
             legacyCandidates: Object.freeze(["hermes_sword_attack"]),
-            migration: migration("hermes_sword_attack", "coexist-pending", "notImplemented",
-                "旧「Hermes剣術」(前方の短い矩形・Cooldown 3秒)が最も近い(通常・方向・3枚)。新設計は扇状190°・4マス・0.5秒。拡張で置換するか共存かはユーザー判断。") }),
+            migration: migration("hermes_sword_attack", "coexist-pending", "implemented-as-new-id",
+                "Phase H2B-1で新しいruntime ID hermes_sweep として実装。旧「Hermes剣術」(前方の短い矩形・Cooldown 3秒)は削除・上書きせず共存。置換するか共存のままかはユーザー判断(未決)。") }),
         design(6, "葦笛", "strong", 3, 8, { workbookTargetType: "その他", targetType: "instant", category: "sleep",
+            runtimeCardId: "hermes_reed_flute", implemented: true,
             legacyCandidates: Object.freeze(["hermes_reed_flute_sleep"]),
-            migration: migration("hermes_reed_flute_sleep", "coexist-pending", "notImplemented",
-                "名前と系統が一致する旧「葦笛睡眠」(最大2枚・12秒・半径4・睡眠4秒)。新設計は最大3枚・8秒・半径8・被ダメージで起床・対象なしでも消費。同じhandlerの拡張候補だが、旧セーブの所持枚数・デッキがあるため移行計画が必要。") }),
+            migration: migration("hermes_reed_flute_sleep", "coexist-pending", "implemented-as-new-id",
+                "Phase H2B-1で新しいruntime ID hermes_reed_flute として実装。旧「葦笛睡眠」(最大2枚・12秒・半径4・睡眠4秒・対象0体なら非消費)は削除・上書きせず共存(挙動も不変)。置換するか共存のままかはユーザー判断(未決)。") }),
         design(7, "絶", "strong", 5, 0.5, { workbookTargetType: "Ground", targetType: "ground", category: "movement",
             runtimeCardId: "hermes_zetsu", implemented: true,
             migration: migration("hermes_zetsu", "new-runtime-id", "implemented",
@@ -106,9 +108,15 @@
 
     // 実装済みの新設計カードの実行時定義。CardDeckCoreのDefinitionRegistryと同じ正規化・凍結で追加する。
     // 絶(Zetsu): Hermes / 強力 / 最大5枚 / 最大Lv3 / Cooldown 0.5秒 / Ground(マウス位置)。
+    // 薙ぎ払い(H2B-1): Hermes / 通常 / 最大3枚 / 最大Lv3 / Cooldown 0.5秒 / Direction。
+    // 葦笛(H2B-1): Hermes / 強力 / 最大3枚 / 最大Lv3 / Cooldown 8秒 / その他(=instant。狙いを使わない)。category "sleep" は旧葦笛睡眠と同じ。
     const RUNTIME_CARDS = Object.freeze([
         Object.freeze({ cardId: "hermes_zetsu", ringId: "hermes", maxCopies: 5, cooldownSeconds: 0.5, maxLevel: 3,
-            rarity: "strong", category: "movement", targetType: "ground" })
+            rarity: "strong", category: "movement", targetType: "ground" }),
+        Object.freeze({ cardId: "hermes_sweep", ringId: "hermes", maxCopies: 3, cooldownSeconds: 0.5, maxLevel: 3,
+            rarity: "normal", category: "attack", targetType: "direction" }),
+        Object.freeze({ cardId: "hermes_reed_flute", ringId: "hermes", maxCopies: 3, cooldownSeconds: 8, maxLevel: 3,
+            rarity: "strong", category: "sleep", targetType: "instant" })
     ]);
     const registerRuntimeCards = () => {
         const registry = root.ProjectRCardDeck?.definitions;

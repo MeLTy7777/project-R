@@ -26,17 +26,19 @@ test("既定の予備動作は8frame(Plugin Parameter)。0なら成功確定と�
     assert.equal(zetsuApi(w).setWindupFrames(-3), 0);
 });
 
-test("順序: 成功確定(消費・Cooldown・補充)→ 腕クロス・Hermes・出発点のノイズ → (8frame後)移動・強化 → 到着点のノイズ", () => {
+test("順序(H2B-1): 予約(未消費)→ 腕クロス・Hermes・出発点のノイズ・カットイン → (8frame後)再検証して消費・移動・強化 → 到着点のノイズ", () => {
     const w = zetsuWorld({ level: 2, windup: WINDUP });
     withCalls(w);
     const start = pos(w), before = state(w);
     aim(w, 5, 0);
     press(w);
-    assert.equal(lastCard(w).ok, true);
-    // 成功確定の時点: 消費・補充・Cooldownは済んでいる。移動・強化はまだ。
+    assert.equal(lastCard(w).ok, false, "予約は消費ではない");
+    assert.equal(lastCard(w).reason, "pending");
+    // 予約の時点: カード・山札・Cooldownは何も変わらない(消費は移動が確定してから)。演出だけが始まる。
     const t0 = state(w);
-    assert.equal(t0.drawPile.length, before.drawPile.length - 1);
-    assert.equal(t0.cooldownPile.length, 1);
+    assert.deepEqual(t0.hand, before.hand, "手札は変わらない");
+    assert.equal(t0.drawPile.length, before.drawPile.length, "補充されない");
+    assert.equal(t0.cooldownPile.length, 0, "Cooldownはまだ始まらない");
     assert.deepEqual(pos(w), start, "予備動作の間は動かない");
     assert.equal(modifiers(w).getWeaponHitBonus(), null, "強化は移動の後から数え始める");
     assert.equal(zetsuApi(w).isTeleportPending(), true);
@@ -53,6 +55,11 @@ test("順序: 成功確定(消費・Cooldown・補充)→ 腕クロス・Hermes�
     frames(w, 6);
     near(pos(w).x, start.x + 5, 0.02, "予備動作の後に移動");
     assert.equal(zetsuApi(w).isTeleportPending(), false);
+    const t1 = state(w);
+    assert.equal(t1.drawPile.length, before.drawPile.length - 1, "確定でちょうど1枚補充");
+    assert.equal(t1.cooldownPile.length, 1, "Cooldownに入るのは1枚");
+    assert.equal(plain(w.ctx.ProjectRCutIn.getActive()).length, 1, "カットインは予約時の1枚だけ(確定で重ねない)");
+    assert.equal(history(w).filter(n => n === "CrossArms").length, 1, "腕クロスも1回だけ(確定で再生し直さない)");
     assert.equal(modifiers(w).getWeaponHitBonus().multiplier, 2.0, "強化は移動の瞬間に用意される");
     assert.equal(w.vfx.length, 2);
     assert.equal(w.vfx[1].args.animationName, "ProjectR_Zetsu_Arrival");
@@ -88,29 +95,31 @@ test("二重発動なし: 予備動作中の別の絶は「teleportPending」で
     assert.equal(r.ok, false);
     assert.equal(r.detail, "teleportPending");
     assert.deepEqual(state(w).hand, mid.hand, "手札は変わらない");
-    assert.equal(state(w).cooldownPile.length, 1, "Cooldownに入るのは最初の1枚だけ");
+    assert.equal(state(w).cooldownPile.length, 0, "予約中はどちらも消費しない");
     frames(w, WINDUP + 1);
+    assert.equal(state(w).cooldownPile.length, 1, "確定で消費されるのは最初の1枚だけ");
     assert.equal(modifiers(w).getMoveSpeedModifiers().length, 1, "速度係数は1つ");
     // 終わった後は使える(別の地点へ)
     centerOn(w); aim(w, 3, 0); press(w, "E");
-    assert.equal(lastCard(w).ok, true);
+    assert.equal(lastCard(w).reason, "pending", "新しい予約が始まる");
     frames(w, WINDUP + 1);
     assert.equal(modifiers(w).getMoveSpeedModifiers().length, 1, "再発動は置換");
 });
 
-test("Cooldownは成功確定から数える(移動からではない)。メニュー等でmapが止まれば予備動作も止まる", () => {
+test("Cooldownは確定(移動の瞬間)から数える。メニュー等でmapが止まれば予備動作も止まる", () => {
     const w = zetsuWorld({ windup: WINDUP });
     const start = pos(w);
     aim(w, 5, 0); press(w);
     const entry = () => state(w).cooldownPile[0] && state(w).cooldownPile[0].remainingSeconds;
-    const r0 = entry();
-    assert.ok(r0 <= 0.5 && r0 > 0.45, `発動直後 ${r0}`);
+    assert.equal(entry(), undefined, "予約中はCooldownが無い");
     w.ctx.$gameMap.eventsPaused = true;
     for (let i = 0; i < 30; i++) w.ctx.$gameMap.update(true);
     assert.deepEqual(pos(w), start, "eventsPaused中は予備動作が進まない");
     w.ctx.$gameMap.eventsPaused = false;
     frames(w, WINDUP + 1);
     near(pos(w).x, start.x + 5, 0.02);
+    const r1 = entry();
+    assert.ok(r1 <= 0.5 && r1 > 0.4, `確定直後 ${r1}`);
 });
 
 test("取り消し: 戦闘終了・マップ移動・ロードで予備動作は破棄され、後から移動も強化も起きない(召喚も片付く)", () => {
@@ -124,7 +133,10 @@ test("取り消し: 戦闘終了・マップ移動・ロードで予備動作は
         const start = pos(w);
         aim(w, 5, 0); press(w);
         assert.equal(zetsuApi(w).isTeleportPending(), true, name);
+        const reserved = state(w);
         cancel(w);
+        assert.equal(reserved.cooldownPile.length, 0, `${name}: 取り消し前から未消費`);
+        assert.equal(zetsuApi(w).getLastResult().consumed, false, `${name}: 消費していない`);
         assert.equal(zetsuApi(w).isTeleportPending(), false, name);
         frames(w, WINDUP + 5);
         assert.deepEqual(pos(w), start, `${name}: 動かない`);
@@ -134,16 +146,23 @@ test("取り消し: 戦闘終了・マップ移動・ロードで予備動作は
     }
 });
 
-test("実行時に着地できない稀な場合(予備動作中に目的地のすぐ手前まで歩いた): 移動も強化も到着の演出も出ない。カードは消費済みと記録する", () => {
+test("実行時に着地できない場合(予備動作中に目的地のすぐ手前まで歩いた): 中止され、カード・Cooldown・補充・強化・到着の演出は何も起きない", () => {
     const w = zetsuWorld({ windup: WINDUP });
     withCalls(w);
     const start = pos(w);
+    const before = state(w);
     aim(w, 5, 0); press(w);
     player(w).setPosition(start.x + 4.95, start.y); // 目的地(start+5)まで0.05タイル
     frames(w, WINDUP + 1);
     const r = zetsuApi(w).getLastResult();
     assert.equal(r.ok, false);
-    assert.equal(r.wasted, true);
+    assert.equal(r.aborted, true);
+    assert.equal(r.consumed, false);
+    assert.equal(r.wasted, undefined, "消費済みの失敗は存在しない");
+    assert.deepEqual(state(w).hand, before.hand, "手札はそのまま");
+    assert.equal(state(w).drawPile.length, before.drawPile.length, "補充されない");
+    assert.equal(state(w).cooldownPile.length, 0, "Cooldownにも入らない");
+    assert.equal(w.ctx.ProjectRGodSummonManager.getActiveSummons().length, 0, "召喚も片付く");
     assert.equal(modifiers(w).getWeaponHitBonus(), null);
     assert.equal(w.vfx.filter(v => v.args.animationName === "ProjectR_Zetsu_Arrival").length, 0, "到着ノイズは出ない");
 });

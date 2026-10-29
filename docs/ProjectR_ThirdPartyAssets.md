@@ -42,7 +42,21 @@
 | `img/system/Balloon.png` | 睡眠/精神安定のふきだし | 同上 |
 | `img/characters/VFX/$Bullet.png` / `$Gun.png` | Apolloの矢のPrefabが使用中(`$Bullet`) / 旧Gun(`$Gun`は未参照のまま保持) | 既存。削除していません |
 
+### 2-c. Phase H2B-1(薙ぎ払い・葦笛)で追加したProjectR自作の開発用素材(第三者素材ではない・2026-10-29)
+
+| ファイル | 内容 | 作成 | ライセンス/扱い |
+|---|---|---|---|
+| `img/characters/$DEV3H_ArmSweep_f4.png` | 薙ぎ払いの主人公モーション「腕を前に振り払う」(4コマ x 4方向、1コマ96x96) | `tools/gen_dev3h_character.cjs` の `ArmSweep` で自動生成。`tools/gen_dev_h2b1_assets.cjs` が書き出す | 自作。ProjectRの内部利用(最終アートで差し替え前提) |
+| `img/pictures/Animation/ProjectR_Sweep_Staff.png` | 杖の残像(白・半透明。1コマ400px、4列x2行=8コマ、上向きが基準) | `tools/gen_dev_h2b1_assets.cjs`(外部素材なし) | 同上。VFX Designerライブラリ `ProjectR_Sweep_Staff` から参照 |
+| `img/pictures/Animation/ProjectR_Flute_Ripple.png` | 葦笛の水面の波(白・半透明。1コマ800px=半径8マス、4列x2行=8コマ) | 同上 | 同上。ライブラリ `ProjectR_Flute_Ripple` |
+| `img/pictures/ProjectR_Caduceus_DEV.png` | ケーリュケイオン(杖)の仮絵(64x32。公式Swing Weaponの武器画像。Pan.pngと同じ寸法・向き) | 同上 | 同上 |
+| `js/AnimationSolutionLibrary.json` | 上の3項目に加え `ProjectR_Hermes_Vanish`(Hermesが消えるときの黒ノイズ。既存の `ProjectR_Zetsu_Noise.png` を流用)を追記 | 導入版Animation Solution v2.0.7の項目形式を追記(既存項目は変更なし) | 自作 |
+
+効果音: 薙ぎ払いの「ズシャッ」にはRTP同梱の `audio/se/Slash2.ogg` を**仮に**当てています(Pluginパラメータ `SoundEffect` で変更/無音にできる。専用音ができたら差し替え)。葦笛の「笛の音」はRTPに該当する音が無く(Sleep.oggは状態異常のSEで笛ではない)、代用の音は鳴らしていません(**未用意**)。
+
 ## 4. 不足している素材(用意でき次第、ここに記録)
+
+- **葦笛(新)の「笛の音」**(Phase H2B-1で確認): RTPの`audio/se`に笛の音は無い。第三者素材は取り込まず、代用音も鳴らしていない。内容要件(未用意)。
 
 - **絶(Zetsu)の「布の擦れる音」**(Phase H2Aで確認): RTPの`audio/se`(345本)に該当する音は無く(Wind/Moveは別の音)、OGGを作る道具も無いため自作もできません。第三者素材は取り込まず、代用の音も鳴らしていません。**内容要件(未用意)**。
 
