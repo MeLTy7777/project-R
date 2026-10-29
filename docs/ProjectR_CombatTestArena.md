@@ -256,3 +256,7 @@ ProjectRZetsuTest.end()              // 終了(所持データは開始前へ戻
 ## 追記(Phase H2C-A): `ProjectRProductionTest`(Hermes本番デッキのDEV検証ヘルパー)
 
 `freshGame()` / `roundTrip()` / `allowAlly(actorId)` / `restoreRings()` / `legacyOwner()` / `report()`(Playtest限定。メモリ上だけで、セーブスロットには書きません)。製品の入口は `ProjectR_HermesProductionDeck` のプラグインコマンド「ヘルメースの指輪を入手する」です。詳細は `docs/ProjectR_HermesProductionDeck_H2C_A.md`。
+
+## 追記(Phase H2C-B1)
+
+実機テスト用の OS キー入力サーバー(`tools/mz_cdp/os_input.ps1`)は、終了時や標準入力が切れた時に、押されたままのキーを必ず離すようにしました。詳細・テスト・実機の結果: `docs/ProjectR_HermesProductionDeck_H2C_B1.md`。

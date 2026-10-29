@@ -221,7 +221,7 @@
                 const line = w.lineHeight();
                 w.drawText(`${info.godName} / ${info.ringName}　分類:${info.categoryLabel}　${info.rarityLabel}`, 0, line, width);
                 w.drawText(`Level ${entry.level} / 最大${entry.maxLevel}　Cooldown ${info.cooldownSeconds}秒　対象:${info.targetLabel}`, 0, line * 2, width);
-                w.drawText(`デッキ内 ${deckCount} / 所持・コピー上限 ${info.maxCopies}枚`, 0, line * 3, width);
+                w.drawText(`デッキ内 ${deckCount} / コピー上限 ${info.maxCopies}枚`, 0, line * 3, width);
                 let y = line * 4;
                 y = w.drawWrapped(info.description, 0, y, width);
                 // カードごとのLevel別効果(Level N は Level N-1 までの効果に加わる。同じ効果の数値は置き換わる)。現在のLevelを強調する。

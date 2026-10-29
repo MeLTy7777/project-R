@@ -62,6 +62,8 @@ if ($Action -eq "server") {
     [Console]::Out.WriteLine((Run $t[0] $key $x $y $hold))
     [Console]::Out.Flush()
   }
+  # quit / stdin closed (e.g. the calling script crashed): never leave a watched key held down
+  foreach ($k in $vk.Keys) { if (([Win]::GetAsyncKeyState($vk[$k]) -band 0x8000) -ne 0) { Press $vk[$k] $true } }
 } else {
   Write-Output (Run $Action $Key $X $Y $HoldMs)
 }

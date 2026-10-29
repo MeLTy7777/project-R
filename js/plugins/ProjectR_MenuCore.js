@@ -137,6 +137,7 @@
             cooldownSeconds: definition?.cooldownSeconds ?? 0,
             maxCopies: definition?.maxCopies ?? 0,
             // 所持は「カードの種類」単位で、デッキに入れられる枚数の上限 = 最大コピー数(枚数ごとの在庫は持たない)。
+            // 所持コピー数はまだ保存されていない(H2C-B1の監査)。所持している種類は、デッキに入れられる上限(maxCopies)まで使える。
             ownedCopies: deckApi()?.isCardOwned?.(id) ? (definition?.maxCopies ?? 0) : 0,
             maxLevel: definition?.maxLevel ?? 1,
             levels: Array.isArray(override.levels) ? override.levels.map(text) : []

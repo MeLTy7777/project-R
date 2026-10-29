@@ -1,0 +1,132 @@
+{
+  "note": "OSレベルのキー入力(人間の手動プレイの代わりではない)",
+  "results": [
+    {
+      "id": "E0 前提: Escは'menu'、X/Bは'escape'、FはOk(Hendrix Button Config)",
+      "ok": true,
+      "detail": {
+        "esc": "menu",
+        "x": "escape",
+        "b": "escape",
+        "f": "ok"
+      }
+    },
+    {
+      "id": "EA-Scene_ProjectRDeckBuilder 直接開いた画面でEsc → マップへ戻る(スタック:[Scene_Map])",
+      "ok": true,
+      "detail": {
+        "opened": "Scene_ProjectRDeckBuilder",
+        "after": "Scene_Map"
+      }
+    },
+    {
+      "id": "EA-Scene_ProjectRUltimateSelect 直接開いた画面でEsc → マップへ戻る(スタック:[Scene_Map])",
+      "ok": true,
+      "detail": {
+        "opened": "Scene_ProjectRUltimateSelect",
+        "after": "Scene_Map"
+      }
+    },
+    {
+      "id": "EA-Scene_ProjectRInventory 直接開いた画面でEsc → マップへ戻る(スタック:[Scene_Map])",
+      "ok": true,
+      "detail": {
+        "opened": "Scene_ProjectRInventory",
+        "after": "Scene_Map"
+      }
+    },
+    {
+      "id": "EA-Scene_ProjectRRings 直接開いた画面でEsc → マップへ戻る(スタック:[Scene_Map])",
+      "ok": true,
+      "detail": {
+        "opened": "Scene_ProjectRRings",
+        "after": "Scene_Map"
+      }
+    },
+    {
+      "id": "EA-X 直接開いたデッキ構築でXは従来どおり戻る(Scene_Map)",
+      "ok": true,
+      "detail": "Scene_Map"
+    },
+    {
+      "id": "EA-RC 直接開いたデッキ構築で右クリック(Cancel)は従来どおり戻る",
+      "ok": true,
+      "detail": "Scene_Map"
+    },
+    {
+      "id": "EN 入れ子: 一覧でEsc → 絞り込みへ(画面は閉じない) → もう一度Esc → マップ",
+      "ok": true,
+      "detail": {
+        "inList": true,
+        "afterOne": {
+          "scene": "Scene_ProjectRDeckBuilder",
+          "list": false,
+          "tabs": true
+        },
+        "afterTwo": "Scene_Map"
+      }
+    },
+    {
+      "id": "EB メニュー経由(マップ→Esc→SKILL→Esc→Esc): 画面ごとに1段ずつ戻る(2段飛ばしや閉じ損ねが無い)",
+      "ok": true,
+      "detail": {
+        "menu": "Scene_ProjectRMenu",
+        "sub": "Scene_ProjectRDeckBuilder",
+        "stackB": "Scene_Map,Scene_ProjectRMenu",
+        "back": "Scene_ProjectRMenu",
+        "map1": "Scene_Map"
+      }
+    },
+    {
+      "id": "EC 直接開いた画面をEscで閉じた後、マップのままでメニューが続けて開かない",
+      "ok": true,
+      "detail": "Scene_Map"
+    },
+    {
+      "id": "ED 戦闘中: EscはScene_Mapのまま何も使わない・Q/E/X/C/Vは各1回だけカードを使う(修正前後で同じ)",
+      "ok": true,
+      "detail": {
+        "st": {
+          "ok": true
+        },
+        "inCombatEsc": "Scene_Map",
+        "usesAfterEsc": 0,
+        "usedKeys": [
+          [
+            "Q",
+            1
+          ],
+          [
+            "E",
+            1
+          ],
+          [
+            "X",
+            1
+          ],
+          [
+            "C",
+            1
+          ],
+          [
+            "V",
+            1
+          ]
+        ]
+      }
+    },
+    {
+      "id": "EE 押されたままのキーがない(OS側・ゲーム側とも)",
+      "ok": true,
+      "detail": {
+        "stuckOs": [],
+        "stuckPage": []
+      }
+    },
+    {
+      "id": "EZ Consoleのエラーなし",
+      "ok": true,
+      "detail": []
+    }
+  ]
+}

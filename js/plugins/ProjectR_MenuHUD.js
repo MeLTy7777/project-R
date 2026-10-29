@@ -638,8 +638,16 @@
         ...PHYSICAL_ACTIONS, ArrowLeft: "left", ArrowRight: "right"
     });
 
+    // ProjectRの画面(Scene_ProjectRPage)は、ProjectRメニューから開いても、イベントのスクリプト等
+    // (ProjectRMenuIntegration.openDeckBuilder など)から直接開いても、同じ入力(Escで戻る)にする。
+    // Scene_ProjectRPageはProjectR_MenuUIが後で定義するため、呼ばれた時点で参照する。
+    function isProjectRPage(scene) {
+        return typeof Scene_ProjectRPage === "function" && scene instanceof Scene_ProjectRPage;
+    }
+
     function isProjectRSubmenu(scene) {
-        return scene instanceof Scene_MenuBase && SceneManager._stack.includes(Scene_ProjectRMenu);
+        return scene instanceof Scene_MenuBase &&
+            (SceneManager._stack.includes(Scene_ProjectRMenu) || isProjectRPage(scene));
     }
 
     function releaseSubmenuInput(scene) {

@@ -163,3 +163,9 @@ console.log(ProjectRCardDeck.getBattleState());
 - カードの所持は「カードの種類」単位(`cardOwnership[cardId] = { owned, level }`)で、デッキに入れられる枚数の上限は各カードの `maxCopies` です。枚数ごとの在庫は持ちません。したがって「Hermesの初期30枚」は、7種を所持にすること(最大コピーの合計 = 30)を意味します。
 - 指輪は `assignRingToPlayer`(低水準)で主人公のものになりますが、これは**カードを付与しません**。進行(イベント)からの入手は、プラグインコマンド `ProjectR_HermesProductionDeck: AcquireHermesRing` か既存の `ProjectR_MenuIntegration: GrantRing`(ringId=hermes)を使います。どちらも、初めての入手のときだけ初期カードを付与します(付与の記録は `$gameSystem._projectRHermesProduction`、version 1。記録の無い旧セーブは未付与として読む)。
 - 詳細・テスト・実機の結果: `docs/ProjectR_HermesProductionDeck_H2C_A.md`。
+
+## 追記(Phase H2C-B1)
+
+- `ownedCopies` は保存値ではなく派生値です(所持していれば `maxCopies`、未所持は 0)。所持の保存は `owned` と `level` のみ。デッキ構築画面の表示は「デッキ内 N / コピー上限 M枚」に変更しました。
+- 将来の枚数管理案(別の版つき領域)は未実装です。
+- 詳細・テスト・実機の結果: `docs/ProjectR_HermesProductionDeck_H2C_B1.md`。

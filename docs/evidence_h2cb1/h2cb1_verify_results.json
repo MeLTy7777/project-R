@@ -1,0 +1,173 @@
+{
+  "note": "ロードは保護コピー(読み取りのみ)。入力はCDPでは送っていない",
+  "results": [
+    {
+      "id": "B0 前提: SaveLoadGuardが読み込まれ、Playtestで動いている",
+      "ok": true,
+      "detail": "object"
+    },
+    {
+      "id": "O1 所持データは種類ごとの {level, owned} だけ(コピー数のフィールドが無い)。入手イベントで7種が所持・デッキ30枚で有効",
+      "ok": true,
+      "detail": {
+        "keys": {
+          "hermes_issen": "level,owned",
+          "hermes_psychopomp": "level,owned",
+          "hermes_veil": "level,owned",
+          "hermes_strength": "level,owned",
+          "hermes_sweep": "level,owned",
+          "hermes_reed_flute": "level,owned",
+          "hermes_zetsu": "level,owned"
+        },
+        "deck": 30,
+        "valid": true,
+        "topKeys": "cardOwnership,deckDefinition,ringOwnershipState,ultimateSelection,version",
+        "version": 1
+      }
+    },
+    {
+      "id": "O2 ストレングス: 所持の登録は1つ(owned:true)だが、デッキには上限の10枚まで入り、11枚目は拒否(MAX_COPIES_EXCEEDED)。所持コピー数という概念は無い",
+      "ok": true,
+      "detail": {
+        "results": [
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "ok",
+          "MAX_COPIES_EXCEEDED",
+          "MAX_COPIES_EXCEEDED"
+        ],
+        "owned": {
+          "owned": true,
+          "level": 1
+        },
+        "copiesInDeck": 10,
+        "maxCopies": 10,
+        "ownedCopies": 10
+      }
+    },
+    {
+      "id": "O3 所持を外してもデッキは削除・置換されず(30枚のまま)、無効になるだけ。所持を戻すと有効に戻る",
+      "ok": true,
+      "detail": {
+        "before": 30,
+        "after": 30,
+        "notOwnedReasons": 10,
+        "validWhileUnowned": false,
+        "validAfterRestore": true,
+        "deckAfterRestore": 30
+      }
+    },
+    {
+      "id": "O4 GrantCardを(Level指定なしで)繰り返してもLevelは下がらない。重複して入手しても「枚数」は増えない(種類のフラグ)",
+      "ok": true,
+      "detail": {
+        "owned": true,
+        "level": 2
+      }
+    },
+    {
+      "id": "O5 Coreは毎回データを正規化し、未知のフィールド(copiesなど)を捨てる → 所持コピー数をCoreのcardOwnershipへ足してはいけない(別の保存領域が必要)",
+      "ok": true,
+      "detail": {
+        "copies": false,
+        "future": false,
+        "raw": false
+      }
+    },
+    {
+      "id": "L1 保護コピーのslot1を本物のロード画面経路で読み込み: エラー無し・ゲームループが動く・マップに入る(古い生成イベントはメモリ上で外す: [{\"mapId\":1,\"eventId\":5,\"templateEventId\":2}])",
+      "ok": true,
+      "detail": {
+        "errs": [],
+        "frames": [
+          376,
+          448
+        ],
+        "info": {
+          "scene": "Scene_Map",
+          "mapId": 1,
+          "purged": [
+            {
+              "mapId": 1,
+              "eventId": 5,
+              "templateEventId": 2
+            }
+          ],
+          "stale": [],
+          "setOk": true
+        }
+      }
+    },
+    {
+      "id": "L1b 既存セーブは勝手に移行されない: 読込直後と、デッキ画面を開閉した後で 指輪・所持・Level・デッキ が完全に同じ。新Hermesの一括付与の記録も作られない",
+      "ok": true,
+      "detail": {
+        "rings": {
+          "hermes": "unowned",
+          "apollo": "unowned",
+          "janus": "unowned",
+          "themis": "unowned",
+          "athena": "unowned"
+        },
+        "ownedCount": 0,
+        "deck": 0,
+        "production": null
+      }
+    },
+    {
+      "id": "L2 保護コピーのslot2を本物のロード画面経路で読み込み: エラー無し・ゲームループが動く・マップに入る(古い生成イベントはメモリ上で外す: [{\"mapId\":1,\"eventId\":8,\"templateEventId\":2}])",
+      "ok": true,
+      "detail": {
+        "errs": [],
+        "frames": [
+          920,
+          992
+        ],
+        "info": {
+          "scene": "Scene_Map",
+          "mapId": 1,
+          "purged": [
+            {
+              "mapId": 1,
+              "eventId": 8,
+              "templateEventId": 2
+            }
+          ],
+          "stale": [],
+          "setOk": true
+        }
+      }
+    },
+    {
+      "id": "L2b 既存セーブは勝手に移行されない: 読込直後と、デッキ画面を開閉した後で 指輪・所持・Level・デッキ が完全に同じ。新Hermesの一括付与の記録も作られない",
+      "ok": true,
+      "detail": {
+        "rings": {
+          "hermes": "unowned",
+          "apollo": "unowned",
+          "janus": "unowned",
+          "themis": "unowned",
+          "athena": "unowned"
+        },
+        "ownedCount": 0,
+        "deck": 0,
+        "production": null
+      }
+    },
+    {
+      "id": "BZ 押されたままのキーがない・Consoleのエラーなし",
+      "ok": true,
+      "detail": {
+        "stuck": [],
+        "errors": []
+      }
+    }
+  ]
+}
