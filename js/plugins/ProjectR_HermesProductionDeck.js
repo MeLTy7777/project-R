@@ -51,7 +51,7 @@
  *   hasGranted() / state()                付与の記録
  *   diagnose()                            指輪・新旧カード・デッキの診断(読み取り専用)
  *   legacyMigrationProposal()             旧カード→新カードの移行案とこのセーブへの影響(表示専用。何も変更しない)
- *   previewStarterGrant()                 初期30枚の付与が今の所持にどう効くか(加算と補充の比較。読み取り専用。H2C-B3)
+ *   previewStarterGrant()                 初期セットの付与(補充 top-up: 目標 - 今の所持、最小0)が今の所持にどう効くか(読み取り専用。H2C-B3/B4)
  *   cardGenerations()                     旧カード/新カードの区別と、名前が紛らわしい組(読み取り専用。H2C-B3)
  */
 
@@ -216,8 +216,9 @@
         const copiesBefore = {};
         const bundle = {};
         for (const card of set) { copiesBefore[card.cardId] = inventory.getOwnedCopies(card.cardId); bundle[card.cardId] = card.copies; }
-        // 実際の所持コピーとして加算する(解放も同時に行い、既存のLevelは変えない)。報酬IDで二重付与を防ぐ。
-        const granted = inventory.grantBundle(STARTER_REWARD_ID, bundle, { source: "hermesStarter:" + source });
+        // 初期セットは「補充(top-up)」: 各カードを目標枚数に届くまでの不足分だけ付与する(持っている枚数は減らさず、目標以上なら0枚)。
+        // 解放も同時に行い、既存のLevelは変えない。報酬IDで二重付与を防ぐ。bundle の値 = 目標の所持枚数。
+        const granted = inventory.grantBundle(STARTER_REWARD_ID, bundle, { source: "hermesStarter:" + source, mode: "topUp" });
         if (!granted.ok) return { ok: false, granted: false, reason: "grantFailed", detail: granted.reasons };
         if (!granted.granted) return { ok: true, granted: false, reason: "alreadyGranted" };
         // デッキが空で、指輪を主人公が持つときだけ初期化する。既存のデッキ(不正でも)は上書きしない。
@@ -229,12 +230,21 @@
                 deckInitialized = true;
             }
         }
+        // cards / totalCopies = 実際に付与した枚数(新しいゲームでは目標と同じ30枚)。targets = 目標、copiesAfter = 付与後の所持。
         const cards = {};
-        for (const card of set) cards[card.cardId] = card.copies;
+        const targets = {};
+        const copiesAfter = {};
+        for (const card of set) {
+            cards[card.cardId] = granted.added[card.cardId] || 0;
+            targets[card.cardId] = card.copies;
+            copiesAfter[card.cardId] = granted.after[card.cardId];
+        }
+        const totalCopies = granted.total;
         readState().rings[RING_ID] = {
-            granted: true, source, version: STATE_VERSION, cards, totalCopies: starterTotal(), deckInitialized, ownedBefore, copiesBefore
+            granted: true, source, version: STATE_VERSION, policy: "topUp", cards, targets, totalCopies, targetCopies: starterTotal(),
+            deckInitialized, ownedBefore, copiesBefore, copiesAfter
         };
-        return { ok: true, granted: true, reason: "granted", source, cards, totalCopies: starterTotal(), deckInitialized, ownedBefore, copiesBefore };
+        return { ok: true, granted: true, reason: "granted", source, policy: "topUp", cards, targets, totalCopies, targetCopies: starterTotal(), deckInitialized, ownedBefore, copiesBefore, copiesAfter };
     };
     // 公開の grantStarter は「明示的な付与」専用。指輪をすでに持つ旧セーブを読み込んだだけでは呼ばれない。
     const grantStarter = (options = {}) => {
@@ -342,18 +352,21 @@
         };
     };
 
-    // 初期30枚の付与が、今の所持にどう効くかのプレビュー(読み取り専用・H2C-B3)。付与の方針は「加算」のまま(補充への変更はユーザー承認が必要)。
+    // 初期セットの付与が、今の所持にどう効くかのプレビュー(読み取り専用・H2C-B3/B4)。方針は「補充(top-up)」: 付与枚数 = max(0, 目標 - 今の所持)。
+    // preview.rows[*].grant / after が実際の結果。additive は参考(通常の報酬ならこうなる)。
     const previewStarterGrant = () => {
         const inventory = root.ProjectRCardInventory;
         const bundle = {};
         for (const card of starterSet()) bundle[card.cardId] = card.copies;
-        const preview = inventory ? inventory.previewGrant(STARTER_REWARD_ID, bundle) : null;
+        const preview = inventory ? inventory.previewGrant(STARTER_REWARD_ID, bundle, { mode: "topUp" }) : null;
         const owner = ringOwner(RING_ID);
         const recorded = hasGranted(RING_ID) || !!preview?.alreadyGranted;
+        const grants = {};
+        for (const row of preview?.rows || []) grants[row.cardId] = row.grant;
         return {
             ringOwner: owner, recordGranted: hasGranted(RING_ID), rewardRecorded: !!preview?.alreadyGranted,
             willGrantOnNextAcquisition: owner === OWNER_UNOWNED && !recorded,
-            policyInEffect: "additive", preview, mutated: false
+            policyInEffect: "topUp", grants, totalGrant: preview?.totals?.effective ?? 0, preview, mutated: false
         };
     };
 

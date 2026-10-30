@@ -2,7 +2,7 @@
 // Phase H2C-B3: Hermes本番の安定化。 (1) 初期付与の「加算」と「補充」の差を読み取り専用で示すプレビューと、現在の挙動(加算)の固定
 //   (2) 旧セーブ移行の説明(確認済み / 推定の最小値 / 未知ID / 未解放でデッキにある / デッキの問題) と開発者向けレポート
 //   (3) 旧カードと新カードの区別(共存・削除なし) (4) 実機スクリプトの台帳(tools/mz_cdp/scripts.json)
-// 付与の方針(加算)は変更していない。変更にはユーザーの承認が必要。
+// H2C-B4でユーザーが承認し、初期セットの付与は「補充(top-up)」に変更した(通常の付与は加算のまま)。下の付与方針のテストはその後の挙動を固定している。
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -42,29 +42,31 @@ function world() {
 const codes = list => plain(list).map(r => r.code);
 
 // ---------------- (1) 付与方針の監査 ----------------
-test("初期付与のプレビューは読み取り専用: 所持・Core・付与記録・デッキを一切変えない。加算と補充の差を示す(ストレングス2枚 → 加算12枚 / 補充10枚)", () => {
+test("初期付与のプレビューは読み取り専用: 所持・Core・付与記録・デッキを一切変えない。実際の方針は補充で、参考に加算との差も示す(ストレングス2枚 → 補充10枚 / 加算なら12枚)", () => {
     const w = world();
     w.inv().grantCopies("hermes_strength", 2, { source: "earlier" });
     const before = w.snapshot();
     const p = plain(w.prod().previewStarterGrant());
     assert.deepEqual(w.snapshot(), before, "プレビューで何も変わらない");
     assert.equal(p.mutated, false);
-    assert.equal(p.policyInEffect, "additive");
+    assert.equal(p.policyInEffect, "topUp");
     assert.equal(p.willGrantOnNextAcquisition, true);
     const strength = p.preview.rows.find(r => r.cardId === "hermes_strength");
     assert.deepEqual([strength.current, strength.target, strength.additive.grant, strength.additive.after, strength.topUp.grant, strength.topUp.after, strength.differs], [2, 10, 10, 12, 8, 10, true]);
     assert.deepEqual([strength.additive.deckLimit, strength.topUp.deckLimit], [10, 10], "デッキに入る最大はどちらも上限10");
     const issen = p.preview.rows.find(r => r.cardId === "hermes_issen");
     assert.deepEqual([issen.current, issen.additive.grant, issen.topUp.grant, issen.differs], [0, 3, 3, false], "持っていないカードは同じ結果");
-    assert.deepEqual(p.preview.totals, { additive: 30, topUp: 28 });
+    assert.deepEqual(p.preview.totals, { additive: 30, topUp: 28, effective: 28 });
+    assert.equal(p.totalGrant, 28);
+    assert.equal(strength.grant, 8, "実際に使う方針(補充)の付与枚数");
 });
 
-test("現在の実際の挙動(加算)を固定: 事前に2枚あれば初期10枚が加わり12枚になる。報酬記録があるので2回目は増えない", () => {
+test("実際の挙動(補充 H2C-B4): 事前に2枚あれば不足分の8枚だけ加わり10枚になる。報酬記録があるので2回目は増えない", () => {
     const w = world();
     w.inv().grantCopies("hermes_strength", 2, { source: "earlier" });
     const r = plain(w.prod().acquireRing("hermes", { source: "test" }));
     assert.equal(r.granted, true);
-    assert.equal(w.inv().getOwnedCopies("hermes_strength"), 12, "加算");
+    assert.equal(w.inv().getOwnedCopies("hermes_strength"), 10, "補充");
     assert.equal(w.inv().getOwnedCopies("hermes_issen"), 3);
     const before = w.snapshot();
     for (const call of [() => w.prod().acquireRing("hermes"), () => w.prod().grantStarter({ explicit: true }), () => w.inv().grantBundle("hermes.ring.starter", STARTER)]) call();

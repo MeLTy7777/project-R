@@ -175,3 +175,9 @@ H2C-B1 で `h3a_verify` が1回だけ 15/17(R4a/R4b)になり、再実行で2回
 ## 追記(Phase H2C-B3)
 
 - 初期付与の方針の監査(加算と補充の比較・読み取り専用プレビュー `previewGrant` / `previewStarterGrant`)、旧セーブ移行の説明(Deck Builderヘッダー3行目・`summary()` / `report()`)、旧カードと新カードの共存の監査は `docs/ProjectR_HermesFinalStabilization_H2C_B3.md` を参照。付与の方針(加算)はこのPhaseでは変更していない(補充への変更はユーザー承認待ち)。
+
+---
+
+## 追記 (Phase H2C-B4)
+
+初期セットの付与は H2C-B4 で加算から補充(top-up)に変わった(事前に独立して持っているストレングス2枚は +8 で10枚。12枚にはならない)。詳細は `docs/ProjectR_HermesStarterTopUp_H2C_B4.md`。

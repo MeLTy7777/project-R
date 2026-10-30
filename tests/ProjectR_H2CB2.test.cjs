@@ -220,14 +220,14 @@ test("再入手・ロード・指輪の譲渡と返却・別経路の再入手�
     assert.deepEqual(w.state().copies, snapshot);
 });
 
-test("すでに独立して持っているコピーは減らさず、重ならない: 事前に持っていたストレングス2枚の上に初期10枚が加わる(12枚)。カードLevelは保たれる", () => {
+test("すでに独立して持っているコピーは減らさない: 事前に持っていたストレングス2枚は目標10枚まで補充される(+8で10枚。H2C-B4でtop-upに変更)。カードLevelは保たれる", () => {
     const w = world();
     w.inv().grantCopies("hermes_strength", 2, { source: "earlier" });
     w.deck().setCardLevel("hermes_strength", 2);
     w.deck().setRingUnowned("hermes");
     const r = plain(w.prod().acquireRing("hermes", { source: "test" }));
     assert.equal(r.granted, true);
-    assert.equal(w.copies("hermes_strength"), 12);
+    assert.equal(w.copies("hermes_strength"), 10);
     assert.equal(w.copies("hermes_issen"), 3);
     assert.equal(r.copiesBefore.hermes_strength, 2);
     assert.equal(plain(w.deck().getPersistentData()).cardOwnership.hermes_strength.level, 2, "Levelは下げない");

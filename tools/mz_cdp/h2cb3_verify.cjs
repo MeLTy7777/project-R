@@ -1,4 +1,4 @@
-// Phase H2C-B3: 実機(Playtest)の確認 — 初期付与のプレビュー(読み取り専用)・現在の挙動(加算)・旧セーブ移行の説明(Deck Builderの実描画)・開発者レポート・旧カードと新カードの共存。
+// Phase H2C-B3: 実機(Playtest)の確認 — 初期付与のプレビュー(読み取り専用)・初期付与の挙動(H2C-B4で加算から補充へ)・旧セーブ移行の説明(Deck Builderの実描画)・開発者レポート・旧カードと新カードの共存。
 // 使い方: MZ_OUT=<出力> MZ_TMP_SAVE=<一時のsaveフォルダ> node tools/mz_cdp/h2cb3_verify.cjs
 //   新しいゲームはメモリ上に作る。旧形式の保存は MZ_TMP_SAVE(一時フォルダ)だけに書き、本物のScene_Load経路で読む。本物のsave/には触れない。入力はCDPでは送らない(状態の準備と観測だけ)。
 const fs = require("fs");
@@ -37,7 +37,7 @@ const same = (a, b) => JSON.stringify(sortKeys(a)) === JSON.stringify(sortKeys(b
     const p = await json("ProjectRHermesProductionDeck.previewStarterGrant()");
     const after = await snapshot();
     const row = p.preview.rows.find(r => r.cardId === "hermes_strength");
-    rec("M1 付与プレビュー(実機): 何も変更しない。ストレングス2枚 → 加算で12枚 / 補充で10枚。合計は加算30・補充28。方針は加算のまま", same(before, after) && !p.mutated && p.policyInEffect === "additive" && row.additive.after === 12 && row.topUp.grant === 8 && row.topUp.after === 10 && p.preview.totals.additive === 30 && p.preview.totals.topUp === 28 && p.willGrantOnNextAcquisition === true, { row, totals: p.preview.totals });
+    rec("M1 付与プレビュー(実機): 何も変更しない。ストレングス2枚 → 補充で10枚(+8) / 参考に加算なら12枚。合計は補充28・加算30。方針は補充(H2C-B4で承認)", same(before, after) && !p.mutated && p.policyInEffect === "topUp" && row.additive.after === 12 && row.grant === 8 && row.after === 10 && row.topUp.grant === 8 && p.preview.totals.additive === 30 && p.preview.totals.topUp === 28 && p.totalGrant === 28 && p.willGrantOnNextAcquisition === true, { row, totals: p.preview.totals });
     await ev("$gameMap._interpreter.setup([{ code: 357, indent: 0, parameters: ['ProjectR_HermesProductionDeck', 'AcquireHermesRing', '', {}] }, { code: 0, indent: 0, parameters: [] }], 0); 'ev'");
     await wait("!$gameMap.isEventRunning()", 6000);
     const granted = await json("({ strength: ProjectRCardInventory.getOwnedCopies('hermes_strength'), issen: ProjectRCardInventory.getOwnedCopies('hermes_issen') })");
@@ -45,7 +45,7 @@ const same = (a, b) => JSON.stringify(sortKeys(a)) === JSON.stringify(sortKeys(b
     await ev("$gameMap._interpreter.setup([{ code: 357, indent: 0, parameters: ['ProjectR_HermesProductionDeck', 'AcquireHermesRing', '', {}] }, { code: 0, indent: 0, parameters: [] }], 0); ProjectRHermesProductionDeck.grantStarter({ explicit: true }); ProjectRCardInventory.grantBundle('hermes.ring.starter', { hermes_issen: 3 }); 'ev'");
     await wait("!$gameMap.isEventRunning()", 6000);
     const p2 = await json("ProjectRHermesProductionDeck.previewStarterGrant()");
-    rec("M2 現在の挙動(加算)の実機確認: 事前に2枚あれば初期10枚が加わり12枚。報酬記録があるので再取得・明示付与・同じ報酬IDの付与でも増えない。プレビューも『付与済み』を示す", granted.strength === 12 && granted.issen === 3 && same(snap, await snapshot()) && p2.rewardRecorded && !p2.willGrantOnNextAcquisition, { granted, rewardRecorded: p2.rewardRecorded });
+    rec("M2 現在の挙動(補充)の実機確認: 事前に2枚あれば不足分の8枚だけ加わり10枚。報酬記録があるので再取得・明示付与・同じ報酬IDの付与でも増えない。プレビューも『付与済み』を示す", granted.strength === 10 && granted.issen === 3 && same(snap, await snapshot()) && p2.rewardRecorded && !p2.willGrantOnNextAcquisition, { granted, rewardRecorded: p2.rewardRecorded });
   });
 
   const legacyPrepare = "(function() { var d = ProjectRCardDeck; d.assignRingToPlayer('hermes'); d.assignRingToPlayer('apollo'); d.setCardOwned('hermes_sword_attack', true); d.setCardLevel('hermes_sword_attack', 2); d.setCardOwned('hermes_swift_movement', true);"

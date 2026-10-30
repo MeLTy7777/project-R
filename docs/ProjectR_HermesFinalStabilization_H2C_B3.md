@@ -137,3 +137,9 @@ H2C-B1で `h3a_verify` が1回だけ 15/17(R4a/R4b)になり、同じコード�
 
 ### 最終結果
 全体スイート: **59/59 PASS**(開始時 58 + 新規 `ProjectR_H2CB3.test.cjs`)。失敗0。
+
+---
+
+## 追記 (Phase H2C-B4): D1 は解決済み
+
+D1(付与方針)はユーザーが **補充(top-up)** を承認し、H2C-B4 で初期セットの付与だけを補充に変更した(`copiesToGrant = max(0, 目標 - 所持)`)。このドキュメントの「現在の挙動 = 加算」の記述は H2C-B3 時点のもので、現在の挙動と数値は `docs/ProjectR_HermesStarterTopUp_H2C_B4.md` を正とする。通常の付与(GrantCardCopies・ショップ・報酬)は加算のまま。

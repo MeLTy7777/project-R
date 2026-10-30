@@ -53,12 +53,13 @@
  * 【API】 ProjectRCardInventory
  *   getOwnedCopies(cardId) / getDeckCopies(cardId) / getMaxDeckCopies(cardId) / getDeckLimit(cardId)
  *   grantCopies(cardId, copies, {rewardId, source})      枚数つき付与。rewardIdあり=一度だけ / なし=毎回加算(ショップ向け)
- *   grantBundle(rewardId, {cardId: copies, ...}, {source}) 複数カードを一括(全部検証してから反映。原子的)
+ *   grantBundle(rewardId, {cardId: copies, ...}, {source, mode}) 複数カードを一括(全部検証してから反映。原子的)。
+ *                                           mode 省略/"additive" = 値をそのまま加算 / "topUp" = 値を目標枚数として不足分だけ付与(減らさない。初期セット専用)
  *   hasReward(rewardId) / rewards()
  *   validateDeck(cardIds?)  所持枚数の検証だけ(詳細な理由つき) / deckReport(cardIds?) カードごとの内訳
  *   canAddToDeck(cardId, cardIds?)
  *   diagnostics()           移行の診断・カードごとの所持/根拠(読み取り専用)
- *   previewGrant(rewardId, {cardId: 目標枚数})  付与の影響プレビュー(加算と補充の比較。何も変更しない。H2C-B3)
+ *   previewGrant(rewardId, {cardId: 目標枚数}, {mode})  付与の影響プレビュー(加算と補充の両方と、modeで選んだ方の結果。何も変更しない。H2C-B3/B4)
  *   summary()               旧セーブ移行の説明: 確認済み / 推定の最小値 / 未知ID / 未解放でデッキにある / デッキの問題の内訳と、画面用の文(lines)
  *   report()                開発者向けの読みやすいレポート(文字列)。コンソールで ProjectRCardInventory.report()
  *   state()                 保存データのコピー
@@ -270,36 +271,53 @@
         if (rewardId != null && id === "" ) return fail(CODE.INVALID_REWARD_ID);
         if (id.length > 120) return fail(CODE.INVALID_REWARD_ID, { rewardId: id });
         if (!isObject(cards) || Object.keys(cards).length === 0) return fail(CODE.EMPTY_BUNDLE);
+        // mode "topUp"(初期セット専用・H2C-B4): cards の値は「目標の所持枚数」。付与するのは max(0, 目標 - 今の所持) だけで、
+        // 目標以上を持っていれば0枚(持っている枚数は減らさない)。mode 省略 = 「加算」(値をそのまま足す。通常の報酬・ショップ)。
+        const topUp = options.mode === "topUp";
+        if (options.mode != null && options.mode !== "topUp" && options.mode !== "additive") return fail("INVALID_MODE", { mode: options.mode });
         const entries = [];
+        const seen = new Set();
         for (const [rawId, rawCount] of Object.entries(cards)) {
             const cardId = canonical(rawId);
             if (!definition(cardId)) return fail(CODE.INVALID_CARD_ID, { cardId });
             if (typeof rawCount !== "number" || !Number.isInteger(rawCount) || rawCount < 1) return fail(CODE.INVALID_COPIES, { cardId, copies: rawCount });
+            if (seen.has(cardId)) return fail("DUPLICATE_CARD", { cardId });
+            seen.add(cardId);
             entries.push([cardId, rawCount]);
         }
         const state = store();
         if (id && isObject(state.rewards[id])) {
             return { ok: true, granted: false, reason: "alreadyGranted", rewardId: id, record: clone(state.rewards[id]) };
         }
-        for (const [cardId, count] of entries) {
+        // 実際に足す枚数を、何かを変更する前にすべて決めて検証する(1枚でも不正なら何も変えない)。
+        const plan = entries.map(([cardId, value]) => [cardId, topUp ? Math.max(0, value - getOwnedCopies(cardId)) : value, value]);
+        for (const [cardId, count, value] of plan) {
+            if (topUp && value > MAX_STORED_COPIES) return fail(CODE.COPIES_LIMIT, { cardId, max: MAX_STORED_COPIES });
             if (getOwnedCopies(cardId) + count > MAX_STORED_COPIES) return fail(CODE.COPIES_LIMIT, { cardId, max: MAX_STORED_COPIES });
         }
         const before = {};
         const after = {};
         const given = {};
-        for (const [cardId, count] of entries) {
+        for (const [cardId] of plan) {
             before[cardId] = getOwnedCopies(cardId);
             const unlocked = coreSetCardOwned.call(deck(), cardId, true); // 解放(現在のLevelは保たれる)。枚数は下で加算する。
             if (!unlocked.ok) return fail("unlockFailed", { cardId, detail: unlocked.reasons });
         }
-        for (const [cardId, count] of entries) {
-            state.copies[cardId] = before[cardId] + count;
-            after[cardId] = state.copies[cardId];
-            given[cardId] = (given[cardId] || 0) + count;
+        for (const [cardId, count] of plan) {
+            if (count > 0) state.copies[cardId] = before[cardId] + count;
+            after[cardId] = getOwnedCopies(cardId);
+            given[cardId] = count;
         }
-        const total = entries.reduce((sum, entry) => sum + entry[1], 0);
-        if (id) state.rewards[id] = { source: String(options.source || "grant"), cards: clone(given), total, seq: ++state.seq };
-        return { ok: true, granted: true, reason: "granted", rewardId: id || null, added: given, total, before, after };
+        const total = plan.reduce((sum, entry) => sum + entry[1], 0);
+        if (id) {
+            const record = { source: String(options.source || "grant"), cards: {}, total, seq: ++state.seq };
+            for (const [cardId, count] of plan) if (count > 0) record.cards[cardId] = count;
+            if (topUp) { record.mode = "topUp"; record.targets = {}; for (const [cardId, , value] of plan) record.targets[cardId] = value; }
+            state.rewards[id] = record;
+        }
+        const result = { ok: true, granted: true, reason: "granted", mode: topUp ? "topUp" : "additive", rewardId: id || null, added: given, total, before, after };
+        if (topUp) { result.targets = {}; for (const [cardId, , value] of plan) result.targets[cardId] = value; }
+        return result;
     };
     const grantCopies = (cardId, copies, options = {}) => {
         const result = grantBundle(options.rewardId == null || options.rewardId === "" ? null : options.rewardId,
@@ -379,11 +397,12 @@
     const copiesOf = (state, cardId) => { const v = state.copies[canonical(cardId)]; return isCount(v) ? v : 0; };
 
     // ---- 付与の影響プレビュー(H2C-B3・何も変更しない) -------------------------------------------------------------------
-    // 「加算(additive)」= 目標の枚数をそのまま足す(現在の方針)。「補充(top-up)」= 目標の枚数に届くまでの不足分だけ足す(提案・未適用)。
-    // 例: ストレングスを2枚持っていて目標10枚 → 加算は+10(12枚)、補充は+8(10枚)。方針の変更はユーザー承認が必要(付与の実装は加算のまま)。
-    const previewGrant = (rewardId, cards) => {
+    // 「加算(additive)」= 値をそのまま足す(通常の GrantCardCopies・ショップ・報酬)。「補充(top-up)」= 目標の枚数に届くまでの不足分だけ足す(初期セットだけ。H2C-B4で承認)。
+    // 例: ストレングスを2枚持っていて目標10枚 → 加算は+10(12枚)、補充は+8(10枚)。options.mode で実際に使う方針("topUp" / 既定 "additive")を選ぶ。
+    const previewGrant = (rewardId, cards, options = {}) => {
         const state = peekStore();
         const id = canonical(rewardId);
+        const mode = options && options.mode === "topUp" ? "topUp" : "additive";
         const rows = [];
         const problems = [];
         for (const [rawId, target] of Object.entries(isObject(cards) ? cards : {})) {
@@ -393,18 +412,20 @@
             if (typeof target !== "number" || !Number.isInteger(target) || target < 1) { problems.push({ code: CODE.INVALID_COPIES, cardId, copies: target }); continue; }
             const current = copiesOf(state, cardId);
             const topUpGrant = Math.max(0, target - current);
+            const additive = { grant: target, after: current + target, deckLimit: Math.min(current + target, def.maxCopies) };
+            const topUpRow = { grant: topUpGrant, after: current + topUpGrant, deckLimit: Math.min(current + topUpGrant, def.maxCopies) };
+            const effective = mode === "topUp" ? topUpRow : additive;
             rows.push({
                 cardId, current, target, maxDeckCopies: def.maxCopies,
-                additive: { grant: target, after: current + target, deckLimit: Math.min(current + target, def.maxCopies) },
-                topUp: { grant: topUpGrant, after: current + topUpGrant, deckLimit: Math.min(current + topUpGrant, def.maxCopies) },
-                differs: topUpGrant !== target
+                grant: effective.grant, after: effective.after, deckLimit: effective.deckLimit, satisfied: current >= target,
+                additive, topUp: topUpRow, differs: topUpGrant !== target
             });
         }
         const sum = pick => rows.reduce((total, row) => total + row[pick].grant, 0);
         return clone({
-            rewardId: id || null, alreadyGranted: !!(id && isObject(state.rewards[id])), policyInEffect: "additive",
-            rows, problems, totals: { additive: sum("additive"), topUp: sum("topUp") },
-            note: "読み取り専用のプレビューです。所持・報酬記録・デッキは一切変更しません。付与の方針(加算/補充)の変更はユーザーの承認が必要です。", mutated: false
+            rewardId: id || null, alreadyGranted: !!(id && isObject(state.rewards[id])), policyInEffect: mode,
+            rows, problems, totals: { additive: sum("additive"), topUp: sum("topUp"), effective: mode === "topUp" ? sum("topUp") : sum("additive") },
+            note: "読み取り専用のプレビューです。所持・報酬記録・デッキは一切変更しません。", mutated: false
         });
     };
 
