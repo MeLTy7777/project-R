@@ -25,6 +25,10 @@
  *   element が 0 / 未指定なら一切変えません(無属性は従来どおり)。属性は data/ProjectR_CardBalance.json のカードごとの "element" で決めます。
  *   吸収(有効度が負)は固定ダメージでは「無効(0ダメージ)」として扱います(MZは吸収で回復しますが、固定ダメージでは未検証のため安全側)。
  *
+ * 【対象別の弱点修飾(Phase Apollo-A3)】
+ *   「敵が受ける弱点ダメージ」と「味方が受ける弱点ダメージ」を分けるために、ProjectR_DamageModifiers の弱点修飾(kind:"weakness"・対象キー付き)も
+ *   同じ位置(スキル経路の calcElementRate と固定ダメージの fixedFactor)で1ヒットにつき1回だけ参照します。修飾が無ければ何も変えません。
+ *
  * 【弱点ダメージ修飾(将来のカード効果用)】
  *   addWeaknessModifier(id, multiplier): 属性有効度が 1 を超える(弱点)ときだけ、有効度に multiplier を掛けます。
  *   スキル経路(Game_Action.calcElementRate)と固定ダメージ経路の両方に、同じ値が1回ずつ効きます。
@@ -89,10 +93,16 @@
     const removeWeaknessModifier = id => modifiers.delete(String(id));
     const clearWeaknessModifiers = () => { const had = modifiers.size > 0; modifiers.clear(); return had; };
     // 弱点(有効度>1)のときだけ、実行時の修飾と呼び出し側の追加倍率を掛ける。等倍・耐性・無効・吸収は変えない。
-    const adjustRate = (rate, extra) => {
+    const scopedAdjust = (rate, target) => {
+        const scoped = root.ProjectRDamageModifiers;
+        return scoped && typeof scoped.weaknessAdjust === "function" ? scoped.weaknessAdjust(rate, target) : rate;
+    };
+    const scopedActive = () => !!root.ProjectRDamageModifiers?.hasWeakness?.();
+    const adjustRate = (rate, extra, target) => {
         if (!(rate > 1)) return rate;
         const e = Number(extra);
-        return rate * weaknessProduct() * (Number.isFinite(e) && e >= 0 ? e : 1);
+        const adjusted = rate * weaknessProduct() * (Number.isFinite(e) && e >= 0 ? e : 1);
+        return target === undefined ? adjusted : scopedAdjust(adjusted, target);
     };
 
     // ---- 固定ダメージの属性係数(CardModifiersが1ヒットにつき1回呼ぶ) ----
@@ -103,7 +113,7 @@
         const battler = battlerOf(eventId);
         if (!battler || typeof battler.elementRate !== "function") return neutral;
         const rate = battler.elementRate(element);
-        let factor = adjustRate(rate, fixed.weaknessMultiplier);
+        let factor = adjustRate(rate, fixed.weaknessMultiplier, "event:" + Number(eventId));
         if (factor < 0) factor = 0; // 吸収は固定ダメージでは無効扱い
         const result = { applied: true, element, rate, factor, kind: classify(rate) };
         note({ type: "fixed", eventId: Number(eventId), element, rate, factor });
@@ -116,7 +126,7 @@
         const original = Game_Action.prototype.calcElementRate;
         const wrapped = function() {
             const rate = original.apply(this, arguments);
-            const adjusted = modifiers.size ? adjustRate(rate, 1) : rate;
+            const adjusted = modifiers.size || scopedActive() ? adjustRate(rate, 1, arguments[0]) : rate;
             if (logging) note({ type: "skill", rate, adjusted });
             return adjusted;
         };

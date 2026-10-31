@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc v1.1.0 カード戦闘中だけ Q/E/X/C/V を手札(左から1～5枠)へ排他的に渡します。
+ * @plugindesc v1.2.0 カード戦闘中だけ Q/E/X/C/V を手札(左から1～5枠)へ排他的に渡します。押下時間の検出(任意)つき。
  * @author ProjectR
  * @base ProjectR_CardDeckCore
  * @orderAfter ProjectR_CardDeckCore
@@ -26,6 +26,13 @@
  * ProjectRCardBattleInput.getBlockedReason(event?) : 受け付けない理由(受付可ならnull)
  * ProjectRCardBattleInput.getDiagnostics() : 直近のキー入力の判定(診断用。保存しない)
  * ProjectRCardBattleInput.getKeyLabels() : ["Q","E","X","C","V"]
+ * 押下時間の検出(Phase Apollo-A3・任意。登録しないカードは従来どおり押した瞬間に発動):
+ *   registerPressProfile(cardId, { holdSeconds, fireOn?:"manual"|"release", onPress?, onHold?, onRelease?, onCancel? })
+ *     onXxx(session): session = { id, index, cardId, heldFrames, heldSeconds, holdReached, activated, activate(variant), cancel(reason) }
+ *     onRelease/onCancel の第2情報: session.variant("tap"|"hold") / session.reason。カードを消費するのは session.activate() だけ。
+ *   unregisterPressProfile(cardId) / getPressProfile(cardId) / getPressSessions() / getPressLog() / cancelPress(handIndex?, reason?)
+ *   getActivationVariant() : activate(variant) による requestUseCard の最中だけ variant("tap"|"hold"|任意)、それ以外は null
+ *   取消の理由: handChanged(手札が入れ替わった) / blocked:<理由>(会話・メニュー・Scene切替など) / reset(戦闘終了・フォーカス喪失・Input.clear) / handler
  * Cooldownは操作可能なマップ更新ごとに既存APIへ1/60秒渡します。
  * メニュー・会話・フォーカス喪失中は進行を停止します。
  */
@@ -87,7 +94,102 @@
     };
     const canAcceptInput = (event = {}) => getBlockedReason(event) === null;
 
-    const resetSessionInput = () => { pending = []; lastResult = null; inputGeneration++; };
+
+    // ---- 押下時間の検出(Phase Apollo-A3) --------------------------------------------------------------------------------------------
+    // カードが任意で「押下プロファイル」を登録すると、そのカードのキー(Q/E/X/C/V)は押した瞬間には発動せず、押下の開始・しきい値到達・離した・取消を
+    // 受け取れる。プロファイルが無いカードは従来どおり(押した次のマップ更新で requestUseCard)。この Phase では、どのカードも登録しない。
+    //   時間は Scene_Map.update の更新回数(Cooldownと同じ戦闘時計・1/60秒)で数える。会話・メニュー・フォーカス喪失など入力が受け付けられない間は止まらず「取消」になる。
+    //   キーリピート: 押しっぱなしのkeydownは最初の1回だけ(従来の captured で保護)。取消後も、keyupまで同じキーは再発動しない。
+    //   カードを消費するのは session.activate(variant) だけ(= requestUseCard を次のマップ更新で1回)。押す・長押しだけでは消費しない。
+    //   いつ発動するか(離した時/しきい値到達時)や tap と hold の意味はカードの設計で決める。fireOn:"release" は離した時に tap/hold を付けて発動する便宜だけ。
+    const profiles = new Map(); // cardId -> { holdSeconds, thresholdFrames, fireOn, onPress, onHold, onRelease, onCancel }
+    const pressSessions = new Map(); // handIndex -> session
+    const pressLog = [];
+    const PRESS_LOG_LIMIT = 60;
+    let pressSerial = 0;
+    let currentVariant = null;
+    const logPress = entry => { pressLog.push(entry); if (pressLog.length > PRESS_LOG_LIMIT) pressLog.shift(); };
+    const handCard = index => {
+        try { const hand = deck.getBattleState?.()?.hand; return Array.isArray(hand) ? hand[index] || null : null; } catch (_error) { return null; }
+    };
+    const framesFor = seconds => Math.max(1, Math.round(seconds * 60));
+    const registerPressProfile = (cardId, profile = {}) => {
+        const id = String(cardId ?? "").trim();
+        const holdSeconds = Number(profile.holdSeconds);
+        if (!id) return { ok: false, reason: "invalidCardId" };
+        if (!Number.isFinite(holdSeconds) || holdSeconds <= 0 || holdSeconds > 30) return { ok: false, reason: "invalidHoldSeconds" };
+        for (const name of ["onPress", "onHold", "onRelease", "onCancel"]) if (profile[name] !== undefined && typeof profile[name] !== "function") return { ok: false, reason: "invalidHandler", detail: name };
+        const fireOn = profile.fireOn === undefined ? "manual" : profile.fireOn;
+        if (fireOn !== "manual" && fireOn !== "release") return { ok: false, reason: "invalidFireOn" };
+        if (fireOn === "manual" && !profile.onRelease && !profile.onHold && !profile.onPress) return { ok: false, reason: "noActivationPath" }; // 発動する経路が無いと、押してもカードが使えなくなる
+        profiles.set(id, Object.freeze({ holdSeconds, thresholdFrames: framesFor(holdSeconds), fireOn,
+            onPress: profile.onPress, onHold: profile.onHold, onRelease: profile.onRelease, onCancel: profile.onCancel }));
+        return { ok: true, thresholdFrames: framesFor(holdSeconds) };
+    };
+    const sessionView = session => ({
+        id: session.id, index: session.index, cardId: session.cardId, instanceId: session.instanceId, holdSeconds: session.profile.holdSeconds,
+        thresholdFrames: session.profile.thresholdFrames, heldFrames: session.heldFrames, heldSeconds: session.heldFrames / 60,
+        holdReached: session.holdReached, activated: session.activated, state: session.state,
+        activate: variant => activatePress(session, variant),
+        cancel: reason => endPress(session.index, "cancel", reason || "handler")
+    });
+    const callHandler = (session, name, extra) => {
+        const handler = session.profile[name];
+        if (typeof handler !== "function") return;
+        try { handler(Object.assign(sessionView(session), extra || {})); } catch (error) { logPress({ type: "handlerError", id: session.id, name, message: String(error?.message || error) }); }
+    };
+    // カードの発動を依頼する(次のマップ更新で requestUseCard を1回)。1回の押下で何度呼んでも、依頼は1回だけ。
+    const activatePress = (session, variant) => {
+        if (session.activated || session.state === "ended") return { ok: false, reason: session.activated ? "alreadyActivated" : "sessionEnded" };
+        session.activated = true;
+        pending.push({ index: session.index, variant: variant ? String(variant) : null, instanceId: session.instanceId, pressId: session.id });
+        logPress({ type: "activate", id: session.id, variant: variant || null, heldFrames: session.heldFrames });
+        return { ok: true };
+    };
+    const beginPress = index => {
+        const card = handCard(index);
+        const profile = card ? profiles.get(String(card.cardId)) : null;
+        if (!profile) return false;
+        const session = { id: ++pressSerial, index, cardId: String(card.cardId), instanceId: card.instanceId ?? null, profile, heldFrames: 0, holdReached: false, activated: false, state: "pressing" };
+        pressSessions.set(index, session);
+        logPress({ type: "press", id: session.id, index, cardId: session.cardId });
+        callHandler(session, "onPress");
+        return true;
+    };
+    // reason: "release" | "cancel"
+    const endPress = (index, kind, reason) => {
+        const session = pressSessions.get(index);
+        if (!session) return false;
+        pressSessions.delete(index);
+        if (kind === "release") {
+            const variant = session.holdReached ? "hold" : "tap";
+            session.state = "releasing"; // 離した通知の間は activate できる(終わったら ended)
+            logPress({ type: "release", id: session.id, variant, heldFrames: session.heldFrames });
+            if (session.profile.fireOn === "release") activatePress(session, variant);
+            callHandler(session, "onRelease", { variant });
+            session.state = "ended";
+        } else {
+            session.state = "ended";
+            logPress({ type: "cancel", id: session.id, reason: reason || "cancel", heldFrames: session.heldFrames });
+            callHandler(session, "onCancel", { reason: reason || "cancel" });
+        }
+        return true;
+    };
+    const cancelAllPresses = reason => { for (const index of [...pressSessions.keys()]) endPress(index, "cancel", reason); };
+    const advancePresses = () => {
+        for (const session of [...pressSessions.values()]) {
+            const card = handCard(session.index);
+            if (!card || card.instanceId !== session.instanceId) { endPress(session.index, "cancel", "handChanged"); continue; }
+            session.heldFrames++;
+            if (!session.holdReached && session.heldFrames >= session.profile.thresholdFrames) {
+                session.holdReached = true;
+                logPress({ type: "hold", id: session.id, heldFrames: session.heldFrames });
+                callHandler(session, "onHold");
+            }
+        }
+    };
+
+    const resetSessionInput = () => { pending = []; lastResult = null; inputGeneration++; cancelAllPresses("reset"); };
     const _endBattle = deck.endBattle;
     deck.endBattle = function() {
         resetSessionInput();
@@ -105,7 +207,7 @@
                 // 空枠・発動失敗でもカード戦闘中はHotbarへフォールバックしない。
                 if (!event.repeat) {
                     captured.add(index);
-                    pending.push(index);
+                    if (!beginPress(index)) pending.push(index); // 押下プロファイルのあるカードは、押した瞬間には発動しない
                     diagnostics = { ...diagnostics, accepted: diagnostics.accepted + 1 };
                     note(event, index, "accepted", null);
                 }
@@ -122,7 +224,8 @@
 
     const _onKeyUp = Input._onKeyUp;
     Input._onKeyUp = function(event) {
-        if (captured.delete(handIndexForEvent(event))) return;
+        const releasedIndex = handIndexForEvent(event);
+        if (captured.delete(releasedIndex)) { endPress(releasedIndex, "release"); return; }
         return _onKeyUp.call(this, event);
     };
 
@@ -146,12 +249,27 @@
         pending = [];
         // 先に既存Sceneを更新し、同フレームの会話開始・Scene切替も再判定する。
         _update.apply(this, arguments);
+        if (pressSessions.size && generation === inputGeneration && !canAcceptInput()) cancelAllPresses("blocked:" + (getBlockedReason() || "unknown"));
         if (generation !== inputGeneration || !canAcceptInput()) return;
         deck.updateCooldown(1 / 60);
-        for (const index of requests) {
+        advancePresses();
+        for (const item of requests) {
             if (generation !== inputGeneration || !canAcceptInput()) break;
-            const result = deck.requestUseCard(index);
-            if (generation === inputGeneration) lastResult = result;
+            if (typeof item === "number") { // 従来の押下(押下プロファイルなし)
+                const result = deck.requestUseCard(item);
+                if (generation === inputGeneration) lastResult = result;
+                continue;
+            }
+            // 押下プロファイルのカード: 依頼時と同じカードが同じ枠にあるときだけ発動する(入れ替わっていたら消費しない)
+            const card = handCard(item.index);
+            if (!card || card.instanceId !== item.instanceId) {
+                if (generation === inputGeneration) lastResult = { ok: false, reason: "handChanged", variant: item.variant };
+                continue;
+            }
+            currentVariant = item.variant;
+            let result;
+            try { result = deck.requestUseCard(item.index); } finally { currentVariant = null; }
+            if (generation === inputGeneration) lastResult = Object.assign({}, result, { variant: item.variant });
         }
     };
 
@@ -160,6 +278,12 @@
         getBlockedReason,
         getDiagnostics: () => ({ ...diagnostics }),
         getKeyLabels: () => [...CARD_KEYS],
+        registerPressProfile, unregisterPressProfile: cardId => profiles.delete(String(cardId ?? "").trim()),
+        getPressProfile: cardId => { const p = profiles.get(String(cardId ?? "").trim()); return p ? { holdSeconds: p.holdSeconds, thresholdFrames: p.thresholdFrames, fireOn: p.fireOn } : null; },
+        getPressSessions: () => [...pressSessions.values()].map(s => { const { activate, cancel, ...view } = sessionView(s); return view; }),
+        getPressLog: () => pressLog.map(entry => ({ ...entry })),
+        cancelPress: (index, reason) => { if (index === undefined) { const had = pressSessions.size > 0; cancelAllPresses(reason || "manual"); return had; } return endPress(index, "cancel", reason || "manual"); },
+        getActivationVariant: () => currentVariant,
         getLastResult: () => lastResult ? JSON.parse(JSON.stringify(lastResult)) : null
     };
 })();

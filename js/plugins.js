@@ -37,6 +37,7 @@ var $plugins =
 ,{"name":"ProjectR_ApolloUltimate","status":true,"description":"v1.0.0 Phase 4D-2 Apollo Ultimate（暫定）7連矢。","parameters":{"ArrowCount":"7","ArrowIntervalSeconds":"0.10","SpreadStepDegrees":"10","ProjectileLifetimeFrames":"90","UltimateDamageGeneratesGauge":"false"}}
 ,{"name":"ProjectR_CombatTestArena","status":true,"description":"v1.1.0 DEV専用 Combat Test Arena（Playtest限定。配布版では何もしません）。","parameters":{}}
 ,{"name":"ProjectR_PartyCombat","status":true,"description":"v1.0.0 仲間(最大2人)の戦闘フレームワーク。定義レジストリ・HP/ダウン・自動AIの意思決定。","parameters":{}}
+,{"name":"ProjectR_PartyRoster","status":true,"description":"v1.0.0 主人公と出撃中の仲間を読み取り専用で返す名簿(Phase Apollo-A3)。NPCは含まない。","parameters":{}}
 ,{"name":"ProjectR_MenuCore","status":true,"description":"v1.0.0 メニュー基盤。カード/神/指輪の表示、デッキ・Ultimate・指輪・所持品のモデル、戦闘中ロック。","parameters":{}}
 ,{"name":"ProjectR_MenuUI","status":true,"description":"v1.0.0 メニュー画面の共通部品。","parameters":{}}
 ,{"name":"ProjectR_DeckBuilder","status":true,"description":"v1.0.0 カードデッキ構築画面(メニューのSKILL)。","parameters":{}}
@@ -58,6 +59,7 @@ var $plugins =
 ,{"name":"ProjectR_Elements","status":true,"description":"v1.0.0 属性(Database属性ID)の共通窓口: 属性倍率の読み取り・固定ダメージの属性補正(1回だけ)・弱点ダメージ修飾。","parameters":{}}
 ,{"name":"ProjectR_CardBalanceEditor","status":true,"description":"v1.0.0 DEV専用 カードバランスエディタ(Playtest限定・F6)。製品の既定値は変更しない。","parameters":{}}
 ,{"name":"ProjectR_KillAttribution","status":true,"description":"v1.0.0 撃破の帰属(誰が倒したか)と敵の死亡通知。HP・報酬・ドロップは変えない。","parameters":{"EnemyTag":"<enemy>"}}
+,{"name":"ProjectR_DamageModifiers","status":true,"description":"v1.0.0 被ダメージ修飾・弱点修飾・状態の共有基盤(Phase Apollo-A3)。既定はすべて中立。","parameters":{}}
 ,{"name":"ProjectR_CardModifiers","status":true,"description":"v1.0.0 時限モディファイア(通常武器ヒット強化・移動速度係数)。戦闘時間で進み、保存しない。","parameters":{}}
 ,{"name":"ProjectR_CardTargeting","status":true,"description":"v1.0.0 ProjectR カード対象指定の共通層: Cursor(マウスに追従する範囲)の座標変換と円の判定。","parameters":{}}
 ,{"name":"ProjectR_TargetEligibility","status":true,"description":"v1.0.0 ProjectR 敵の標的選択の適格性(秘匿): Hendrixの検知・キャッシュに接続。","parameters":{"HostileTag":"<enemy>"}}
