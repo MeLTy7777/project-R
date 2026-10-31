@@ -110,6 +110,7 @@ function buildWorld({ playtest = true } = {}) {
     vm.runInNewContext(read("js/plugins.js"), config);
     const parse = run("(text) => JSON.parse(text)"); // データはVM側のArray/Objectで作る(Array#cloneなどMZ拡張のため)
     const failures = [];
+    ctx.$dataProjectRCardBalance = parse(read("data/ProjectR_CardBalance.json")); // 本番ではProjectR_CardBalanceがfsで読む。VMにはrequireが無いので注入する。
     ctx.$plugins = config.$plugins;
     for (const plugin of config.$plugins) ctx.PluginManager._parameters[plugin.name.toLowerCase()] = plugin.parameters;
     const loaded = [];

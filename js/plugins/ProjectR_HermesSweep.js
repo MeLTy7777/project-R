@@ -65,20 +65,15 @@
     const CARD = "hermes_sweep";
     const params = typeof PluginManager !== "undefined" && PluginManager.parameters ? PluginManager.parameters("ProjectR_HermesSweep") : {};
 
-    // 正本(ワークブック): 190度・4マス・先端1マス。値の変更はユーザーの設計変更なので、パラメータにはしない。
-    const ARC_DEGREES = 190;
-    const RADIUS_TILES = 4;
-    const TIP_TILES = 1;
+    // 数値(190度・4マス・先端1マス・Lv別ダメージなど)は data/ProjectR_CardBalance.json(ProjectR_CardBalance)が持つ。ここは幾何の刻みだけ。
     const ARC_STEP_DEGREES = 6;
     const TIP_SLICE_DEGREES = 8;
     const EPSILON = 1e-8;
 
-    const LEVELS = Object.freeze([
-        Object.freeze({ level: 1, effects: Object.freeze({ damage: 50 }) }),
-        Object.freeze({ level: 2, effects: Object.freeze({ tipBonus: 50 }) }),
-        Object.freeze({ level: 3, effects: Object.freeze({ criticalChanceBonus: 0.5 }) })
-    ]);
-    const effectsForLevel = level => root.ProjectRCardCatalog.resolveLevels(LEVELS, level);
+    const balance = () => root.ProjectRCardBalance;
+    const balanceReady = () => !!balance()?.isReady?.() && !!balance().hasCard(CARD);
+    const effectsForLevel = level => balance().effects(CARD, level);
+    const tune = key => balance().constant(CARD, key);
     const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
     const failure = (reason, extra = {}) => ({ ok: false, reason, ...extra });
     const rad = degree => degree * Math.PI / 180;
@@ -98,7 +93,7 @@
     // ---------- 幾何(タイル座標。上=0度・時計回り) ----------
     const polar = (center, radius, degree) => ({ x: center.x + Math.sin(rad(degree)) * radius, y: center.y - Math.cos(rad(degree)) * radius });
     // 弧は「外接」する折れ線(中点が半径Rに接する)にして、hasLineToPolygonのradiusで正確な円弧へ切り詰める。
-    const halfSectors = (center, aim, arc = ARC_DEGREES, radius = RADIUS_TILES) => [[aim - arc / 2, aim], [aim, aim + arc / 2]].map(([from, to]) => {
+    const halfSectors = (center, aim, arc = tune("arcDegrees"), radius = tune("radiusTiles")) => [[aim - arc / 2, aim], [aim, aim + arc / 2]].map(([from, to]) => {
         const count = Math.max(1, Math.ceil((to - from) / ARC_STEP_DEGREES));
         const outer = radius / Math.cos(rad((to - from) / count / 2));
         const polygon = [{ x: center.x, y: center.y }];
@@ -106,7 +101,7 @@
         return polygon;
     });
     // 先端(中心から TIP_TILES 手前〜外周)の細い扇形。各片は凸(台形)。
-    const tipSlices = (center, aim, arc = ARC_DEGREES, radius = RADIUS_TILES, tip = TIP_TILES) => {
+    const tipSlices = (center, aim, arc = tune("arcDegrees"), radius = tune("radiusTiles"), tip = tune("tipTiles")) => {
         const count = Math.ceil(arc / TIP_SLICE_DEGREES), slices = [];
         for (let i = 0; i < count; i++) {
             const from = aim - arc / 2 + arc * i / count, to = aim - arc / 2 + arc * (i + 1) / count;
@@ -133,8 +128,8 @@
             if (hp == null || hp <= 0) continue;
             const polygon = occ.eventPolygon(enemy);
             if (!Array.isArray(polygon) || polygon.length < 3) continue;
-            if (!sectorTouches(center, polygon, halves, RADIUS_TILES)) continue;
-            targets.push({ eventId: enemyId, tip: withTip ? sectorTouches(center, polygon, slices, RADIUS_TILES) : false });
+            if (!sectorTouches(center, polygon, halves, tune("radiusTiles"))) continue;
+            targets.push({ eventId: enemyId, tip: withTip ? sectorTouches(center, polygon, slices, tune("radiusTiles")) : false });
         }
         return targets.sort((a, b) => a.eventId - b.eventId);
     };
@@ -160,6 +155,7 @@
 
     const activate = context => {
         if (!deck.isCardBattleActive() || !root.ProjectRCardCatalog) return failure("battleInactive");
+        if (!balanceReady()) return failure("balanceUnavailable");
         const env = environment();
         if (!env.ok) return failure(env.reason);
         if (typeof occlusion()?.hasLineToPolygon !== "function") return failure("occlusionUnavailable");
@@ -173,7 +169,7 @@
             const degree = normalize(summon.degree);
             const targets = computeTargets(env.center, degree, effects.tipBonus > 0);
             if (!targets) return failure("occlusionUnavailable");
-            plan = { degree, center: env.center, targets, level, effects, summonId: summon.summonId, serial: ++serial };
+            plan = { degree, center: env.center, targets, level, effects, element: tune("element"), weaknessMultiplier: tune("weaknessMultiplier"), summonId: summon.summonId, serial: ++serial };
             return { ok: true };
         });
         if (!result?.ok || !plan) return failure(result?.reason || "activationFailed");
@@ -216,7 +212,7 @@
             try {
                 trackDamage(target.eventId, `sweep:${plan.serial}`, () => command("UpdateEventHp", {
                     eventId: String(target.eventId), value: `-${plan.effects.damage}`, exceedMaxHealth: "false",
-                    projectRFixed: { base: plan.effects.damage, flat: tipBonus, critChanceBonus: plan.effects.criticalChanceBonus || 0, source: CARD }
+                    projectRFixed: { base: plan.effects.damage, flat: tipBonus, critChanceBonus: plan.effects.criticalChanceBonus || 0, source: CARD, element: plan.element, weaknessMultiplier: plan.weaknessMultiplier }
                 }));
                 hits.push({ eventId: target.eventId, tip: !!target.tip, tipBonus });
             } catch (error) {
@@ -251,7 +247,11 @@
     };
 
     root.ProjectRHermesSweep = Object.freeze({
-        CARD, LEVELS, ARC_DEGREES, RADIUS_TILES, TIP_TILES,
+        CARD,
+        get LEVELS() { return balance().levels(CARD); },
+        get ARC_DEGREES() { return tune("arcDegrees"); },
+        get RADIUS_TILES() { return tune("radiusTiles"); },
+        get TIP_TILES() { return tune("tipTiles"); },
         plan: degree => {
             const env = environment();
             if (!env.ok) return env;
@@ -264,7 +264,7 @@
         // 扇と多角形(タイル座標)の判定そのもの(テスト用)。壁は現在のマップのもの。
         geometry: Object.freeze({ halfSectors, tipSlices, polar,
             touches: (center, aim, polygon, withTip = false) => ({
-                hit: sectorTouches(center, polygon, halfSectors(center, normalize(aim)), RADIUS_TILES),
-                tip: withTip ? sectorTouches(center, polygon, tipSlices(center, normalize(aim)), RADIUS_TILES) : false }) })
+                hit: sectorTouches(center, polygon, halfSectors(center, normalize(aim)), tune("radiusTiles")),
+                tip: withTip ? sectorTouches(center, polygon, tipSlices(center, normalize(aim)), tune("radiusTiles")) : false }) })
     });
 })();

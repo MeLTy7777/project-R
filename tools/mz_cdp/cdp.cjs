@@ -24,7 +24,7 @@ async function connect() {
   };
   const shot = async (file) => { const r = await send("Page.captureScreenshot", { format: "png" }); fs.writeFileSync(file, Buffer.from(r.data, "base64")); return file; };
   const KEY = { Q: ["KeyQ", 81, "q"], E: ["KeyE", 69, "e"], X: ["KeyX", 88, "x"], C: ["KeyC", 67, "c"], V: ["KeyV", 86, "v"], F: ["KeyF", 70, "f"], U: ["KeyU", 85, "u"], R: ["KeyR", 82, "r"], J: ["KeyJ", 74, "j"], Esc: ["Escape", 27, "Escape"], W: ["KeyW", 87, "w"], A: ["KeyA", 65, "a"], S: ["KeyS", 83, "s"], D: ["KeyD", 68, "d"],
-    Enter: ["Enter", 13, "Enter"], Tab: ["Tab", 9, "Tab"], Down: ["ArrowDown", 40, "ArrowDown"], Up: ["ArrowUp", 38, "ArrowUp"], Left: ["ArrowLeft", 37, "ArrowLeft"], Right: ["ArrowRight", 39, "ArrowRight"], Shift: ["ShiftLeft", 16, "Shift"] }; // メニュー操作用のキー(H2C-A) // 移動はHendrix_Keyboard_GamepadでWASDに割り当て済み
+    F6: ["F6", 117, "F6"], Enter: ["Enter", 13, "Enter"], Tab: ["Tab", 9, "Tab"], Down: ["ArrowDown", 40, "ArrowDown"], Up: ["ArrowUp", 38, "ArrowUp"], Left: ["ArrowLeft", 37, "ArrowLeft"], Right: ["ArrowRight", 39, "ArrowRight"], Shift: ["ShiftLeft", 16, "Shift"] }; // メニュー操作用のキー(H2C-A) // 移動はHendrix_Keyboard_GamepadでWASDに割り当て済み
   const keyDown = (k) => send("Input.dispatchKeyEvent", { type: "keyDown", code: KEY[k][0], windowsVirtualKeyCode: KEY[k][1], key: KEY[k][2] });
   const keyUp = (k) => send("Input.dispatchKeyEvent", { type: "keyUp", code: KEY[k][0], windowsVirtualKeyCode: KEY[k][1], key: KEY[k][2] });
   const tap = async (k, hold = 80) => { await keyDown(k); await sleep(hold); await keyUp(k); await sleep(60); };

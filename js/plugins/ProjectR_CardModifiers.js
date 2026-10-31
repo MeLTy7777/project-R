@@ -328,6 +328,7 @@
             let value = String(args?.value ?? "");
             let critical = null;
             let baseDamage = null;
+            let elemental = null;
             let restore = () => {};
             if (fixed) {
                 baseDamage = Math.max(0, Math.round(Number(fixed.base)));
@@ -336,7 +337,11 @@
                 usedChance = prepared.forceCritical ? 1 : chance;
                 critical = fixed.critical === false ? false : (prepared.forceCritical || Math.random() < chance);
                 const own = Math.max(0, Math.round(Number(fixed.flat) || 0)); // 固定ダメージ側の加算(例: 薙ぎ払いLv2の先端+50)
-                const total = (critical ? Math.round(baseDamage * criticalMultiplier()) : baseDamage) + own + prepared.flat;
+                // 属性(ProjectR_Elements): 基礎値 × 属性有効度 → クリティカル → 加算(MZと同じ順)。element 0/未指定は従来どおり。1ヒットにつき1回だけ。
+                elemental = root.ProjectRElements && typeof root.ProjectRElements.fixedFactor === "function" ? root.ProjectRElements.fixedFactor(id, fixed) : null;
+                const factor = elemental && elemental.applied ? elemental.factor : 1;
+                const scaled = factor === 1 ? baseDamage : Math.max(0, Math.round(baseDamage * factor));
+                const total = factor === 0 ? 0 : (critical ? Math.round(scaled * criticalMultiplier()) : scaled) + own + prepared.flat;
                 value = `-${total}`;
             } else {
                 if (weaponBonus) value = boostedValue(value, current.multiplier);
@@ -382,6 +387,7 @@
             }
             if (fixed || prepared.entries.length || prepared.flat) {
                 note({ type: "hit", source: context.source || kind, eventId: id, base: baseDamage, critical, flat: landed ? prepared.flat : 0, landed, dealt,
+                    element: elemental && elemental.applied ? elemental.element : 0, elementRate: elemental && elemental.applied ? elemental.rate : null,
                     critChance: usedChance !== null ? usedChance : (adjustsCrit && !prepared.forceCritical && !weaponBonus ? lastCritChance : null) });
             }
             if (hooked) finishHooks(context, prepared, { dealt, before, after, landed });

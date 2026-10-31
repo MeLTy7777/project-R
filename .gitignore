@@ -34,3 +34,6 @@ desktop.ini
 
 # Third-party material whose terms forbid redistributing it as-is (see docs/ProjectR_ThirdPartyAssets.md)
 img/characters/TF_Actor1.png
+
+# Developer-only card balance overrides (ProjectR_CardBalanceEditor)
+dev_tuning/

@@ -1,0 +1,113 @@
+{
+  "schema": 1,
+  "description": "ProjectR カードバランス設定(製品の既定値)。カードIDはランタイムID(ワークブックの設計IDではない)。Lvごとの効果は累積し、同じ効果の新しい数値は前のLvの値を置き換える。この値を変えるとゲームの数値が変わる。開発中の一時的な試しは Playtest 限定のバランスエディタ(F6)で行い、このファイルは変わらない。ワークブック(設計の正本)はこのファイルから更新されない。",
+  "fields": {
+    "cooldownSeconds": { "label": "クールダウン", "unit": "秒", "min": 0.05, "max": 600 },
+    "damage": { "label": "基礎ダメージ", "unit": "HP", "min": 0, "max": 99999, "integer": true },
+    "directDamage": { "label": "直接ダメージ(防御無視)", "unit": "HP", "min": 0, "max": 99999, "integer": true },
+    "splitTotal": { "label": "分割ダメージ合計", "unit": "HP", "min": 0, "max": 99999, "integer": true },
+    "splitSeconds": { "label": "分割ダメージの時間", "unit": "秒", "min": 0.1, "max": 60 },
+    "splitTicks": { "label": "分割ダメージの回数", "unit": "回", "min": 1, "max": 30, "integer": true },
+    "tipBonus": { "label": "先端の追加ダメージ", "unit": "HP", "min": 0, "max": 99999, "integer": true },
+    "sleepBonusDamage": { "label": "睡眠中の追加ダメージ", "unit": "HP", "min": 0, "max": 99999, "integer": true },
+    "healAmount": { "label": "回復量", "unit": "HP", "min": 0, "max": 99999, "integer": true },
+    "criticalChanceBonus": { "label": "クリティカル率の加算", "unit": "確率(0.5=+50ポイント)", "min": 0, "max": 1 },
+    "hitMultiplier": { "label": "次の武器ヒットの倍率", "unit": "倍", "min": 0.1, "max": 20 },
+    "hitSeconds": { "label": "強化の持続", "unit": "秒", "min": 0.1, "max": 60 },
+    "speedFactor": { "label": "移動速度の倍率", "unit": "倍", "min": 0.1, "max": 10 },
+    "speedSeconds": { "label": "移動速度強化の持続", "unit": "秒", "min": 0.1, "max": 60 },
+    "slowFactor": { "label": "敵の移動速度の倍率", "unit": "倍(0.5=-50%)", "min": 0.05, "max": 1 },
+    "slowSeconds": { "label": "鈍足の持続", "unit": "秒", "min": 0.1, "max": 60 },
+    "attackBonus": { "label": "攻撃力の加算", "unit": "割合(0.1=+10%)", "min": 0, "max": 10 },
+    "attackBuffSeconds": { "label": "攻撃力強化の持続", "unit": "秒", "min": 0.1, "max": 60 },
+    "speedBonus": { "label": "移動速度の加算", "unit": "割合(0.3=+30%)", "min": 0, "max": 5 },
+    "durationSeconds": { "label": "効果の持続", "unit": "秒", "min": 0.1, "max": 120 },
+    "sleepSeconds": { "label": "睡眠の持続", "unit": "秒", "min": 0.1, "max": 120 },
+    "radiusTiles": { "label": "半径", "unit": "マス", "min": 0.5, "max": 30 },
+    "collectRadiusTiles": { "label": "魂の回収半径", "unit": "マス", "min": 0.5, "max": 30 },
+    "rangeTiles": { "label": "射程", "unit": "マス", "min": 1, "max": 40 },
+    "pathWidthTiles": { "label": "軌道の幅", "unit": "マス", "min": 0.1, "max": 10 },
+    "arcDegrees": { "label": "扇の角度", "unit": "度", "min": 1, "max": 360 },
+    "tipTiles": { "label": "先端の幅", "unit": "マス", "min": 0, "max": 30, "lteKey": "radiusTiles" },
+    "element": { "label": "属性(Database属性ID。0=無属性)", "unit": "ID", "min": 0, "max": 99, "integer": true, "elementId": true },
+    "weaknessMultiplier": { "label": "弱点時の追加倍率(1=変化なし)", "unit": "倍", "min": 0, "max": 10 },
+    "sleep": { "label": "睡眠を与える", "type": "boolean", "editable": false },
+    "guaranteedCritical": { "label": "睡眠中の敵へクリティカル確定", "type": "boolean", "editable": false },
+    "concealment": { "label": "認識阻害(標的にされない)", "type": "boolean", "editable": false },
+    "ignoreDefense": { "label": "防御無視", "type": "boolean", "editable": false },
+    "hitCount": { "label": "ヒット数", "unit": "回", "min": 1, "max": 100, "integer": true, "reserved": true },
+    "projectileCount": { "label": "弾の本数", "unit": "本", "min": 1, "max": 50, "integer": true, "reserved": true },
+    "projectileSpeed": { "label": "弾の速さ", "unit": "マス/秒", "min": 0.1, "max": 60, "reserved": true },
+    "regenPerSecond": { "label": "毎秒の継続回復", "unit": "HP/秒", "min": 0, "max": 99999, "reserved": true },
+    "dotDamage": { "label": "継続ダメージ(1回分)", "unit": "HP", "min": 0, "max": 99999, "integer": true, "reserved": true },
+    "criticalMultiplier": { "label": "クリティカル倍率", "unit": "倍", "min": 1, "max": 20, "reserved": true },
+    "defenseBonus": { "label": "防御力の加算", "unit": "割合", "min": 0, "max": 10, "reserved": true },
+    "maxStacks": { "label": "重ね掛けの上限", "unit": "回", "min": 1, "max": 99, "integer": true, "reserved": true },
+    "stackMultiplier": { "label": "重ね掛けの倍率", "unit": "倍", "min": 0, "max": 10, "reserved": true }
+  },
+  "cards": {
+    "hermes_issen": {
+      "name": "一閃", "designId": 1, "cooldownSeconds": 7,
+      "constants": { "rangeTiles": 11, "pathWidthTiles": 1, "splitTicks": 3, "element": 0, "weaknessMultiplier": 1 },
+      "levels": {
+        "1": { "directDamage": 200, "splitTotal": 50, "splitSeconds": 3 },
+        "2": { "splitTotal": 100 },
+        "3": { "slowFactor": 0.5, "slowSeconds": 3 }
+      }
+    },
+    "hermes_psychopomp": {
+      "name": "サイコポンポス", "designId": 2, "cooldownSeconds": 10,
+      "constants": {},
+      "levels": {
+        "1": { "healAmount": 50, "collectRadiusTiles": 5, "durationSeconds": 10 },
+        "2": { "healAmount": 100 },
+        "3": { "healAmount": 150, "attackBonus": 0.03, "attackBuffSeconds": 3 }
+      }
+    },
+    "hermes_veil": {
+      "name": "ヴェイル", "designId": 3, "cooldownSeconds": 10,
+      "constants": {},
+      "levels": {
+        "1": { "concealment": true, "radiusTiles": 5, "durationSeconds": 5 },
+        "2": { "speedBonus": 0.3 },
+        "3": { "criticalChanceBonus": 0.5 }
+      }
+    },
+    "hermes_strength": {
+      "name": "ストレングス", "designId": 4, "cooldownSeconds": 0.1,
+      "constants": {},
+      "levels": {
+        "1": { "attackBonus": 0.1 },
+        "2": { "attackBonus": 0.15 },
+        "3": { "ignoreDefense": true }
+      }
+    },
+    "hermes_sweep": {
+      "name": "薙ぎ払い", "designId": 5, "cooldownSeconds": 0.5,
+      "constants": { "arcDegrees": 190, "radiusTiles": 4, "tipTiles": 1, "element": 0, "weaknessMultiplier": 1 },
+      "levels": {
+        "1": { "damage": 50 },
+        "2": { "tipBonus": 50 },
+        "3": { "criticalChanceBonus": 0.5 }
+      }
+    },
+    "hermes_reed_flute": {
+      "name": "葦笛", "designId": 6, "cooldownSeconds": 8,
+      "constants": { "radiusTiles": 8, "sleepSeconds": 4 },
+      "levels": {
+        "1": { "sleep": true },
+        "2": { "sleepBonusDamage": 50 },
+        "3": { "guaranteedCritical": true }
+      }
+    },
+    "hermes_zetsu": {
+      "name": "絶", "designId": 7, "cooldownSeconds": 0.5,
+      "constants": {},
+      "levels": {
+        "1": { "hitMultiplier": 1.5, "hitSeconds": 0.8 },
+        "2": { "hitMultiplier": 2 },
+        "3": { "hitMultiplier": 3, "speedFactor": 2, "speedSeconds": 1 }
+      }
+    }
+  }
+}

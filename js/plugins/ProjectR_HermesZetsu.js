@@ -68,13 +68,10 @@
     const SAFE_BACKOFF = 1 / 16;
     const EPSILON = 1e-4;
 
-    // 累積レベル: 後のレベルの同名effectは置換する(ProjectRCardCatalog.resolveLevels)。
-    const LEVELS = Object.freeze([
-        Object.freeze({ level: 1, effects: Object.freeze({ hitMultiplier: 1.5, hitSeconds: 0.8 }) }),
-        Object.freeze({ level: 2, effects: Object.freeze({ hitMultiplier: 2.0 }) }),
-        Object.freeze({ level: 3, effects: Object.freeze({ hitMultiplier: 3.0, speedFactor: 2.0, speedSeconds: 1.0 }) })
-    ]);
-    const effectsForLevel = level => root.ProjectRCardCatalog.resolveLevels(LEVELS, level);
+    // 累積レベル(後のレベルの同名effectは置換)と数値(1.5/2.0/3.0倍・0.8秒・速度2倍1秒)は data/ProjectR_CardBalance.json(ProjectR_CardBalance)が持つ。
+    const balance = () => root.ProjectRCardBalance;
+    const balanceReady = () => !!balance()?.isReady?.() && !!balance().hasCard(CARD);
+    const effectsForLevel = level => balance().effects(CARD, level);
 
     const failure = (reason, extra = {}) => ({ ok: false, reason, ...extra });
     const finitePoint = p => !!p && Number.isFinite(p.x) && Number.isFinite(p.y);
@@ -310,6 +307,7 @@
 
     const activate = context => {
         if (!deck.isCardBattleActive() || !root.ProjectRCardCatalog) return failure("battleInactive");
+        if (!balanceReady()) return failure("balanceUnavailable");
         if (mode === "commit") {
             // 確定: 再計算済みの計画で移動・強化を適用し、成功を返す(ルーターがこの直後に1回だけ消費する)。
             const planned = commitPlan;
@@ -396,7 +394,8 @@
     DataManager.extractSaveContents = function() { discardTeleport("load"); return _extract.apply(this, arguments); };
 
     root.ProjectRHermesZetsu = Object.freeze({
-        CARD, LEVELS,
+        CARD,
+        get LEVELS() { return balance().levels(CARD); },
         plan: mouse => { const env = environment(mouse); return env.ok ? computePlan(env) : env; },
         getLastResult: () => lastResult ? JSON.parse(JSON.stringify(lastResult)) : null,
         isTeleportPending: () => !!teleport, getWindupFrames: () => windupFrames,

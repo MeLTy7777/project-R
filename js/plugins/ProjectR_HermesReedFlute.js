@@ -68,18 +68,13 @@
     const ENGINE = "Hendrix_Action_Engine";
     const CARD = "hermes_reed_flute";
     const HOOK_ID = CARD;
-    const RADIUS_TILES = 8; // 正本(ワークブック)の値。変更はユーザーの設計変更なので、パラメータにはしない。
-    const params = typeof PluginManager !== "undefined" && PluginManager.parameters ? PluginManager.parameters("ProjectR_HermesReedFlute") : {};
-    const legacyParams = typeof PluginManager !== "undefined" && PluginManager.parameters ? PluginManager.parameters("ProjectR_HermesReedFluteSleep") : {};
-    const positive = (value, fallback) => Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : fallback;
-    const sleepSeconds = () => positive(params.SleepSeconds, positive(legacyParams.DurationSeconds, 4));
+    // 数値(半径8マス・睡眠4秒・Lv別の追加ダメージなど)は data/ProjectR_CardBalance.json(ProjectR_CardBalance)が持つ。
+    const balance = () => root.ProjectRCardBalance;
+    const balanceReady = () => !!balance()?.isReady?.() && !!balance().hasCard(CARD);
+    const tune = key => balance().constant(CARD, key);
+    const sleepSeconds = () => tune("sleepSeconds");
 
-    const LEVELS = Object.freeze([
-        Object.freeze({ level: 1, effects: Object.freeze({ sleep: true }) }),
-        Object.freeze({ level: 2, effects: Object.freeze({ sleepBonusDamage: 50 }) }),
-        Object.freeze({ level: 3, effects: Object.freeze({ guaranteedCritical: true }) })
-    ]);
-    const effectsForLevel = level => root.ProjectRCardCatalog.resolveLevels(LEVELS, level);
+    const effectsForLevel = level => balance().effects(CARD, level);
     const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
     const failure = (reason, extra = {}) => ({ ok: false, reason, ...extra });
 
@@ -168,7 +163,7 @@
             if (hp == null || hp <= 0) continue;
             const polygon = occ.eventPolygon(enemy);
             if (!Array.isArray(polygon) || polygon.length < 3) continue;
-            if (!occ.hasLineToPolygon(center, polygon, { radius: RADIUS_TILES })) continue;
+            if (!occ.hasLineToPolygon(center, polygon, { radius: tune("radiusTiles") })) continue;
             if (!battlerFor(enemy)?.isAlive?.()) continue;
             targets.push(id);
         }
@@ -194,6 +189,7 @@
     };
 
     const activate = context => {
+        if (!balanceReady()) return failure("balanceUnavailable");
         const missing = prerequisites();
         if (missing.length) return failure("sleepUnavailable", { detail: missing.join(",") });
         const env = environment();
@@ -205,7 +201,7 @@
         const result = summons.perform({ definition: context?.definition, aim: false }, summon => {
             const targets = computeTargets(env.center);
             if (!targets) return failure("occlusionUnavailable");
-            plan = { center: env.center, targets, level, effects, summonId: summon.summonId, serial: ++serial };
+            plan = { center: env.center, targets, level, effects, sleepSeconds: sleepSeconds(), summonId: summon.summonId, serial: ++serial };
             return { ok: true };
         });
         if (!result?.ok || !plan) return failure(result?.reason || "activationFailed");
@@ -227,7 +223,7 @@
         try {
             command("AddState", eventId, id);
             if (!root.hasState(eventId, id)) return false;
-            sleepers.set(event, { map: map(), battler, stateId: id, remaining: sleepSeconds(), level: plan.level, effects: plan.effects, serial: plan.serial });
+            sleepers.set(event, { map: map(), battler, stateId: id, remaining: plan.sleepSeconds, level: plan.level, effects: plan.effects, serial: plan.serial });
             return true;
         } catch (_error) {
             if (!already) battler.removeState(id); // 付与後の例外で、新しい睡眠を残さない
@@ -246,7 +242,7 @@
         for (const eventId of plan.targets) if (applySleep(eventId, plan)) applied.push(eventId);
         present(plan);
         lastResult = { ok: true, consumed: true, level: plan.level, serial: plan.serial, targets: plan.targets.slice(), slept: applied,
-            noTarget: plan.targets.length === 0, instanceId: activation?.instanceId ?? null, sleepSeconds: sleepSeconds(), effects: plan.effects };
+            noTarget: plan.targets.length === 0, instanceId: activation?.instanceId ?? null, sleepSeconds: plan.sleepSeconds, effects: plan.effects };
     };
 
     const _requestUseCard = deck.requestUseCard;
@@ -292,7 +288,9 @@
     DataManager.extractSaveContents = function() { clearAll("load"); return _extract.apply(this, arguments); };
 
     root.ProjectRHermesReedFlute = Object.freeze({
-        CARD, LEVELS, RADIUS_TILES,
+        CARD,
+        get LEVELS() { return balance().levels(CARD); },
+        get RADIUS_TILES() { return tune("radiusTiles"); },
         plan: () => {
             const env = environment();
             if (!env.ok) return env;

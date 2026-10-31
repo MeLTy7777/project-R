@@ -115,12 +115,9 @@
     const SUBSCRIBER = CARD;
     const params = typeof PluginManager !== "undefined" && PluginManager.parameters ? PluginManager.parameters("ProjectR_HermesPsychopomp") : {};
 
-    // 正本(ワークブック)の値。変更はユーザーの設計変更なので、パラメータにはしない。
-    const COLLECT_RADIUS_TILES = 5;
-    const DURATION_SECONDS = 10;
-    const HEAL_BY_LEVEL = Object.freeze([50, 100, 150]);
-    const ATTACK_BONUS = 0.03;
-    const BUFF_SECONDS = 3;
+    // 数値(回収半径5マス・10秒・回復50/100/150・攻撃力+3%を3秒)は data/ProjectR_CardBalance.json(ProjectR_CardBalance)が持つ。
+    const balance = () => root.ProjectRCardBalance;
+    const balanceReady = () => !!balance()?.isReady?.() && !!balance().hasCard(CARD);
     const EXPIRE_EPSILON = 1e-6;
     // 演出の長さ(frame。表示だけ)
     const HERMES_SWING_DELAY = 2;
@@ -133,12 +130,11 @@
     const collectAtFullHp = () => String(params.CollectAtFullHp === undefined ? "true" : params.CollectAtFullHp) !== "false";
     const maxHermesVisuals = () => { const n = Number.parseInt(params.MaxHermesVisuals, 10); return Number.isFinite(n) && n >= 0 ? n : 3; };
 
-    const LEVELS = Object.freeze([
-        Object.freeze({ level: 1, effects: Object.freeze({ healAmount: HEAL_BY_LEVEL[0], collectRadiusTiles: COLLECT_RADIUS_TILES, durationSeconds: DURATION_SECONDS }) }),
-        Object.freeze({ level: 2, effects: Object.freeze({ healAmount: HEAL_BY_LEVEL[1] }) }),
-        Object.freeze({ level: 3, effects: Object.freeze({ healAmount: HEAL_BY_LEVEL[2], attackBonus: ATTACK_BONUS, attackBuffSeconds: BUFF_SECONDS }) })
-    ]);
-    const effectsForLevel = level => root.ProjectRCardCatalog.resolveLevels(LEVELS, level);
+    const effectsForLevel = level => balance().effects(CARD, level);
+    // 発動の瞬間のスナップショット(Lv1〜3の効果と回収半径)。効果の時間中に開発用の上書きが変わっても、この値で一貫して動く。
+    let snapshot = null;
+    const takeSnapshot = () => ({ levels: { 1: effectsForLevel(1), 2: effectsForLevel(2), 3: effectsForLevel(3) }, collectRadiusTiles: effectsForLevel(1).collectRadiusTiles });
+    const effectsFor = level => (snapshot && snapshot.levels[level]) || effectsForLevel(level);
     const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
     const failure = (reason, extra = {}) => ({ ok: false, reason, ...extra });
     const safely = (callback, fallback) => { try { return callback(); } catch (_error) { return fallback; } };
@@ -227,7 +223,7 @@
     const collectOne = soul => {
         const actor = typeof $gameParty !== "undefined" ? $gameParty.leader() : null;
         if (!actor) return;
-        const effects = effectsForLevel(soul.level);
+        const effects = effectsFor(soul.level);
         const before = actor.hp;
         const room = Math.max(0, actor.mhp - actor.hp);
         const applied = Math.min(effects.healAmount || 0, room); // 最大HPを超えて回復しない
@@ -235,7 +231,7 @@
         stats.healEvents++;
         stats.healApplied += actor.hp - before;
         push(healLog, { soulId: soul.id, enemyKey: soul.enemyKey, level: soul.level, requested: effects.healAmount || 0, applied: actor.hp - before, hpBefore: before, hpAfter: actor.hp });
-        if (effects.attackBonus > 0) addStack(effects.attackBonus, effects.attackBuffSeconds || BUFF_SECONDS);
+        if (effects.attackBonus > 0) addStack(effects.attackBonus, effects.attackBuffSeconds);
     };
     const collectPass = () => {
         const player = typeof $gamePlayer !== "undefined" ? $gamePlayer : null;
@@ -243,7 +239,7 @@
         if (!player || !actor || actor.hp <= 0 || playerDead() || typeof player.centerPositionPoint !== "function") return;
         const center = player.centerPositionPoint();
         const filter = collectAtFullHp() ? null : () => actor.hp < actor.mhp;
-        const got = souls().collectAround({ center, radius: COLLECT_RADIUS_TILES, lineOfSight: true, filter });
+        const got = souls().collectAround({ center, radius: snapshot ? snapshot.collectRadiusTiles : effectsForLevel(1).collectRadiusTiles, lineOfSight: true, filter });
         for (const soul of got) collectOne(soul);
     };
 
@@ -325,13 +321,14 @@
     let pending = null;
     const activate = () => {
         if (!deck.isCardBattleActive() || !root.ProjectRCardCatalog) return failure("battleInactive");
+        if (!balanceReady()) return failure("balanceUnavailable");
         if (typeof $gamePlayer === "undefined" || !$gamePlayer || typeof $gameMap === "undefined" || !$gameMap) return failure("mapUnavailable");
         if (playerDead()) return failure("playerDead");
         if (!kills() || !souls()) return failure("soulSystemUnavailable");
         if (!hookRegistered) hookRegistered = registerHook();
         if (!hookRegistered) return failure("hitHookUnavailable");
         const level = cardLevel();
-        pending = { level, effects: effectsForLevel(level) };
+        pending = { level, effects: effectsForLevel(level), snapshot: takeSnapshot() };
         return { ok: true };
     };
     const previousInstant = deck.getActivationHandler("instant");
@@ -339,6 +336,7 @@
         ? activate(context) : previousInstant ? previousInstant(context) : { ok: true });
 
     const resolve = (plan, activation) => {
+        snapshot = plan.snapshot || snapshot;
         let window = activeWindow();
         if (window) {
             // 効果中の再発動: レベルの数値は新しいものに置き換え、残り時間を RecastPolicy に従って延ばす。
@@ -409,7 +407,12 @@
     };
 
     root.ProjectRHermesPsychopomp = Object.freeze({
-        CARD, LEVELS, COLLECT_RADIUS_TILES, DURATION_SECONDS, ATTACK_BONUS, BUFF_SECONDS,
+        CARD,
+        get LEVELS() { return balance().levels(CARD); },
+        get COLLECT_RADIUS_TILES() { return effectsForLevel(1).collectRadiusTiles; },
+        get DURATION_SECONDS() { return effectsForLevel(1).durationSeconds; },
+        get ATTACK_BONUS() { return effectsForLevel(3).attackBonus; },
+        get BUFF_SECONDS() { return effectsForLevel(3).attackBuffSeconds; },
         getWindows: () => windows.map(w => ({ serial: w.serial, level: w.level, remaining: w.remaining, effects: w.effects })),
         getBuff: buffView,
         getLastResult: () => lastResult ? JSON.parse(JSON.stringify(lastResult)) : null,

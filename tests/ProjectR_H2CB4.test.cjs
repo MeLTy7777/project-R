@@ -388,10 +388,11 @@ test("Chromium 85で使えない構文(??= ・ ||= ・ &&= ・ .at( ・ lookbehi
     }
 });
 
-test("Core・Catalog・Occlusion・SaveLoadGuard・Hendrix・rmmz_*・DotMove・7枚の実装はこのPhaseで変更していない(コミット前の作業ツリーとHEADの差分に含まれない)", () => {
+test("Core・Catalog・Occlusion・SaveLoadGuard・Hendrix・rmmz_*・DotMove・7枚の実装はこのPhaseのコミットで変更していない", () => {
     const { execFileSync } = require("node:child_process");
     let changed = [];
-    try { changed = execFileSync("git", ["diff", "--name-only", "HEAD", "--", "js"], { cwd: root, encoding: "utf8" }).split(/\r?\n/).filter(Boolean); } catch (e) { return; }
+    // このPhaseのコミット(3f35453..837a396)が触ったファイルで確かめる(後のPhaseが7枚の実装を正当に変えても、この履歴の事実は変わらない)。
+    try { changed = execFileSync("git", ["diff", "--name-only", "3f354537b874e2b478f340f5a4d33ecc6d5ba324", "837a3966a3827f7bf9c194af3db4278c980cfacb", "--", "js"], { cwd: root, encoding: "utf8" }).split(/\r?\n/).filter(Boolean); } catch (e) { return; }
     const protectedPattern = /rmmz_|Hendrix|DotMove|ProjectR_CardDeckCore|ProjectR_CardCatalog|ProjectR_SaveLoadGuard|Occlusion|ProjectR_Hermes(Issen|Psychopomp|Veil|Strength|Sweep|ReedFlute|Zetsu)/;
     const touched = changed.filter(f => protectedPattern.test(f));
     assert.deepEqual(touched, [], "保護対象は変更していない: " + touched.join(", "));

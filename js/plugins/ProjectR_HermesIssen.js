@@ -66,25 +66,13 @@
     const ENGINE = "Hendrix_Action_Engine";
     const CARD = "hermes_issen";
     const SPEED_ID = CARD;
-    const params = typeof PluginManager !== "undefined" && PluginManager.parameters ? PluginManager.parameters("ProjectR_HermesIssen") : {};
-    const num = (value, fallback, min, max) => { const n = Number(value); return Number.isFinite(n) && n >= min && n <= max ? n : fallback; };
-
-    // 正本(ワークブック)の値。変更はユーザーの設計変更なので、パラメータにはしない。
-    const RANGE_TILES = 11;
-    const DIRECT_DAMAGE = 200;
-    const SPLIT_SECONDS = 3;
-    const SLOW_SECONDS = 3;
-    // 暫定(ワークブックに指定なし。パラメータで変更できる)
-    const PATH_WIDTH = num(params.PathWidthTiles, 1, 0.1, 10);
-    const SPLIT_TICKS = Math.floor(num(params.SplitTicks, 3, 1, 30));
+    // 数値(射程11マス・直接ダメージ200・分割ダメージ・鈍足・軌道の幅・分割回数など)は data/ProjectR_CardBalance.json(ProjectR_CardBalance)が持つ。
+    const balance = () => root.ProjectRCardBalance;
+    const balanceReady = () => !!balance()?.isReady?.() && !!balance().hasCard(CARD);
+    const tune = key => balance().constant(CARD, key);
     const EPSILON = 1e-8;
 
-    const LEVELS = Object.freeze([
-        Object.freeze({ level: 1, effects: Object.freeze({ directDamage: DIRECT_DAMAGE, splitTotal: 50, splitSeconds: SPLIT_SECONDS }) }),
-        Object.freeze({ level: 2, effects: Object.freeze({ splitTotal: 100 }) }),
-        Object.freeze({ level: 3, effects: Object.freeze({ slowFactor: 0.5, slowSeconds: SLOW_SECONDS }) })
-    ]);
-    const effectsForLevel = level => root.ProjectRCardCatalog.resolveLevels(LEVELS, level);
+    const effectsForLevel = level => balance().effects(CARD, level);
     const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
     const failure = (reason, extra = {}) => ({ ok: false, reason, ...extra });
     const rad = degree => degree * Math.PI / 180;
@@ -102,7 +90,7 @@
     };
 
     // 合計を ticks 回へ等分(端数は先の回へ)。合計は必ず保存される。
-    const splitSchedule = (total, ticks = SPLIT_TICKS) => {
+    const splitSchedule = (total, ticks = tune("splitTicks")) => {
         const count = Math.max(1, Math.floor(ticks)), whole = Math.max(0, Math.round(total));
         const base = Math.floor(whole / count), remainder = whole - base * count;
         return Array.from({ length: count }, (_, i) => base + (i < remainder ? 1 : 0));
@@ -128,15 +116,16 @@
 
     // 壁の手前までの長さ(最大11マス)
     const routeLength = (center, degree) => {
-        const end = { x: center.x + Math.sin(rad(degree)) * RANGE_TILES, y: center.y - Math.cos(rad(degree)) * RANGE_TILES };
+        const range = tune("rangeTiles");
+        const end = { x: center.x + Math.sin(rad(degree)) * range, y: center.y - Math.cos(rad(degree)) * range };
         const hit = occlusion().firstBlockerBetween(center, end, { mode: "combat", unwrapped: true });
-        return hit ? Math.max(0, Math.min(RANGE_TILES, hit.distance)) : RANGE_TILES;
+        return hit ? Math.max(0, Math.min(range, hit.distance)) : range;
     };
     const computeTargets = (center, degree) => {
         const map = $gameMap, occ = occlusion();
         if (typeof occ?.firstBlockerBetween !== "function" || typeof occ?.eventPolygon !== "function") return null;
         const length = routeLength(center, degree);
-        const rect = routeRect(center, degree, length, PATH_WIDTH), ux = Math.sin(rad(degree)), uy = -Math.cos(rad(degree));
+        const rect = routeRect(center, degree, length, tune("pathWidthTiles")), ux = Math.sin(rad(degree)), uy = -Math.cos(rad(degree));
         const targets = [];
         for (const enemy of map.events()) {
             if (!enemy || enemy._erased || !enemy.event()?.note?.includes("<enemy>")) continue;
@@ -176,9 +165,9 @@
         return typeof gauge?.trackDamage === "function"
             ? gauge.trackDamage(enemyId, { attackId, source: "damage:hermes_issen" }, apply) : apply();
     };
-    const dealFixed = (eventId, base, source, attackId) => trackDamage(eventId, attackId, () => command("UpdateEventHp", {
+    const dealFixed = (eventId, base, source, attackId, elemental = {}) => trackDamage(eventId, attackId, () => command("UpdateEventHp", {
         eventId: String(eventId), value: `-${base}`, exceedMaxHealth: "false",
-        projectRFixed: { base, flat: 0, critical: false, source }
+        projectRFixed: { base, flat: 0, critical: false, source, element: elemental.element, weaknessMultiplier: elemental.weaknessMultiplier }
     }));
 
     const endSplit = (event, record, reason) => {
@@ -200,7 +189,7 @@
             record.elapsed += seconds;
             while (record.next < record.tickAmounts.length && record.elapsed + EPSILON >= (record.next + 1) * record.interval) {
                 const amount = record.tickAmounts[record.next++];
-                try { dealFixed(event.eventId(), amount, "hermes_issen_split", `issen:${record.serial}:${record.next}`); } catch (_error) { /* 次のtickへ */ }
+                try { dealFixed(event.eventId(), amount, "hermes_issen_split", `issen:${record.serial}:${record.next}`, record); } catch (_error) { /* 次のtickへ */ }
                 record.dealt += amount;
                 if (!alive(event, record)) break;
             }
@@ -225,9 +214,9 @@
         // 再命中は置換: 古い予定と速度係数を捨てて、新しい合計を最初から。
         const old = splits.get(event);
         if (old) endSplit(event, old, "replaced");
-        const amounts = splitSchedule(plan.effects.splitTotal, SPLIT_TICKS);
+        const amounts = splitSchedule(plan.effects.splitTotal, plan.splitTicks);
         const record = { map: $gameMap, tickAmounts: amounts, interval: plan.effects.splitSeconds / amounts.length, elapsed: 0, next: 0, dealt: 0,
-            slowRemaining: 0, level: plan.level, serial: ++serial };
+            slowRemaining: 0, level: plan.level, serial: ++serial, element: plan.element, weaknessMultiplier: plan.weaknessMultiplier };
         if (plan.effects.slowFactor && modifiers()?.setCharacterSpeedFactor?.(event, SPEED_ID, plan.effects.slowFactor)?.ok) record.slowRemaining = plan.effects.slowSeconds;
         splits.set(event, record);
         return true;
@@ -240,6 +229,7 @@
 
     const activate = context => {
         if (!deck.isCardBattleActive() || !root.ProjectRCardCatalog) return failure("battleInactive");
+        if (!balanceReady()) return failure("balanceUnavailable");
         const env = environment();
         if (!env.ok) return failure(env.reason);
         if (typeof occlusion()?.firstBlockerBetween !== "function") return failure("occlusionUnavailable");
@@ -252,7 +242,7 @@
             const degree = normalize(summon.degree);
             const route = computeTargets(env.center, degree);
             if (!route) return failure("occlusionUnavailable");
-            plan = { degree, center: env.center, length: route.length, targets: route.targets, level, effects, summonId: summon.summonId, serial: ++serial };
+            plan = { degree, center: env.center, length: route.length, targets: route.targets, level, effects, splitTicks: Math.floor(tune("splitTicks")), element: tune("element"), weaknessMultiplier: tune("weaknessMultiplier"), summonId: summon.summonId, serial: ++serial };
             return { ok: true };
         });
         if (!result?.ok || !plan) return failure(result?.reason || "activationFailed");
@@ -277,7 +267,7 @@
             const event = $gameMap.event(target.eventId);
             if (!event || event._erased) continue;
             try {
-                dealFixed(target.eventId, plan.effects.directDamage, CARD, `issen:${plan.serial}`);
+                dealFixed(target.eventId, plan.effects.directDamage, CARD, `issen:${plan.serial}`, plan);
                 const started = startSplit(target.eventId, plan); // 倒れていたら次のtickで終わる
                 hits.push({ eventId: target.eventId, distance: target.distance, split: started });
             } catch (error) {
@@ -286,7 +276,7 @@
         }
         present(plan);
         lastResult = { ok: true, consumed: true, level: plan.level, degree: plan.degree, length: plan.length, serial: plan.serial, targets: plan.targets.length,
-            hits, instanceId: activation?.instanceId ?? null, effects: plan.effects, splitTicks: SPLIT_TICKS };
+            hits, instanceId: activation?.instanceId ?? null, effects: plan.effects, splitTicks: plan.splitTicks };
     };
 
     const _requestUseCard = deck.requestUseCard;
@@ -325,7 +315,12 @@
     };
 
     root.ProjectRHermesIssen = Object.freeze({
-        CARD, LEVELS, RANGE_TILES, DIRECT_DAMAGE, PATH_WIDTH, SPLIT_TICKS,
+        CARD,
+        get LEVELS() { return balance().levels(CARD); },
+        get RANGE_TILES() { return tune("rangeTiles"); },
+        get DIRECT_DAMAGE() { return effectsForLevel(1).directDamage; },
+        get PATH_WIDTH() { return tune("pathWidthTiles"); },
+        get SPLIT_TICKS() { return tune("splitTicks"); },
         plan: degree => {
             const env = environment();
             if (!env.ok) return env;

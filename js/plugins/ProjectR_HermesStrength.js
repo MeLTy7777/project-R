@@ -75,12 +75,10 @@
     const params = typeof PluginManager !== "undefined" && PluginManager.parameters ? PluginManager.parameters("ProjectR_HermesStrength") : {};
     const mode = () => String(params.StackingMode || "additive") === "multiplicative" ? "multiplicative" : "additive";
 
-    const LEVELS = Object.freeze([
-        Object.freeze({ level: 1, effects: Object.freeze({ attackBonus: 0.10 }) }),
-        Object.freeze({ level: 2, effects: Object.freeze({ attackBonus: 0.15 }) }),
-        Object.freeze({ level: 3, effects: Object.freeze({ ignoreDefense: true }) })
-    ]);
-    const effectsForLevel = level => root.ProjectRCardCatalog.resolveLevels(LEVELS, level);
+    // 数値(攻撃力+10%/+15%・Lv3の防御無視)は data/ProjectR_CardBalance.json(ProjectR_CardBalance)が持つ。
+    const balance = () => root.ProjectRCardBalance;
+    const balanceReady = () => !!balance()?.isReady?.() && !!balance().hasCard(CARD);
+    const effectsForLevel = level => balance().effects(CARD, level);
     const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
     const failure = (reason, extra = {}) => ({ ok: false, reason, ...extra });
 
@@ -150,6 +148,7 @@
 
     const activate = context => {
         if (!deck.isCardBattleActive()) return failure("battleInactive");
+        if (!balanceReady()) return failure("balanceUnavailable");
         if (!hookRegistered && !registerHook()) return failure("hitHookUnavailable");
         const summons = root.ProjectRGodSummonManager;
         if (!summons) return failure("godSummonUnavailable");
@@ -213,7 +212,8 @@
     };
 
     root.ProjectRHermesStrength = Object.freeze({
-        CARD, LEVELS,
+        CARD,
+        get LEVELS() { return balance().levels(CARD); },
         getPending: pendingView,
         getLastResult: () => lastResult ? JSON.parse(JSON.stringify(lastResult)) : null,
         getLastAttack: () => lastAttack ? { ...lastAttack } : null,

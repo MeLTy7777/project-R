@@ -111,11 +111,9 @@
     const CONCEAL_ID = CARD;
     const params = typeof PluginManager !== "undefined" && PluginManager.parameters ? PluginManager.parameters("ProjectR_HermesVeil") : {};
 
-    // 正本(ワークブック)の値。変更はユーザーの設計変更なので、パラメータにはしない。
-    const RADIUS_TILES = 5;
-    const DURATION_SECONDS = 5;
-    const SPEED_BONUS = 0.30;
-    const CRIT_BONUS = 0.50;
+    // 数値(半径5マス・5秒・移動速度+30%・クリティカル率+50%)は data/ProjectR_CardBalance.json(ProjectR_CardBalance)が持つ。
+    const balance = () => root.ProjectRCardBalance;
+    const balanceReady = () => !!balance()?.isReady?.() && !!balance().hasCard(CARD);
     const EXPIRE_EPSILON = 1e-6;
     // 暫定(ワークブックに指定なし。パラメータで変更できる)
     const criticalMode = () => String(params.CriticalMode || "additive") === "relative" ? "relative" : "additive";
@@ -123,12 +121,7 @@
     const requireFriendly = () => String(params.RequireFriendlyInside || "false") === "true";
     const FRIENDLY_TAG = String(params.FriendlyEventTag === undefined ? "<npc>" : params.FriendlyEventTag);
 
-    const LEVELS = Object.freeze([
-        Object.freeze({ level: 1, effects: Object.freeze({ concealment: true, radiusTiles: RADIUS_TILES, durationSeconds: DURATION_SECONDS }) }),
-        Object.freeze({ level: 2, effects: Object.freeze({ speedBonus: SPEED_BONUS }) }),
-        Object.freeze({ level: 3, effects: Object.freeze({ criticalChanceBonus: CRIT_BONUS }) })
-    ]);
-    const effectsForLevel = level => root.ProjectRCardCatalog.resolveLevels(LEVELS, level);
+    const effectsForLevel = level => balance().effects(CARD, level);
     const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
     const failure = (reason, extra = {}) => ({ ok: false, reason, ...extra });
     const targeting = () => root.ProjectRCardTargeting;
@@ -308,6 +301,7 @@
     };
     const activate = () => {
         if (!deck.isCardBattleActive() || !root.ProjectRCardCatalog) return failure("battleInactive");
+        if (!balanceReady()) return failure("balanceUnavailable");
         const env = environment();
         if (!env.ok) return env;
         if (!integrated) integrated = registerIntegrations();
@@ -383,7 +377,10 @@
     };
 
     root.ProjectRHermesVeil = Object.freeze({
-        CARD, LEVELS, RADIUS_TILES, DURATION_SECONDS,
+        CARD,
+        get LEVELS() { return balance().levels(CARD); },
+        get RADIUS_TILES() { return effectsForLevel(1).radiusTiles; },
+        get DURATION_SECONDS() { return effectsForLevel(1).durationSeconds; },
         getActive: () => records.map(r => ({ serial: r.serial, level: r.level, remaining: r.remaining, center: { ...r.center }, members: [...r.members],
             pointerHeld: r.pointerHeld, visualId: r.visualId, effects: r.effects })),
         getLastResult: () => lastResult ? JSON.parse(JSON.stringify(lastResult)) : null,
