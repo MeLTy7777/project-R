@@ -2,6 +2,7 @@
 
 読み取り専用の監査です。Apollo のゲームプレイ・本番ファイル・戦闘ロジック・テスト・データは**一切変更していません**(この文書の更新だけ)。
 基準: コミット `dd0a6e7`(ブランチ `chore/update-action-combat-plugins-2026-09`)。元の `ProjectR` には触れていません。
+Phase Apollo-A2(2026-11-01)で、カタログの複数神対応と8個の予約ランタイムID(§4.4)を追加しました。**効果の実装・戦闘ロジックの変更はありません。**
 
 > 改訂履歴: A0(2026-10-31)は旧ワークブック `Template(3).xlsx` に Apollo 行が無かったため「設計が未記入のため実装不可」と結論しました。A1(2026-11-01)で最新ワークブック `Template(3)(4).xlsx`(Apollo 8枚入り)を読み、この文書を**同じパスのまま**更新しました。A0 の「Apollo 行ゼロ」の記述は旧ワークブックについてのみ正しく、現在は無効です。
 
@@ -128,9 +129,29 @@
 
 ### 4.3 互換性の方針(提案。決定は §10)
 - **旧 runtime ID(`apollo_golden_arrow` / `apollo_plague_attack` / `apollo_lyre_calm`)は削除・改名・置換・自動変換しない。** 旧Hermes4枚と同じ扱い(共存、`coexist-pending`)。
-- 新しい8枚は**新しいランタイムIDを付ける**。命名案(承認が必要): `apollo_golden_volley`(黄金の矢)・`apollo_eros_arrow`(エロスの矢)・`apollo_lyre`(竪琴)・`apollo_laurel`(月桂冠)・`apollo_hyacinth`(ヒュアキントス)・`apollo_gigas_slayer`(ギガース殺し)・`apollo_oracle`(神託)・`apollo_plague_rain`(疫病の矢)。Hermes の `hermes_issen` のように意味のある英語名で、旧IDと衝突しない形です。
+- 新しい8枚は**新しいランタイムIDを付ける**。IDは Phase Apollo-A2 でユーザーが確定し、`ProjectR_CardCatalog` に予約しました(下記 §4.4)。Hermes の `hermes_issen` のように意味のある英語名で、旧IDと衝突しません。
 - 旧3枚を使った既存デッキ・所持・Level は変えません。新旧の置換・統合は、実セーブに旧Apolloが無いこと(§5)を踏まえてユーザーが決めます。
 - 対応表(旧→新の移行)は**作りません**(対応を裏付ける同一性がワークブックにない)。
+
+### 4.4 設計ID ↔ ランタイムID の確定対応表(Phase Apollo-A2。`ProjectR_CardCatalog` に予約済み)
+
+設計IDはワークブックの識別子で、ランタイムIDとは別物です。**予約** = ID・最大コピー数・Cooldown・強さ・指輪などのメタデータをカタログに持つが、効果は未実装で、CardDeckCore のレジストリへ**登録しない**(所持・付与・初期セット・デッキ・Deck Builder・戦闘のどこからも使えない)状態です。
+
+| 設計ID | カード名 | ランタイムID(確定・予約) | 最大 | Cooldown | 強さ | 対象タイプ(暫定※) | 旧カード候補(共存・自動変換なし) | 状態 |
+|---:|---|---|---:|---:|---|---|---|---|
+| 8 | 黄金の矢 | `apollo_golden_volley` | 5 | 3 | 強力 | ground | `apollo_golden_arrow` | 予約(未実装) |
+| 9 | エロスの矢 | `apollo_eros_arrow` | 5 | 5 | 特殊 | ground | なし | 予約(未実装) |
+| 10 | 竪琴 | `apollo_lyre_rhythm` | 2 | 4 | 特殊 | instant | `apollo_lyre_calm` | 予約(未実装) |
+| 11 | 月桂冠 | `apollo_laurel_wreath` | 3 | 8 | 強力 | instant | なし | 予約(未実装) |
+| 12 | ヒュアキントス | `apollo_hyacinthus` | 3 | 7 | 特殊 | instant | なし | 予約(未実装) |
+| 13 | ギガース殺し | `apollo_gigas_slayer` | 5 | 3 | 強力 | ground | なし | 予約(未実装) |
+| 14 | 神託 | `apollo_oracle` | 3 | 3 | 強力 | instant | なし | 予約(未実装) |
+| 15 | 疫病の矢 | `apollo_plague_rain` | 4 | 5 | 強力 | direction | `apollo_plague_attack` | 予約(未実装) |
+| | **合計** | | **30** | | | | | |
+
+※ 対象タイプは、ワークブックの対象タイプ(Ground/Buff/その他/Direction)をHermesの前例(Buff・その他 = 狙いを使わない instant)で実行時の種別へ置いた**暫定値**(`targetTypeStatus: "provisional"`)です。各カードの実装Phaseで確定します(特に黄金の矢: Ground だが効果は「指定の方向」。§10 B1)。
+
+衝突確認(`ProjectRCardCatalog.runtimeIdAudit()` とテストで固定): 8個のIDは互いに重複せず、旧Apollo 3枚・旧Hermes・新Hermes 7枚・リポジトリ内の他のコード/データ(`js/`・`data/`・`tests/`・`tools/`)のどのIDとも一致せず、他のどのIDの接頭辞にもなりません(Noteの印の部分一致による誤爆防止)。8個のIDは `ProjectR_CardCatalog.js` 以外のプラグイン・`plugins.js` に現れません。旧3枚(`apollo_golden_arrow`・`apollo_plague_attack`・`apollo_lyre_calm`)のID・定義・効果・所持・保存デッキは変更していません。
 
 ## 5. セーブデータとの互換
 
@@ -210,8 +231,8 @@
 優先度 A = 実装の最初に必要 / B = 該当カードの実装前に必要 / C = バランス・演出で後でもよい。
 
 ### 共通・基盤
-- **A1 命名と旧カード**: §4.3 の新ランタイムID案でよいか。旧3枚は共存のまま維持してよいか(実セーブに旧Apolloが無いため、将来の置換も可能)。
-- **A2 一般化の許可**: `ProjectR_CardCatalog` と `HermesProductionDeck` を「神ごとに使える形」に広げる変更の許可(固定扱いのため)。
+- **A1 命名と旧カード**: ~~新ランタイムID案~~ → **Phase A2 で確定済み**(§4.4)。旧3枚は共存のまま維持(自動変換なし)。置換・統合を将来行うかは未決(実セーブに旧Apolloが無いため可能)。
+- **A2 一般化の許可**: ~~`ProjectR_CardCatalog` を神ごとに使える形へ~~ → **Phase A2 で実施済み**(追加のみ。既存のHermes APIは不変)。`HermesProductionDeck` の一般化(Apollo の指輪入手→初期セット補充)は、カードの実装Phase(A3以降)で行う。
 - **A3 Apolloの指輪の入手方法・初期セットの付与**: Hermes と同じ補充(top-up)で、目標=5/5/2/3/3/5/3/4 でよいか。入手の物語イベント(D4)と報酬ID `apollo.ring.starter`。
 - **A4 属性**: Apolloの矢は無属性でよいか。属性を持たせるなら何属性か(ワークブックに記載なし)。
 - **A5 被ダメージの合成規則**: 病(+5%)・弱点状態(×2)・傷(+10%)・月桂冠(−30%)・ヒュアキントス(−90%)が重なったとき、**乗算か加算か**。「弱点属性被ダメージ3%増加」は「弱点時の倍率を×1.03にする」でよいか、「倍率に+0.03する」か。「弱点属性増加被ダメージ-90%」は「弱点で増えた分(倍率−1)の90%を打ち消す」(倍率2→1.1)でよいか。
@@ -256,7 +277,8 @@
 
 | Phase | 内容 | 前提の決定 |
 |---|---|---|
-| A2 神ごとの基盤 | Catalog に Apollo 設計8行、Apollo 指輪入手→初期セット補充、表示登録、バランスJSONの Apollo 枠(値は仕様どおり)、Hermes 回帰維持 | A1〜A3 |
+| **A2 神ごとの基盤(実施済み)** | Catalog に Apollo 設計8行と予約ID(未登録・本番で使えない)、神ごとの集計/監査API、混成デッキ・指輪所有・コピー上限・旧カード不変・セーブ往復のテスト。Hermes 回帰維持 | A1(IDは確定) |
+| A2b(未実施・カードの実装Phaseで) | Apollo 指輪入手→初期セット補充(`apollo.ring.starter`)、表示登録、バランスJSONの Apollo 枠(各カードの仕様確定後) | A3・A5・B項目 |
 | A3 共有機能 | 長押し入力、被ダメージ倍率の共通窓口、対象別の弱点修飾、味方の判定(必要なものから) | A5・A6・B1 |
 | A4 黄金の矢 Lv1〜2 | 扇状の複数本(3/5本)、固定50/本、Lv2の太い1本+スリップ | A4・B1〜B4 |
 | A5 黄金の矢 Lv3 | 長押しビーム・連続ヒット・ヒットストップ | B1・B2 |

@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc v1.0.0 ProjectR カード設計カタログ(Hermes 7枚のデータモデル)と累積レベル解決。表示・保存なし。
+ * @plugindesc v1.1.0 ProjectR カード設計カタログ(Hermes 7枚 + Apollo 8枚の設計メタデータ)と累積レベル解決。表示・保存なし。
  * @author ProjectR
  * @base ProjectR_CardDeckCore
  * @orderAfter ProjectR_CardDeckCore
@@ -23,6 +23,12 @@
  *   追加済み(設計ID → runtime ID): 7 絶 → hermes_zetsu / 5 薙ぎ払い → hermes_sweep / 6 葦笛 → hermes_reed_flute /
  *   1 一閃 → hermes_issen / 4 ストレングス → hermes_strength / 3 ヴェイル → hermes_veil(Cursor)。2 サイコポンポス → hermes_psychopomp(H2B-3B。ワークブックの対象タイプ Heal は魂を拾う意味で、実行時は instant)。設計の全7枚が実装済み。
  *
+ * 【複数の神(Phase Apollo-A2)】
+ *   Apollo 8枚の設計(設計ID 8〜15・最大コピー数の合計30・全て確定)を、Hermesと同じ形式の読み取り専用データとして持ちます。
+ *   runtimeCardId は衝突確認済みの「予約ID」で、implemented=false の間は CardDeckCore のレジストリへ登録しません
+ *   (所持・付与・デッキ・Deck Builder・戦闘のどこからも使えない)。旧Apollo 3枚は削除・改名・自動変換をせず共存します。
+ *   既存のHermes API(hermesDesign / migrationAudit() / buildFinalHermesDeck など)は、引数なしで従来と同じ結果を返します。
+ *
  * 【累積レベル規則】
  *   Lv2はLv1の効果を残して追加、Lv3はLv1とLv2を残して追加します。
  *   同じ効果に後のレベルが新しい数値を与えたときは、加算・乗算せず「置換」します。
@@ -36,6 +42,13 @@
  *   isFinalDeckReady()           7枚すべて実装済みか
  *   finalDeckBlockers()          未実装カードの名前一覧
  *   buildFinalHermesDeck()       準備完了なら30枚のcardId配列、未完なら null
+ *   designs() / gods() / godDesign(godId)       全神/神ごとの設計(凍結。godId = "hermes" | "apollo")
+ *   godTotalMaxCopies(godId) / godStatus(godId)  最大コピー数の合計・実装数・予約数・ブロッカー
+ *   isGodDeckReady(godId) / buildGodDeck(godId)  その神の全カードが実装済みで合計30枚か / 30枚の参考一覧(未完は null。デッキの適用はしない)
+ *   migrationAudit(godId)                         godId を渡すとその神の設計ID ↔ 旧カードID(省略時はHermes)
+ *   plannedRuntimeCards(godId?)                   未実装(予約)カードの「登録すればこうなる」定義(凍結・登録されない)
+ *   reservedRuntimeIds() / runtimeIdAudit()       予約IDと衝突監査(重複・旧ID・レジストリ・接頭辞の包含)
+ *   inactiveRuntimeCards()                         予約済みでレジストリに無い(使えない)カードID
  */
 (() => {
     "use strict";
@@ -70,7 +83,7 @@
         designId, name, classification, maxCopies, cooldownSeconds,
         standardMaxCopies: STANDARD_COPIES[classification], copyLimitException: maxCopies !== STANDARD_COPIES[classification],
         maxLevel: 3, firstGrantCopies: maxCopies,
-        runtimeCardId: null, implemented: false, legacyCandidates: Object.freeze([]),
+        god: "hermes", ringId: "hermes", runtimeCardId: null, implemented: false, legacyCandidates: Object.freeze([]),
         migration: Object.freeze({ legacyCardId: null, decision: "new", status: "notImplemented", note: "" }),
         runtimeTargetTypeSupported: true, ...extra
     });
@@ -106,12 +119,56 @@
             migration: migration("hermes_zetsu", "new-runtime-id", "implemented",
                 "新しいruntime ID。旧「高速移動」(hermes_swift_movement)は設計7枚に含まれないが、削除せず共存(扱いはユーザー判断)。") })
     ]);
-    // 設計7枚に含まれない現行カード(削除・変更しない)。Apolloはこのワークブックの対象外(集計シートでApollo 0枚)。
+
+    // ---- Apollo 8枚の設計(Phase Apollo-A2: メタデータの予約だけ。効果は未実装・未登録) -------------------------------------------------
+    // 正本: _ProjectR_DesignSources\\ProjectR_CardManagement_Template(3)(4).xlsx(「カード一覧」行9〜16・全て「確定」・最大コピー数の合計30)。
+    //   SHA-256 8cb974a7af8e13abd43a4eb6d3f95d378b873cb5b389f89a0e69d96abd271b0f。効果の仕様はXLSX(と ProjectR_Cards_15_ExactTranscription.md)が正で、ここは数値の転記と予約IDだけ。
+    // runtimeCardId は「予約」: 衝突確認済みの安定ID。implemented=false の間は CardDeckCore のレジストリへ登録しない
+    //   (所持・付与・デッキ・Deck Builder・戦闘のどこからも使えない)。旧Apollo 3枚(apollo_golden_arrow / apollo_plague_attack / apollo_lyre_calm)は
+    //   削除・改名・自動変換をせず共存する(legacyCandidates は「名前が近い旧カード」の記録で、移行の対応表ではない)。
+    // targetType は暫定(targetTypeStatus:"provisional"): ワークブックの対象タイプを、Hermesの前例(Buff・その他 = 狙いを使わない instant)で実行時の種別へ置いたもの。
+    //   確定は各カードの実装Phaseで行う(特に黄金の矢は Ground だが効果は「指定の方向」。監査文書 §10 B1)。
+    const apolloRow = (designId, name, classification, maxCopies, cooldownSeconds, extra) => design(designId, name, classification, maxCopies, cooldownSeconds, {
+        god: "apollo", ringId: "apollo", targetTypeStatus: "provisional", status: "reserved", ...extra });
+    const APOLLO = Object.freeze([
+        apolloRow(8, "黄金の矢", "strong", 5, 3, { workbookTargetType: "Ground", targetType: "ground", category: "attack",
+            runtimeCardId: "apollo_golden_volley", legacyCandidates: Object.freeze(["apollo_golden_arrow"]),
+            migration: migration("apollo_golden_arrow", "coexist-pending", "reserved-not-implemented",
+                "新ランタイムID apollo_golden_volley を予約。旧「黄金の弓矢」(最大3・Cooldown 4・矢1本・Skill式)とは数値も効果も別カードで、自動変換しない。旧カードは削除・上書きせず共存。") }),
+        apolloRow(9, "エロスの矢", "special", 5, 5, { workbookTargetType: "Ground", targetType: "ground", category: "special",
+            runtimeCardId: "apollo_eros_arrow",
+            migration: migration(null, "new", "reserved-not-implemented", "新ランタイムID apollo_eros_arrow を予約。旧カードに対応なし。新規。") }),
+        apolloRow(10, "竪琴", "special", 2, 4, { workbookTargetType: "その他", targetType: "instant", category: "special",
+            runtimeCardId: "apollo_lyre_rhythm", legacyCandidates: Object.freeze(["apollo_lyre_calm"]),
+            migration: migration("apollo_lyre_calm", "coexist-pending", "reserved-not-implemented",
+                "新ランタイムID apollo_lyre_rhythm を予約。旧「リラの支援/竪琴の鎮静」(ally・最大3・Cooldown 10・睡眠を防ぐState)とは効果が根本的に別(新: 音符のリズム入力)で、自動変換しない。旧カードは共存。") }),
+        apolloRow(11, "月桂冠", "strong", 3, 8, { workbookTargetType: "Buff", targetType: "instant", category: "support",
+            runtimeCardId: "apollo_laurel_wreath",
+            migration: migration(null, "new", "reserved-not-implemented", "新ランタイムID apollo_laurel_wreath を予約。旧カードに対応なし。新規。") }),
+        apolloRow(12, "ヒュアキントス", "special", 3, 7, { workbookTargetType: "Buff", targetType: "instant", category: "special",
+            runtimeCardId: "apollo_hyacinthus",
+            migration: migration(null, "new", "reserved-not-implemented", "新ランタイムID apollo_hyacinthus を予約。旧カードに対応なし。新規。") }),
+        apolloRow(13, "ギガース殺し", "strong", 5, 3, { workbookTargetType: "Ground", targetType: "ground", category: "disrupt",
+            runtimeCardId: "apollo_gigas_slayer",
+            migration: migration(null, "new", "reserved-not-implemented", "新ランタイムID apollo_gigas_slayer を予約。旧カードに対応なし。新規。") }),
+        apolloRow(14, "神託", "strong", 3, 3, { workbookTargetType: "その他", targetType: "instant", category: "special",
+            runtimeCardId: "apollo_oracle",
+            migration: migration(null, "new", "reserved-not-implemented", "新ランタイムID apollo_oracle を予約。旧カードに対応なし。新規。") }),
+        apolloRow(15, "疫病の矢", "strong", 4, 5, { workbookTargetType: "Direction", targetType: "direction", category: "disrupt",
+            runtimeCardId: "apollo_plague_rain", legacyCandidates: Object.freeze(["apollo_plague_attack"]),
+            migration: migration("apollo_plague_attack", "coexist-pending", "reserved-not-implemented",
+                "新ランタイムID apollo_plague_rain を予約。旧「疫病攻撃/アポロン病攻撃」(最大2・Cooldown 12・命中した敵への継続ダメージ)とは着弾サークル・ネズミ・分裂を持つ別カードで、自動変換しない。旧カードは共存。") })
+    ]);
+    const DESIGNS_BY_GOD = Object.freeze({ hermes: HERMES, apollo: APOLLO });
+    const GOD_IDS = Object.freeze(Object.keys(DESIGNS_BY_GOD));
+    const ALL_DESIGNS = Object.freeze([].concat(HERMES, APOLLO));
+    const godRows = godId => DESIGNS_BY_GOD[godId] || Object.freeze([]);
+    // 設計に含まれない/設計と別カードの現行カード(削除・変更しない)。Apollo 3枚は新設計(設計ID 8/10/15)とは別の旧実装で、共存する。
     const UNMAPPED_LEGACY = Object.freeze([
         Object.freeze({ cardId: "hermes_swift_movement", name: "高速移動", decision: "coexist-pending", note: "絶の近縁だが別カード。設計7枚に無い。" }),
-        Object.freeze({ cardId: "apollo_golden_arrow", name: "黄金の弓矢", decision: "keep", note: "Apollo。ワークブック対象外。" }),
-        Object.freeze({ cardId: "apollo_plague_attack", name: "疫病攻撃", decision: "keep", note: "Apollo。ワークブック対象外。" }),
-        Object.freeze({ cardId: "apollo_lyre_calm", name: "竪琴の鎮静", decision: "keep", note: "Apollo。ワークブック対象外。" })
+        Object.freeze({ cardId: "apollo_golden_arrow", name: "黄金の弓矢", decision: "keep", note: "Apollo旧実装。新設計の黄金の矢(設計ID 8 / apollo_golden_volley)とは別カードで共存。" }),
+        Object.freeze({ cardId: "apollo_plague_attack", name: "疫病攻撃", decision: "keep", note: "Apollo旧実装。新設計の疫病の矢(設計ID 15 / apollo_plague_rain)とは別カードで共存。" }),
+        Object.freeze({ cardId: "apollo_lyre_calm", name: "竪琴の鎮静", decision: "keep", note: "Apollo旧実装。新設計の竪琴(設計ID 10 / apollo_lyre_rhythm)とは別カードで共存。" })
     ]);
 
     // 実装済みの新設計カードの実行時定義。CardDeckCoreのDefinitionRegistryと同じ正規化・凍結で追加する。
@@ -144,6 +201,8 @@
         if (!(cards instanceof Map)) return [];
         const added = [];
         for (const card of RUNTIME_CARDS) {
+            const row = ALL_DESIGNS.find(d => d.runtimeCardId === card.cardId);
+            if (row && !row.implemented) continue; // 未実装(予約)の設計は登録しない
             if (cards.has(card.cardId) || !registry.ring?.(card.ringId)) continue; // 重複・未定義の指輪は追加しない
             cards.set(card.cardId, Object.freeze({ ...card }));
             added.push(card.cardId);
@@ -162,6 +221,54 @@
         return ids;
     };
 
+    // ---- 複数の神(Apollo-A2): 神ごとの集計・予約IDの監査 ------------------------------------------------------------------------------
+    const godTotalMaxCopies = godId => godRows(godId).reduce((sum, card) => sum + card.maxCopies, 0);
+    const godBlockers = godId => godRows(godId).filter(card => !card.implemented).map(card => card.name);
+    const isGodDeckReady = godId => godRows(godId).length > 0 && godBlockers(godId).length === 0 && godTotalMaxCopies(godId) === 30;
+    const buildGodDeck = godId => {
+        if (!isGodDeckReady(godId)) return null;
+        const ids = [];
+        for (const card of godRows(godId)) for (let i = 0; i < card.maxCopies; i++) ids.push(card.runtimeCardId);
+        return ids;
+    };
+    const godStatus = godId => {
+        const rows = godRows(godId);
+        return Object.freeze({ god: godId, ringId: rows.length ? rows[0].ringId : null, count: rows.length, totalMaxCopies: godTotalMaxCopies(godId),
+            implemented: rows.filter(card => card.implemented).length, reserved: rows.filter(card => !card.implemented && !!card.runtimeCardId).length,
+            blockers: Object.freeze(godBlockers(godId)), ready: isGodDeckReady(godId) });
+    };
+    // 未実装(予約)カードの定義。CardDeckCoreのレジストリへは登録されない(登録するのは実装Phaseで implemented を true にするときだけ)。
+    const plannedRuntimeCards = godId => ALL_DESIGNS.filter(d => !d.implemented && d.runtimeCardId && (!godId || d.god === godId)).map(d => Object.freeze({
+        cardId: d.runtimeCardId, ringId: d.ringId, maxCopies: d.maxCopies, cooldownSeconds: d.cooldownSeconds, maxLevel: d.maxLevel,
+        rarity: d.classification, category: d.category, targetType: d.targetType }));
+    const reservedRuntimeIds = () => ALL_DESIGNS.filter(d => d.runtimeCardId).map(d => d.runtimeCardId);
+    const inactiveRuntimeCards = () => {
+        const cards = root.ProjectRCardDeck?.definitions?.cards;
+        return ALL_DESIGNS.filter(d => d.runtimeCardId && !d.implemented && !(cards instanceof Map && cards.has(d.runtimeCardId))).map(d => d.runtimeCardId);
+    };
+    const runtimeIdAudit = () => {
+        const problems = [];
+        const ids = reservedRuntimeIds();
+        const cards = root.ProjectRCardDeck?.definitions?.cards;
+        const legacy = new Set(UNMAPPED_LEGACY.map(c => c.cardId).concat(...ALL_DESIGNS.map(d => d.legacyCandidates)));
+        const seen = new Set();
+        for (const d of ALL_DESIGNS) {
+            if (!d.runtimeCardId) continue;
+            if (seen.has(d.runtimeCardId)) problems.push({ type: "duplicate", cardId: d.runtimeCardId });
+            seen.add(d.runtimeCardId);
+            if (legacy.has(d.runtimeCardId)) problems.push({ type: "legacyId", cardId: d.runtimeCardId });
+            if (!d.implemented && cards instanceof Map && cards.has(d.runtimeCardId)) problems.push({ type: "reservedButRegistered", cardId: d.runtimeCardId });
+            if (d.implemented && cards instanceof Map && !cards.has(d.runtimeCardId)) problems.push({ type: "implementedButMissing", cardId: d.runtimeCardId });
+            if (!/^[a-z]+_[a-z_]+$/.test(d.runtimeCardId) || !d.runtimeCardId.startsWith(d.god + "_")) problems.push({ type: "badShape", cardId: d.runtimeCardId });
+        }
+        // Noteの印(<ProjectRCard: id>)などの部分一致で別カードに誤ってかからないよう、予約IDは他のどのIDの接頭辞にもならないこと
+        // (実装済みのHermesの hermes_reed_flute と旧 hermes_reed_flute_sleep の重なりは、導入済みで動作確認済みのためここでは数えない)。
+        const reserved = ALL_DESIGNS.filter(d => !d.implemented && d.runtimeCardId).map(d => d.runtimeCardId);
+        const everyId = [...ids, ...legacy, ...(cards instanceof Map ? [...cards.keys()] : [])];
+        for (const a of new Set(reserved)) for (const b of new Set(everyId)) if (a !== b && b.startsWith(a)) problems.push({ type: "prefix", cardId: a, other: b });
+        return { ids, problems };
+    };
+
     root.ProjectRCardCatalog = Object.freeze({
         resolveLevels,
         hermesDesign: () => HERMES,
@@ -172,7 +279,9 @@
         buildFinalHermesDeck,
         runtimeCards: () => RUNTIME_CARDS,
         unmappedLegacyCards: () => UNMAPPED_LEGACY,
-        migrationAudit: () => HERMES.map(card => ({ designId: card.designId, name: card.name, runtimeCardId: card.runtimeCardId, ...card.migration, implemented: card.implemented })),
+        migrationAudit: godId => godRows(godId || "hermes").map(card => ({ designId: card.designId, name: card.name, runtimeCardId: card.runtimeCardId, ...card.migration, implemented: card.implemented })),
+        designs: () => ALL_DESIGNS, gods: () => GOD_IDS, godDesign: godRows, godTotalMaxCopies, godStatus, isGodDeckReady, buildGodDeck,
+        plannedRuntimeCards, reservedRuntimeIds, inactiveRuntimeCards, runtimeIdAudit,
         registeredRuntimeCards: () => [...registered]
     });
 })();

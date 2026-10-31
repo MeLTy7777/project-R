@@ -530,12 +530,14 @@ test("Chromium 85で使えない構文を、新しいプラグインに使って
     }
 });
 
-test("CardDeckCore・CardCatalog・Occlusion・SaveLoadGuard・Hendrix・rmmz_objects/managers・DotMoveは、このPhaseで変更していない", () => {
-    const out = cp.execFileSync("git", ["diff", "--name-only", "HEAD", "--", "js/plugins/ProjectR_CardDeckCore.js", "js/plugins/ProjectR_VisionOcclusion.js",
+test("CardDeckCore・CardCatalog・Occlusion・SaveLoadGuard・Hendrix・rmmz_objects/managers・DotMoveは、このPhaseのコミットで変更していない", () => {
+    // このPhaseのコミット(a18cf1b)が触ったファイルで確かめる(後のPhaseが正当に変えても、この履歴の事実は変わらない)。
+    const PARENT = "a18cf1b^", COMMIT = "a18cf1b";
+    const out = cp.execFileSync("git", ["diff", "--name-only", PARENT, COMMIT, "--", "js/plugins/ProjectR_CardDeckCore.js", "js/plugins/ProjectR_VisionOcclusion.js",
         "js/plugins/ProjectR_CombatOcclusion.js", "js/plugins/ProjectR_SaveLoadGuard.js", "js/plugins/ProjectR_CardCatalog.js", "js/rmmz_objects.js", "js/rmmz_managers.js",
         "js/plugins/DotMoveSystem.js"], { cwd: root, encoding: "utf8" }).trim();
     assert.equal(out, "");
-    const hendrix = cp.execFileSync("git", ["diff", "--name-only", "HEAD", "--", "js/plugins/Hendrix_Action_Engine.js", "js/plugins/Hendrix_TemplateEvent.js"],
+    const hendrix = cp.execFileSync("git", ["diff", "--name-only", PARENT, COMMIT, "--", "js/plugins/Hendrix_Action_Engine.js", "js/plugins/Hendrix_TemplateEvent.js"],
         { cwd: root, encoding: "utf8" }).trim();
     assert.equal(hendrix, "");
 });
