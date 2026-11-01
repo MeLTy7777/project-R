@@ -42,6 +42,7 @@
     { "file": "h3b_manual_os_input.cjs", "kind": "os-input", "status": "maintained", "input": "os", "phase": "H2B-3B", "expectedChecks": 8, "covers": "サイコポンポスのOS入力" },
     { "file": "h3a_veil_diag.cjs", "kind": "diagnostic", "status": "maintained", "input": "cdp+mouse", "phase": "H2C-B3", "env": ["MZ_REPEAT", "MZ_JITTER"], "covers": "ヴェイルR4a/R4bの診断(毎フレーム記録・原因の分類・繰り返し)。合否の検証ではなく調査用" },
     { "file": "apollo_a7_gigas_verify.cjs", "kind": "verify", "status": "maintained", "input": "cdp+key+mouse", "phase": "Apollo-A7", "expectedChecks": 9, "covers": "ギガース殺しLv1〜3: 0.5秒のオートチャージ→太い矢→100ダメージ+弱点x2・傷(x2.2とスリップ5x66)・Lv3の幅3マス連続ヒット(2300)・外れ/重複/壁・取消と後片付け・frame処理時間・黄金の矢の退行なし" },
-    { "file": "apollo_implemented.cjs", "kind": "support", "status": "maintained", "input": "none", "phase": "Apollo-A7", "expectedChecks": 0, "covers": "実装済みApollo一覧(件数を固定していた古い検証スクリプトが参照する共通部品)" }
+    { "file": "apollo_implemented.cjs", "kind": "support", "status": "maintained", "input": "none", "phase": "Apollo-A7", "expectedChecks": 0, "covers": "実装済みApollo一覧(件数を固定していた古い検証スクリプトが参照する共通部品)" },
+    { "file": "apollo_a7_hyacinthus_verify.cjs", "kind": "verify", "status": "maintained", "input": "cdp+key", "phase": "Apollo-A7", "expectedChecks": 8, "covers": "ヒュアキントスLv1〜3: 使った瞬間の消費・被ダメージ90%軽減・被弾で咲く花(半径2・花6個)・秒間50の回復と半径の外・Lv2の仲間の差し戻しと花・Lv3の受付5秒と移動速度x1.8・失敗(被弾なし)と取消の後片付け・frame処理時間・ギガース殺しの退行なし" }
   ]
 }

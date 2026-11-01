@@ -74,7 +74,13 @@
     "woundSeconds": { "label": "傷状態の持続", "unit": "秒", "min": 0.1, "max": 60 },
     "woundDamagePerSecond": { "label": "傷状態のスリップダメージ(秒間)", "unit": "HP/秒", "min": 0, "max": 99999, "integer": true },
     "woundTickSeconds": { "label": "傷状態のスリップ間隔", "unit": "秒", "min": 0.1, "max": 5 },
-    "woundDamageTaken": { "label": "傷状態の被ダメージ倍率", "unit": "倍", "min": 1, "max": 10 }
+    "woundDamageTaken": { "label": "傷状態の被ダメージ倍率", "unit": "倍", "min": 1, "max": 10 },
+    "acceptSeconds": { "label": "受付期間(カード使用後、被ダメージを受け付ける時間)", "unit": "秒", "min": 0.1, "max": 30 },
+    "guardDamageTaken": { "label": "受付期間中の被ダメージ倍率(0.1 = 90%軽減)", "unit": "倍", "min": 0, "max": 1 },
+    "bloomSeconds": { "label": "咲いた花の持続", "unit": "秒", "min": 0.5, "max": 60 },
+    "bloomHealPerSecond": { "label": "花の中の味方の継続回復(秒間)", "unit": "HP/秒", "min": 0, "max": 99999, "integer": true },
+    "bloomHealTickSeconds": { "label": "花の回復の間隔", "unit": "秒", "min": 0.1, "max": 5 },
+    "partyShare": { "label": "パーティーメンバーにも付与(0=なし / 1=あり)", "unit": "0/1", "min": 0, "max": 1, "integer": true }
   },
   "cards": {
     "hermes_issen": {
@@ -180,6 +186,17 @@
         "1": { "damage": 100, "weakSeconds": 5, "weakDamageTaken": 2 },
         "2": { "woundSeconds": 5, "woundDamagePerSecond": 30, "woundTickSeconds": 1, "woundDamageTaken": 1.1 },
         "3": { "beamWidthTiles": 3 }
+      }
+    },
+    "apollo_hyacinthus": {
+      "name": "ヒュアキントス",
+      "designId": 12,
+      "cooldownSeconds": 7,
+      "constants": { "radiusTiles": 2, "bloomSeconds": 8, "bloomHealTickSeconds": 0.5 },
+      "levels": {
+        "1": { "acceptSeconds": 3, "guardDamageTaken": 0.1, "bloomHealPerSecond": 50, "partyShare": 0 },
+        "2": { "partyShare": 1 },
+        "3": { "acceptSeconds": 5, "speedBonus": 0.8 }
       }
     }
   }
