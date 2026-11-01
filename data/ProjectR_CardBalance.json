@@ -123,7 +123,10 @@
     "lyrePlagueDamageTaken": { "label": "病の音符(1回あたりの被ダメージ増加。0.05 = +5%)", "unit": "割合", "min": 0, "max": 5 },
     "lyrePlagueWeakness": { "label": "病の音符(1回あたりの弱点被ダメージ増加。0.03 = +3%)", "unit": "割合", "min": 0, "max": 5 },
     "screenWide": { "label": "全部同じ音符のとき範囲が画面全体(0=なし / 1=あり)", "unit": "0/1", "min": 0, "max": 1, "integer": true },
-    "cleanse": { "label": "全部同じ音符のとき味方の異常状態を解除(0=なし / 1=あり)", "unit": "0/1", "min": 0, "max": 1, "integer": true }
+    "cleanse": { "label": "全部同じ音符のとき味方の異常状態を解除(0=なし / 1=あり)", "unit": "0/1", "min": 0, "max": 1, "integer": true },
+    "predictSeconds": { "label": "敵の攻撃を待ち受ける時間(使ってから)", "unit": "秒", "min": 0.5, "max": 60 },
+    "predictLengthTiles": { "label": "予告線の長さ(壁で止まる)", "unit": "マス", "min": 1, "max": 30 },
+    "oraclePredict": { "label": "次の敵の攻撃を予測する(0=なし / 1=あり)", "unit": "0/1", "min": 0, "max": 1, "integer": true }
   },
   "cards": {
     "hermes_issen": {
@@ -282,6 +285,17 @@
         "1": { "noteRounds": 3 },
         "2": { "screenWide": 1, "cleanse": 1 },
         "3": { "noteRounds": 5 }
+      }
+    },
+    "apollo_oracle": {
+      "name": "神託",
+      "designId": 14,
+      "cooldownSeconds": 3,
+      "constants": { "predictSeconds": 5, "predictLengthTiles": 12 },
+      "levels": {
+        "1": { "oraclePredict": 1 },
+        "2": { "slowSeconds": 1, "slowFactor": 0.5 },
+        "3": { "hitMultiplier": 2, "hitSeconds": 10 }
       }
     }
   }

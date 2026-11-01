@@ -35,7 +35,7 @@ test("登録と数値: 最大Lv3・Cooldown 3・強力/最大5。Lv1=100ダメ�
     assert.deepEqual([c1.damage, c1.weakSeconds, c1.weakTaken, c1.chargeFrames, c1.width, c1.wound, c1.beam], [100, 5, 2, 30, 1, false, false]);
     assert.deepEqual([c2.damage, c2.weakSeconds, c2.weakTaken, c2.wound, c2.woundSeconds, c2.woundDps, c2.woundTick, c2.woundTaken, c2.beam], [100, 5, 2, true, 5, 30, 1, 1.1, false], "Lv2はLv1を引き継ぎ傷を足す");
     assert.deepEqual([c3.wound, c3.beam, c3.beamWidth, c3.beamSpeed, c3.perTile, c3.maxHits, c3.damage, c3.weakTaken, c3.woundDps], [true, true, 3, 40, 3, 11, 100, 2, 30], "Lv3は幅3マスの連続ヒット(黄金の矢と同じ仕様の数値)。Lv1〜2を引き継ぐ");
-    assert.equal(w.ctx.ProjectRCardCatalog.buildGodDeck("apollo"), null, "Apolloの本番の初期デッキ(30枚)は有効にしない");
+    assert.equal(w.ctx.ProjectRCardCatalog.buildGodDeck("apollo") === null, require("./ProjectR_ApolloImplemented.cjs").STILL_RESERVED.length > 0, "Apolloの本番の初期デッキ(30枚)は有効にしない");
     const row = w.ctx.ProjectRCardCatalog.godDesign("apollo").find(r => r.designId === 13);
     assert.deepEqual([row.implemented, row.implementedLevels, row.runtimeCardId], [true, 3, C]);
     assert.equal(w.ctx.ProjectRCardDeck.definitions.card("apollo_eros_arrow").maxLevel, 3, "エロスの矢は不変");

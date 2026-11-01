@@ -36,7 +36,7 @@ test("登録とLv3の数値: 最大Lv3。追尾範囲 Lv1〜2=3 / Lv3=7。Lv3は
         [7, true, 14, 3, 2, 7, 80, 20, 50, 1], "Lv3: 追尾7・側面2方向x7=14本。Lv2の80度・20・50・1秒を引き継ぐ");
     assert.deepEqual([c3.beamSeconds, c3.beamFrames, c3.beamHealRate, c3.beamDamageRate, c3.beamTickSeconds, c3.beamTickFrames, c3.beamMaxTicks, c3.beamTickHeal, c3.beamTickDamage, c3.beamWidth, c3.beamRange, c3.beamLength],
         [3, 180, 300, 80, 0.1, 6, 30, 30, 8, 0.9, 12, 12]);
-    assert.equal(w.ctx.ProjectRCardCatalog.buildGodDeck("apollo"), null, "Apolloの本番の初期デッキ(30枚)は有効にしない");
+    assert.equal(w.ctx.ProjectRCardCatalog.buildGodDeck("apollo") === null, require("./ProjectR_ApolloImplemented.cjs").STILL_RESERVED.length > 0, "Apolloの本番の初期デッキ(30枚)は有効にしない");
     deckApi(w).setCardLevel(EROS, 4);
     assert.ok(Number(deckApi(w).getPersistentData().cardOwnership[EROS].level) <= 3, "Lv4は無い");
     const row = w.ctx.ProjectRCardCatalog.godDesign("apollo").find(r => r.designId === 9);

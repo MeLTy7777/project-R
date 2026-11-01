@@ -343,8 +343,8 @@ test("他の入力は変わらない: 他のカード(Hermes・旧Apollo)は押�
     assert.ok(/when\(\)/.test(source));
     // 本番の取得経路: Apolloの30枚デッキは組めず、Hermesの初期付与にも入らない。Lvを3にできるのは開発用のAPI(setCardLevel)だけ
     const cat = w.ctx.ProjectRCardCatalog;
-    assert.equal(cat.buildGodDeck("apollo"), null);
-    assert.equal(cat.godStatus("apollo").ready, false);
+    assert.equal(cat.buildGodDeck("apollo") === null, require("./ProjectR_ApolloImplemented.cjs").STILL_RESERVED.length > 0);
+    assert.equal(cat.godStatus("apollo").ready, require("./ProjectR_ApolloImplemented.cjs").STILL_RESERVED.length === 0);
     assert.ok(!JSON.stringify(plain(w.ctx.ProjectRHermesProductionDeck.starterSet())).includes(VOLLEY));
     const row = cat.godDesign("apollo").find(r => r.designId === 8);
     assert.deepEqual([row.implementedLevels, row.beamImplemented], [3, true], "Lv3まで実装済み(A5B)。ただしApolloの入手経路・30枚デッキは未実装なので本番には載らない");

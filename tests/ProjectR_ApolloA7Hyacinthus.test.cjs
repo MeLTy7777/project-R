@@ -35,7 +35,7 @@ test("登録と数値: 最大Lv3・Cooldown 7・特殊/最大3。Lv1=受付3秒�
     assert.deepEqual([c1.acceptSeconds, c1.guardTaken, c1.healPerSecond, c1.radius, c1.partyShare, c1.speedBonus, c1.bloomSeconds, c1.healTick, c1.healAmount], [3, 0.1, 50, 2, false, 0, 8, 0.5, 25]);
     assert.deepEqual([c2.acceptSeconds, c2.partyShare, c2.speedBonus, c2.guardTaken], [3, true, 0, 0.1], "Lv2はLv1を引き継ぎパーティーにも付与");
     assert.deepEqual([c3.acceptSeconds, c3.partyShare, c3.speedBonus, c3.guardTaken, c3.healPerSecond, c3.radius], [5, true, 0.8, 0.1, 50, 2], "Lv3は受付5秒(置換)と移動速度+80%。他は引き継ぐ");
-    assert.equal(w.ctx.ProjectRCardCatalog.buildGodDeck("apollo"), null);
+    assert.equal(w.ctx.ProjectRCardCatalog.buildGodDeck("apollo") === null, require("./ProjectR_ApolloImplemented.cjs").STILL_RESERVED.length > 0);
     const row = w.ctx.ProjectRCardCatalog.godDesign("apollo").find(r => r.designId === 12);
     assert.deepEqual([row.implemented, row.implementedLevels, row.runtimeCardId], [true, 3, C]);
 });

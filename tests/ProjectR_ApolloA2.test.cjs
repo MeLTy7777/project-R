@@ -104,9 +104,9 @@ test("Hermes は変わらない: hermesDesign()・引数なしのmigrationAudit(
     assert.deepEqual(plain(w.cat().buildGodDeck("hermes")), plain(w.cat().buildFinalHermesDeck()));
     assert.deepEqual(plain(w.cat().registeredRuntimeCards()), ["hermes_zetsu", "hermes_sweep", "hermes_reed_flute", "hermes_issen", "hermes_strength", "hermes_veil", "hermes_psychopomp", ...A7_IMPLEMENTED], "登録されるのはHermesの7枚 + 実装済みのApollo(ProjectR_ApolloImplemented.cjs)だけ");
     const status = plain(w.cat().godStatus("apollo"));
-    assert.deepEqual([status.count, status.totalMaxCopies, status.implemented, status.reserved, status.ready], [8, 30, A7_COUNT, 8 - A7_COUNT, false]);
-    assert.equal(w.cat().isGodDeckReady("apollo"), false);
-    assert.equal(w.cat().buildGodDeck("apollo"), null, "未実装の間はApolloの30枚デッキを組み立てない");
+    assert.deepEqual([status.count, status.totalMaxCopies, status.implemented, status.reserved, status.ready], [8, 30, A7_COUNT, 8 - A7_COUNT, A7_COUNT === 8]);
+    assert.equal(w.cat().isGodDeckReady("apollo"), A7_COUNT === 8);
+    assert.equal(w.cat().buildGodDeck("apollo") === null, require("./ProjectR_ApolloImplemented.cjs").STILL_RESERVED.length > 0, "未実装の間はApolloの30枚デッキを組み立てない");
     assert.deepEqual(plain(w.cat().godDesign("nobody")), []);
 });
 
@@ -123,18 +123,20 @@ test("未実装カードは本番で使えない: レジストリに無く、所
         assert.equal(inv.grantCopies(id, 1, { source: "t" }).ok, false, "枚数付与できない: " + id);
         assert.equal(d.isCardOwned(id), false);
     }
-    const bundle = inv.grantBundle("t.bundle", { apollo_oracle: 1, hermes_issen: 1 }, { source: "t" });
+    const PROBE = INACTIVE[0] || "apollo_not_a_card"; // 予約のまま残っているカード(全部実装したら、存在しないIDで同じ拒否を確かめる)
+    const bundle = inv.grantBundle("t.bundle", { [PROBE]: 1, hermes_issen: 1 }, { source: "t" });
     assert.equal(bundle.ok, false, "予約カードを含む束は全体が拒否される(原子的)");
     assert.equal(inv.getOwnedCopies("hermes_issen"), 0, "束の他のカードも付与されない");
     assert.equal(inv.hasReward("t.bundle"), false);
     // プラグインコマンド経由
     const cmd = (plugin, name, args) => w.ctx.PluginManager.callCommand(new w.ctx.Game_Interpreter(), plugin, name, args);
-    cmd("ProjectR_CardInventory", "GrantCardCopies", { cardId: "apollo_oracle", copies: "3", rewardId: "" });
-    assert.equal(inv.getOwnedCopies("apollo_oracle"), 0);
+    cmd("ProjectR_CardInventory", "GrantCardCopies", { cardId: PROBE, copies: "3", rewardId: "" });
+    assert.equal(inv.getOwnedCopies(PROBE), 0);
     // デッキ
-    const reasons = codes(d.getDeckInvalidReasons(RESERVED));
+    const probeDeck = RESERVED.concat(["apollo_not_a_card"]); // 未登録のIDを1つ混ぜる(予約が全部実装されても、未登録は INVALID_CARD_ID)
+    const reasons = codes(d.getDeckInvalidReasons(probeDeck));
     assert.ok(reasons.includes("INVALID_CARD_ID"), reasons.join());
-    assert.equal(d.isDeckValid(RESERVED), false);
+    assert.equal(d.isDeckValid(probeDeck), false);
     // 指輪を持っても何も付与されない(Apolloの指輪を渡しても予約カードは増えない)
     assert.equal(d.assignRingToPlayer("apollo").ok, true);
     for (const id of RESERVED) assert.equal(d.isCardOwned(id), false);

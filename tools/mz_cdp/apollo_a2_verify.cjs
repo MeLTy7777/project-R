@@ -36,7 +36,7 @@ const UNREG = INACTIVE[0] || null, UNREG_N = UNREG ? COPIES[RESERVED.indexOf(UNR
   await check("A1 カタログ: 15設計(Hermes 7 + Apollo 8)・Apolloの予約ID・最大コピー合計30・コピー上限(5/5/2/3/3/5/3/4)", async () => {
     const v = await json("({ n: ProjectRCardCatalog.designs().length, gods: ProjectRCardCatalog.gods(), ids: ProjectRCardCatalog.godDesign('apollo').map(function(d) { return d.runtimeCardId; }), copies: ProjectRCardCatalog.godDesign('apollo').map(function(d) { return d.maxCopies; }), total: ProjectRCardCatalog.godTotalMaxCopies('apollo'), status: ProjectRCardCatalog.godStatus('apollo'), hermes: ProjectRCardCatalog.godTotalMaxCopies('hermes'), ready: [ProjectRCardCatalog.isGodDeckReady('hermes'), ProjectRCardCatalog.isGodDeckReady('apollo')], deck: ProjectRCardCatalog.buildGodDeck('apollo') })");
     rec("A1 catalog", v.n === 15 && JSON.stringify(v.gods) === '["hermes","apollo"]' && JSON.stringify(v.ids) === JSON.stringify(RESERVED) && JSON.stringify(v.copies) === JSON.stringify(COPIES) && v.total === 30 && v.hermes === 30
-      && v.status.reserved === 8 - A7N && v.status.implemented === A7N && v.ready[0] === true && v.ready[1] === false && v.deck === null, JSON.stringify(v).slice(0, 300));
+      && v.status.reserved === 8 - A7N && v.status.implemented === A7N && v.ready[0] === true && v.ready[1] === (A7R.length === 0) && (v.deck === null) === (A7R.length > 0), JSON.stringify(v).slice(0, 300));
   });
 
   await check("A2 衝突なし・未登録: runtimeIdAuditが問題0件、予約8枚はレジストリに無く、旧Apollo 3枚とHermes 7枚は従来どおり登録されている", async () => {

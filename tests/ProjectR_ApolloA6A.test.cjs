@@ -29,7 +29,7 @@ test("登録: 特殊 / 最大5枚 / Cooldown 5秒 / Ground / Apolloの指輪 / �
     assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.inactiveRuntimeCards()).filter(id => id.startsWith("apollo_")).sort(),
         [...A7_RESERVED].sort(), "残りは未登録");
     assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.runtimeIdAudit().problems), []);
-    assert.equal(w.ctx.ProjectRCardCatalog.buildGodDeck("apollo"), null, "Apolloの本番の初期デッキ(30枚)は有効にしない");
+    assert.equal(w.ctx.ProjectRCardCatalog.buildGodDeck("apollo") === null, require("./ProjectR_ApolloImplemented.cjs").STILL_RESERVED.length > 0, "Apolloの本番の初期デッキ(30枚)は有効にしない");
     // Lv4は無い: レベルを上げようとしてもLv3まで
     const d = deckApi(w);
     const up = d.setCardLevel(EROS, 4);

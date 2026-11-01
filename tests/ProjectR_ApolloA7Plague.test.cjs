@@ -45,7 +45,7 @@ test("登録と数値: 最大Lv3・Cooldown 5・強力/最大4・direction。Lv1
     assert.deepEqual([c1.damage, c1.radius, c1.circleSeconds, c1.stateSeconds, c1.attackRate, c1.damageTaken, c1.weakness, c1.ratCount, c1.splitCount, c1.speed, c1.range], [100, 4, 5, 3, 0.9, 1.05, 1.03, 0, 0, 18, 14]);
     assert.deepEqual([c2.ratCount, c2.ratDamage, c2.ratSeconds, c2.ratSpeed, c2.ratReach, c2.splitCount, c2.damage], [3, 50, 1, 4, 1, 0, 100], "Lv2はLv1を引き継ぎネズミを足す");
     assert.deepEqual([c3.splitCount, c3.splitRadius, c3.ratCount, c3.damage, c3.radius], [4, 5, 3, 100, 4], "Lv3は分裂を足す。Lv1〜2を引き継ぐ");
-    assert.equal(w.ctx.ProjectRCardCatalog.buildGodDeck("apollo"), null);
+    assert.equal(w.ctx.ProjectRCardCatalog.buildGodDeck("apollo") === null, require("./ProjectR_ApolloImplemented.cjs").STILL_RESERVED.length > 0);
     const row = w.ctx.ProjectRCardCatalog.godDesign("apollo").find(r => r.designId === 15);
     assert.deepEqual([row.implemented, row.implementedLevels, row.runtimeCardId, row.legacyCandidates.join()], [true, 3, C, "apollo_plague_attack"]);
     assert.equal(w.ctx.ProjectRCardDeck.definitions.card("apollo_plague_attack").maxCopies, 2, "旧「疫病攻撃」は不変(共存)");

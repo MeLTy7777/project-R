@@ -47,7 +47,7 @@ test("登録と数値: 最大Lv3・Cooldown 8・強力/最大3。Lv1=半径5・7
     assert.deepEqual([c1.radius, c1.rootSeconds, c1.growSeconds, c1.healPerSecond, c1.healAmount, c1.damageTaken, c1.weaknessScale, c1.speedBonus, c1.thornDps, c1.wall, c1.maxPatches, c1.trailStep], [5, 7, 7, 50, 25, 0.7, 0.1, 0, 0, false, 12, 2]);
     assert.deepEqual([c2.speedBonus, c2.thornDps, c2.thornTick, c2.wall, c2.healPerSecond], [0.2, 30, 0.5, false, 50], "Lv2はLv1を引き継ぎ移動とスリップを足す");
     assert.deepEqual([c3.wall, c3.wallSeconds, c3.wallRadius, c3.speedBonus, c3.thornDps], [true, 1.5, 0.8, 0.2, 30], "Lv3は壁を足す。Lv1〜2を引き継ぐ");
-    assert.equal(w.ctx.ProjectRCardCatalog.buildGodDeck("apollo"), null);
+    assert.equal(w.ctx.ProjectRCardCatalog.buildGodDeck("apollo") === null, require("./ProjectR_ApolloImplemented.cjs").STILL_RESERVED.length > 0);
     const row = w.ctx.ProjectRCardCatalog.godDesign("apollo").find(r => r.designId === 11);
     assert.deepEqual([row.implemented, row.implementedLevels, row.runtimeCardId], [true, 3, C]);
 });

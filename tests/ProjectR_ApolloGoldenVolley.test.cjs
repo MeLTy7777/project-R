@@ -553,9 +553,9 @@ test("セーブ互換: 発射・命中・スリップはセーブデータを1�
 test("本番の取得経路には載らない: Hermesの初期付与(指輪の初回入手)に含まれず、Apolloの30枚デッキは他の7枚が未実装なので組み立てられない", () => {
     const w = volleyWorld({ level: 1 });
     const cat = w.ctx.ProjectRCardCatalog;
-    assert.equal(cat.buildGodDeck("apollo"), null);
-    assert.equal(cat.isGodDeckReady("apollo"), false);
-    assert.equal(cat.godStatus("apollo").ready, false);
+    assert.equal(cat.buildGodDeck("apollo") === null, require("./ProjectR_ApolloImplemented.cjs").STILL_RESERVED.length > 0);
+    assert.equal(cat.isGodDeckReady("apollo"), require("./ProjectR_ApolloImplemented.cjs").STILL_RESERVED.length === 0);
+    assert.equal(cat.godStatus("apollo").ready, require("./ProjectR_ApolloImplemented.cjs").STILL_RESERVED.length === 0);
     assert.deepEqual(cat.godStatus("apollo").blockers.length, A7_RESERVED.length, "Apolloの未実装は一覧の残り");
     const production = w.ctx.ProjectRHermesProductionDeck;
     const starter = plain(production.starterSet());

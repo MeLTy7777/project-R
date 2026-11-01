@@ -431,7 +431,7 @@ test("既存の入力・カードとの互換: Lv1〜2は即時、Lv3のtapは�
     const w = volleyWorld({ level: 3 });
     for (const id of ["hermes_sweep", "hermes_zetsu", "hermes_issen", "apollo_golden_arrow", "apollo_plague_attack", "apollo_lyre_calm"]) assert.equal(input(w).getPressProfile(id), null, id);
     const cat = w.ctx.ProjectRCardCatalog;
-    assert.equal(cat.buildGodDeck("apollo"), null); assert.equal(cat.godStatus("apollo").ready, false);
+    assert.equal(cat.buildGodDeck("apollo") === null, require("./ProjectR_ApolloImplemented.cjs").STILL_RESERVED.length > 0); assert.equal(cat.godStatus("apollo").ready, require("./ProjectR_ApolloImplemented.cjs").STILL_RESERVED.length === 0);
     assert.ok(!JSON.stringify(plain(w.ctx.ProjectRHermesProductionDeck.starterSet())).includes(VOLLEY));
     // ProjectR_HitStop は他のカードの挙動を変えない(止めを使うのはこのカードのビームだけ)
     const text = fs.readdirSync(path.join(project, "js/plugins")).filter(f => f.endsWith(".js") && f !== "ProjectR_HitStop.js" && f !== "ProjectR_ApolloGoldenVolley.js" && f !== "ProjectR_ApolloGigasSlayer.js")

@@ -155,8 +155,8 @@
             runtimeCardId: "apollo_gigas_slayer", implemented: true, status: "implemented", targetTypeStatus: "confirmed", implementedLevels: 3,
             migration: migration(null, "new", "implemented", "Phase Apollo-A7でLv1〜3を新ランタイムID apollo_gigas_slayer として実装。旧カードに対応なし。新規。") }),
         apolloRow(14, "神託", "strong", 3, 3, { workbookTargetType: "その他", targetType: "instant", category: "special",
-            runtimeCardId: "apollo_oracle",
-            migration: migration(null, "new", "reserved-not-implemented", "新ランタイムID apollo_oracle を予約。旧カードに対応なし。新規。") }),
+            runtimeCardId: "apollo_oracle", implemented: true, status: "implemented", targetTypeStatus: "confirmed", implementedLevels: 3,
+            migration: migration(null, "new", "implemented", "Phase Apollo-A7でLv1〜3を新ランタイムID apollo_oracle として実装。旧カードに対応なし。新規。") }),
         apolloRow(15, "疫病の矢", "strong", 4, 5, { workbookTargetType: "Direction", targetType: "direction", category: "disrupt",
             runtimeCardId: "apollo_plague_rain", implemented: true, status: "implemented", targetTypeStatus: "confirmed", implementedLevels: 3, legacyCandidates: Object.freeze(["apollo_plague_attack"]),
             migration: migration("apollo_plague_attack", "coexist-pending", "implemented-as-new-id",
@@ -213,7 +213,9 @@
         Object.freeze({ cardId: "apollo_laurel_wreath", ringId: "apollo", maxCopies: 3, cooldownSeconds: 8, maxLevel: 3,
             rarity: "strong", category: "support", targetType: "instant" }),
         Object.freeze({ cardId: "apollo_lyre_rhythm", ringId: "apollo", maxCopies: 2, cooldownSeconds: 4, maxLevel: 3,
-            rarity: "special", category: "special", targetType: "instant" })
+            rarity: "special", category: "special", targetType: "instant" }),
+        Object.freeze({ cardId: "apollo_oracle", ringId: "apollo", maxCopies: 3, cooldownSeconds: 3, maxLevel: 3,
+            rarity: "strong", category: "special", targetType: "instant" })
     ]);
     const registerRuntimeCards = () => {
         const registry = root.ProjectRCardDeck?.definitions;

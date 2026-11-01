@@ -48,7 +48,7 @@ test("登録と数値: 最大Lv3・Cooldown 4・特殊/最大2・instant。Lv1=3
     assert.deepEqual([c2.rounds, c2.notes, c2.screenWide, c2.cleanse], [3, 12, true, true], "Lv2はLv1を引き継ぎ画面全体とクレンズを足す");
     assert.deepEqual([c3.rounds, c3.notes, c3.interval, c3.maxPresses, c3.screenWide, c3.cleanse], [5, 20, 0.15, 3, true, true], "Lv3は音符の周回だけ5周(置換)。押せる回数は3回のまま");
     assert.ok(c1.windowFrames >= 1 && c1.windowFrames <= 6 && c3.windowFrames >= 1 && c3.windowFrames < c1.windowFrames + 1, "判定の幅は音符の間隔の半分を超えない " + c1.windowFrames + "/" + c3.windowFrames);
-    assert.equal(w.ctx.ProjectRCardCatalog.buildGodDeck("apollo"), null);
+    assert.equal(w.ctx.ProjectRCardCatalog.buildGodDeck("apollo") === null, require("./ProjectR_ApolloImplemented.cjs").STILL_RESERVED.length > 0);
     const row = w.ctx.ProjectRCardCatalog.godDesign("apollo").find(r => r.designId === 10);
     assert.deepEqual([row.implemented, row.implementedLevels, row.runtimeCardId, row.legacyCandidates.join()], [true, 3, C, "apollo_lyre_calm"]);
     assert.equal(w.ctx.ProjectRCardDeck.definitions.card("apollo_lyre_calm").maxCopies, 3, "旧「リラの支援」は不変(共存)");

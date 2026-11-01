@@ -36,7 +36,7 @@ test("登録: Lv2の値(Lv3の行はA6C)。Lv1は10本のまま、Lv2は3方向x
     assert.ok(Number(d.getPersistentData().cardOwnership[EROS].level) <= 3, "Lv4へ上げられない");
     d.setCardLevel(EROS, 2);
     assert.equal(api(w).cardLevel(), 2);
-    assert.equal(w.ctx.ProjectRCardCatalog.buildGodDeck("apollo"), null, "Apolloの本番の初期デッキ(30枚)は有効にしない");
+    assert.equal(w.ctx.ProjectRCardCatalog.buildGodDeck("apollo") === null, require("./ProjectR_ApolloImplemented.cjs").STILL_RESERVED.length > 0, "Apolloの本番の初期デッキ(30枚)は有効にしない");
     assert.equal(w.ctx.ProjectRCardDeck.definitions.card("apollo_golden_volley").maxLevel, 3, "黄金の矢のLvは不変");
 });
 
