@@ -79,6 +79,7 @@ var $plugins =
 ,{"name":"ProjectR_ApolloErosArrow","status":true,"description":"v1.0.0 Apollo「エロスの矢」(設計ID 9 / apollo_eros_arrow)Lv1: 1秒で10本の追尾する矢。敵に20ダメージ・味方に50回復。命中が確定してから消費。","parameters":{"ArrowSoundEffect":"Chime2","ImpactSoundEffect":"Chime1"}}
 ,{"name":"ProjectR_ApolloGigasSlayer","status":true,"description":"v1.0.0 Apollo「ギガース殺し」(設計ID 13 / apollo_gigas_slayer)Lv1〜3: オートチャージの太い矢。弱点状態(被ダメージx2)・傷状態・Lv3は幅3マスの連続ヒット。命中が確定してから消費。","parameters":{"ChargeSoundEffect":"Wind5","FireSoundEffect":"Bow2","HitSoundEffect":"Blow7"}}
 ,{"name":"ProjectR_ApolloHyacinthus","status":true,"description":"v1.0.0 Apollo「ヒュアキントス」(設計ID 12 / apollo_hyacinthus)Lv1〜3: 受付期間中の被ダメージ90%軽減と、被弾で咲く花の回復。Lv2は仲間にも、Lv3は受付期間5秒と移動速度+80%。","parameters":{"BloomSoundEffect":"Heal4","HealSoundEffect":"Heal1"}}
+,{"name":"ProjectR_ApolloPlagueRain","status":true,"description":"v1.0.0 Apollo「疫病の矢」(設計ID 15 / apollo_plague_rain)Lv1〜3: 壁を越える矢の直撃100ダメージと半径4マスの病のサークル(5秒)。Lv2はネズミ、Lv3は矢の分裂。着弾で敵がいたら消費。","parameters":{"FireSoundEffect":"Bow3","LandSoundEffect":"Blow5"}}
 ,{"name":"ProjectR_HermesProductionDeck","status":true,"description":"v1.0.0 Hermes本番デッキ統合(H2C-A): 指輪の初回入手で7種30枚を一度だけ付与・デッキ初期化・表示・旧セーブ診断。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaZetsu","status":true,"description":"v1.0.0 DEV専用 Combat Test Arena 追加: 絶(Zetsu)テスト開始(Playtest限定)。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaHermesB1","status":true,"description":"v1.0.0 DEV専用 Combat Test Arena 追加: 薙ぎ払い・葦笛・絶のテスト開始(Playtest限定)。","parameters":{}}

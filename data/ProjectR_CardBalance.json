@@ -80,7 +80,20 @@
     "bloomSeconds": { "label": "咲いた花の持続", "unit": "秒", "min": 0.5, "max": 60 },
     "bloomHealPerSecond": { "label": "花の中の味方の継続回復(秒間)", "unit": "HP/秒", "min": 0, "max": 99999, "integer": true },
     "bloomHealTickSeconds": { "label": "花の回復の間隔", "unit": "秒", "min": 0.1, "max": 5 },
-    "partyShare": { "label": "パーティーメンバーにも付与(0=なし / 1=あり)", "unit": "0/1", "min": 0, "max": 1, "integer": true }
+    "partyShare": { "label": "パーティーメンバーにも付与(0=なし / 1=あり)", "unit": "0/1", "min": 0, "max": 1, "integer": true },
+    "circleSeconds": { "label": "病のサークルの持続", "unit": "秒", "min": 0.5, "max": 30 },
+    "plagueStateSeconds": { "label": "病状態の持続(サークルの中にいる間は更新される)", "unit": "秒", "min": 0.1, "max": 30 },
+    "circleTickSeconds": { "label": "サークルが病を付け直す間隔", "unit": "秒", "min": 0.05, "max": 2 },
+    "plagueAttackRate": { "label": "病: 敵の攻撃力の倍率(0.9 = -10%)", "unit": "倍", "min": 0, "max": 1 },
+    "plagueDamageTaken": { "label": "病: 被ダメージの倍率(1.05 = +5%)", "unit": "倍", "min": 1, "max": 10 },
+    "plagueWeaknessRate": { "label": "病: 弱点属性の被ダメージの倍率(1.03 = +3%)", "unit": "倍", "min": 1, "max": 10 },
+    "ratCount": { "label": "ネズミの数(0=なし)", "unit": "匹", "min": 0, "max": 10, "integer": true },
+    "ratDamage": { "label": "ネズミの攻撃のダメージ", "unit": "HP", "min": 0, "max": 99999, "integer": true },
+    "ratAttackSeconds": { "label": "ネズミの攻撃の間隔", "unit": "秒", "min": 0.1, "max": 10 },
+    "ratSpeed": { "label": "ネズミの移動の速さ", "unit": "マス/秒", "min": 0.5, "max": 20 },
+    "ratReach": { "label": "ネズミの攻撃の届く距離", "unit": "マス", "min": 0.3, "max": 5 },
+    "splitCount": { "label": "分裂する矢の本数(0=分裂しない)", "unit": "本", "min": 0, "max": 11, "integer": true },
+    "splitRadiusTiles": { "label": "分裂した矢が散らばる範囲(着弾点から)", "unit": "マス", "min": 0.5, "max": 20 }
   },
   "cards": {
     "hermes_issen": {
@@ -197,6 +210,20 @@
         "1": { "acceptSeconds": 3, "guardDamageTaken": 0.1, "bloomHealPerSecond": 50, "partyShare": 0 },
         "2": { "partyShare": 1 },
         "3": { "acceptSeconds": 5, "speedBonus": 0.8 }
+      }
+    },
+    "apollo_plague_rain": {
+      "name": "疫病の矢",
+      "designId": 15,
+      "cooldownSeconds": 5,
+      "constants": {
+        "radiusTiles": 4, "projectileSpeed": 18, "rangeTiles": 14, "circleSeconds": 5, "plagueStateSeconds": 3, "circleTickSeconds": 0.25,
+        "plagueAttackRate": 0.9, "plagueDamageTaken": 1.05, "plagueWeaknessRate": 1.03, "element": 0, "weaknessMultiplier": 1
+      },
+      "levels": {
+        "1": { "damage": 100 },
+        "2": { "ratCount": 3, "ratDamage": 50, "ratAttackSeconds": 1, "ratSpeed": 4, "ratReach": 1 },
+        "3": { "splitCount": 4, "splitRadiusTiles": 5 }
       }
     }
   }
