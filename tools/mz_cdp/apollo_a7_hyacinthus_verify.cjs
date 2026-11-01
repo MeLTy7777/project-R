@@ -26,6 +26,7 @@ const CARD = "apollo_hyacinthus", API = "ProjectRApolloHyacinthus", GV = "Projec
     const started = await json(`ProjectRApolloTest.start(${level}, '${kind}')`);
     if (!started.ok) throw new Error("start failed " + JSON.stringify(started));
     await sleep(400); await s.slow(1);
+    await ev("window.__r0 = window.__r0 || Math.random; Math.random = function() { return 0.9; }; 'on'"); // 自然のクリティカルで固定ダメージが3倍にならないよう、乱数を固定する
     await staging([2, 3, 4, 5, 6]);
     await ev("(function() { var p = ProjectRPartyCombat; if (p.isActive()) p.endSession(); ProjectRApolloStatus.clear('script'); [2,3,4,5,6].forEach(function(id) { var e = $gameMap.event(id); e.linkedActorId = 0; if (e._erased) { e._erased = false; e.refresh(); } }); $gameParty.leader().setHp($gameParty.leader().mhp); return 'ok'; })()");
     await s.place(9, 15); await sleep(500);

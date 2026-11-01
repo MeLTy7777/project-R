@@ -81,6 +81,7 @@ var $plugins =
 ,{"name":"ProjectR_ApolloHyacinthus","status":true,"description":"v1.0.0 Apollo「ヒュアキントス」(設計ID 12 / apollo_hyacinthus)Lv1〜3: 受付期間中の被ダメージ90%軽減と、被弾で咲く花の回復。Lv2は仲間にも、Lv3は受付期間5秒と移動速度+80%。","parameters":{"BloomSoundEffect":"Heal4","HealSoundEffect":"Heal1"}}
 ,{"name":"ProjectR_ApolloPlagueRain","status":true,"description":"v1.0.0 Apollo「疫病の矢」(設計ID 15 / apollo_plague_rain)Lv1〜3: 壁を越える矢の直撃100ダメージと半径4マスの病のサークル(5秒)。Lv2はネズミ、Lv3は矢の分裂。着弾で敵がいたら消費。","parameters":{"FireSoundEffect":"Bow3","LandSoundEffect":"Blow5"}}
 ,{"name":"ProjectR_ApolloLaurelWreath","status":true,"description":"v1.0.0 Apollo「月桂冠」(設計ID 11 / apollo_laurel_wreath)Lv1〜3: 半径5マスの月桂樹の根(7秒)。触れている味方は秒間50回復・被ダメージ-30%。Lv2は移動+20%と敵へスリップ、Lv3は敵の遠距離攻撃を根の壁で防ぐ。","parameters":{"GrowSoundEffect":"Twine","BlockSoundEffect":"Parry"}}
+,{"name":"ProjectR_ApolloLyreRhythm","status":true,"description":"v1.0.0 Apollo「竪琴」(設計ID 10 / apollo_lyre_rhythm)Lv1〜3: 3秒間に流れる音符(火力・速度・ヒール・病)を攻撃ボタンのタイミングで最大3回選ぶ。Lv2で全部同じなら画面全体+クレンズ、Lv3で音符が5周。","parameters":{"NoteSoundEffect":"Chime2","MissSoundEffect":"Cancel2"}}
 ,{"name":"ProjectR_HermesProductionDeck","status":true,"description":"v1.0.0 Hermes本番デッキ統合(H2C-A): 指輪の初回入手で7種30枚を一度だけ付与・デッキ初期化・表示・旧セーブ診断。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaZetsu","status":true,"description":"v1.0.0 DEV専用 Combat Test Arena 追加: 絶(Zetsu)テスト開始(Playtest限定)。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaHermesB1","status":true,"description":"v1.0.0 DEV専用 Combat Test Arena 追加: 薙ぎ払い・葦笛・絶のテスト開始(Playtest限定)。","parameters":{}}

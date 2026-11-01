@@ -22,7 +22,7 @@
  *   spec = { seconds, damageTaken?, weakness?, weaknessMode?("rateMultiplier"=既定 / "excessScale"), attackRate?, dot?: { perSecond, tickSeconds?, source?, element?, weaknessMultiplier? }, source?, tags? }
  *   ・damageTaken: 被ダメージ倍率(1=中立)。ダメージ(HPを減らす呼び出し)1回につき1回だけ掛かる(DamageModifiers 経由)。
  *   ・weakness: 弱点(属性有効度>1)のときの修飾。weaknessMode が rateMultiplier(既定)なら「有効度 x 値」(病の+3% = 1.03)、excessScale なら「1 + (有効度 - 1) x 値」(月桂冠の増分-90% = 0.1)。1=中立。
- *   ・attackRate: 敵の攻撃力・魔力(param 2・4)の倍率(敵Eventのバトラーだけ)。基礎ステータスは書き換えず、paramRateの外側で掛ける。
+ *   ・attackRate: 攻撃力・魔力(param 2・4)の倍率(敵Eventのバトラーと、主人公("player")。竪琴の火力の音符・病用)。基礎ステータスは書き換えず、paramRateの外側で掛ける。
  *   ・dot: 継続ダメージ(敵Eventだけ)。tickSeconds(既定1秒)ごとに perSecond x tickSeconds を固定ダメージで与える。
  *   同じ対象・同じidの再付与は「持続時間の更新(上書き)」で、重ねません。別idの状態は並立して、倍率は積。
  *
@@ -46,7 +46,7 @@
     const map = () => (typeof $gameMap !== "undefined" ? $gameMap : null);
     const finite = v => typeof v === "number" && Number.isFinite(v);
     const eventOf = key => { const m = map(); return m && key.indexOf("event:") === 0 ? m.event(Number(key.slice(6))) : null; };
-    const battlerOf = key => { const e = eventOf(key); try { return e && typeof SgetBattlerForH === "function" ? SgetBattlerForH(e) : null; } catch (_error) { return null; } };
+    const battlerOf = key => { if (key === "player") return typeof $gameParty !== "undefined" ? $gameParty.leader() : null; const e = eventOf(key); try { return e && typeof SgetBattlerForH === "function" ? SgetBattlerForH(e) : null; } catch (_error) { return null; } };
     const attackRates = typeof WeakMap !== "undefined" ? new WeakMap() : null; // battler -> rate
 
     const valid = target => /^(player|ally:\d+|event:\d+)$/.test(String(target || ""));

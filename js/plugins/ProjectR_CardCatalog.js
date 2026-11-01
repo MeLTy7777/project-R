@@ -142,9 +142,9 @@
             runtimeCardId: "apollo_eros_arrow", implemented: true, status: "implemented", targetTypeStatus: "confirmed", implementedLevels: 3,
             migration: migration(null, "new", "implemented", "Phase Apollo-A6AでLv1、A6BでLv2、A6CでLv3を新ランタイムID apollo_eros_arrow として実装(登録上の最大Lvは3)。旧カードに対応なし。新規。") }),
         apolloRow(10, "竪琴", "special", 2, 4, { workbookTargetType: "その他", targetType: "instant", category: "special",
-            runtimeCardId: "apollo_lyre_rhythm", legacyCandidates: Object.freeze(["apollo_lyre_calm"]),
-            migration: migration("apollo_lyre_calm", "coexist-pending", "reserved-not-implemented",
-                "新ランタイムID apollo_lyre_rhythm を予約。旧「リラの支援/竪琴の鎮静」(ally・最大3・Cooldown 10・睡眠を防ぐState)とは効果が根本的に別(新: 音符のリズム入力)で、自動変換しない。旧カードは共存。") }),
+            runtimeCardId: "apollo_lyre_rhythm", implemented: true, status: "implemented", targetTypeStatus: "confirmed", implementedLevels: 3, legacyCandidates: Object.freeze(["apollo_lyre_calm"]),
+            migration: migration("apollo_lyre_calm", "coexist-pending", "implemented-as-new-id",
+                "Phase Apollo-A7でLv1〜3を新ランタイムID apollo_lyre_rhythm として実装。旧「リラの支援/竪琴の鎮静」(ally・最大3・Cooldown 10・睡眠を防ぐState)とは効果が根本的に別(新: 音符のリズム入力)で、自動変換しない。旧カードは共存。") }),
         apolloRow(11, "月桂冠", "strong", 3, 8, { workbookTargetType: "Buff", targetType: "instant", category: "support",
             runtimeCardId: "apollo_laurel_wreath", implemented: true, status: "implemented", targetTypeStatus: "confirmed", implementedLevels: 3,
             migration: migration(null, "new", "implemented", "Phase Apollo-A7でLv1〜3を新ランタイムID apollo_laurel_wreath として実装。旧カードに対応なし。新規。") }),
@@ -211,7 +211,9 @@
         Object.freeze({ cardId: "apollo_plague_rain", ringId: "apollo", maxCopies: 4, cooldownSeconds: 5, maxLevel: 3,
             rarity: "strong", category: "disrupt", targetType: "direction" }),
         Object.freeze({ cardId: "apollo_laurel_wreath", ringId: "apollo", maxCopies: 3, cooldownSeconds: 8, maxLevel: 3,
-            rarity: "strong", category: "support", targetType: "instant" })
+            rarity: "strong", category: "support", targetType: "instant" }),
+        Object.freeze({ cardId: "apollo_lyre_rhythm", ringId: "apollo", maxCopies: 2, cooldownSeconds: 4, maxLevel: 3,
+            rarity: "special", category: "special", targetType: "instant" })
     ]);
     const registerRuntimeCards = () => {
         const registry = root.ProjectRCardDeck?.definitions;
