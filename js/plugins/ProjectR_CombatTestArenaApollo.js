@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc v1.0.0 DEV専用 Combat Test Arena 追加: 黄金の矢(apollo_golden_volley)のテスト開始(Playtest限定)。
+ * @plugindesc v1.1.0 DEV専用 Combat Test Arena 追加: 黄金の矢(apollo_golden_volley)・エロスの矢(apollo_eros_arrow)のテスト開始(Playtest限定)。
  * @author ProjectR
  * @base ProjectR_CombatTestArena
  * @base ProjectR_ApolloGoldenVolley
@@ -10,8 +10,8 @@
  * ProjectR_CombatTestArenaApollo.js
  *
  * Playtest専用。F8のConsoleから使います(アリーナの固定APIは変えません)。
- *   ProjectRApolloTest.start(level = 1)  Apolloの指輪を持ち、アリーナでテストを始め、手札5枚すべてを黄金の矢にして再開始する。
- *   ProjectRApolloTest.setLevel(level)   所持データのレベル 1〜3(戦闘中でも反映。Lv3は11本の扇。長押しのビームは未実装で、長押しで離すと「未実装」表示のまま失敗)
+ *   ProjectRApolloTest.start(level = 1, card = "golden")  Apolloの指輪を持ち、アリーナでテストを始め、手札5枚すべてをそのカードにして再開始する。card = "golden"(黄金の矢) / "eros"(エロスの矢。Lv1だけ)
+ *   ProjectRApolloTest.setLevel(level)   黄金の矢の所持データのレベル 1〜3(戦闘中でも反映。Lv3は11本の扇。長押しのビームは未実装で、長押しで離すと「未実装」表示のまま失敗)
  *   ProjectRApolloTest.status()          手札・Lv・確定待ち・飛んでいる矢・スリップ・直近の結果(読み取り)
  *   ProjectRApolloTest.end()             アリーナのテストを終了(所持データと、この入口が渡したApolloの指輪は開始前へ戻る)
  *
@@ -24,11 +24,12 @@
     const root = typeof window !== "undefined" ? window : globalThis;
     const isPlaytest = () => typeof Utils !== "undefined" && typeof Utils.isOptionValid === "function" && Utils.isOptionValid("test") === true;
     if (!isPlaytest()) return;
-    const CARD = "apollo_golden_volley";
+    const CARDS = Object.freeze({ golden: "apollo_golden_volley", eros: "apollo_eros_arrow" });
+    let CARD = CARDS.golden; // 現在のテストのカード(start で選ぶ)
     const DECK_SIZE = 30;
     const deck = () => root.ProjectRCardDeck;
     const arena = () => root.ProjectRCombatTestArena;
-    const volley = () => root.ProjectRApolloGoldenVolley;
+    const volley = () => (CARD === CARDS.eros ? root.ProjectRApolloErosArrow : root.ProjectRApolloGoldenVolley);
     const fail = reason => ({ ok: false, reason });
     let grantedRing = false; // このDEVの入口が渡した指輪(戦闘の余韻が明けたら返す)
     let returnRing = false;
@@ -42,10 +43,12 @@
     };
     const setLevel = level => {
         const result = deck()?.setCardLevel(CARD, level);
-        return result?.ok ? { ok: true, level: volley()?.cardLevel?.() } : fail("cardUnavailable");
+        return result?.ok ? { ok: true, level: volley()?.cardLevel?.() ?? level } : fail("cardUnavailable");
     };
-    const start = (level = 1) => {
+    const start = (level = 1, card = "golden") => {
         const d = deck(), a = arena();
+        if (!Object.prototype.hasOwnProperty.call(CARDS, card)) return fail("unknownCard");
+        CARD = CARDS[card];
         if (!d || !a || !volley()) return fail("pluginsUnavailable");
         if (!a.status().cardBattleActive) {
             // 指輪の譲渡は戦闘の外だけ可能。Apolloの指輪をDEV用に渡す(アリーナの終了で開始前の所持データへ戻る)。
@@ -79,16 +82,16 @@
             Math.random = realRandom;
             for (const [id, original] of originals) registry.set(id, original);
         }
-        return { ok: true, card: CARD, level: volley().cardLevel(), hand: d.getBattleState().hand.map(c => c.cardId) };
+        return { ok: true, card: CARD, level: volley().cardLevel?.() ?? 1, hand: d.getBattleState().hand.map(c => c.cardId) };
     };
     const status = () => {
         const d = deck(), state = d?.getBattleState?.() || null, v = volley();
         return {
             cardBattleActive: !!d?.isCardBattleActive?.(),
-            level: v?.cardLevel?.() ?? null,
+            level: v?.cardLevel?.() ?? (CARD === CARDS.eros ? 1 : null),
             hand: state ? state.hand.map(card => card.cardId) : [],
             counts: state ? { draw: state.drawPile.length, discard: state.discardPile.length, cooldown: state.cooldownPile.length } : null,
-            pending: v?.getPending?.() ?? null, arrows: v?.getActiveArrows?.() ?? [], slips: v?.getActiveSlips?.() ?? [],
+            card: CARD, pending: v?.getPending?.() ?? null, arrows: v?.getActiveArrows?.() ?? [], slips: v?.getActiveSlips?.() ?? [],
             last: v?.getLastResult?.() ?? null, beamAttempts: v?.getBeamAttempts?.() ?? [], press: root.ProjectRCardBattleInput?.getPressSessions?.() ?? [],
             cutIn: root.ProjectRCutIn?.getActive?.() ?? [], vfx: root.ProjectRPresentationVfx?.diagnostics?.() ?? null
         };

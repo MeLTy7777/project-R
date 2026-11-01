@@ -9,7 +9,7 @@ const TMP_SAVE = norm(process.env.MZ_TMP_SAVE);
 const RESERVED = ["apollo_golden_volley", "apollo_eros_arrow", "apollo_lyre_rhythm", "apollo_laurel_wreath", "apollo_hyacinthus", "apollo_gigas_slayer", "apollo_oracle", "apollo_plague_rain"];
 const LEGACY = ["apollo_golden_arrow", "apollo_plague_attack", "apollo_lyre_calm"];
 // 黄金の矢(apollo_golden_volley)はPhase A4で実装・登録済み。残りの7枚が引き続き予約(未登録)。
-const INACTIVE = RESERVED.filter(id => id !== "apollo_golden_volley");
+const INACTIVE = RESERVED.filter(id => id !== "apollo_golden_volley" && id !== "apollo_eros_arrow"); // A4・A6Aで実装済みの2枚を除く
 const COPIES = [5, 5, 2, 3, 3, 5, 3, 4];
 (async () => {
   if (!process.env.MZ_TMP_SAVE) throw new Error("MZ_TMP_SAVE(一時のsaveフォルダ)を指定してください");
@@ -34,13 +34,13 @@ const COPIES = [5, 5, 2, 3, 3, 5, 3, 4];
   await check("A1 カタログ: 15設計(Hermes 7 + Apollo 8)・Apolloの予約ID・最大コピー合計30・コピー上限(5/5/2/3/3/5/3/4)", async () => {
     const v = await json("({ n: ProjectRCardCatalog.designs().length, gods: ProjectRCardCatalog.gods(), ids: ProjectRCardCatalog.godDesign('apollo').map(function(d) { return d.runtimeCardId; }), copies: ProjectRCardCatalog.godDesign('apollo').map(function(d) { return d.maxCopies; }), total: ProjectRCardCatalog.godTotalMaxCopies('apollo'), status: ProjectRCardCatalog.godStatus('apollo'), hermes: ProjectRCardCatalog.godTotalMaxCopies('hermes'), ready: [ProjectRCardCatalog.isGodDeckReady('hermes'), ProjectRCardCatalog.isGodDeckReady('apollo')], deck: ProjectRCardCatalog.buildGodDeck('apollo') })");
     rec("A1 catalog", v.n === 15 && JSON.stringify(v.gods) === '["hermes","apollo"]' && JSON.stringify(v.ids) === JSON.stringify(RESERVED) && JSON.stringify(v.copies) === JSON.stringify(COPIES) && v.total === 30 && v.hermes === 30
-      && v.status.reserved === 7 && v.status.implemented === 1 && v.ready[0] === true && v.ready[1] === false && v.deck === null, JSON.stringify(v).slice(0, 300));
+      && v.status.reserved === 6 && v.status.implemented === 2 && v.ready[0] === true && v.ready[1] === false && v.deck === null, JSON.stringify(v).slice(0, 300));
   });
 
   await check("A2 衝突なし・未登録: runtimeIdAuditが問題0件、予約8枚はレジストリに無く、旧Apollo 3枚とHermes 7枚は従来どおり登録されている", async () => {
     const v = await json("({ audit: ProjectRCardCatalog.runtimeIdAudit(), inactive: ProjectRCardCatalog.inactiveRuntimeCards(), registry: ProjectRCardDeck.definitions.cardDefinitions().map(function(c) { return c.cardId; }), registered: ProjectRCardCatalog.registeredRuntimeCards() })");
-    rec("A2 audit", v.audit.problems.length === 0 && v.inactive.length === 7 && JSON.stringify(v.inactive) === JSON.stringify(INACTIVE) && INACTIVE.every(id => v.registry.indexOf(id) < 0) && v.registry.indexOf("apollo_golden_volley") >= 0 && LEGACY.every(id => v.registry.indexOf(id) >= 0)
-      && v.registry.length === 15 && v.registered.length === 8, JSON.stringify({ problems: v.audit.problems, registry: v.registry.length, registered: v.registered.length }));
+    rec("A2 audit", v.audit.problems.length === 0 && v.inactive.length === 6 && JSON.stringify(v.inactive) === JSON.stringify(INACTIVE) && INACTIVE.every(id => v.registry.indexOf(id) < 0) && v.registry.indexOf("apollo_golden_volley") >= 0 && LEGACY.every(id => v.registry.indexOf(id) >= 0)
+      && v.registry.indexOf("apollo_eros_arrow") >= 0 && v.registry.length === 16 && v.registered.length === 9, JSON.stringify({ problems: v.audit.problems, registry: v.registry.length, registered: v.registered.length }));
   });
 
   await check("A3 本番で使えない: 予約カードは解放・付与(API/プラグインコマンド)できず、デッキにも入らない。Hermesの指輪の初期付与は30枚のままApolloを含まない", async () => {

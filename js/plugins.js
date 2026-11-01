@@ -65,7 +65,7 @@ var $plugins =
 ,{"name":"ProjectR_TargetEligibility","status":true,"description":"v1.0.0 ProjectR 敵の標的選択の適格性(秘匿): Hendrixの検知・キャッシュに接続。","parameters":{"HostileTag":"<enemy>"}}
 ,{"name":"ProjectR_PresentationVfx","status":true,"description":"v1.0.0 共通VFX層: カードID→VFX Designerライブラリ→ワールド基準→後片付け。表示専用。","parameters":{"MappingsJson":""}}
 ,{"name":"ProjectR_SoulCollection","status":true,"description":"v1.0.0 魂の収集基盤: 戦闘中だけの一時オブジェクト。生成・範囲内の回収(壁越え不可)・1回だけの回収・後片付け。","parameters":{"MaxSouls":"60","MaxSoulVfx":"30"}}
-,{"name":"ProjectR_CutIn","status":true,"description":"v1.0.0 共通カットイン(通常=ラベル型の神の目元 / Ultimate=中央大型)。表示専用。","parameters":{"CutInCardIds":"[\"hermes_zetsu\",\"hermes_sweep\",\"hermes_reed_flute\",\"hermes_issen\",\"hermes_strength\",\"hermes_veil\",\"hermes_psychopomp\",\"apollo_golden_volley\"]","GodEyesJson":"{\"hermes\":\"ProjectR_CutIn_Hermes_Eyes_DEV\",\"apollo\":\"ProjectR_CutIn_Hermes_Eyes_DEV\"}","PlayerEyesFile":"ProjectR_CutIn_Player_Eyes_DEV"}}
+,{"name":"ProjectR_CutIn","status":true,"description":"v1.0.0 共通カットイン(通常=ラベル型の神の目元 / Ultimate=中央大型)。表示専用。","parameters":{"CutInCardIds":"[\"hermes_zetsu\",\"hermes_sweep\",\"hermes_reed_flute\",\"hermes_issen\",\"hermes_strength\",\"hermes_veil\",\"hermes_psychopomp\",\"apollo_golden_volley\",\"apollo_eros_arrow\"]","GodEyesJson":"{\"hermes\":\"ProjectR_CutIn_Hermes_Eyes_DEV\",\"apollo\":\"ProjectR_CutIn_Hermes_Eyes_DEV\"}","PlayerEyesFile":"ProjectR_CutIn_Player_Eyes_DEV"}}
 ,{"name":"ProjectR_HermesZetsu","status":true,"description":"v1.0.0 Hermes「絶」: マウス位置へ瞬間移動 + 通常武器1ヒット強化。","parameters":{}}
 ,{"name":"ProjectR_HermesSweep","status":true,"description":"v1.0.0 Hermes「薙ぎ払い」(設計ID 5): マウス方向の190度・4マスの扇。Lv2先端+50 / Lv3クリティカル率+50%。","parameters":{"SoundEffect":"Slash2"}}
 ,{"name":"ProjectR_HermesReedFlute","status":true,"description":"v1.0.0 Hermes「葦笛」(設計ID 6): 半径8マスの敵を眠らせる。ダメージで起床。Lv2睡眠中+50 / Lv3クリティカル確定。","parameters":{"SleepSeconds":"0"}}
@@ -75,6 +75,7 @@ var $plugins =
 ,{"name":"ProjectR_HermesPsychopomp","status":true,"description":"v1.0.0 Hermes「サイコポンポス」(設計ID 2): 10秒間、主人公が倒した敵が魂を落とす。半径5マスで回収してHP回復(Lv3は攻撃力+3%を3秒・重ね掛け)。","parameters":{"StackingMode":"additive","AfterWindow":"remove","RecastPolicy":"refresh","CollectAtFullHp":"true","MaxHermesVisuals":"3"}}
 ,{"name":"ProjectR_HitStop","status":true,"description":"v1.0.0 共通ヒットストップ(当たったイベントだけを数frame止める。時計・入力・弾・他の敵は止めない)。","parameters":{}}
 ,{"name":"ProjectR_ApolloGoldenVolley","status":true,"description":"v1.2.0 Apollo「黄金の矢」(設計ID 8 / apollo_golden_volley)Lv1〜3: 矢を3/5/11本、Lv3の長押しは幅3マスのビーム。命中が確定してから消費。","parameters":{"SoundEffect":"Chime2","HitSoundEffect":"Chime1","ChargeReadySoundEffect":"Bell1"}}
+,{"name":"ProjectR_ApolloErosArrow","status":true,"description":"v1.0.0 Apollo「エロスの矢」(設計ID 9 / apollo_eros_arrow)Lv1: 1秒で10本の追尾する矢。敵に20ダメージ・味方に50回復。命中が確定してから消費。","parameters":{"ArrowSoundEffect":"Chime2","ImpactSoundEffect":"Chime1"}}
 ,{"name":"ProjectR_HermesProductionDeck","status":true,"description":"v1.0.0 Hermes本番デッキ統合(H2C-A): 指輪の初回入手で7種30枚を一度だけ付与・デッキ初期化・表示・旧セーブ診断。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaZetsu","status":true,"description":"v1.0.0 DEV専用 Combat Test Arena 追加: 絶(Zetsu)テスト開始(Playtest限定)。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaHermesB1","status":true,"description":"v1.0.0 DEV専用 Combat Test Arena 追加: 薙ぎ払い・葦笛・絶のテスト開始(Playtest限定)。","parameters":{}}

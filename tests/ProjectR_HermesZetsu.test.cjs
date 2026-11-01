@@ -18,8 +18,8 @@ test("旧7枚のCardDefinitions(plugins.js)は変えず、絶は実行時に追�
     const def = deckApi(w).definitions.card(ZETSU);
     assert.deepEqual(plain(def), { cardId: ZETSU, ringId: "hermes", maxCopies: 5, cooldownSeconds: 0.5, maxLevel: 3, rarity: "strong", category: "movement", targetType: "ground" });
     assert.equal(Object.isFrozen(def), true);
-    assert.equal(deckApi(w).definitions.cardDefinitions().length, 15, "旧7 + 実行時に追加した7(絶・薙ぎ払い・葦笛・一閃・ストレングス・ヴェイル・サイコポンポス) + 黄金の矢(Apollo-A4)");
-    assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.registeredRuntimeCards()), [ZETSU, "hermes_sweep", "hermes_reed_flute", "hermes_issen", "hermes_strength", "hermes_veil", "hermes_psychopomp", "apollo_golden_volley"]);
+    assert.equal(deckApi(w).definitions.cardDefinitions().length, 16, "旧7 + 実行時に追加した7(絶・薙ぎ払い・葦笛・一閃・ストレングス・ヴェイル・サイコポンポス) + 黄金の矢(Apollo-A4) + エロスの矢(Apollo-A6A)");
+    assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.registeredRuntimeCards()), [ZETSU, "hermes_sweep", "hermes_reed_flute", "hermes_issen", "hermes_strength", "hermes_veil", "hermes_psychopomp", "apollo_golden_volley", "apollo_eros_arrow"]);
     // 旧カードの定義は一切変わっていない
     const reed = deckApi(w).definitions.card("hermes_reed_flute_sleep");
     assert.deepEqual([reed.maxCopies, reed.cooldownSeconds, reed.rarity], [2, 12, "strong"]);

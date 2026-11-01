@@ -28,9 +28,9 @@ test("登録: 強力 / 最大5枚 / 最大Lv3 / Cooldown 3秒 / Ground / Apollo�
     assert.equal(row.runtimeCardId, VOLLEY);
     assert.equal(row.implemented, true);
     assert.equal(row.implementedLevels, 3, "実装したのはLv1〜3(Lv3は扇だけ。A5A)"); assert.equal(row.beamImplemented, true, "ビームはA5Bで実装");
-    assert.equal(w.ctx.ProjectRCardCatalog.godStatus("apollo").implemented, 1, "Apolloで実装済みはこの1枚だけ");
+    assert.equal(w.ctx.ProjectRCardCatalog.godStatus("apollo").implemented, 2, "Apolloで実装済みは黄金の矢とエロスの矢(A6A)の2枚");
     assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.inactiveRuntimeCards()).filter(id => id.startsWith("apollo_")).sort(),
-        ["apollo_eros_arrow", "apollo_gigas_slayer", "apollo_hyacinthus", "apollo_laurel_wreath", "apollo_lyre_rhythm", "apollo_oracle", "apollo_plague_rain"], "残りの7枚は引き続き未登録");
+        ["apollo_gigas_slayer", "apollo_hyacinthus", "apollo_laurel_wreath", "apollo_lyre_rhythm", "apollo_oracle", "apollo_plague_rain"], "残りの6枚は引き続き未登録(エロスの矢はA6Aで登録)");
     assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.runtimeIdAudit().problems), []);
 });
 
@@ -555,7 +555,7 @@ test("本番の取得経路には載らない: Hermesの初期付与(指輪の�
     assert.equal(cat.buildGodDeck("apollo"), null);
     assert.equal(cat.isGodDeckReady("apollo"), false);
     assert.equal(cat.godStatus("apollo").ready, false);
-    assert.deepEqual(cat.godStatus("apollo").blockers.length, 7);
+    assert.deepEqual(cat.godStatus("apollo").blockers.length, 6, "Apolloの未実装は6枚(エロスの矢はA6Aで実装)");
     const production = w.ctx.ProjectRHermesProductionDeck;
     const starter = plain(production.starterSet());
     assert.ok(Object.keys(starter).length >= 7 || starter.length >= 7, "初期セットはHermesの7枚");

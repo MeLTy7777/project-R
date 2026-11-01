@@ -89,6 +89,11 @@
     const CHARGE_BOWHOLD_SHEET = Object.freeze({ file: "Animation/ProjectR_Charge_BowHold", rows: 1, columns: 2, fps: 8 });
     const CHARGE_GLOW_SHEET = Object.freeze({ file: "Animation/ProjectR_Charge_Glow", rows: 2, columns: 4, fps: 10 });
     const CHARGE_READY_SHEET = Object.freeze({ file: "Animation/ProjectR_Charge_Ready", rows: 2, columns: 4, fps: 24 });
+    // Apollo-A6A(tools/gen_dev_a6a_assets.cjs): エロスの矢。発射の閃光(1コマ96px)・飛ぶ矢の光(1コマ64px・ループ)・敵に当たった火花(1コマ96px)・味方に当たった癒しの光(1コマ96px)。ピンクゴールド。
+    const EROS_MUZZLE_SHEET = Object.freeze({ file: "Animation/ProjectR_Eros_Muzzle", rows: 2, columns: 4, fps: 24 });
+    const EROS_GLOW_SHEET = Object.freeze({ file: "Animation/ProjectR_Eros_Glow", rows: 2, columns: 4, fps: 12 });
+    const EROS_HITDAMAGE_SHEET = Object.freeze({ file: "Animation/ProjectR_Eros_HitDamage", rows: 2, columns: 4, fps: 24 });
+    const EROS_HITHEAL_SHEET = Object.freeze({ file: "Animation/ProjectR_Eros_HitHeal", rows: 2, columns: 4, fps: 16 });
     const defaults = {
         // 出発点: 予備動作の間(移動の前)にプレイヤーへ出し、stickでその場(出発点)に固定する。移動後もノイズは出発点に残る。
         "hermes_zetsu.departure": { library: "ProjectR_Zetsu_Departure", sheet: NOISE_SHEET, anchor: "player", stick: true, scale: 100, opacity: 255, offsetY: -24 },
@@ -127,6 +132,11 @@
         "apollo_charge.glow3": { library: "ProjectR_Charge_Glow", sheet: CHARGE_GLOW_SHEET, anchor: "target", loop: "infinite", scale: 105, opacity: 230, offsetY: -18, blend: "Add" },
         "apollo_charge.ready": { library: "ProjectR_Charge_Ready", sheet: CHARGE_READY_SHEET, anchor: "target", scale: 110, opacity: 255, offsetY: -18, blend: "Add" },
         "apollo_volley.particles": { library: "ProjectR_Volley_Particles", sheet: VOLLEY_PARTICLES_SHEET, anchor: "event", stick: true, scale: 100, opacity: 235, offsetY: -30, blend: "Add" },
+        // エロスの矢(Apollo-A6A): いずれも play時の eventId(Apolloの表示Event・矢のEvent・当たった対象のEvent、または"player")に結び付ける。glowは止めるまでループ(stop(note))。
+        "apollo_eros.muzzle": { library: "ProjectR_Eros_Muzzle", sheet: EROS_MUZZLE_SHEET, anchor: "target", scale: 100, opacity: 255, offsetY: -18, blend: "Add" },
+        "apollo_eros.glow": { library: "ProjectR_Eros_Glow", sheet: EROS_GLOW_SHEET, anchor: "target", loop: "infinite", scale: 100, opacity: 200, offsetY: 0, blend: "Add" },
+        "apollo_eros.hit": { library: "ProjectR_Eros_HitDamage", sheet: EROS_HITDAMAGE_SHEET, anchor: "target", scale: 100, opacity: 255, offsetY: -18, blend: "Add" },
+        "apollo_eros.heal": { library: "ProjectR_Eros_HitHeal", sheet: EROS_HITHEAL_SHEET, anchor: "target", scale: 100, opacity: 255, offsetY: -12, blend: "Add" },
         // 神の消失: 神(表示Event)の位置に黒いノイズ。
         "hermes.vanish": { library: "ProjectR_Hermes_Vanish", sheet: NOISE_SHEET, anchor: "event", stick: true, scale: 110, opacity: 255, offsetY: -24 }
     };

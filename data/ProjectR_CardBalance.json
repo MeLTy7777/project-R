@@ -48,6 +48,12 @@
     "beamMaxHitsPerTarget": { "label": "1回の発動で同じ敵に当たる最大ヒット数", "unit": "回", "min": 1, "max": 100, "integer": true },
     "hitStopFrames": { "label": "ヒットストップ(1ヒットで止める長さ。0=なし)", "unit": "frame", "min": 0, "max": 60, "integer": true },
     "hitStopMaxFrames": { "label": "ヒットストップの合計上限(1発動・1体)", "unit": "frame", "min": 0, "max": 300, "integer": true },
+    "emitSeconds": { "label": "連射の時間(全部の矢を放ち終えるまで)", "unit": "秒", "min": 0.1, "max": 10 },
+    "homingRadiusTiles": { "label": "追尾の範囲(矢から。0=追尾なし)", "unit": "マス", "min": 0, "max": 20 },
+    "homingTurnRate": { "label": "追尾の曲がる速さ", "unit": "度/秒", "min": 1, "max": 3600 },
+    "projectileLifetimeSeconds": { "label": "矢の寿命", "unit": "秒", "min": 0.1, "max": 4 },
+    "selfHealEnabled": { "label": "主人公自身への回復(0=しない 1=する。仮)", "unit": "0/1", "min": 0, "max": 1, "integer": true },
+    "fullHpAlliesEligible": { "label": "HP満タンの味方にも当てる(0=素通り 1=当てる。仮)", "unit": "0/1", "min": 0, "max": 1, "integer": true },
     "regenPerSecond": { "label": "毎秒の継続回復", "unit": "HP/秒", "min": 0, "max": 99999, "reserved": true },
     "dotDamage": { "label": "継続ダメージ(1回分)", "unit": "HP", "min": 0, "max": 99999, "integer": true, "reserved": true },
     "criticalMultiplier": { "label": "クリティカル倍率", "unit": "倍", "min": 1, "max": 20, "reserved": true },
@@ -131,6 +137,17 @@
         "1": { "damage": 50, "projectileCount": 3, "spreadDegrees": 15, "thickWidthTiles": 0, "splitTotal": 0, "splitSeconds": 5 },
         "2": { "projectileCount": 5, "thickWidthTiles": 0.9, "splitTotal": 100 },
         "3": { "projectileCount": 11, "spreadDegrees": 10 }
+      }
+    },
+    "apollo_eros_arrow": {
+      "name": "エロスの矢", "designId": 9, "cooldownSeconds": 5,
+      "constants": {
+        "emitSeconds": 1, "projectileSpeed": 12, "homingRadiusTiles": 3, "homingTurnRate": 720, "projectileLifetimeSeconds": 2,
+        "selfHealEnabled": 0, "fullHpAlliesEligible": 0,
+        "element": 0, "weaknessMultiplier": 1
+      },
+      "levels": {
+        "1": { "damage": 20, "healAmount": 50, "projectileCount": 10 }
       }
     }
   }

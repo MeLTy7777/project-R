@@ -7,7 +7,7 @@ const { session } = require("./lib.cjs");
 const OUT = process.env.MZ_OUT || "mz_out";
 const CARD = "apollo_golden_volley";
 const API = "ProjectRApolloGoldenVolley";
-const RESERVED_OTHERS = ["apollo_eros_arrow", "apollo_lyre_rhythm", "apollo_laurel_wreath", "apollo_hyacinthus", "apollo_gigas_slayer", "apollo_oracle", "apollo_plague_rain"];
+const RESERVED_OTHERS = ["apollo_lyre_rhythm", "apollo_laurel_wreath", "apollo_hyacinthus", "apollo_gigas_slayer", "apollo_oracle", "apollo_plague_rain"];
 (async () => {
   const s = await session(); const { ev, c, rec, sleep } = s;
   const check = async (id, fn) => { try { await fn(); } catch (e) { rec(id + " (script error)", false, String(e.stack || e.message).slice(0, 500)); } };
@@ -56,8 +56,8 @@ const RESERVED_OTHERS = ["apollo_eros_arrow", "apollo_lyre_rhythm", "apollo_laur
     const lib = await ev(`new Promise(function(res) { try { Promise.resolve(getAnimationFromLibrary('ProjectR_Volley_Burst')).then(function(a) { Promise.resolve(getAnimationFromLibrary('ProjectR_Volley_Particles')).then(function(b) { res(!!a && !!b); }, function() { res(false); }); }, function() { res(false); }); } catch (e) { res('err'); } })`);
     const files = ["img/characters/VFX/$ProjectR_GoldenArrow.png", "img/characters/VFX/$ProjectR_GoldenArrowThick.png", "img/pictures/ProjectR_Bow_DEV.png", "img/pictures/Animation/ProjectR_Volley_Burst.png", "img/pictures/Animation/ProjectR_Volley_Particles.png", "img/characters/$DEV3H_ArmExtend_f4.png"]
       .every(f => fs.existsSync(f));
-    rec("V0 boot", v.api && v.def.maxCopies === 5 && v.def.cooldownSeconds === 3 && v.def.targetType === "ground" && v.def.rarity === "strong" && v.inactive.length === 7 && JSON.stringify(v.inactive.slice().sort()) === JSON.stringify(RESERVED_OTHERS.slice().sort())
-      && v.registry === 15 && JSON.stringify(v.legacy) === JSON.stringify([[3, 4, "direction"], [2, 12, "direction"], [3, 10, "ally"]]) && v.template && v.balance && v.effects2.projectileCount === 5 && v.test === "function"
+    rec("V0 boot", v.api && v.def.maxCopies === 5 && v.def.cooldownSeconds === 3 && v.def.targetType === "ground" && v.def.rarity === "strong" && v.inactive.length === 6 && JSON.stringify(v.inactive.slice().sort()) === JSON.stringify(RESERVED_OTHERS.slice().sort())
+      && v.registry === 16 && JSON.stringify(v.legacy) === JSON.stringify([[3, 4, "direction"], [2, 12, "direction"], [3, 10, "ally"]]) && v.template && v.balance && v.effects2.projectileCount === 5 && v.test === "function"
       && v.vfx.length === 4 && v.cut === true && lib === true && files, JSON.stringify({ ...v, lib, files }).slice(0, 700));
   });
 

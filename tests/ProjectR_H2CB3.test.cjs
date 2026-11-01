@@ -216,7 +216,7 @@ test("旧カードと新カードの監査: 新7枚 + 旧7枚(Hermes4・Apollo3)
     const g = plain(w.prod().cardGenerations());
     assert.equal(g.cards.filter(c => c.generation === "new").length, 7);
     assert.deepEqual(g.cards.filter(c => c.generation === "legacy").map(c => c.cardId).sort(), [...LEGACY_IDS].sort());
-    assert.deepEqual(g.cards.filter(c => c.generation === "other").map(c => c.cardId), ["apollo_golden_volley"], "新設計のApollo(A4)だけが「その他」");
+    assert.deepEqual(g.cards.filter(c => c.generation === "other").map(c => c.cardId), ["apollo_golden_volley", "apollo_eros_arrow"], "新設計のApollo(A4・A6A)だけが「その他」");
     assert.deepEqual(g.duplicateNames, [], "表示名が完全に同じカードは無い");
     assert.equal(g.confusablePairs.length, 3);
     for (const pair of g.confusablePairs) { assert.ok(pair.legacyName && pair.newName && pair.legacyName !== pair.newName, pair.legacy); assert.ok(d.definitions.card(pair.legacy), "旧カードの定義は残る"); }

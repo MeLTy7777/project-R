@@ -45,10 +45,10 @@ const near = (a, b, t) => Math.abs(a - b) <= t;
 
   await check("R0 boot: 3つのPluginが読み込まれ、JSONがfsから読めている(source=file)", async () => {
     const st = await json(`${B}.status()`);
-    rec("R0 balance ready from file", st.ready && st.source === "file" && st.cards === 8, JSON.stringify(st));
+    rec("R0 balance ready from file", st.ready && st.source === "file" && st.cards === 9, JSON.stringify(st));
     rec("R0b Elements / Editor が存在する(Playtest)", await ev("!!(ProjectRElements && ProjectRCardBalanceEditor && ProjectRCardBalance.isPlaytest())"), "");
     const ids = await json(`${B}.cardIds()`);
-    rec("R0c 8枚のランタイムID(Hermes 7 + 黄金の矢)", ids.length === 8 && ids.filter(i => /^hermes_/.test(i)).length === 7 && ids.indexOf("apollo_golden_volley") >= 0, ids.join(","));
+    rec("R0c 9枚のランタイムID(Hermes 7 + 黄金の矢 + エロスの矢)", ids.length === 9 && ids.filter(i => /^hermes_/.test(i)).length === 7 && ids.indexOf("apollo_golden_volley") >= 0 && ids.indexOf("apollo_eros_arrow") >= 0, ids.join(","));
   });
 
   await check("R1 既定値がJSON化の前の値と同じ(Lv別効果・クールダウン・定数)", async () => {
@@ -193,7 +193,7 @@ const near = (a, b, t) => Math.abs(a - b) <= t;
     const sceneFrames0 = await ev("window.__mu"); await sleep(600); const sceneFrames1 = await ev("window.__mu");
     rec("R11 open + paused", open && sceneFrames1 === sceneFrames0 && frames0 > 10, `open=${open} Scene_Map.update ${sceneFrames0}->${sceneFrames1}`);
     const options = await ev("document.querySelector('[data-role=card]').options.length");
-    rec("R11b 8枚が選べる", options === 8, "options=" + options);
+    rec("R11b 9枚が選べる", options === 9, "options=" + options);
     await ev("(function() { var sel = document.querySelector('[data-role=card]'); sel.value = 'hermes_sweep'; sel.dispatchEvent(new Event('change')); return 'ok'; })()");
     await sleep(200);
     await ev("(function() { var b = Array.prototype.find.call(document.querySelectorAll('[data-scope]'), function(x) { return x.getAttribute('data-scope') === '1' && x.tagName === 'BUTTON'; }); b.click(); return 'lv1'; })()");
