@@ -19,16 +19,16 @@
  *   (DamageModifiers 側の規則・既定は変えません)。積(乗算)は仮の規則です(監査文書 §10 A5 は未確定のまま)。
  *
  * 【状態の仕様】apply(target, id, spec)
- *   spec = { seconds, damageTaken?, weakness?, attackRate?, dot?: { perSecond, tickSeconds?, source?, element?, weaknessMultiplier? }, source?, tags? }
+ *   spec = { seconds, damageTaken?, weakness?, weaknessMode?("rateMultiplier"=既定 / "excessScale"), attackRate?, dot?: { perSecond, tickSeconds?, source?, element?, weaknessMultiplier? }, source?, tags? }
  *   ・damageTaken: 被ダメージ倍率(1=中立)。ダメージ(HPを減らす呼び出し)1回につき1回だけ掛かる(DamageModifiers 経由)。
- *   ・weakness: 弱点(属性有効度>1)のときの被ダメージ倍率(rateMultiplier。1=中立)。
+ *   ・weakness: 弱点(属性有効度>1)のときの修飾。weaknessMode が rateMultiplier(既定)なら「有効度 x 値」(病の+3% = 1.03)、excessScale なら「1 + (有効度 - 1) x 値」(月桂冠の増分-90% = 0.1)。1=中立。
  *   ・attackRate: 敵の攻撃力・魔力(param 2・4)の倍率(敵Eventのバトラーだけ)。基礎ステータスは書き換えず、paramRateの外側で掛ける。
  *   ・dot: 継続ダメージ(敵Eventだけ)。tickSeconds(既定1秒)ごとに perSecond x tickSeconds を固定ダメージで与える。
  *   同じ対象・同じidの再付与は「持続時間の更新(上書き)」で、重ねません。別idの状態は並立して、倍率は積。
  *
  * API: ProjectRApolloStatus
  *   apply(target, id, spec) -> { ok, refreshed? } / remove(target, id) / has(target, id) / list(target?) / clear(reason)
- *   factorOf(target) -> { damageTaken, weakness, attackRate }   target は "event:<id>" | "player" | "ally:<id>"
+ *   factorOf(target) -> { damageTaken, weakness, weaknessMode, attackRate }   target は "event:<id>" | "player" | "ally:<id>"
  *   targetKeyOfEvent(eventId)  tick(seconds)  getLog()  setReapplyRefresh は無い(常に更新)
  */
 (() => {
@@ -52,13 +52,15 @@
     const valid = target => /^(player|ally:\d+|event:\d+)$/.test(String(target || ""));
     const factorOf = target => {
         const m = states.get(target);
-        const out = { damageTaken: 1, weakness: 1, attackRate: 1 };
+        const out = { damageTaken: 1, weakness: 1, weaknessMode: "rateMultiplier", attackRate: 1 };
         if (!m) return out;
+        const byMode = new Map(); // 弱点修飾のmode別の積(同じ対象に別modeが重なったときは、先に付いた状態のmodeだけを使う)
         for (const e of m.values()) {
             if (finite(e.spec.damageTaken)) out.damageTaken *= e.spec.damageTaken;
-            if (finite(e.spec.weakness)) out.weakness *= e.spec.weakness;
+            if (finite(e.spec.weakness)) { const mode = e.spec.weaknessMode === "excessScale" ? "excessScale" : "rateMultiplier"; byMode.set(mode, (byMode.get(mode) ?? 1) * e.spec.weakness); }
             if (finite(e.spec.attackRate)) out.attackRate *= e.spec.attackRate;
         }
+        if (byMode.size) { const first = [...byMode.keys()][0]; out.weaknessMode = first; out.weakness = byMode.get(first); if (byMode.size > 1) note({ type: "conflict", target, reason: "mixedWeaknessModes" }); }
         return out;
     };
     // DamageModifiers へ、対象ごとの積を1つだけ登録する(1に戻れば外す)。
@@ -68,12 +70,13 @@
         if (dm) {
             const dtId = `apollostatus:${target}:damageTaken`, wkId = `apollostatus:${target}:weakness`;
             if (Math.abs(f.damageTaken - 1) > EPSILON) dm.add({ id: dtId, kind: "damageTaken", target, value: Math.min(100, Math.max(0, f.damageTaken)), source: "apollostatus" }); else dm.remove(dtId);
-            if (Math.abs(f.weakness - 1) > EPSILON) dm.add({ id: wkId, kind: "weakness", target, mode: "rateMultiplier", value: Math.min(100, Math.max(0, f.weakness)), source: "apollostatus" }); else dm.remove(wkId);
+            if (Math.abs(f.weakness - 1) > EPSILON) dm.add({ id: wkId, kind: "weakness", target, mode: f.weaknessMode, value: Math.min(100, Math.max(0, f.weakness)), source: "apollostatus" }); else dm.remove(wkId);
         }
         const battler = battlerOf(target);
         if (battler && attackRates) { if (Math.abs(f.attackRate - 1) > EPSILON) attackRates.set(battler, f.attackRate); else attackRates.delete(battler); }
     };
     const validateSpec = spec => {
+        if (spec && spec.weaknessMode !== undefined && spec.weaknessMode !== "rateMultiplier" && spec.weaknessMode !== "excessScale") return "invalid:weaknessMode";
         if (!spec || !(Number(spec.seconds) > 0)) return "invalidSeconds";
         for (const key of ["damageTaken", "weakness", "attackRate"]) if (spec[key] !== undefined && !(finite(spec[key]) && spec[key] >= 0 && spec[key] <= 100)) return "invalid:" + key;
         if (spec.dot !== undefined) {

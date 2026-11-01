@@ -4,7 +4,7 @@
 // 既存の画像は上書きしない(--force で作り直す)。VFX Designerライブラリ(js/AnimationSolutionLibrary.json)へ ProjectR_A7_* を、無ければ末尾に足す。
 //   hyacinth: ProjectR_A7_Hyacinth_Bloom(192px・ループ・赤い花の輪) / _Petals(96px・花びらが散る) / _Guard(96px・ループ・受付期間の赤い光) / $ProjectR_Hyacinth.png(咲いた花のキャラ画像)
 //   plague  : ProjectR_A7_Plague_Circle(384px・ループ・半径4マス・パープルゴールドの病のサークル) / _Impact(96px・着弾) / $ProjectR_PlagueArrow.png(矢) / $ProjectR_Rat.png(ネズミ)
-//   laurel  : ProjectR_A7_Laurel_Zone(96px・ループ・白と金の根のしるし) / _Burst(96px) / $ProjectR_LaurelRoot.png(根のキャラ画像) / $ProjectR_LaurelWall.png(根の壁)
+//   laurel  : ProjectR_A7_Laurel_Zone(480px・ループ・半径5マス・白と金の根のしるし) / _Burst(96px) / $ProjectR_LaurelRoot.png(根のキャラ画像) / $ProjectR_LaurelWall.png(根の壁)
 //   lyre    : ProjectR_A7_Lyre_Wave_Gold/Red/Blue/Green/Purple(192px・水面の波紋)
 //   oracle  : ProjectR_A7_Oracle_Clock(128px・1秒で一周する時計) / _Sparkle(96px・指をはじく光の粒子)
 const fs = require("node:fs");
@@ -138,7 +138,7 @@ function setPlague() {
 }
 
 function setLaurel() {
-    sheets["ProjectR_A7_Laurel_Zone"] = sheetOf(i => rippleFrame(96, i, 8, C.PALEGREEN, C.GOLD, { seed: 12, n: 6, r: 1.8, rgb: C.WHITE }), 8, 4, 2, 96, 96);
+    sheets["ProjectR_A7_Laurel_Zone"] = sheetOf(i => rippleFrame(480, i, 8, C.PALEGREEN, C.GOLD, { seed: 12, n: 26, r: 3, rgb: C.WHITE }), 8, 4, 2, 480, 480);
     library["ProjectR_A7_Laurel_Zone"] = { fps: 8, opacity: 210, blend: "Add", z: "3", offsetY: 0 };
     sheets["ProjectR_A7_Laurel_Burst"] = sheetOf(i => burstFrame(96, i, 8, C.PALEGREEN, C.GOLD), 8, 4, 2, 96, 96);
     library["ProjectR_A7_Laurel_Burst"] = { fps: 24, opacity: 255, blend: "Add", z: "6", offsetY: -12 };

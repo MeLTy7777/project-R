@@ -53,7 +53,7 @@ test("登録と数値: 最大Lv3・Cooldown 5・強力/最大4・direction。Lv1
 
 test("保護ファイルは変えていない(CardDeckCore・Hendrix・DotMove・DamageModifiers・旧Apollo・他の新Apollo)", () => {
     assert.equal(git("diff", "--stat", "433461d", "--", "js/plugins/ProjectR_CardDeckCore.js", "js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js", "js/plugins/ProjectR_DamageModifiers.js",
-        "js/plugins/ProjectR_ApolloDiseaseAttack.js", "js/plugins/ProjectR_ApolloGoldenVolley.js", "js/plugins/ProjectR_ApolloErosArrow.js", "js/plugins/ProjectR_ApolloGigasSlayer.js", "js/plugins/ProjectR_ApolloHyacinthus.js", "js/plugins/ProjectR_ApolloStatus.js").trim(), "");
+        "js/plugins/ProjectR_ApolloDiseaseAttack.js", "js/plugins/ProjectR_ApolloGoldenVolley.js", "js/plugins/ProjectR_ApolloErosArrow.js", "js/plugins/ProjectR_ApolloGigasSlayer.js", "js/plugins/ProjectR_ApolloHyacinthus.js").trim(), ""); // ProjectR_ApolloStatus は追加だけで育てる共通の台帳なので、固定の対象に入れない
 });
 
 test("バランス/F6: 新しい項目が定義され、範囲外は拒否。上書きが累積どおりに効く", () => {

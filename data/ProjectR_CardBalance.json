@@ -93,7 +93,20 @@
     "ratSpeed": { "label": "ネズミの移動の速さ", "unit": "マス/秒", "min": 0.5, "max": 20 },
     "ratReach": { "label": "ネズミの攻撃の届く距離", "unit": "マス", "min": 0.3, "max": 5 },
     "splitCount": { "label": "分裂する矢の本数(0=分裂しない)", "unit": "本", "min": 0, "max": 11, "integer": true },
-    "splitRadiusTiles": { "label": "分裂した矢が散らばる範囲(着弾点から)", "unit": "マス", "min": 0.5, "max": 20 }
+    "splitRadiusTiles": { "label": "分裂した矢が散らばる範囲(着弾点から)", "unit": "マス", "min": 0.5, "max": 20 },
+    "rootSeconds": { "label": "根の生えている時間(パッチごと)", "unit": "秒", "min": 0.5, "max": 30 },
+    "growSeconds": { "label": "根が増える期間(使ってから。操作キャラの移動で増える)", "unit": "秒", "min": 0, "max": 30 },
+    "trailStepTiles": { "label": "根が増える移動の間隔", "unit": "マス", "min": 0.5, "max": 10 },
+    "maxPatches": { "label": "根のパッチの最大数", "unit": "個", "min": 1, "max": 12, "integer": true },
+    "laurelHealPerSecond": { "label": "根に触れている味方の継続回復(秒間)", "unit": "HP/秒", "min": 0, "max": 99999, "integer": true },
+    "laurelHealTickSeconds": { "label": "根の回復の間隔", "unit": "秒", "min": 0.1, "max": 5 },
+    "laurelDamageTaken": { "label": "根に触れている間の被ダメージ倍率(0.7 = -30%)", "unit": "倍", "min": 0.01, "max": 1 },
+    "laurelWeaknessScale": { "label": "弱点の増分の倍率(0.1 = 増分-90%)", "unit": "倍", "min": 0, "max": 1 },
+    "thornDamagePerSecond": { "label": "根に触れた敵のスリップダメージ(秒間。0=なし)", "unit": "HP/秒", "min": 0, "max": 99999, "integer": true },
+    "thornTickSeconds": { "label": "根のスリップの間隔", "unit": "秒", "min": 0.1, "max": 5 },
+    "wallSeconds": { "label": "根の壁の持続", "unit": "秒", "min": 0.2, "max": 10 },
+    "wallBlockRadiusTiles": { "label": "根の壁が弾を防ぐ半径", "unit": "マス", "min": 0.3, "max": 5 },
+    "projectileWall": { "label": "敵の遠距離攻撃を根の壁で防ぐ(0=なし / 1=あり)", "unit": "0/1", "min": 0, "max": 1, "integer": true }
   },
   "cards": {
     "hermes_issen": {
@@ -224,6 +237,20 @@
         "1": { "damage": 100 },
         "2": { "ratCount": 3, "ratDamage": 50, "ratAttackSeconds": 1, "ratSpeed": 4, "ratReach": 1 },
         "3": { "splitCount": 4, "splitRadiusTiles": 5 }
+      }
+    },
+    "apollo_laurel_wreath": {
+      "name": "月桂冠",
+      "designId": 11,
+      "cooldownSeconds": 8,
+      "constants": {
+        "radiusTiles": 5, "rootSeconds": 7, "growSeconds": 7, "trailStepTiles": 2, "maxPatches": 12, "laurelHealTickSeconds": 0.5, "thornTickSeconds": 0.5,
+        "wallSeconds": 1.5, "wallBlockRadiusTiles": 0.8, "element": 0, "weaknessMultiplier": 1
+      },
+      "levels": {
+        "1": { "laurelHealPerSecond": 50, "laurelDamageTaken": 0.7, "laurelWeaknessScale": 0.1 },
+        "2": { "speedBonus": 0.2, "thornDamagePerSecond": 30 },
+        "3": { "projectileWall": 1 }
       }
     }
   }

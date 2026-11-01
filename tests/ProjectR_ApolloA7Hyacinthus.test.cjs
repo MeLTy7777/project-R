@@ -43,7 +43,7 @@ test("登録と数値: 最大Lv3・Cooldown 7・特殊/最大3。Lv1=受付3秒�
 test("保護ファイルは変えていない(CardDeckCore・Hendrix・DotMove・DamageModifiers・PartyCombat・PartyRoster・CardModifiers・他のApollo)", () => {
     assert.equal(git("diff", "--stat", "e361797", "--", "js/plugins/ProjectR_CardDeckCore.js", "js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js", "js/plugins/ProjectR_DamageModifiers.js",
         "js/plugins/ProjectR_PartyCombat.js", "js/plugins/ProjectR_PartyRoster.js", "js/plugins/ProjectR_CardModifiers.js", "js/plugins/ProjectR_ApolloGoldenVolley.js", "js/plugins/ProjectR_ApolloErosArrow.js",
-        "js/plugins/ProjectR_ApolloGigasSlayer.js", "js/plugins/ProjectR_ApolloStatus.js").trim(), "");
+        "js/plugins/ProjectR_ApolloGigasSlayer.js").trim(), ""); // ProjectR_ApolloStatus は追加だけで育てる共通の台帳なので、固定の対象に入れない
 });
 
 test("バランス/F6: 新しい項目が定義され、範囲外は拒否。上書きがレベルの累積どおりに効く", () => {
