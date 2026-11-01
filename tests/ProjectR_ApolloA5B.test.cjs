@@ -68,13 +68,13 @@ test("ビームの幅3マスと方向: 離した時のマウス方向へ、幅3�
     press(d, 40); assert.ok(Math.abs(beam(d).degree - 45) < 1e-6); settle(d);
     assert.ok(lost(d, 3) > 0); assert.equal(lost(d, 4), 0);
     // 幾何の単体(任意の角度): 幅3 = 横±1.5。前方(a>=0)だけ。入り口の距離 enter
-    const g = api(d).geometry, b = { origin: { x: 10, y: 10 }, degree: 30 };
+    const g = api(d).geometry, b = { origin: { x: 10, y: 10 }, degree: 30, lanes: g.laneLayout(3).map(l => ({ ...l, limit: 40 })) };
     const u = { x: Math.sin(Math.PI / 6), y: -Math.cos(Math.PI / 6) }, n = { x: -u.y, y: u.x };
     const box = (a, l) => [[-.5, -.5], [.5, -.5], [.5, .5], [-.5, .5]].map(([dx, dy]) => ({ x: 10 + u.x * a + n.x * l + dx, y: 10 + u.y * a + n.y * l + dy }));
-    assert.ok(g.beamRegion(b, 1.5, box(6, 0)) && g.beamRegion(b, 1.5, box(6, 1.9)), "内側");
-    assert.equal(g.beamRegion(b, 1.5, box(6, 2.5)), null, "外側");
-    assert.equal(g.beamRegion(b, 1.5, box(-4, 0)), null, "後ろ");
-    assert.ok(Math.abs(g.beamRegion(b, 1.5, box(6, 0)).enter - 5.5) < 0.2, "入り口の距離は体の手前の端");
+    assert.ok(g.beamRegion(b, box(6, 0)) && g.beamRegion(b, box(6, 1.9)), "内側");
+    assert.equal(g.beamRegion(b, box(6, 2.5)), null, "外側");
+    assert.equal(g.beamRegion(b, box(-4, 0)), null, "後ろ");
+    assert.ok(Math.abs(g.beamRegion(b, box(6, 0)).enter - 5.5) < 0.2, "入り口の距離は体の手前の端");
 });
 
 test("連続ヒット: 先端が1/3マス進むごとに1サンプル。敵ごとに1ヒット50・最大11ヒット(上限550)。サンプル番号は敵ごとに一意(重なった判定で二重に当たらない)。敵ごとに別カウント", () => {
@@ -137,18 +137,9 @@ test("壁・端: 先端はRegion 255 / <CombatWall> / マップの端で止ま�
         assert.ok(lost(w, 4) > 0, `${kind}: 壁の手前には当たる`);
         assert.equal(lost(w, 5), 0, `${kind}: 壁の向こうには当たらない`);
     }
-    // 遮られた敵(幅の中でも、壁に隠れて見えない)には当たらない: 横に壁の柱
-    const w = volleyWorld({ level: 3 });
-    parkOthers(w, [4]);
-    const c = center(w);
-    setRegion(w, Math.floor(c.x) + 3, Math.floor(c.y) + 1, 255); // 斜め前の柱(中心線は通る)
-    setRegion(w, Math.floor(c.x) + 3, Math.floor(c.y) + 2, 255);
-    putAt(w, 4, 90, 6, 1.0);
-    aimDegree(w, 90, 4);
-    press(w, 40); settle(w);
-    const hits = last(w).targets.find(t => t.eventId === 4)?.hits || 0;
-    assert.ok(hits <= 11);
+    // 横の壁の柱(幅の中のレーンだけを遮る)の詳細は ProjectR_ApolloA5C.test.cjs
     // マップの端: ループしない向きでは、端より先へは進まない
+    const w = volleyWorld({ level: 3 });
     const geometry = api(w).geometry;
     assert.ok(geometry.beamLimit({ x: 2.5, y: 25.5 }, 270, 40) <= 2.5 + 1e-6, "左の端");
     assert.ok(geometry.beamLimit({ x: 12.5, y: 3.5 }, 0, 100) <= 3.5 + 1e-6, "上の端");
@@ -356,7 +347,7 @@ test("VFX: ビームの区間(3マス)を並べて再生し、終わったあと
     frames(w, 31);
     assert.equal(plain(w.ctx.ProjectRGodSummonVisual.getAnchors()).length, 0, "終わったら錨Eventも全部外す");
     assert.equal(plain(api(w).getActiveVfxJobs()).length, 0, "30frame後にVFXジョブは終わる");
-    assert.deepEqual(stops.slice().sort(), beamPlay[1].notes.slice().sort(), "再生した全部の区間を外す");
+    assert.deepEqual(stops.filter(n => /apollo_volley.beam/.test(n)).sort(), beamPlay[1].notes.slice().sort(), "再生した全部の区間を外す");
     settle(w);
     // 素材とライブラリ
     const lib = JSON.parse(fs.readFileSync(path.join(project, "js/AnimationSolutionLibrary.json"), "utf8"));
@@ -386,7 +377,7 @@ test("演出と効果音: Apolloの弓・主人公の手(ArmExtend)・通常カ�
     const am = w.ctx.AudioManager; const ps = am.playSe; am.playSe = se => { log2.se.push(se.name); };
     hold(w); settle(w);
     am.playSe = ps;
-    assert.equal(log2.swing, 1); assert.deepEqual(log2.act, ["ArmExtend"]); assert.equal(log2.cut, 1, "確定(消費)で重ねない");
+    assert.equal(log2.swing, 1); assert.deepEqual(log2.act, ["ArmDraw", "ArmExtend"], "押している間は構え(ArmDraw)、離すと発射の動作(ArmExtend)"); assert.equal(log2.cut, 1, "確定(消費)で重ねない");
     const hitSounds = log2.se.filter(n => n === "Chime1").length;
     assert.ok(hitSounds > 0 && hitSounds < 11, `ヒット音は間引かれる: ${hitSounds}`);
     assert.equal(log2.se.filter(n => n === "Chime2").length, 1, "発射音は1回");

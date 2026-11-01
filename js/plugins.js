@@ -74,7 +74,7 @@ var $plugins =
 ,{"name":"ProjectR_HermesVeil","status":true,"description":"v1.0.0 Hermes「ヴェイル」(設計ID 3): マウスに追従する半径5マスの魔法陣。5秒間、範囲内の味方は敵に標的にされず(Lv2 移動速度+30% / Lv3 クリティカル率+50%)。","parameters":{"CriticalMode":"additive","OverlapPolicy":"coexist","RequireFriendlyInside":"false","FriendlyEventTag":"<npc>"}}
 ,{"name":"ProjectR_HermesPsychopomp","status":true,"description":"v1.0.0 Hermes「サイコポンポス」(設計ID 2): 10秒間、主人公が倒した敵が魂を落とす。半径5マスで回収してHP回復(Lv3は攻撃力+3%を3秒・重ね掛け)。","parameters":{"StackingMode":"additive","AfterWindow":"remove","RecastPolicy":"refresh","CollectAtFullHp":"true","MaxHermesVisuals":"3"}}
 ,{"name":"ProjectR_HitStop","status":true,"description":"v1.0.0 共通ヒットストップ(当たったイベントだけを数frame止める。時計・入力・弾・他の敵は止めない)。","parameters":{}}
-,{"name":"ProjectR_ApolloGoldenVolley","status":true,"description":"v1.2.0 Apollo「黄金の矢」(設計ID 8 / apollo_golden_volley)Lv1〜3: 矢を3/5/11本、Lv3の長押しは幅3マスのビーム。命中が確定してから消費。","parameters":{"SoundEffect":"Chime2","HitSoundEffect":"Chime1"}}
+,{"name":"ProjectR_ApolloGoldenVolley","status":true,"description":"v1.2.0 Apollo「黄金の矢」(設計ID 8 / apollo_golden_volley)Lv1〜3: 矢を3/5/11本、Lv3の長押しは幅3マスのビーム。命中が確定してから消費。","parameters":{"SoundEffect":"Chime2","HitSoundEffect":"Chime1","ChargeReadySoundEffect":"Bell1"}}
 ,{"name":"ProjectR_HermesProductionDeck","status":true,"description":"v1.0.0 Hermes本番デッキ統合(H2C-A): 指輪の初回入手で7種30枚を一度だけ付与・デッキ初期化・表示・旧セーブ診断。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaZetsu","status":true,"description":"v1.0.0 DEV専用 Combat Test Arena 追加: 絶(Zetsu)テスト開始(Playtest限定)。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaHermesB1","status":true,"description":"v1.0.0 DEV専用 Combat Test Arena 追加: 薙ぎ払い・葦笛・絶のテスト開始(Playtest限定)。","parameters":{}}

@@ -83,6 +83,12 @@
     const VOLLEY_PARTICLES_SHEET = Object.freeze({ file: "Animation/ProjectR_Volley_Particles", rows: 2, columns: 4, fps: 10 });
     // Apollo-A5B(tools/gen_dev_a5b_assets.cjs): 黄金のビームの1区間(1コマ144px = 幅3マス x 長さ3マス・上向き・上下が継ぎ目なくつながる)。
     const VOLLEY_BEAM_SHEET = Object.freeze({ file: "Animation/ProjectR_Volley_Beam", rows: 2, columns: 4, fps: 18 });
+    // Apollo-A5C(tools/gen_dev_a5c_assets.cjs): ビームのレーン(1マス幅 x 長さ2マス。一部のレーンだけ遮られたときに、レーンごとに描く)と、長押し中のチャージ演出(弓を引く・引き切った弓・光の集まり・満タンの合図)。
+    const VOLLEY_BEAMLANE_SHEET = Object.freeze({ file: "Animation/ProjectR_Volley_BeamLane", rows: 2, columns: 4, fps: 18 });
+    const CHARGE_BOW_SHEET = Object.freeze({ file: "Animation/ProjectR_Charge_Bow", rows: 2, columns: 4, fps: 16 });
+    const CHARGE_BOWHOLD_SHEET = Object.freeze({ file: "Animation/ProjectR_Charge_BowHold", rows: 1, columns: 2, fps: 8 });
+    const CHARGE_GLOW_SHEET = Object.freeze({ file: "Animation/ProjectR_Charge_Glow", rows: 2, columns: 4, fps: 10 });
+    const CHARGE_READY_SHEET = Object.freeze({ file: "Animation/ProjectR_Charge_Ready", rows: 2, columns: 4, fps: 24 });
     const defaults = {
         // 出発点: 予備動作の間(移動の前)にプレイヤーへ出し、stickでその場(出発点)に固定する。移動後もノイズは出発点に残る。
         "hermes_zetsu.departure": { library: "ProjectR_Zetsu_Departure", sheet: NOISE_SHEET, anchor: "player", stick: true, scale: 100, opacity: 255, offsetY: -24 },
@@ -112,6 +118,14 @@
         "apollo_volley.burst": { library: "ProjectR_Volley_Burst", sheet: VOLLEY_BURST_SHEET, anchor: "player", rotate: "aim", stick: true, scale: 100, opacity: 255, offsetY: -24, blend: "Add" },
         // ビーム(beam:true): play時の degree と length(タイル)で、同じ区間(segmentTiles)を並べてビーム全体にする。公式Show VFXは拡縮が一様なので、幅を保つため区間は拡縮せず並べる(最後の区間は終端に合わせて重ねる)。
         "apollo_volley.beam": { library: "ProjectR_Volley_Beam", sheet: VOLLEY_BEAM_SHEET, anchor: "player", beam: true, segmentTiles: 3, stick: true, scale: 100, opacity: 240, offsetY: -18, blend: "Add" },
+        "apollo_volley.beamlane": { library: "ProjectR_Volley_BeamLane", sheet: VOLLEY_BEAMLANE_SHEET, anchor: "player", beam: true, segmentTiles: 2, stick: true, scale: 100, opacity: 240, offsetY: -18, blend: "Add" },
+        // 長押し中のチャージ(Apolloの表示Eventへ結び付ける。rotateTarget:true は play時の degree=弓の向き。glowは段階ごとに差し替えて「強まる」)
+        "apollo_charge.bow": { library: "ProjectR_Charge_Bow", sheet: CHARGE_BOW_SHEET, anchor: "target", rotateTarget: true, scale: 100, opacity: 255, offsetY: -18 },
+        "apollo_charge.bowhold": { library: "ProjectR_Charge_BowHold", sheet: CHARGE_BOWHOLD_SHEET, anchor: "target", rotateTarget: true, loop: "infinite", scale: 100, opacity: 255, offsetY: -18 },
+        "apollo_charge.glow1": { library: "ProjectR_Charge_Glow", sheet: CHARGE_GLOW_SHEET, anchor: "target", loop: "infinite", scale: 55, opacity: 110, offsetY: -18, blend: "Add" },
+        "apollo_charge.glow2": { library: "ProjectR_Charge_Glow", sheet: CHARGE_GLOW_SHEET, anchor: "target", loop: "infinite", scale: 80, opacity: 170, offsetY: -18, blend: "Add" },
+        "apollo_charge.glow3": { library: "ProjectR_Charge_Glow", sheet: CHARGE_GLOW_SHEET, anchor: "target", loop: "infinite", scale: 105, opacity: 230, offsetY: -18, blend: "Add" },
+        "apollo_charge.ready": { library: "ProjectR_Charge_Ready", sheet: CHARGE_READY_SHEET, anchor: "target", scale: 110, opacity: 255, offsetY: -18, blend: "Add" },
         "apollo_volley.particles": { library: "ProjectR_Volley_Particles", sheet: VOLLEY_PARTICLES_SHEET, anchor: "event", stick: true, scale: 100, opacity: 235, offsetY: -30, blend: "Add" },
         // 神の消失: 神(表示Event)の位置に黒いノイズ。
         "hermes.vanish": { library: "ProjectR_Hermes_Vanish", sheet: NOISE_SHEET, anchor: "event", stick: true, scale: 110, opacity: 255, offsetY: -24 }
@@ -190,9 +204,10 @@
     // ビーム: 区間を並べて再生する。戻り値の notes で、終わったあとに stop() できる。anchors は、区間を置いた画像なしの錨Event(終わったら removeAnchor)。
     //   公式Show VFXの「プレイヤーへ結び付けた位置オフセット」は、プレイヤーの絵の拡縮で効き方が変わる(実機で約2倍)ため、区間はワールドの位置に置いた錨Event
     //   (GodSummonVisual.spawnAnchor。拡縮なし)へ結び付けて置く。origin(発射点のタイル座標)が無い・錨が作れないときだけ、プレイヤー基準のオフセットで置く(精度は落ちる)。
-    const playBeam = (key, definition, degree, length, instance, origin) => {
+    const playBeam = (key, definition, degree, length, instance, origin, lateral = 0) => {
         const tile = typeof $gameMap !== "undefined" && $gameMap?.tileWidth ? $gameMap.tileWidth() : 48;
         const seg = Math.max(0.5, Number(definition.segmentTiles) || 3), radians = degree * Math.PI / 180, ux = Math.sin(radians), uy = -Math.cos(radians);
+        const nx = -uy, ny = ux, side = Number.isFinite(Number(lateral)) ? Number(lateral) : 0; // 発射方向に直交する向き(右手側が正)へ、レーンの中心まで寄せる
         const count = Math.max(1, Math.ceil(length / seg - 1e-9)), notes = [], anchors = [];
         const visual = root.ProjectRGodSummonVisual;
         const useAnchors = !!origin && Number.isFinite(origin.x) && Number.isFinite(origin.y) && typeof visual?.spawnAnchor === "function";
@@ -203,10 +218,10 @@
             const shaped = { ...definition, scale }, extra = { rotation: degree, instance: `${instance ?? "beam"}.${j}` };
             let r = null;
             if (useAnchors) {
-                const anchor = visual.spawnAnchor({ x: origin.x + ux * center, y: origin.y + uy * center }, { cardId: definition.cardId || null });
+                const anchor = visual.spawnAnchor({ x: origin.x + ux * center + nx * side, y: origin.y + uy * center + ny * side }, { cardId: definition.cardId || null });
                 if (anchor?.ok) { anchors.push(anchor.id); r = playSheet(key, shaped, { x: 0, y: 0 }, false, { ...extra, eventId: anchor.eventId }); }
             }
-            if (!r) r = playSheet(key, shaped, { x: ux * center * tile, y: uy * center * tile }, !!definition.stick, extra);
+            if (!r) r = playSheet(key, shaped, { x: (ux * center + nx * side) * tile, y: (uy * center + ny * side) * tile }, !!definition.stick, extra);
             if (!r.ok) return r;
             notes.push(r.note);
         }
@@ -227,7 +242,7 @@
                 result = offset ? playSheet(key, definition, offset, true, { instance: context.instance }) : fail("invalidOrigin", key);
             } else if (definition.beam === true) {
                 const degree = Number(context.degree), length = Number(context.length);
-                result = Number.isFinite(degree) && length > 0 ? playBeam(key, definition, degree, length, context.instance, context.origin) : fail("invalidBeam", key);
+                result = Number.isFinite(degree) && length > 0 ? playBeam(key, definition, degree, length, context.instance, context.origin, context.lateral) : fail("invalidBeam", key);
             } else if (definition.route === true) {
                 // 経路: 発動方向へ回し、経路の中央へ置き、長さに合わせて拡縮する。
                 const degree = Number(context.degree), length = Number(context.length);
@@ -253,7 +268,8 @@
                         if (!(radius > 0)) { result = fail("invalidRadius", key); }
                         else shaped = { ...definition, scale: Math.max(1, Math.round(definition.scale * (radius * 2 * tile) / (definition.frame || 480))) };
                     }
-                    if (!result) result = playSheet(key, shaped, { x: 0, y: 0 }, false, { eventId: target, instance: context.instance });
+                    if (!result) result = playSheet(key, shaped, { x: 0, y: 0 }, false, { eventId: target, instance: context.instance,
+                        ...(definition.rotateTarget === true && Number.isFinite(Number(context.degree)) ? { rotation: Number(context.degree) } : {}) });
                 }
             } else if (definition.anchor === "event" && !(Number.isInteger(Number(context.eventId)) && Number(context.eventId) > 0)) {
                 result = fail("invalidEvent", key);

@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc v1.2.0 Apollo「黄金の矢」(設計ID 8 / apollo_golden_volley) Lv1〜3: 矢を3/5/11本同時に発射。Lv3は長押しで幅3マスのビーム(連続ヒット・ヒットストップ)。命中が確定してから消費。
+ * @plugindesc v1.3.0 Apollo「黄金の矢」(設計ID 8 / apollo_golden_volley) Lv1〜3: 矢を3/5/11本同時に発射。Lv3は長押しで幅3マスのビーム(連続ヒット・ヒットストップ)。命中が確定してから消費。
  * @author ProjectR
  * @base ProjectR_CardDeckCore
  * @base ProjectR_CardCatalog
@@ -29,6 +29,12 @@
  * @desc ワークブックは「連続ヒットするたびに竪琴が鳴る」。竪琴の素材は無いので、RTPのChime1を仮に当てています(専用音ができたらここだけ差し替え)。短い間隔のヒットは間引いて鳴らします。
  * @type string
  * @default Chime1
+ *
+ * @param ChargeReadySoundEffect
+ * @text 長押しが0.5秒に達した合図の効果音(RTPのSE名。空なら鳴らさない)
+ * @desc Lv3の長押しが満タン(戦闘時計で30更新)になった瞬間に1回だけ。仮のRTP音です(専用音ができたらここだけ差し替え)。
+ * @type string
+ * @default Bell1
  *
  * @help
  * ProjectR_ApolloGoldenVolley.js
@@ -80,6 +86,13 @@
  *   ・消費: 最初の有効なヒットで1回だけ(矢と同じ予約→確定)。1ヒットも無ければ消費しない。確定待ちの間の再入力は volleyPending で拒否。
  *   ・数値はすべて ProjectR_CardBalance.json の beam* / hitStop* (開発用エディタ F6)。仮の既定値で、最終のバランス承認を待っている。
  *
+ * 【長押し中のチャージ演出(Phase A5C。Lv3のhold中だけ。表示だけ)】
+ *   押して8更新(約0.13秒)を過ぎたら、Apolloが主人公の前に現れて弓を引く(公式Show VFX = VFX Designerライブラリ ProjectR_Charge_Bow。向きは押した時のマウス方向)、
+ *   主人公は「弓を引いて構える」(ArmDraw)。黄金の光が集まり、段階(8/15/25更新)ごとに強まり、30更新で「引き切った弓」へ替わって合図(輪の閃光 + 効果音1回)が出る。
+ *   離す・取消(手札の入れ替わり・会話・戦闘終了・フォーカス喪失・入力のリセット)のどれでも、押下セッションが無くなった次の更新で、
+ *   Apolloの表示Event・VFXの絵・主人公の構えを全部外す。チャージ中は矢もビームも出さず、ダメージも消費もしない。離したあとは、いつもの発射の演出(弓・ArmExtend・カットイン)へつながる。
+ *   tap(8更新未満)ではチャージの演出は出ない。Lv1〜2ではチャージの演出を使わない。
+ *
  * 【演出】Apolloが主人公の前に現れて弓を引き(公式Swing Weaponで弓の画像を振る)、主人公は手を前に突き出す(ArmExtend)。
  *   通常カットイン(Apolloの目元)、黄金の矢(電撃の光をまとう矢の絵)、発射の閃光(VFX Designerライブラリ ProjectR_Volley_Burst)、
  *   Apolloから漂う光の粒子(ProjectR_Volley_Particles)。いずれも表示だけで判定を決めず、失敗してもカード消費・ダメージに影響しません。
@@ -107,9 +120,13 @@
     const IMPLEMENTED_MAX_LEVEL = 3; // Lv3はビームまで実装(A5B)
     const BEAM_LEVEL = 3;
     const HOLD_SECONDS = 0.5; // Lv3: これ以上押して離すとビーム(戦闘時計で30更新)
+    const HOLD_FRAMES = Math.max(1, Math.round(HOLD_SECONDS * 60));
     const BEAM_VFX_FRAMES = 30; // ビームのVFX(8コマ / 18fps)が終わるまでのframe。過ぎたら公式のdisposeで確実に外す
     const HIT_SOUND_GAP_FRAMES = 4; // ビームの連続ヒットの効果音は、この間隔より近いものを間引く
     const BEAM_RECORD_LIMIT = 400; // 診断に残す個別ヒットの上限
+    const LANE_TILES = 1; // ビームの幅を並走するレーン(1マス幅)に分けて、レーンごとに遮蔽を判定する(見た目のレーンと同じ分け方)
+    const LANE_INSET = 0.02; // レーンの端がちょうど壁の境に接するだけでは遮らない(軸に揃った壁の誤判定を避ける)
+    const UNIFORM_LANE_GAP = 0.05; // 全レーンの先端の差がこれ未満なら、幅3マスの1枚のビームとして描く
     const TEMPLATE_HITBOX = 0.3;
     const ALONG_TILES = 0.3; // 矢のhitboxの進行方向の長さ(幅だけが可変)
     const EPSILON = 1e-8;
@@ -256,18 +273,51 @@
             return ok ? Object.freeze(cfg) : null;
         } catch (_error) { return null; }
     };
-    // 先端が進める最大距離: 射程 / 壁(中心線)/ マップの端(ループしない向き)。
-    const beamLimit = (origin, degree, range) => {
-        const occ = occlusion(), m = map();
-        const ux = Math.sin(rad(degree)), uy = -Math.cos(rad(degree));
-        let limit = range;
-        const wall = typeof occ?.raycastWall === "function" ? occ.raycastWall(origin, degree, range, { mode: "combat" }) : null;
-        if (wall && Number.isFinite(wall.distance)) limit = Math.min(limit, wall.distance);
-        if (!m.isLoopHorizontal()) limit = Math.min(limit, ux > EPSILON ? (m.width() - origin.x) / ux : ux < -EPSILON ? (0 - origin.x) / ux : Infinity);
-        if (!m.isLoopVertical()) limit = Math.min(limit, uy > EPSILON ? (m.height() - origin.y) / uy : uy < -EPSILON ? (0 - origin.y) / uy : Infinity);
+    // ---- ビームの遮蔽(レーン方式) ----
+    // 幅を1マスのレーンに分け、レーンごとに「そのレーンの帯(幅いっぱい)を掃いたとき、最初に壁へ触れる距離」を求める。
+    //   壁 = Region 255 / <VisionWall> / <CombatWall> / <destroyProjectile> / 通行不能タイルの縁(ProjectR_CombatOcclusion.firstBlockerBetween の footprint 掃引)と、マップの端。
+    //   帯のどこか1か所でも壁に触れるなら、そのレーンはそこまで(中心線だけの判定をやめ、幅の横の壁も見る)。斜めの発射でも、帯は発射方向に揃えた矩形で掃く。
+    //   ダメージの届く範囲と見た目のレーンは同じ分け方・同じ長さ。他のレーンは遮られていなくても届く(遮られた敵だけが当たらない)。
+    const laneLayout = width => {
+        const count = Math.max(1, Math.ceil(width / LANE_TILES - 1e-9)), lanes = [];
+        for (let i = 0; i < count; i++) {
+            const lo = -width / 2 + i * LANE_TILES, hi = Math.min(width / 2, lo + LANE_TILES);
+            lanes.push({ index: i, lo, hi, center: (lo + hi) / 2, half: (hi - lo) / 2 });
+        }
+        return lanes;
+    };
+    const boundaryDistance = (start, ux, uy) => {
+        const m = map();
+        const W = m.width(), H = m.height();
+        let limit = Infinity;
+        if (!m.isLoopHorizontal()) {
+            if (start.x < 0 || start.x > W) return 0;
+            limit = Math.min(limit, ux > EPSILON ? (W - start.x) / ux : ux < -EPSILON ? (0 - start.x) / ux : Infinity);
+        }
+        if (!m.isLoopVertical()) {
+            if (start.y < 0 || start.y > H) return 0;
+            limit = Math.min(limit, uy > EPSILON ? (H - start.y) / uy : uy < -EPSILON ? (0 - start.y) / uy : Infinity);
+        }
         return Math.max(0, limit);
     };
-    // 多角形を、ビームの座標系(a=進行方向, l=横)で「幅の中(|l|<=half)かつ前方(a>=0)」へ切り取る(Sutherland-Hodgman)。
+    // 1レーンが進める最大距離
+    const laneLimit = (origin, degree, range, lane) => {
+        const occ = occlusion();
+        const ux = Math.sin(rad(degree)), uy = -Math.cos(rad(degree)), nx = -uy, ny = ux;
+        const start = { x: origin.x + nx * lane.center, y: origin.y + ny * lane.center };
+        let limit = Math.min(range, boundaryDistance(start, ux, uy));
+        if (typeof occ?.firstBlockerBetween === "function") {
+            const across = Math.max(0.01, lane.half - LANE_INSET), along = 0.01;
+            const footprint = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([p, q]) => ({ x: nx * across * p + ux * along * q, y: ny * across * p + uy * along * q }));
+            const hit = occ.firstBlockerBetween(start, { x: start.x + ux * range, y: start.y + uy * range }, { mode: "combat", footprint, unwrapped: true });
+            if (hit && Number.isFinite(hit.distance)) limit = Math.min(limit, hit.distance);
+        }
+        return Math.max(0, limit);
+    };
+    const buildLanes = (origin, degree, width, range) => laneLayout(width).map(lane => ({ ...lane, limit: laneLimit(origin, degree, range, lane) }));
+    // 先端が進める最大距離(全レーンの最大)。1つも進めなければ0。
+    const beamLimit = (origin, degree, range, width = 0.02) => Math.max(0, ...buildLanes(origin, degree, width, range).map(l => l.limit));
+    // 多角形を、ビームの座標系(a=進行方向, l=横)で、切り取る(Sutherland-Hodgman)。
     const clipHalf = (poly, inside, cross) => {
         const out = [];
         for (let i = 0; i < poly.length; i++) {
@@ -277,23 +327,28 @@
         }
         return out;
     };
-    const beamRegion = (b, half, polygon) => {
+    // 敵の体(多角形)が、ビームのどのレーンの「届く範囲」に入っているか。入っていれば { enter, lanes }(enter = 体のいちばん手前の端までの距離)。
+    //   レーンごとに「そのレーンの帯 かつ 0 <= a <= そのレーンの先端」で切り取る。遮られたレーンの先にある体の部分は、そのレーンでは当たらない。
+    const beamRegion = (b, polygon) => {
         if (!Array.isArray(polygon) || polygon.length < 3) return null;
         const ux = Math.sin(rad(b.degree)), uy = -Math.cos(rad(b.degree)), nx = -uy, ny = ux;
-        let poly = polygon.map(p => ({ a: (p.x - b.origin.x) * ux + (p.y - b.origin.y) * uy, l: (p.x - b.origin.x) * nx + (p.y - b.origin.y) * ny }));
+        const base = polygon.map(p => ({ a: (p.x - b.origin.x) * ux + (p.y - b.origin.y) * uy, l: (p.x - b.origin.x) * nx + (p.y - b.origin.y) * ny }));
         const edge = (coord, bound) => (p, q) => { const s = (bound - p[coord]) / (q[coord] - p[coord]); return { a: p.a + (q.a - p.a) * s, l: p.l + (q.l - p.l) * s }; };
-        poly = clipHalf(poly, p => p.l <= half, edge("l", half));
-        if (poly.length >= 3) poly = clipHalf(poly, p => p.l >= -half, edge("l", -half));
-        if (poly.length >= 3) poly = clipHalf(poly, p => p.a >= 0, edge("a", 0));
-        if (poly.length < 3) return null;
-        const enter = Math.max(0, Math.min(...poly.map(p => p.a)));
-        const world = poly.map(p => ({ x: b.origin.x + ux * p.a + nx * p.l, y: b.origin.y + uy * p.a + ny * p.l }));
-        return { enter, world };
-    };
-    const beamVisible = (b, world) => {
-        const occ = occlusion();
-        if (typeof occ?.hasLineToPolygon !== "function") return true;
-        try { return occ.hasLineToPolygon(b.origin, world, { radius: b.limit + EPSILON }) !== false; } catch (_error) { return true; }
+        let enter = Infinity;
+        const hitLanes = [];
+        for (const lane of b.lanes) {
+            if (!(lane.limit > 0)) continue;
+            let poly = clipHalf(base, p => p.l <= lane.hi, edge("l", lane.hi));
+            if (poly.length >= 3) poly = clipHalf(poly, p => p.l >= lane.lo, edge("l", lane.lo));
+            if (poly.length >= 3) poly = clipHalf(poly, p => p.a >= 0, edge("a", 0));
+            if (poly.length >= 3) poly = clipHalf(poly, p => p.a <= lane.limit, edge("a", lane.limit));
+            if (poly.length < 3) continue;
+            const area = Math.abs(poly.reduce((s, p, i) => { const q = poly[(i + 1) % poly.length]; return s + p.a * q.l - q.a * p.l; }, 0)) / 2;
+            if (area < 1e-7) continue; // 接するだけ(面積なし)は当たらない
+            enter = Math.min(enter, Math.max(0, Math.min(...poly.map(p => p.a))));
+            hitLanes.push(lane.index);
+        }
+        return hitLanes.length ? { enter, lanes: hitLanes } : null;
     };
     const playHitSound = hitIndex => {
         if (frameNo - lastHitSoundFrame < HIT_SOUND_GAP_FRAMES) return;
@@ -316,7 +371,7 @@
     };
     const beamState = volley => {
         const b = volley.beam;
-        return { serial: volley.serial, level: volley.level, degree: b.degree, origin: { ...b.origin }, width: volley.cfg.width, head: b.head, limit: b.limit, sampled: b.sampled, done: b.done, committed: volley.committed,
+        return { serial: volley.serial, level: volley.level, degree: b.degree, origin: { ...b.origin }, width: volley.cfg.width, lanes: b.lanes.map(l => ({ index: l.index, lo: l.lo, hi: l.hi, center: l.center, limit: l.limit })), head: b.head, limit: b.limit, sampled: b.sampled, done: b.done, committed: volley.committed,
             targets: [...b.targets.values()].map(r => ({ eventId: r.eventId, hits: r.hits, damage: r.damage, lastK: r.lastK, slip: r.slip, stopFrames: r.stopFrames })) };
     };
     const beamSummary = volley => {
@@ -330,15 +385,14 @@
         const kHead = Math.floor(b.head * cfg.perTile + 1e-9), kFrom = b.sampled + 1;
         const planned = [];
         if (kHead >= kFrom) {
-            const half = cfg.width / 2;
             for (const enemy of map().events().filter(event => isEnemy(event) && hpOf(event.eventId()) > 0)) {
                 const id = enemy.eventId();
                 const rec = b.targets.get(id) || { eventId: id, hits: 0, damage: 0, lastK: 0, slip: false, stopFrames: 0 };
                 if (rec.hits >= cfg.maxHits) continue;
-                const region = beamRegion(b, half, occ.eventPolygon(enemy));
+                const region = beamRegion(b, occ.eventPolygon(enemy));
                 if (!region) continue;
                 const k0 = Math.max(1, kFrom, rec.lastK + 1, Math.ceil(region.enter * cfg.perTile - 1e-9));
-                if (k0 > kHead || !beamVisible(b, region.world)) continue;
+                if (k0 > kHead) continue;
                 for (let k = k0, n = rec.hits; k <= kHead && n < cfg.maxHits; k++, n++) planned.push({ k, id, enemy });
             }
             b.sampled = kHead;
@@ -376,6 +430,81 @@
     };
     const releaseHitStop = volley => { try { hitStop()?.release?.(`volley:${volley.serial}`); } catch (_error) { /* 表示のみ */ } };
 
+    // ---------- チャージ演出(Lv3の長押し中。表示だけ。ゲームの状態を一切変えない) ----------
+    const CHARGE_START_FRAMES = 8; // これ未満で離すtapでは出さない(ちらつき防止)
+    const CHARGE_STAGE_STARTS = [8, 15, 25]; // 光の段階1/2/3の開始(30でready)
+    let charge = null; // { followerId, eventId, degree, stage, ready, bowNote, glowNote, extraNotes }
+    const chargeLog = [];
+    const logCharge = entry => { chargeLog.push(entry); if (chargeLog.length > 40) chargeLog.shift(); };
+    const pressSession = () => {
+        try { return (root.ProjectRCardBattleInput?.getPressSessions?.() || []).find(s => s.cardId === CARD && s.state === "pressing") || null; } catch (_error) { return null; }
+    };
+    const aimNow = () => {
+        try {
+            const dx = TouchInput.x - $gamePlayer.screenX(), dy = TouchInput.y - $gamePlayer.screenY();
+            return Number.isFinite(dx) && Number.isFinite(dy) && Math.hypot(dx, dy) > EPSILON ? normalize(Math.atan2(dy, dx) * 180 / Math.PI + 450) : null;
+        } catch (_error) { return null; }
+    };
+    const chargePoint = degree => {
+        const p = $gamePlayer.centerPositionPoint();
+        return { x: p.x + Math.sin(rad(degree)) * 0.95, y: p.y - Math.cos(rad(degree)) * 0.95 - 0.15 };
+    };
+    const pvPlay = (key, context) => { try { return root.ProjectRPresentationVfx?.play?.(key, context) || null; } catch (_error) { return null; } };
+    const stopNote = note => { if (note) { try { root.ProjectRPresentationVfx?.stop?.(note); } catch (_error) { /* 表示のみ */ } } };
+    const playChargeSound = () => {
+        try {
+            const name = String(params.ChargeReadySoundEffect === undefined ? "Bell1" : params.ChargeReadySoundEffect).trim();
+            if (name && typeof AudioManager !== "undefined") AudioManager.playSe({ name, volume: 55, pitch: 110, pan: 0 });
+        } catch (_error) { /* 表示のみ */ }
+    };
+    const endCharge = reason => {
+        if (!charge) return;
+        const c = charge;
+        charge = null;
+        stopNote(c.bowNote); stopNote(c.glowNote);
+        for (const note of c.extraNotes) stopNote(note);
+        try { if (c.followerId !== null) root.ProjectRGodSummonVisual?.removeFollower?.(c.followerId); } catch (_error) { /* 表示のみ */ }
+        try { root.ProjectRCharacterPresentation?.release?.("ArmDraw"); } catch (_error) { /* 表示のみ */ }
+        logCharge({ type: "end", reason, stage: c.stage, ready: c.ready });
+    };
+    const startCharge = () => {
+        const degree = aimNow();
+        if (degree === null) return;
+        let followerId = null, eventId = 0;
+        try {
+            const spawned = root.ProjectRGodSummonVisual?.spawnFollower?.("apollo", chargePoint(degree), { cardId: CARD });
+            if (spawned?.ok) { followerId = spawned.id; eventId = spawned.eventId; }
+        } catch (_error) { /* 表示のみ */ }
+        charge = { followerId, eventId, degree, stage: 0, ready: false, bowNote: null, glowNote: null, extraNotes: [] };
+        try { root.ProjectRCharacterPresentation?.request?.("ArmDraw", { source: "card", detail: CARD, frames: 100000, degree }); } catch (_error) { /* 表示のみ */ }
+        if (eventId) charge.bowNote = pvPlay("apollo_charge.bow", { eventId, degree })?.note || null;
+        logCharge({ type: "start", degree, follower: followerId !== null });
+    };
+    const updateCharge = () => {
+        const session = deck.isCardBattleActive() && root.ProjectR?.PlayerDeath?.isDead?.() !== true ? pressSession() : null;
+        if (!session || cardLevel() < BEAM_LEVEL) { endCharge(session ? "level" : "noPress"); return; }
+        if (!charge) { if (session.heldFrames >= CHARGE_START_FRAMES) startCharge(); return; }
+        try { if (charge.followerId !== null) root.ProjectRGodSummonVisual?.moveFollower?.(charge.followerId, chargePoint(charge.degree)); } catch (_error) { /* 表示のみ */ }
+        const stage = session.heldFrames >= HOLD_FRAMES ? 3 : CHARGE_STAGE_STARTS.filter(start => session.heldFrames >= start).length;
+        if (stage !== charge.stage && stage > 0 && charge.eventId) { // 光を強い段階へ差し替える(前の段階は外す)
+            stopNote(charge.glowNote);
+            charge.glowNote = pvPlay("apollo_charge.glow" + stage, { eventId: charge.eventId })?.note || null;
+            charge.stage = stage;
+        }
+        if (session.heldFrames >= HOLD_FRAMES && !charge.ready) {
+            charge.ready = true;
+            stopNote(charge.bowNote); charge.bowNote = null;
+            if (charge.eventId) {
+                const hold = pvPlay("apollo_charge.bowhold", { eventId: charge.eventId, degree: aimNow() ?? charge.degree });
+                if (hold?.note) charge.extraNotes.push(hold.note);
+                const flash = pvPlay("apollo_charge.ready", { eventId: charge.eventId });
+                if (flash?.note) charge.extraNotes.push(flash.note);
+            }
+            playChargeSound();
+            logCharge({ type: "ready", heldFrames: session.heldFrames });
+        }
+    };
+
     const activateBeam = (context, env) => {
         const summons = root.ProjectRGodSummonManager;
         if (!summons) return failure("godSummonUnavailable");
@@ -389,10 +518,11 @@
             let origin = summon.center;
             if (!origin || ![origin.x, origin.y].every(Number.isFinite)) { const p = $gamePlayer.centerPositionPoint(); origin = { x: p.x, y: p.y }; }
             origin = { x: origin.x, y: origin.y };
-            const limit = beamLimit(origin, aim, cfg.range);
+            const lanes = buildLanes(origin, aim, cfg.width, cfg.range);
+            const limit = Math.max(0, ...lanes.map(l => l.limit));
             volley = { kind: "beam", serial: ++serial, instanceId: context.instance.instanceId, definition: context.definition, level, effects, aim, degrees: [aim], count: 0, arrows: [], hits: [],
                 committed: false, summonId: summon.summonId, cfg, element: tune("element"), weaknessMultiplier: tune("weaknessMultiplier"), slipTicks: Math.floor(tune("splitTicks")),
-                beam: { origin, degree: aim, limit, head: 0, sampled: 0, done: false, targets: new Map() } };
+                beam: { origin, degree: aim, lanes, limit, head: 0, sampled: 0, done: false, targets: new Map() } };
             return { ok: true };
         });
         if (!result?.ok || !volley) return failure(result?.reason || "activationFailed");
@@ -472,8 +602,17 @@
         particleWait = PARTICLE_WAIT_FRAMES;
         if (volley.kind === "beam") { // 幅3マスの黄金のビーム(VFX Designerライブラリ ProjectR_Volley_Beam を区間ごとに並べる)
             try {
-                const r = root.ProjectRPresentationVfx?.play("apollo_volley.beam", { degree: volley.aim, length: volley.beam.limit, instance: "v" + volley.serial, origin: volley.beam.origin });
-                if (r?.ok && Array.isArray(r.notes)) vfxJobs.push({ frames: BEAM_VFX_FRAMES, notes: r.notes, anchors: Array.isArray(r.anchors) ? r.anchors : [] });
+                const b = volley.beam, limits = b.lanes.map(l => l.limit), job = { frames: BEAM_VFX_FRAMES, notes: [], anchors: [] };
+                const collect = r => { if (r?.ok && Array.isArray(r.notes)) { job.notes.push(...r.notes); if (Array.isArray(r.anchors)) job.anchors.push(...r.anchors); } };
+                if (Math.max(...limits) - Math.min(...limits) < UNIFORM_LANE_GAP) { // 遮られていない(または一様に遮られた)ビーム: 幅3マスの1枚で描く
+                    if (b.limit > 0) collect(root.ProjectRPresentationVfx?.play("apollo_volley.beam", { degree: volley.aim, length: b.limit, instance: "v" + volley.serial, origin: b.origin }));
+                } else { // 一部のレーンだけ遮られた: レーンごとに、そのレーンの長さまで描く(ダメージの届く範囲と同じ)
+                    for (const lane of b.lanes) {
+                        if (lane.limit > 0) collect(root.ProjectRPresentationVfx?.play("apollo_volley.beamlane", { degree: volley.aim, length: lane.limit, lateral: lane.center,
+                            instance: `v${volley.serial}.l${lane.index}`, origin: b.origin }));
+                    }
+                }
+                if (job.notes.length) vfxJobs.push(job);
             } catch (_error) { /* 表示のみ */ }
         }
     };
@@ -695,6 +834,7 @@
         if (pendingVolley) abortVolley(pendingVolley, reason);
         pendingVolley = null;
         particleWait = null;
+        endCharge(reason);
         clearVfxJobs();
         clearSlips(reason);
     };
@@ -705,6 +845,7 @@
         if (!sceneActive) return;
         frameNo++;
         try { updateParticles(); } catch (_error) { /* 表示のみ */ }
+        try { updateCharge(); } catch (_error) { endCharge("error"); }
         if (vfxJobs.length) tickVfxJobs();
         if (!volleys.size && !slips.size) return;
         if (slips.size && root.ProjectR?.PlayerDeath?.isDead?.() === true) clearSlips("playerDead");
@@ -740,10 +881,14 @@
         effectsForLevel, cardLevel, arrowDegrees, centerIndexOf, slipSchedule, moveSpeedFor,
         implementedMaxLevel: IMPLEMENTED_MAX_LEVEL, holdSeconds: HOLD_SECONDS, beamLevel: BEAM_LEVEL, pressRegistered: pressRegistered.ok === true,
         getBeamLog: () => beamLog.map(entry => ({ ...entry })),
+        getCharge: () => charge ? { active: true, stage: charge.stage, ready: charge.ready, degree: charge.degree, followerId: charge.followerId, eventId: charge.eventId,
+            notes: [charge.bowNote, charge.glowNote, ...charge.extraNotes].filter(Boolean) } : { active: false },
+        getChargeLog: () => chargeLog.map(entry => ({ ...entry })),
+        holdFrames: HOLD_FRAMES,
         getBeamAttempts: () => beamLog.map(entry => ({ ...entry })), // A5Aの名前(ビームの分岐に入った記録)。A5BからはビームのBeamLogと同じ
         getBeam: () => { const v = [...volleys.values()].find(x => x.kind === "beam"); return v ? beamState(v) : null; },
         beamConfig: () => { const c = beamConfig(); return c ? { ...c } : null; },
-        geometry: Object.freeze({ tileCenter, arrowBody, beamRegion, beamLimit }),
+        geometry: Object.freeze({ tileCenter, arrowBody, beamRegion, beamLimit, laneLayout, buildLanes, laneLimit }),
         isPending: () => !!pendingVolley,
         getPending: () => pendingVolley ? { serial: pendingVolley.serial, instanceId: pendingVolley.instanceId, level: pendingVolley.level, degree: pendingVolley.aim,
             degrees: pendingVolley.degrees.slice(), arrows: liveArrows(pendingVolley).length } : null,

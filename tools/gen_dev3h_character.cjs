@@ -376,6 +376,14 @@ const ACTIONS = {
         p.lean = lerp(0, 2, t); p.headDx = lerp(0, 1, t); p.dy = 0; p.lF.a = 8 * t; p.lB.a = -8 * t;
         p.sparks = i >= 2 ? [{ x: CX + 22, y: 20, r: 3.6, c: [255, 220, 110] }, { x: CX + 27, y: 15, r: 2.4, c: [255, 240, 170] }, { x: CX + 18, y: 14, r: 2, c: [255, 220, 110] }] : [];
         return p; } },
+    // 黄金の矢(Apollo-A5C)の長押し中の主人公モーション「弓を引いて構える」: 前の腕は前へまっすぐ(弓を持つ)、後ろの腕は曲げて頬の近くへ引く。4コマは小さな震え(ループ)。
+    ArmDraw: { frames: 4, make: i => {
+        const p = basePose(), tremble = [0, 1, 0, -1][i];
+        p.aF.a = 92; p.aF.e = 2; p.aF.o = -9; p.aF.oe = 0;
+        p.aB.a = 38 + tremble * 2; p.aB.e = 112 + tremble * 3; p.aB.o = 14; p.aB.oe = -40;
+        p.lean = 2.2 + tremble * 0.4; p.headDx = 1; p.headTilt = 3; p.dy = Math.abs(tremble) > 0 ? 1 : 0; p.lF.a = 10; p.lB.a = -14;
+        p.sparks = i % 2 ? [{ x: CX + 21, y: 19, r: 2.4, c: [255, 225, 120] }] : [];
+        return p; } },
     Ultimate: { frames: 8, make: i => {
         const p = basePose(), crouch = [0.8, 1, 0.3, 0, 0, 0, 0, 0][i], up = [0, 0, 0.5, 1, 1, 1, 1, 1][i];
         p.dy = Math.round(5 * crouch) - Math.round(3 * up); p.lF.a = 28 * crouch; p.lB.a = -28 * crouch; p.lF.e = -56 * crouch; p.lB.e = -56 * crouch;

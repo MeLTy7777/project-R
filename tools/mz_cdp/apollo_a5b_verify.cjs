@@ -46,7 +46,7 @@ const CARD = "apollo_golden_volley", API = "ProjectRApolloGoldenVolley", IN = "P
       fields: ['beamWidthTiles','beamSpeed','beamRangeTiles','beamHitsPerTile','beamHitDamage','beamMaxHitsPerTarget','hitStopFrames','hitStopMaxFrames'].every(function(k) { return ProjectRCardBalance.constant('${CARD}', k) !== undefined; }),
       impl: ProjectRCardCatalog.godDesign('apollo')[0].beamImplemented, deck: ProjectRCardCatalog.buildGodDeck('apollo') })`);
     const lib = await ev(`new Promise(function(res) { Promise.resolve(getAnimationFromLibrary('ProjectR_Volley_Beam')).then(function(a) { res(!!a); }, function() { res(false); }); })`);
-    rec("B0 boot", JSON.stringify(v.cfg) === JSON.stringify({ width: 3, speed: 40, range: 40, perTile: 3, damage: 50, maxHits: 11, stopFrames: 3, stopMax: 30 }) && v.hs === "function" && v.keys.length === 3 && v.fields && v.impl === true && v.deck === null && lib === true && fs.existsSync("img/pictures/Animation/ProjectR_Volley_Beam.png"), JSON.stringify({ ...v, lib }));
+    rec("B0 boot", JSON.stringify(v.cfg) === JSON.stringify({ width: 3, speed: 40, range: 40, perTile: 3, damage: 50, maxHits: 11, stopFrames: 3, stopMax: 30 }) && v.hs === "function" && v.keys.length === 4 && v.fields && v.impl === true && v.deck === null && lib === true && fs.existsSync("img/pictures/Animation/ProjectR_Volley_Beam.png"), JSON.stringify({ ...v, lib }));
   });
 
   await check("B1 実キーのhold(0.75秒): 扇ではなくビーム。矢のEventは出ない。発射では消費せず、最初のヒットで1回だけ消費。同じ敵へ11ヒット(550)。ビームのVFXは終わると全部消える", async () => {

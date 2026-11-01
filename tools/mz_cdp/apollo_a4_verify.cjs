@@ -58,7 +58,7 @@ const RESERVED_OTHERS = ["apollo_eros_arrow", "apollo_lyre_rhythm", "apollo_laur
       .every(f => fs.existsSync(f));
     rec("V0 boot", v.api && v.def.maxCopies === 5 && v.def.cooldownSeconds === 3 && v.def.targetType === "ground" && v.def.rarity === "strong" && v.inactive.length === 7 && JSON.stringify(v.inactive.slice().sort()) === JSON.stringify(RESERVED_OTHERS.slice().sort())
       && v.registry === 15 && JSON.stringify(v.legacy) === JSON.stringify([[3, 4, "direction"], [2, 12, "direction"], [3, 10, "ally"]]) && v.template && v.balance && v.effects2.projectileCount === 5 && v.test === "function"
-      && v.vfx.length === 3 && v.cut === true && lib === true && files, JSON.stringify({ ...v, lib, files }).slice(0, 700));
+      && v.vfx.length === 4 && v.cut === true && lib === true && files, JSON.stringify({ ...v, lib, files }).slice(0, 700));
   });
 
   await check("V1 実マウス+実キー(Lv1): 敵へマウスを向けてQ → 3本が±15度で飛ぶ。飛んでいる間はカードを消費せず、命中の瞬間に50ダメージ・1回だけ消費(Cooldownは命中から3秒)", async () => {

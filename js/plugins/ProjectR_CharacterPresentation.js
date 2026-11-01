@@ -67,12 +67,12 @@
 
     const PRIORITY = Object.freeze({
         Idle: 10, Walk: 20, Run: 30, Aim: 40, SwordAttack: 60, GunFire: 60,
-        FingerSnap: 62, Damage: 65, GunReload: 70, SkillCast: 80, CrossArms: 80, ArmSweep: 80, ArmExtend: 80, FistPump: 80, Ultimate: 90, Down: 100
+        FingerSnap: 62, Damage: 65, GunReload: 70, SkillCast: 80, CrossArms: 80, ArmSweep: 80, ArmExtend: 80, ArmDraw: 80, FistPump: 80, Ultimate: 90, Down: 100
     });
     const NAMES = Object.freeze(Object.keys(PRIORITY));
     const BASELINE = new Set(["Idle", "Walk", "Run", "Aim"]);
     // 仮モーションの長さ(frame)。プロファイルのactions[name].framesで上書きできます。
-    const DEFAULT_FRAMES = Object.freeze({ SwordAttack: 14, GunFire: 9, GunReload: 40, SkillCast: 26, CrossArms: 32, ArmSweep: 22, ArmExtend: 24, FistPump: 28, FingerSnap: 16,
+    const DEFAULT_FRAMES = Object.freeze({ SwordAttack: 14, GunFire: 9, GunReload: 40, SkillCast: 26, CrossArms: 32, ArmSweep: 22, ArmExtend: 24, ArmDraw: 40, FistPump: 28, FingerSnap: 16,
         Ultimate: 42, Damage: 12, Down: Infinity });
     const HISTORY_LIMIT = 40;
 
@@ -165,6 +165,7 @@
             CrossArms: { sprite: "$DEV3H_CrossArms_f4", frames: 4, speed: 5, hold: 12 },
             ArmSweep: { sprite: "$DEV3H_ArmSweep_f4", frames: 4, speed: 4, hold: 6 },
             ArmExtend: { sprite: "$DEV3H_ArmExtend_f4", frames: 4, speed: 4, hold: 8 },
+            ArmDraw: { sprite: "$DEV3H_ArmDraw_f4", frames: 4, speed: 6, hold: 0 },
             FistPump: { sprite: "$DEV3H_FistPump_f4", frames: 4, speed: 5, hold: 8 },
             FingerSnap: { sprite: "$DEV3H_FingerSnap_f4", frames: 4, speed: 4, hold: 3 },
             Ultimate: { sprite: "$DEV3H_Ultimate_f8", frames: 8, speed: 5, hold: 4 },
