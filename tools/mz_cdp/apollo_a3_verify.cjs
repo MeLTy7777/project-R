@@ -1,6 +1,7 @@
 // Phase Apollo-A3: 実機(Playtest)の確認 — 押下時間の検出(実キー)・被ダメージ/弱点/状態の修飾(中立・1回だけ)・主人公+仲間の名簿。Apolloの8枚は未登録のまま。
 // 使い方: MZ_OUT=<出力> node tools/mz_cdp/apollo_a3_verify.cjs
 //   新しいゲームはメモリ上に作り、押下プロファイル・修飾・仲間はこのセッションのメモリ上だけに足す(セーブしない・ファイルを書かない)。入力はCDP(人間の手動確認ではない)。
+const { IMPLEMENTED: A7I, STILL_RESERVED: A7R, N: A7N } = require("./apollo_implemented.cjs");
 const fs = require("fs");
 const { session } = require("./lib.cjs");
 const OUT = process.env.MZ_OUT || "mz_out";
@@ -37,7 +38,7 @@ const RESERVED = ["apollo_golden_volley", "apollo_eros_arrow", "apollo_lyre_rhyt
   await check("P0 boot: 新しい共有基盤が読み込まれ、既定は中立(修飾なし・ポリシー未確定)。Apollo 8枚は未登録・CardModifiersが最外", async () => {
     const v = await json(`({ dm: !!${DM} && ${DM}.isInstalled(), policy: ${DM}.getPolicy(), reapply: ${DM}.getReapplyPolicy(), any: ${DM}.hasAny(), roster: !!ProjectRPartyRoster, press: typeof ${IN}.registerPressProfile,
       outer: !!PluginManager._commands['Hendrix_Action_Engine:UpdateEventHp'].__projectRCardModifiers, inactive: ProjectRCardCatalog.inactiveRuntimeCards(), registry: ProjectRCardDeck.definitions.cardDefinitions().length })`);
-    rec("P0 boot", v.dm && v.policy === "uncommitted" && v.reapply === "uncommitted" && !v.any && v.roster && v.press === "function" && v.outer && v.inactive.length === 6 && JSON.stringify(v.inactive) === JSON.stringify(RESERVED.filter(id => id !== "apollo_golden_volley" && id !== "apollo_eros_arrow")) && v.registry === 16, JSON.stringify(v));
+    rec("P0 boot", v.dm && v.policy === "uncommitted" && v.reapply === "uncommitted" && !v.any && v.roster && v.press === "function" && v.outer && v.inactive.length === A7R.length && JSON.stringify(v.inactive) === JSON.stringify(RESERVED.filter(id => !A7I.includes(id))) && v.registry === 14 + A7N, JSON.stringify(v));
   });
 
   await check("P1 プロファイルなしは従来どおり: 実キーのQを押すと(押した次の更新で)薙ぎ払いが発動して50ダメージ。押下の記録は作られない", async () => {
@@ -173,7 +174,7 @@ const RESERVED = ["apollo_golden_volley", "apollo_eros_arrow", "apollo_lyre_rhyt
       var b = JSON.stringify(DataManager.makeSaveContents()); ${DM}.clear(); ${IN}.unregisterPressProfile('hermes_sweep');
       var legacy = ['apollo_golden_arrow','apollo_plague_attack','apollo_lyre_calm'].map(function(id) { var d = ProjectRCardDeck.definitions.card(id); return [d.maxCopies, d.cooldownSeconds, d.targetType]; });
       return { same: a === b, noKeys: a.indexOf('ProjectRDamageModifiers') < 0 && a.indexOf('pressProfile') < 0, legacy: legacy, inactive: ProjectRCardCatalog.inactiveRuntimeCards().length, registry: ProjectRCardDeck.definitions.cardDefinitions().length }; })()`);
-    rec("C1 compat", v.same && v.noKeys && JSON.stringify(v.legacy) === JSON.stringify([[3, 4, "direction"], [2, 12, "direction"], [3, 10, "ally"]]) && v.inactive === 6 && v.registry === 16, JSON.stringify(v));
+    rec("C1 compat", v.same && v.noKeys && JSON.stringify(v.legacy) === JSON.stringify([[3, 4, "direction"], [2, 12, "direction"], [3, 10, "ally"]]) && v.inactive === A7R.length && v.registry === 14 + A7N, JSON.stringify(v));
   });
 
   const errs = await s.errors();

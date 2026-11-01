@@ -1,4 +1,5 @@
 "use strict";
+const { IMPLEMENTED: A7_IMPLEMENTED, STILL_RESERVED: A7_RESERVED, OWN_PLUGIN: A7_OWN, SHARED_USERS: A7_SHARED, COUNT: A7_COUNT } = require("./ProjectR_ApolloImplemented.cjs");
 // Phase H2C-B3: Hermes本番の安定化。 (1) 初期付与の「加算」と「補充」の差を読み取り専用で示すプレビューと、現在の挙動(加算)の固定
 //   (2) 旧セーブ移行の説明(確認済み / 推定の最小値 / 未知ID / 未解放でデッキにある / デッキの問題) と開発者向けレポート
 //   (3) 旧カードと新カードの区別(共存・削除なし) (4) 実機スクリプトの台帳(tools/mz_cdp/scripts.json)
@@ -216,7 +217,7 @@ test("旧カードと新カードの監査: 新7枚 + 旧7枚(Hermes4・Apollo3)
     const g = plain(w.prod().cardGenerations());
     assert.equal(g.cards.filter(c => c.generation === "new").length, 7);
     assert.deepEqual(g.cards.filter(c => c.generation === "legacy").map(c => c.cardId).sort(), [...LEGACY_IDS].sort());
-    assert.deepEqual(g.cards.filter(c => c.generation === "other").map(c => c.cardId), ["apollo_golden_volley", "apollo_eros_arrow"], "新設計のApollo(A4・A6A)だけが「その他」");
+    assert.deepEqual(g.cards.filter(c => c.generation === "other").map(c => c.cardId), A7_IMPLEMENTED, "新設計のApollo(実装済みの一覧)だけが「その他」");
     assert.deepEqual(g.duplicateNames, [], "表示名が完全に同じカードは無い");
     assert.equal(g.confusablePairs.length, 3);
     for (const pair of g.confusablePairs) { assert.ok(pair.legacyName && pair.newName && pair.legacyName !== pair.newName, pair.legacy); assert.ok(d.definitions.card(pair.legacy), "旧カードの定義は残る"); }

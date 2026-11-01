@@ -1,4 +1,5 @@
 "use strict";
+const { IMPLEMENTED: A7_IMPLEMENTED, STILL_RESERVED: A7_RESERVED, OWN_PLUGIN: A7_OWN, SHARED_USERS: A7_SHARED, COUNT: A7_COUNT } = require("./ProjectR_ApolloImplemented.cjs");
 // カードバランス設定(data/ProjectR_CardBalance.json + ProjectR_CardBalance + Playtest限定エディタ)の検証。実エンジン(実Map004 + 全plugin)。
 const fx = require("./ProjectR_HermesB1Fixture.cjs");
 const { assert, plain, hermesWorld, SWEEP, ISSEN, VEIL, STRENGTH, PSYCHO, FLUTE, ZETSU, placePolar, parkOthers, aimDegree, lost, resetHp, useCard, runFrames, state, deckApi } = fx;
@@ -36,7 +37,7 @@ test("既定値: 7枚のLv1〜3の効果・定数・クールダウンは、JSON
     const w = hermesWorld({ card: SWEEP });
     const api = balanceOf(w);
     assert.equal(api.isReady(), true, JSON.stringify(api.status()));
-    assert.deepEqual(plain(api.cardIds()).sort(), [...CARDS, "apollo_golden_volley", "apollo_eros_arrow"].sort(), "Hermes 7枚 + 黄金の矢(Apollo-A4) + エロスの矢(Apollo-A6A)");
+    assert.deepEqual(plain(api.cardIds()).sort(), [...CARDS, ...A7_IMPLEMENTED].sort(), "Hermes 7枚 + 実装済みのApollo");
     for (const card of CARDS) {
         for (const level of [1, 2, 3]) assert.deepEqual(plain(api.effects(card, level)), GOLDEN[card][level], `${card} Lv${level}`);
         assert.equal(api.cooldownSeconds(card), GOLDEN_COOLDOWN[card], `${card} cooldown`);

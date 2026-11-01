@@ -1,4 +1,5 @@
 "use strict";
+const { IMPLEMENTED: A7_IMPLEMENTED, STILL_RESERVED: A7_RESERVED, OWN_PLUGIN: A7_OWN, SHARED_USERS: A7_SHARED, COUNT: A7_COUNT } = require("./ProjectR_ApolloImplemented.cjs");
 // Phase Apollo-A6A: Apollo「エロスの矢」(設計ID 9 / apollo_eros_arrow)Lv1。実エンジン(実Map004 + 全plugin + 実Hendrix/DotMove)。
 // MZ実機(マウス・実キー・描画)は対象外 → tools/mz_cdp/apollo_a6a_verify.cjs。Lv1の確認(Lv2はA6B)。
 const path = require("node:path");
@@ -24,9 +25,9 @@ test("登録: 特殊 / 最大5枚 / Cooldown 5秒 / Ground / Apolloの指輪 / �
     const row = w.ctx.ProjectRCardCatalog.godDesign("apollo").find(r => r.designId === 9);
     assert.deepEqual([row.runtimeCardId, row.implemented, row.implementedLevels, row.workbookTargetType, row.classification, row.maxCopies, row.cooldownSeconds], [EROS, true, 3, "Ground", "special", 5, 5]);
     assert.equal(row.maxLevel, 3, "ワークブックの最大Lv3は設計行のまま");
-    assert.equal(w.ctx.ProjectRCardCatalog.godStatus("apollo").implemented, 2, "Apolloの実装済みは黄金の矢とエロスの矢");
+    assert.equal(w.ctx.ProjectRCardCatalog.godStatus("apollo").implemented, A7_COUNT, "Apolloの実装済みは ProjectR_ApolloImplemented.cjs の一覧");
     assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.inactiveRuntimeCards()).filter(id => id.startsWith("apollo_")).sort(),
-        ["apollo_gigas_slayer", "apollo_hyacinthus", "apollo_laurel_wreath", "apollo_lyre_rhythm", "apollo_oracle", "apollo_plague_rain"], "残りの6枚は未登録");
+        [...A7_RESERVED].sort(), "残りは未登録");
     assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.runtimeIdAudit().problems), []);
     assert.equal(w.ctx.ProjectRCardCatalog.buildGodDeck("apollo"), null, "Apolloの本番の初期デッキ(30枚)は有効にしない");
     // Lv4は無い: レベルを上げようとしてもLv3まで

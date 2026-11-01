@@ -2,6 +2,7 @@
 // 使い方: MZ_OUT=<出力> MZ_TMP_DEV=<一時フォルダ> node tools/mz_cdp/balance_verify.cjs
 //   新しいゲームはメモリ上に作り、セーブしない。属性の特徴は $dataEnemies/$dataWeapons/$dataSkills のメモリ上のコピーだけに足し、最後に戻す(ファイルは書かない)。
 //   開発用の保存先は MZ_TMP_DEV(一時フォルダ)だけ。本物のsave/ と data/ には書かない。入力はCDP(人間の手動確認ではない)。
+const { IMPLEMENTED: A7I, STILL_RESERVED: A7R, N: A7N } = require("./apollo_implemented.cjs");
 const fs = require("fs");
 const path = require("path");
 const { session } = require("./lib.cjs");
@@ -45,10 +46,10 @@ const near = (a, b, t) => Math.abs(a - b) <= t;
 
   await check("R0 boot: 3つのPluginが読み込まれ、JSONがfsから読めている(source=file)", async () => {
     const st = await json(`${B}.status()`);
-    rec("R0 balance ready from file", st.ready && st.source === "file" && st.cards === 9, JSON.stringify(st));
+    rec("R0 balance ready from file", st.ready && st.source === "file" && st.cards === 7 + A7N, JSON.stringify(st));
     rec("R0b Elements / Editor が存在する(Playtest)", await ev("!!(ProjectRElements && ProjectRCardBalanceEditor && ProjectRCardBalance.isPlaytest())"), "");
     const ids = await json(`${B}.cardIds()`);
-    rec("R0c 9枚のランタイムID(Hermes 7 + 黄金の矢 + エロスの矢)", ids.length === 9 && ids.filter(i => /^hermes_/.test(i)).length === 7 && ids.indexOf("apollo_golden_volley") >= 0 && ids.indexOf("apollo_eros_arrow") >= 0, ids.join(","));
+    rec("R0c 実装済みのランタイムID(Hermes 7 + 実装済みのApollo)", ids.length === 7 + A7N && ids.filter(i => /^hermes_/.test(i)).length === 7 && A7I.every(id => ids.indexOf(id) >= 0), ids.join(","));
   });
 
   await check("R1 既定値がJSON化の前の値と同じ(Lv別効果・クールダウン・定数)", async () => {
@@ -193,7 +194,7 @@ const near = (a, b, t) => Math.abs(a - b) <= t;
     const sceneFrames0 = await ev("window.__mu"); await sleep(600); const sceneFrames1 = await ev("window.__mu");
     rec("R11 open + paused", open && sceneFrames1 === sceneFrames0 && frames0 > 10, `open=${open} Scene_Map.update ${sceneFrames0}->${sceneFrames1}`);
     const options = await ev("document.querySelector('[data-role=card]').options.length");
-    rec("R11b 9枚が選べる", options === 9, "options=" + options);
+    rec("R11b 実装済みの全カードが選べる", options === 7 + A7N, "options=" + options);
     await ev("(function() { var sel = document.querySelector('[data-role=card]'); sel.value = 'hermes_sweep'; sel.dispatchEvent(new Event('change')); return 'ok'; })()");
     await sleep(200);
     await ev("(function() { var b = Array.prototype.find.call(document.querySelectorAll('[data-scope]'), function(x) { return x.getAttribute('data-scope') === '1' && x.tagName === 'BUTTON'; }); b.click(); return 'lv1'; })()");

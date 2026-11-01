@@ -1,6 +1,7 @@
 // Phase H2C-B3: 実機(Playtest)の確認 — 初期付与のプレビュー(読み取り専用)・初期付与の挙動(H2C-B4で加算から補充へ)・旧セーブ移行の説明(Deck Builderの実描画)・開発者レポート・旧カードと新カードの共存。
 // 使い方: MZ_OUT=<出力> MZ_TMP_SAVE=<一時のsaveフォルダ> node tools/mz_cdp/h2cb3_verify.cjs
 //   新しいゲームはメモリ上に作る。旧形式の保存は MZ_TMP_SAVE(一時フォルダ)だけに書き、本物のScene_Load経路で読む。本物のsave/には触れない。入力はCDPでは送らない(状態の準備と観測だけ)。
+const { IMPLEMENTED: A7I, STILL_RESERVED: A7R, N: A7N } = require("./apollo_implemented.cjs");
 const fs = require("fs");
 const { session } = require("./lib.cjs");
 const OUT = process.env.MZ_OUT || "mz_out";
@@ -96,7 +97,7 @@ const same = (a, b) => JSON.stringify(sortKeys(a)) === JSON.stringify(sortKeys(b
     const newCopies = await json("(function() { var m = {}; ['hermes_issen', 'hermes_psychopomp', 'hermes_veil', 'hermes_strength', 'hermes_sweep', 'hermes_reed_flute', 'hermes_zetsu'].forEach(function(id) { m[id] = ProjectRCardInventory.getOwnedCopies(id); }); return m; })()");
     rec("M8 旧カードと新カードの共存(実機): 新Hermesの初回入手は新7枚(3/3/3/10/3/3/5)だけを付与し、旧Hermes4種・Apollo3種の所持とLevelは変わらない", same(legacyBefore, legacyAfter) && same(newCopies, { hermes_issen: 3, hermes_psychopomp: 3, hermes_veil: 3, hermes_strength: 10, hermes_sweep: 3, hermes_reed_flute: 3, hermes_zetsu: 5 }), { legacyAfter });
     const g = await json("ProjectRHermesProductionDeck.cardGenerations()");
-    rec("M9 旧カード/新カードの監査: 新7・旧7・その他0、表示名の完全な重複なし、紛らわしい対応が3組(旧→新)。旧カードの定義は残る", g.cards.filter(x => x.generation === "new").length === 7 && g.cards.filter(x => x.generation === "legacy").length === 7 && g.cards.filter(x => x.generation === "other").map(x => x.cardId).join() === "apollo_golden_volley,apollo_eros_arrow" && g.duplicateNames.length === 0 && g.confusablePairs.length === 3, { pairs: g.confusablePairs.map(p => `${p.legacyName}→${p.newName}${p.nameOverlap ? "(名前が部分一致)" : ""}`) });
+    rec("M9 旧カード/新カードの監査: 新7・旧7・その他0、表示名の完全な重複なし、紛らわしい対応が3組(旧→新)。旧カードの定義は残る", g.cards.filter(x => x.generation === "new").length === 7 && g.cards.filter(x => x.generation === "legacy").length === 7 && g.cards.filter(x => x.generation === "other").map(x => x.cardId).join() === A7I.join() && g.duplicateNames.length === 0 && g.confusablePairs.length === 3, { pairs: g.confusablePairs.map(p => `${p.legacyName}→${p.newName}${p.nameOverlap ? "(名前が部分一致)" : ""}`) });
   });
 
   const stuck = await ev("Object.keys(Input._currentState).filter(function(k) { return Input._currentState[k]; })");

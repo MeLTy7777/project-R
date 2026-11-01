@@ -1,6 +1,7 @@
 // Phase Apollo-A2: 実機(Playtest)の確認 — 複数の神対応のカードカタログ。Apollo 8枚の予約IDは本番で使えず、旧Apollo 3枚・Hermes 7枚・Deck Builder・混成デッキ・セーブ往復は従来どおり。
 // 使い方: MZ_OUT=<出力> MZ_TMP_SAVE=<一時のsaveフォルダ> node tools/mz_cdp/apollo_a2_verify.cjs
 //   新しいゲームはメモリ上に作る。保存は MZ_TMP_SAVE(一時フォルダ)だけに書き、本物のScene_Save/Load経路で往復する。本物のsave/ には書かない。入力はCDP(人間の手動確認ではない)。
+const { IMPLEMENTED: A7I, STILL_RESERVED: A7R, N: A7N } = require("./apollo_implemented.cjs");
 const fs = require("fs");
 const { session } = require("./lib.cjs");
 const OUT = process.env.MZ_OUT || "mz_out";
@@ -9,8 +10,9 @@ const TMP_SAVE = norm(process.env.MZ_TMP_SAVE);
 const RESERVED = ["apollo_golden_volley", "apollo_eros_arrow", "apollo_lyre_rhythm", "apollo_laurel_wreath", "apollo_hyacinthus", "apollo_gigas_slayer", "apollo_oracle", "apollo_plague_rain"];
 const LEGACY = ["apollo_golden_arrow", "apollo_plague_attack", "apollo_lyre_calm"];
 // 黄金の矢(apollo_golden_volley)はPhase A4で実装・登録済み。残りの7枚が引き続き予約(未登録)。
-const INACTIVE = RESERVED.filter(id => id !== "apollo_golden_volley" && id !== "apollo_eros_arrow"); // A4・A6Aで実装済みの2枚を除く
+const INACTIVE = RESERVED.filter(id => !A7I.includes(id)); // A4・A6Aで実装済みの2枚を除く
 const COPIES = [5, 5, 2, 3, 3, 5, 3, 4];
+const UNREG = INACTIVE[0] || null, UNREG_N = UNREG ? COPIES[RESERVED.indexOf(UNREG)] : 0; // 未登録のまま読み込む確認に使う予約カード(全部実装したら無し)
 (async () => {
   if (!process.env.MZ_TMP_SAVE) throw new Error("MZ_TMP_SAVE(一時のsaveフォルダ)を指定してください");
   fs.mkdirSync(TMP_SAVE, { recursive: true });
@@ -34,27 +36,27 @@ const COPIES = [5, 5, 2, 3, 3, 5, 3, 4];
   await check("A1 カタログ: 15設計(Hermes 7 + Apollo 8)・Apolloの予約ID・最大コピー合計30・コピー上限(5/5/2/3/3/5/3/4)", async () => {
     const v = await json("({ n: ProjectRCardCatalog.designs().length, gods: ProjectRCardCatalog.gods(), ids: ProjectRCardCatalog.godDesign('apollo').map(function(d) { return d.runtimeCardId; }), copies: ProjectRCardCatalog.godDesign('apollo').map(function(d) { return d.maxCopies; }), total: ProjectRCardCatalog.godTotalMaxCopies('apollo'), status: ProjectRCardCatalog.godStatus('apollo'), hermes: ProjectRCardCatalog.godTotalMaxCopies('hermes'), ready: [ProjectRCardCatalog.isGodDeckReady('hermes'), ProjectRCardCatalog.isGodDeckReady('apollo')], deck: ProjectRCardCatalog.buildGodDeck('apollo') })");
     rec("A1 catalog", v.n === 15 && JSON.stringify(v.gods) === '["hermes","apollo"]' && JSON.stringify(v.ids) === JSON.stringify(RESERVED) && JSON.stringify(v.copies) === JSON.stringify(COPIES) && v.total === 30 && v.hermes === 30
-      && v.status.reserved === 6 && v.status.implemented === 2 && v.ready[0] === true && v.ready[1] === false && v.deck === null, JSON.stringify(v).slice(0, 300));
+      && v.status.reserved === 8 - A7N && v.status.implemented === A7N && v.ready[0] === true && v.ready[1] === false && v.deck === null, JSON.stringify(v).slice(0, 300));
   });
 
   await check("A2 衝突なし・未登録: runtimeIdAuditが問題0件、予約8枚はレジストリに無く、旧Apollo 3枚とHermes 7枚は従来どおり登録されている", async () => {
     const v = await json("({ audit: ProjectRCardCatalog.runtimeIdAudit(), inactive: ProjectRCardCatalog.inactiveRuntimeCards(), registry: ProjectRCardDeck.definitions.cardDefinitions().map(function(c) { return c.cardId; }), registered: ProjectRCardCatalog.registeredRuntimeCards() })");
-    rec("A2 audit", v.audit.problems.length === 0 && v.inactive.length === 6 && JSON.stringify(v.inactive) === JSON.stringify(INACTIVE) && INACTIVE.every(id => v.registry.indexOf(id) < 0) && v.registry.indexOf("apollo_golden_volley") >= 0 && LEGACY.every(id => v.registry.indexOf(id) >= 0)
-      && v.registry.indexOf("apollo_eros_arrow") >= 0 && v.registry.length === 16 && v.registered.length === 9, JSON.stringify({ problems: v.audit.problems, registry: v.registry.length, registered: v.registered.length }));
+    rec("A2 audit", v.audit.problems.length === 0 && v.inactive.length === INACTIVE.length && JSON.stringify(v.inactive) === JSON.stringify(INACTIVE) && INACTIVE.every(id => v.registry.indexOf(id) < 0) && v.registry.indexOf("apollo_golden_volley") >= 0 && LEGACY.every(id => v.registry.indexOf(id) >= 0)
+      && v.registry.indexOf("apollo_eros_arrow") >= 0 && v.registry.length === 14 + A7N && v.registered.length === 7 + A7N, JSON.stringify({ problems: v.audit.problems, registry: v.registry.length, registered: v.registered.length }));
   });
 
   await check("A3 本番で使えない: 予約カードは解放・付与(API/プラグインコマンド)できず、デッキにも入らない。Hermesの指輪の初期付与は30枚のままApolloを含まない", async () => {
     await fresh();
     const v = await json(`(function() { var out = { own: [], grant: [] }; ${JSON.stringify(INACTIVE)}.forEach(function(id) { out.own.push(ProjectRCardDeck.setCardOwned(id, true).ok); out.grant.push(ProjectRCardInventory.grantCopies(id, 1, { source: 't' }).ok); });
       var cmd = function(p, n, a) { PluginManager.callCommand(new Game_Interpreter(), p, n, a); };
-      cmd('ProjectR_CardInventory', 'GrantCardCopies', { cardId: 'apollo_oracle', copies: '2', rewardId: '' }); cmd('ProjectR_MenuIntegration', 'GrantCard', { cardId: 'apollo_oracle' });
-      out.oracle = ProjectRCardInventory.getOwnedCopies('apollo_oracle'); out.oracleOwned = ProjectRCardDeck.isCardOwned('apollo_oracle');
+      var probe = ${JSON.stringify(INACTIVE[0] || null)}; if (probe) { cmd('ProjectR_CardInventory', 'GrantCardCopies', { cardId: probe, copies: '2', rewardId: '' }); cmd('ProjectR_MenuIntegration', 'GrantCard', { cardId: probe }); }
+      out.oracle = probe ? ProjectRCardInventory.getOwnedCopies(probe) : 0; out.oracleOwned = probe ? ProjectRCardDeck.isCardOwned(probe) : false;
       out.deckReasons = ProjectRCardDeck.getDeckInvalidReasons(${JSON.stringify(INACTIVE)}).map(function(r) { return r.code; }).filter(function(x, i, a) { return a.indexOf(x) === i; });
       ProjectRCardDeck.assignRingToPlayer('apollo'); out.afterRing = ${JSON.stringify(INACTIVE)}.some(function(id) { return ProjectRCardDeck.isCardOwned(id); }); return out; })()`);
     await fresh();
     const hermes = await json(`(function() { var r = ProjectRHermesProductionDeck.acquireRing('hermes', { source: 'a2' }); var ids = ProjectRCardDeck.definitions.cardDefinitions().map(function(c) { return c.cardId; });
       return { ok: r.ok, total: ProjectRCardCatalog.hermesDesign().reduce(function(s, d) { return s + ProjectRCardInventory.getOwnedCopies(d.runtimeCardId); }, 0), apollo: ids.filter(function(id) { return /^apollo_/.test(id) && ProjectRCardInventory.getOwnedCopies(id) > 0; }), deck: ProjectRCardDeck.getDeck().length }; })()`);
-    rec("A3 inactive", v.own.every(x => x === false) && v.grant.every(x => x === false) && v.oracle === 0 && v.oracleOwned === false && v.deckReasons.indexOf("INVALID_CARD_ID") >= 0 && v.afterRing === false
+    rec("A3 inactive", v.own.every(x => x === false) && v.grant.every(x => x === false) && v.oracle === 0 && v.oracleOwned === false && (INACTIVE.length === 0 || v.deckReasons.indexOf("INVALID_CARD_ID") >= 0) && v.afterRing === false
       && hermes.total === 30 && hermes.apollo.length === 0 && hermes.deck === 30, JSON.stringify({ v, hermes }).slice(0, 400));
   });
 
@@ -92,9 +94,9 @@ const COPIES = [5, 5, 2, 3, 3, 5, 3, 4];
     await registerPlanned();
     await useDir(TMP_SAVE);
     await ev(`(function() { var D = ProjectRCardDeck, I = ProjectRCardInventory; D.assignRingToPlayer('hermes'); D.assignRingToPlayer('apollo');
-      ['hermes_zetsu','hermes_strength','apollo_golden_volley','apollo_eros_arrow','apollo_gigas_slayer'].forEach(function(id) { I.grantCopies(id, 12, { source: 'a2' }); });
+      ['hermes_zetsu','hermes_strength','hermes_sweep','apollo_golden_volley','apollo_eros_arrow','apollo_gigas_slayer'].concat(${JSON.stringify(UNREG ? [UNREG] : [])}).forEach(function(id) { I.grantCopies(id, 12, { source: 'a2' }); });
       function rep(id, n) { var a = []; for (var i = 0; i < n; i++) a.push(id); return a; }
-      D.setDeck([].concat(rep('hermes_zetsu', 5), rep('hermes_strength', 10), rep('apollo_golden_volley', 5), rep('apollo_eros_arrow', 5), rep('apollo_gigas_slayer', 5))); D.setCardLevel('apollo_eros_arrow', 3); return 'set'; })()`);
+      D.setDeck([].concat(rep('hermes_zetsu', 5), rep('hermes_strength', 10), rep('apollo_golden_volley', 5), rep('apollo_eros_arrow', 5), ${UNREG ? `rep('${UNREG}', ${UNREG_N}).concat(rep('hermes_sweep', ${5 - UNREG_N}))` : "rep('apollo_gigas_slayer', 5)"})); D.setCardLevel('apollo_eros_arrow', 3); return 'set'; })()`);
     const snap = () => json("({ deck: ProjectRCardDeck.getDeck(), copies: ['apollo_golden_volley','apollo_eros_arrow','hermes_zetsu'].map(function(id) { return ProjectRCardInventory.getOwnedCopies(id); }), level: ProjectRCardDeck.getPersistentData().cardOwnership.apollo_eros_arrow })");
     const before = await snap();
     // 実際の保存(Scene_Save経路と同じ DataManager.saveGame)→ 新しいゲーム → 実際の読み込み(Scene_Load経路)
@@ -111,7 +113,7 @@ const COPIES = [5, 5, 2, 3, 3, 5, 3, 4];
     await wait("window.__loadResult !== 'pending'", 8000);
     await ev("Scene_Load.prototype.reloadMapIfUpdated.call(null); SceneManager.goto(Scene_Map); 'go'"); await ready();
     const noDefs = await json("({ deck: ProjectRCardDeck.getDeck(), reasons: ProjectRCardDeck.getDeckInvalidReasons().map(function(r) { return r.code; }).filter(function(x, i, a) { return a.indexOf(x) === i; }) })");
-    rec("A6 save roundtrip", saved === "saved" && loadResult === "loaded" && JSON.stringify(before) === JSON.stringify(after) && JSON.stringify(noDefs.deck) === JSON.stringify(before.deck) && noDefs.reasons.indexOf("INVALID_CARD_ID") >= 0,
+    rec("A6 save roundtrip", saved === "saved" && loadResult === "loaded" && JSON.stringify(before) === JSON.stringify(after) && JSON.stringify(noDefs.deck) === JSON.stringify(before.deck) && (!UNREG || noDefs.reasons.indexOf("INVALID_CARD_ID") >= 0),
       JSON.stringify({ saved, loadResult, same: JSON.stringify(before) === JSON.stringify(after), deckSame: JSON.stringify(noDefs.deck) === JSON.stringify(before.deck), reasons: noDefs.reasons }));
   });
 

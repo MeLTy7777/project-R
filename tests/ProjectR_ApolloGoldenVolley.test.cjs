@@ -1,4 +1,5 @@
 "use strict";
+const { IMPLEMENTED: A7_IMPLEMENTED, STILL_RESERVED: A7_RESERVED, OWN_PLUGIN: A7_OWN, SHARED_USERS: A7_SHARED, COUNT: A7_COUNT } = require("./ProjectR_ApolloImplemented.cjs");
 // Phase Apollo-A4: Apollo「黄金の矢」(設計ID 8 / apollo_golden_volley)Lv1〜2。実エンジン(実Map004 + 全plugin + 実Hendrix/DotMove。矢は本物のspawnEventで飛ぶ)。
 // MZ実機(マウス・実キー・描画)は対象外 → tools/mz_cdp/apollo_a4_verify.cjs。Lv3は実装していないことも確かめる。
 const fs = require("node:fs");
@@ -28,9 +29,9 @@ test("登録: 強力 / 最大5枚 / 最大Lv3 / Cooldown 3秒 / Ground / Apollo�
     assert.equal(row.runtimeCardId, VOLLEY);
     assert.equal(row.implemented, true);
     assert.equal(row.implementedLevels, 3, "実装したのはLv1〜3(Lv3は扇だけ。A5A)"); assert.equal(row.beamImplemented, true, "ビームはA5Bで実装");
-    assert.equal(w.ctx.ProjectRCardCatalog.godStatus("apollo").implemented, 2, "Apolloで実装済みは黄金の矢とエロスの矢(A6A)の2枚");
+    assert.equal(w.ctx.ProjectRCardCatalog.godStatus("apollo").implemented, A7_COUNT, "Apolloで実装済みは一覧どおり");
     assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.inactiveRuntimeCards()).filter(id => id.startsWith("apollo_")).sort(),
-        ["apollo_gigas_slayer", "apollo_hyacinthus", "apollo_laurel_wreath", "apollo_lyre_rhythm", "apollo_oracle", "apollo_plague_rain"], "残りの6枚は引き続き未登録(エロスの矢はA6Aで登録)");
+        [...A7_RESERVED].sort(), "残りは引き続き未登録");
     assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.runtimeIdAudit().problems), []);
 });
 
@@ -555,7 +556,7 @@ test("本番の取得経路には載らない: Hermesの初期付与(指輪の�
     assert.equal(cat.buildGodDeck("apollo"), null);
     assert.equal(cat.isGodDeckReady("apollo"), false);
     assert.equal(cat.godStatus("apollo").ready, false);
-    assert.deepEqual(cat.godStatus("apollo").blockers.length, 6, "Apolloの未実装は6枚(エロスの矢はA6Aで実装)");
+    assert.deepEqual(cat.godStatus("apollo").blockers.length, A7_RESERVED.length, "Apolloの未実装は一覧の残り");
     const production = w.ctx.ProjectRHermesProductionDeck;
     const starter = plain(production.starterSet());
     assert.ok(Object.keys(starter).length >= 7 || starter.length >= 7, "初期セットはHermesの7枚");

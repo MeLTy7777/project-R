@@ -67,7 +67,14 @@
     "criticalMultiplier": { "label": "クリティカル倍率", "unit": "倍", "min": 1, "max": 20, "reserved": true },
     "defenseBonus": { "label": "防御力の加算", "unit": "割合", "min": 0, "max": 10, "reserved": true },
     "maxStacks": { "label": "重ね掛けの上限", "unit": "回", "min": 1, "max": 99, "integer": true, "reserved": true },
-    "stackMultiplier": { "label": "重ね掛けの倍率", "unit": "倍", "min": 0, "max": 10, "reserved": true }
+    "stackMultiplier": { "label": "重ね掛けの倍率", "unit": "倍", "min": 0, "max": 10, "reserved": true },
+    "chargeSeconds": { "label": "オートチャージの時間(発動から矢を放つまで)", "unit": "秒", "min": 0, "max": 3 },
+    "weakSeconds": { "label": "弱点状態の持続", "unit": "秒", "min": 0.1, "max": 60 },
+    "weakDamageTaken": { "label": "弱点状態の被ダメージ倍率", "unit": "倍", "min": 1, "max": 10 },
+    "woundSeconds": { "label": "傷状態の持続", "unit": "秒", "min": 0.1, "max": 60 },
+    "woundDamagePerSecond": { "label": "傷状態のスリップダメージ(秒間)", "unit": "HP/秒", "min": 0, "max": 99999, "integer": true },
+    "woundTickSeconds": { "label": "傷状態のスリップ間隔", "unit": "秒", "min": 0.1, "max": 5 },
+    "woundDamageTaken": { "label": "傷状態の被ダメージ倍率", "unit": "倍", "min": 1, "max": 10 }
   },
   "cards": {
     "hermes_issen": {
@@ -158,6 +165,21 @@
         "1": { "damage": 20, "healAmount": 50, "directionCount": 1, "arrowsPerDirection": 10 },
         "2": { "directionCount": 3, "directionSpacingDegrees": 80, "arrowsPerDirection": 7 },
         "3": { "homingRadiusTiles": 7, "beamDurationSeconds": 3, "beamHealPerSecond": 300, "beamDamagePerSecond": 80, "beamTickSeconds": 0.1, "beamWidthTiles": 0.9, "beamRangeTiles": 12 }
+      }
+    },
+    "apollo_gigas_slayer": {
+      "name": "ギガース殺し",
+      "designId": 13,
+      "cooldownSeconds": 3,
+      "constants": {
+        "chargeSeconds": 0.5, "projectileSpeed": 20, "rangeTiles": 40, "pathWidthTiles": 1,
+        "beamSpeed": 40, "beamRangeTiles": 40, "beamHitsPerTile": 3, "beamMaxHitsPerTarget": 11, "hitStopFrames": 3, "hitStopMaxFrames": 30,
+        "element": 0, "weaknessMultiplier": 1
+      },
+      "levels": {
+        "1": { "damage": 100, "weakSeconds": 5, "weakDamageTaken": 2 },
+        "2": { "woundSeconds": 5, "woundDamagePerSecond": 30, "woundTickSeconds": 1, "woundDamageTaken": 1.1 },
+        "3": { "beamWidthTiles": 3 }
       }
     }
   }

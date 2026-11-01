@@ -1,4 +1,5 @@
 "use strict";
+const { IMPLEMENTED: A7_IMPLEMENTED, STILL_RESERVED: A7_RESERVED, OWN_PLUGIN: A7_OWN, SHARED_USERS: A7_SHARED, COUNT: A7_COUNT } = require("./ProjectR_ApolloImplemented.cjs");
 // Phase H2C-A: Hermes 本番デッキ統合(指輪の初回入手 → 7種30枚の付与 → デッキ初期化 → メニュー → 戦闘前検証 → 戦闘中のカード循環)。
 // 実エンジン(本物のrmmz_*.js + js/plugins.js の全プラグインを本番順 + 実Map004)で動かす。MZの描画・音はstub。
 // 実機(NW.js)での確認は tools/mz_cdp/h2ca_verify.cjs。
@@ -71,7 +72,7 @@ test("登録: 新Hermes 7枚のランタイムIDは重複せず、定義は1つ�
     assert.equal(total, 30);
     // Mapは同じキーを二重に持てない。追加登録は7件で、旧カードと重ならない。
     const registered = w.ctx.ProjectRCardCatalog.registeredRuntimeCards();
-    assert.deepEqual([...registered].sort(), [...IDS, "apollo_golden_volley", "apollo_eros_arrow"].sort(), "Hermes 7枚 + 黄金の矢(Apollo-A4) + エロスの矢(Apollo-A6A)");
+    assert.deepEqual([...registered].sort(), [...IDS, ...A7_IMPLEMENTED].sort(), "Hermes 7枚 + 実装済みのApollo");
     for (const id of LEGACY.concat(APOLLO)) assert.ok(!registered.includes(id), id);
     assert.deepEqual(plain(w.prod().starterSet().map(c => [c.cardId, c.copies])), plain(STARTER.map(r => [r[0], r[2]])));
     assert.equal(w.prod().starterTotal(), 30);

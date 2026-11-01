@@ -434,7 +434,7 @@ test("既存の入力・カードとの互換: Lv1〜2は即時、Lv3のtapは�
     assert.equal(cat.buildGodDeck("apollo"), null); assert.equal(cat.godStatus("apollo").ready, false);
     assert.ok(!JSON.stringify(plain(w.ctx.ProjectRHermesProductionDeck.starterSet())).includes(VOLLEY));
     // ProjectR_HitStop は他のカードの挙動を変えない(止めを使うのはこのカードのビームだけ)
-    const text = fs.readdirSync(path.join(project, "js/plugins")).filter(f => f.endsWith(".js") && f !== "ProjectR_HitStop.js" && f !== "ProjectR_ApolloGoldenVolley.js")
+    const text = fs.readdirSync(path.join(project, "js/plugins")).filter(f => f.endsWith(".js") && f !== "ProjectR_HitStop.js" && f !== "ProjectR_ApolloGoldenVolley.js" && f !== "ProjectR_ApolloGigasSlayer.js")
         .filter(f => /ProjectRHitStop/.test(fs.readFileSync(path.join(project, "js/plugins", f), "utf8")));
     assert.deepEqual(text, [], "他のpluginはヒットストップを使っていない");
     const config = {};

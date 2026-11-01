@@ -152,8 +152,8 @@
             runtimeCardId: "apollo_hyacinthus",
             migration: migration(null, "new", "reserved-not-implemented", "新ランタイムID apollo_hyacinthus を予約。旧カードに対応なし。新規。") }),
         apolloRow(13, "ギガース殺し", "strong", 5, 3, { workbookTargetType: "Ground", targetType: "ground", category: "disrupt",
-            runtimeCardId: "apollo_gigas_slayer",
-            migration: migration(null, "new", "reserved-not-implemented", "新ランタイムID apollo_gigas_slayer を予約。旧カードに対応なし。新規。") }),
+            runtimeCardId: "apollo_gigas_slayer", implemented: true, status: "implemented", targetTypeStatus: "confirmed", implementedLevels: 3,
+            migration: migration(null, "new", "implemented", "Phase Apollo-A7でLv1〜3を新ランタイムID apollo_gigas_slayer として実装。旧カードに対応なし。新規。") }),
         apolloRow(14, "神託", "strong", 3, 3, { workbookTargetType: "その他", targetType: "instant", category: "special",
             runtimeCardId: "apollo_oracle",
             migration: migration(null, "new", "reserved-not-implemented", "新ランタイムID apollo_oracle を予約。旧カードに対応なし。新規。") }),
@@ -202,7 +202,10 @@
             rarity: "strong", category: "attack", targetType: "ground" }),
         // エロスの矢(Apollo-A6A/A6B/A6C。Lv1〜3を実装): Apollo / 特殊 / 最大5枚 / Cooldown 5秒 / Ground(マウス方向)。
         Object.freeze({ cardId: "apollo_eros_arrow", ringId: "apollo", maxCopies: 5, cooldownSeconds: 5, maxLevel: 3,
-            rarity: "special", category: "special", targetType: "ground" })
+            rarity: "special", category: "special", targetType: "ground" }),
+        // ギガース殺し(Apollo-A7。Lv1〜3を実装): Apollo / 強力 / 最大5枚 / Cooldown 3秒 / Ground(マウス方向)。
+        Object.freeze({ cardId: "apollo_gigas_slayer", ringId: "apollo", maxCopies: 5, cooldownSeconds: 3, maxLevel: 3,
+            rarity: "strong", category: "disrupt", targetType: "ground" })
     ]);
     const registerRuntimeCards = () => {
         const registry = root.ProjectRCardDeck?.definitions;

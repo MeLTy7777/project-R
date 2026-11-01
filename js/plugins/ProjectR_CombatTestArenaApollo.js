@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc v1.1.0 DEV専用 Combat Test Arena 追加: 黄金の矢(apollo_golden_volley)・エロスの矢(apollo_eros_arrow)のテスト開始(Playtest限定)。
+ * @plugindesc v1.2.0 DEV専用 Combat Test Arena 追加: 新Apollo 8枚(黄金の矢・エロスの矢・ギガース殺しなど)のテスト開始(Playtest限定)。
  * @author ProjectR
  * @base ProjectR_CombatTestArena
  * @base ProjectR_ApolloGoldenVolley
@@ -24,12 +24,16 @@
     const root = typeof window !== "undefined" ? window : globalThis;
     const isPlaytest = () => typeof Utils !== "undefined" && typeof Utils.isOptionValid === "function" && Utils.isOptionValid("test") === true;
     if (!isPlaytest()) return;
-    const CARDS = Object.freeze({ golden: "apollo_golden_volley", eros: "apollo_eros_arrow" });
+    const CARDS = Object.freeze({ golden: "apollo_golden_volley", eros: "apollo_eros_arrow", gigas: "apollo_gigas_slayer", hyacinthus: "apollo_hyacinthus", plague: "apollo_plague_rain",
+        laurel: "apollo_laurel_wreath", lyre: "apollo_lyre_rhythm", oracle: "apollo_oracle" });
+    // カードごとのAPI(Phase A7。まだ読み込まれていないカードは undefined → start は pluginsUnavailable)
+    const APIS = Object.freeze({ apollo_golden_volley: "ProjectRApolloGoldenVolley", apollo_eros_arrow: "ProjectRApolloErosArrow", apollo_gigas_slayer: "ProjectRApolloGigasSlayer",
+        apollo_hyacinthus: "ProjectRApolloHyacinthus", apollo_plague_rain: "ProjectRApolloPlagueRain", apollo_laurel_wreath: "ProjectRApolloLaurelWreath", apollo_lyre_rhythm: "ProjectRApolloLyreRhythm", apollo_oracle: "ProjectRApolloOracle" });
     let CARD = CARDS.golden; // 現在のテストのカード(start で選ぶ)
     const DECK_SIZE = 30;
     const deck = () => root.ProjectRCardDeck;
     const arena = () => root.ProjectRCombatTestArena;
-    const volley = () => (CARD === CARDS.eros ? root.ProjectRApolloErosArrow : root.ProjectRApolloGoldenVolley);
+    const volley = () => root[APIS[CARD]];
     const fail = reason => ({ ok: false, reason });
     let grantedRing = false; // このDEVの入口が渡した指輪(戦闘の余韻が明けたら返す)
     let returnRing = false;
@@ -88,7 +92,7 @@
         const d = deck(), state = d?.getBattleState?.() || null, v = volley();
         return {
             cardBattleActive: !!d?.isCardBattleActive?.(),
-            level: v?.cardLevel?.() ?? (CARD === CARDS.eros ? 1 : null),
+            level: v?.cardLevel?.() ?? null,
             hand: state ? state.hand.map(card => card.cardId) : [],
             counts: state ? { draw: state.drawPile.length, discard: state.discardPile.length, cooldown: state.cooldownPile.length } : null,
             card: CARD, pending: v?.getPending?.() ?? null, arrows: v?.getActiveArrows?.() ?? [], slips: v?.getActiveSlips?.() ?? [],

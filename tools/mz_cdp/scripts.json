@@ -40,6 +40,8 @@
     { "file": "h2cb1_esc.cjs", "kind": "os-input", "status": "maintained", "input": "os", "phase": "H2C-B1", "expectedChecks": 13, "covers": "Deck BuilderのEsc・X/B・右クリック・戦闘中のQ/E/X/C/V" },
     { "file": "h3a_manual_os_input.cjs", "kind": "os-input", "status": "maintained", "input": "os", "phase": "H2B-3A", "expectedChecks": 9, "covers": "ヴェイルのOS入力(繰り返し発動しない)" },
     { "file": "h3b_manual_os_input.cjs", "kind": "os-input", "status": "maintained", "input": "os", "phase": "H2B-3B", "expectedChecks": 8, "covers": "サイコポンポスのOS入力" },
-    { "file": "h3a_veil_diag.cjs", "kind": "diagnostic", "status": "maintained", "input": "cdp+mouse", "phase": "H2C-B3", "env": ["MZ_REPEAT", "MZ_JITTER"], "covers": "ヴェイルR4a/R4bの診断(毎フレーム記録・原因の分類・繰り返し)。合否の検証ではなく調査用" }
+    { "file": "h3a_veil_diag.cjs", "kind": "diagnostic", "status": "maintained", "input": "cdp+mouse", "phase": "H2C-B3", "env": ["MZ_REPEAT", "MZ_JITTER"], "covers": "ヴェイルR4a/R4bの診断(毎フレーム記録・原因の分類・繰り返し)。合否の検証ではなく調査用" },
+    { "file": "apollo_a7_gigas_verify.cjs", "kind": "verify", "status": "maintained", "input": "cdp+key+mouse", "phase": "Apollo-A7", "expectedChecks": 9, "covers": "ギガース殺しLv1〜3: 0.5秒のオートチャージ→太い矢→100ダメージ+弱点x2・傷(x2.2とスリップ5x66)・Lv3の幅3マス連続ヒット(2300)・外れ/重複/壁・取消と後片付け・frame処理時間・黄金の矢の退行なし" },
+    { "file": "apollo_implemented.cjs", "kind": "support", "status": "maintained", "input": "none", "phase": "Apollo-A7", "expectedChecks": 0, "covers": "実装済みApollo一覧(件数を固定していた古い検証スクリプトが参照する共通部品)" }
   ]
 }

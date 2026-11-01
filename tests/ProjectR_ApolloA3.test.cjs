@@ -1,4 +1,5 @@
 "use strict";
+const { IMPLEMENTED: A7_IMPLEMENTED, STILL_RESERVED: A7_RESERVED, OWN_PLUGIN: A7_OWN, SHARED_USERS: A7_SHARED, COUNT: A7_COUNT } = require("./ProjectR_ApolloImplemented.cjs");
 // Phase Apollo-A3: 将来のApollo 8枚が使う共有の戦闘基盤。押下時間の検出(tap/hold/release/取消/キーリピート)、被ダメージ・弱点・状態の修飾、主人公+仲間の名簿。
 // どれも未使用(Apolloの8枚は未登録のまま)で、既定は中立: 既存のダメージの数値と入力の挙動を変えない。実エンジン(実Map004 + 全plugin)。
 const fx = require("./ProjectR_HermesB1Fixture.cjs");
@@ -453,8 +454,8 @@ test("名簿(読み取り専用): 主人公+出撃中の仲間だけ。NPC・敵
 test("互換性: Apollo 8枚は未登録のまま・旧Apollo/Hermesの定義と保存デッキは不変・登録/チェーンの順序(CardModifiersが最外)・既存の入力と属性は従来どおり", () => {
     const w = dmWorld();
     const d = deckApi(w);
-    for (const id of ["apollo_golden_volley", "apollo_eros_arrow", "apollo_lyre_rhythm", "apollo_laurel_wreath", "apollo_hyacinthus", "apollo_gigas_slayer", "apollo_oracle", "apollo_plague_rain"]) { if (id === "apollo_golden_volley" || id === "apollo_eros_arrow") assert.ok(d.definitions.card(id), id + " は実装済み(登録。A4/A6A)"); else assert.equal(d.definitions.card(id), null, id); }
-    assert.equal(d.definitions.cardDefinitions().length, 16, "旧7 + 実行時に追加した7 + 黄金の矢(A4) + エロスの矢(A6A)");
+    for (const id of ["apollo_golden_volley", "apollo_eros_arrow", "apollo_lyre_rhythm", "apollo_laurel_wreath", "apollo_hyacinthus", "apollo_gigas_slayer", "apollo_oracle", "apollo_plague_rain"]) { if (A7_IMPLEMENTED.includes(id)) assert.ok(d.definitions.card(id), id + " は実装済み(登録)"); else assert.equal(d.definitions.card(id), null, id); }
+    assert.equal(d.definitions.cardDefinitions().length, 14 + A7_COUNT, "旧7 + 実行時に追加した7 + 実装済みのApollo");
     const legacy = ["apollo_golden_arrow", "apollo_plague_attack", "apollo_lyre_calm"].map(id => plain(d.definitions.card(id)));
     assert.deepEqual(legacy.map(c => [c.maxCopies, c.cooldownSeconds, c.targetType]), [[3, 4, "direction"], [2, 12, "direction"], [3, 10, "ally"]]);
     const command = w.ctx.PluginManager._commands["Hendrix_Action_Engine:UpdateEventHp"];
