@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc v1.1.0 Apollo「エロスの矢」(設計ID 9 / apollo_eros_arrow) Lv1〜2: 1秒でピンクゴールドの矢を連射(Lv1は10本、Lv2は80度間隔の3方向x7本=21本)。矢ごとに追尾(3マス以内)、敵に20ダメージ・味方に50回復。命中が確定してから消費。
+ * @plugindesc v1.2.0 Apollo「エロスの矢」(設計ID 9 / apollo_eros_arrow) Lv1〜3: 1秒でピンクゴールドの矢を連射(Lv1は10本、Lv2は80度間隔の3方向x7本、Lv3は左右の2方向x7本=14本+中央の3秒のビーム)。追尾(Lv1〜2は3マス、Lv3は7マス)、敵に20ダメージ・味方に50回復(ビームは毎秒敵80・味方300)。命中が確定してから消費。
  * @author ProjectR
  * @base ProjectR_CardDeckCore
  * @base ProjectR_CardCatalog
@@ -29,16 +29,32 @@
  * @type string
  * @default Chime1
  *
+ * @param BeamSoundEffect
+ * @text ビームの始まりの効果音(RTPのSE名。空なら鳴らさない)
+ * @desc ワークブックは「ビームは長い一音」。竪琴の素材は無いので、RTPのBell1を仮に当てています(専用音ができたらここだけ差し替え)。
+ * @type string
+ * @default Bell1
+ *
  * @help
  * ProjectR_ApolloErosArrow.js
  *
  * Apollo「エロスの矢」(ワークブック設計ID 9 / 特殊 / 最大5枚 / Cooldown 5秒 / Ground / 壁越え はい)の Lv1〜2 を実装します。
- * Lv3(追尾範囲7・まっすぐ飛ぶ矢がビームに変更)は未実装で、カードの登録上の最大Lvは2です(Lv3は使えません)。
+ * Lv3(追尾範囲7・まっすぐ飛ぶ矢がビームに変更)はPhase A6Cで実装しました(下の【Lv3】)。カードの登録上の最大Lvは3です。
  *
  * 【Lv2(ワークブック)】三方向から発射する。80°間隔で発射される。ただし1方向につき7本に変更。
  *   実装: マウス方向を中心に 80度間隔の3方向(マウス方向・その左右80度)。1方向7本 x 3方向 = 21本を、Lv1と同じ1秒で放つ(7回の「発射の時刻」に、3方向から1本ずつ同時に)。
  *   方向はその発射の時刻のマウス方向から毎回計算し直し、矢ごとに最初の向きを固定する。3方向とも出発点はプレイヤーの中心(仮。directionOriginOffsetTiles で各方向の矢の出発点を、その方向へずらせる)。
  *   Lv1の追尾・壁越え・追尾範囲3・敵20・味方50・仮の決め・消費の規則はそのまま。
+ *
+ * 【Lv3(ワークブック)】矢の追尾する範囲が7になる。まっすぐに飛ぶ矢がビームに変更される。ビームは3秒間発射され、一秒に味方を300ヒール、敵に80ダメージ。
+ *   確定している仕様: 追尾範囲 3→7(通常の矢)/ 中央の「まっすぐ飛ぶ矢」がビームに変わる / 3秒 / 味方へ毎秒300・敵へ毎秒80 / 壁越え(はい)。Lv2の左右80度の2方向x7本(14本)は残る。
+ *   【仮(ワークブックに無い。確定ではない。後から変えられる)】
+ *     ・ビームの効果は毎秒10回(0.1秒ごと): 味方へ30回復・敵へ8ダメージを1回ずつ。1回の発動で同じ対象へ最大30回(= 3秒 / 0.1秒。900回復・240ダメージが上限)。同じ対象に同じtickで2回は当たらない。
+ *     ・ビームは発動の瞬間から3秒(180更新)。向きは現在のマウス方向に毎更新追従し(出発点は主人公の中心、directionOriginOffsetTilesでずらせる)、出ている間ずっと続く。ビームの長さは12マス(beamRangeTiles。マップの端で短くなる。24マスが上限)。
+ *     ・ビームの幅は0.9マス(beamWidthTiles。黄金の矢のビームの3マスは流用しない)。幅の中に当たり判定が重なる敵・味方すべてへ(複数同時)。壁・Regionで止まらない。主人公自身はビームの対象にしない。
+ *     ・ビームの対象の規則は矢と同じ: 出撃中の仲間(ダウン除く)と敵だけ。任意のNPCは対象外。HP満タンの味方はビームに当たっても回復できないので、有効な当たりに数えない(確定の消費にもならない)。
+ *     ・消費: 側面の矢の最初の有効な命中、またはビームの最初の有効な効果(敵へダメージ・HPの減った味方へ回復)のうち早い方で1回消費。3秒の間に有効な効果が1つも無ければ消費しない。
+ *   ビームの見た目: 専用の区間Event(Map002「ProjectR Apollo Eros Beam Segment」。1マスの区間を並べ、向きをマウスへ毎更新追従させる。VFX Designerの絵は向きを後から変えられないため)+ VFX Designerの始まりの閃光・Apolloの光・命中の火花。
  *
  * 【Lv1(ワークブック)】ゴールドピンクの矢を連続で1秒間に10本放つ。途中で方向転換可能。放った矢の付近3マス以内に味方、敵がいた場合追尾する。
  *   味方に当たると一本につき50ヒール、敵に当たると一本につき20ダメージ。
@@ -81,7 +97,13 @@
     const TAG = "<projectRErosArrow>";
     const TEMPLATE_NAME = "ProjectR Apollo Eros Arrow";
     const BOW_SPRITE = "ProjectR_Bow_DEV";
-    const IMPLEMENTED_MAX_LEVEL = 2; // Lv3は未実装(登録上の最大Lvも2)
+    const IMPLEMENTED_MAX_LEVEL = 3;
+    const BEAM_TEMPLATE_NAME = "ProjectR Apollo Eros Beam Segment";
+    const BEAM_TAG = "<projectRErosBeam>";
+    const MAX_BEAM_LENGTH = 24; // ビームの長さの上限(マス)。見た目の区間の上限と同じ(見えないビームを作らない)
+    const BEAM_SEGMENT_BUDGET = 24; // ビームの見た目の区間(Event)の同時の上限
+    const BEAM_SOUND_GAP_FRAMES = 15; // ビームの効果の音は、この間隔より近いものを間引く
+    const BEAM_MAX_TICKS_LIMIT = 100; // 設定の誤りで暴走させない(1対象あたりの最大tick数)
     const VISUAL_ARROW_BUDGET = 30; // 矢の見た目(Event)の同時の上限。超えた矢は見た目なしで(判定・命中は同じに)飛ぶ
     const MAX_TOTAL_ARROWS = 120; // 1回の発動の矢の合計の上限(設定の誤りで暴走させない)
     const EPSILON = 1e-8;
@@ -124,11 +146,27 @@
             const effects = balance().effects(CARD, level);
             const cfg = { level, directions: Math.floor(Number(effects.directionCount)), perDirection: Math.floor(Number(effects.arrowsPerDirection)), spacing: Number(effects.directionSpacingDegrees ?? 0),
                 originOffset: num("directionOriginOffsetTiles"), damage: Number(effects.damage), heal: Number(effects.healAmount),
-                emitSeconds: num("emitSeconds"), speed: num("projectileSpeed"), radius: num("homingRadiusTiles"), turnRate: num("homingTurnRate"),
+                emitSeconds: num("emitSeconds"), speed: num("projectileSpeed"), radius: Number(effects.homingRadiusTiles ?? num("homingRadiusTiles")), turnRate: num("homingTurnRate"),
                 lifetimeSeconds: num("projectileLifetimeSeconds"), selfHeal: num("selfHealEnabled") === 1, fullHp: num("fullHpAlliesEligible") === 1,
                 element: num("element"), weaknessMultiplier: num("weaknessMultiplier") };
-            cfg.count = cfg.directions * cfg.perDirection;
-            const ok = cfg.directions >= 1 && cfg.perDirection >= 1 && cfg.count <= MAX_TOTAL_ARROWS && (cfg.directions === 1 || cfg.spacing > 0) && cfg.originOffset >= 0 && cfg.damage >= 0 && cfg.heal >= 0 && cfg.emitSeconds > 0 && cfg.speed > 0 && cfg.radius >= 0 && cfg.turnRate > 0
+            // Lv3: 中央の「まっすぐ飛ぶ矢」(方向の数が奇数のときの真ん中の方向)をビームに置き換える。方向の数が偶数なら、狙い方向のビームを追加する。
+            const beamSeconds = Number(effects.beamDurationSeconds ?? 0);
+            cfg.beam = beamSeconds > 0;
+            cfg.centerIndex = cfg.directions % 2 === 1 ? (cfg.directions - 1) / 2 : -1;
+            cfg.sideCount = cfg.directions - (cfg.beam && cfg.centerIndex >= 0 ? 1 : 0);
+            if (cfg.beam) {
+                Object.assign(cfg, { beamSeconds, beamHealRate: Number(effects.beamHealPerSecond), beamDamageRate: Number(effects.beamDamagePerSecond), beamTickSeconds: Number(effects.beamTickSeconds),
+                    beamWidth: Number(effects.beamWidthTiles), beamRange: Number(effects.beamRangeTiles) });
+                cfg.beamFrames = Math.max(1, Math.round(beamSeconds * 60));
+                cfg.beamTickFrames = Math.max(1, Math.round(cfg.beamTickSeconds * 60));
+                cfg.beamMaxTicks = Math.max(1, Math.floor(beamSeconds / cfg.beamTickSeconds + 1e-6));
+                cfg.beamTickHeal = Math.round(cfg.beamHealRate * cfg.beamTickSeconds);
+                cfg.beamTickDamage = Math.round(cfg.beamDamageRate * cfg.beamTickSeconds);
+                cfg.beamLength = Math.min(cfg.beamRange, MAX_BEAM_LENGTH);
+            }
+            cfg.count = cfg.sideCount * cfg.perDirection;
+            const beamOk = !cfg.beam || (cfg.beamHealRate >= 0 && cfg.beamDamageRate >= 0 && cfg.beamTickSeconds > 0 && cfg.beamTickSeconds <= cfg.beamSeconds && cfg.beamWidth > 0 && cfg.beamRange >= 1 && cfg.beamMaxTicks <= BEAM_MAX_TICKS_LIMIT);
+            const ok = beamOk && cfg.radius >= 0 && cfg.directions >= 1 && cfg.perDirection >= 1 && cfg.count <= MAX_TOTAL_ARROWS && (cfg.directions === 1 || cfg.spacing > 0) && cfg.originOffset >= 0 && cfg.damage >= 0 && cfg.heal >= 0 && cfg.emitSeconds > 0 && cfg.speed > 0 && cfg.radius >= 0 && cfg.turnRate > 0
                 && cfg.lifetimeSeconds > 0 && Number.isFinite(cfg.element) && Number.isFinite(cfg.weaknessMultiplier);
             if (!ok) return null;
             cfg.emitFrames = Math.max(1, Math.round(cfg.emitSeconds * 60));
@@ -190,6 +228,7 @@
     const hpOf = id => { const v = modifiers()?.eventHp?.(id); return Number.isFinite(v) ? v : (map()?.getCurrentEventHp?.(id) ?? 0); };
     const isEnemy = (event, partyIds) => !!event && !event._erased && !!event.event?.()?.note?.includes("<enemy>") && !partyIds.has(event.eventId());
     const isArrow = event => !!event?.event?.()?.note?.includes(TAG);
+    const isBeamEvent = event => !!event?.event?.()?.note?.includes(BEAM_TAG);
     const releaseSummon = id => { try { root.ProjectRGodSummonManager?.release?.(id); } catch (_error) { /* 表示のみ */ } };
     const eventCenter = event => ({ x: event._realX + 0.5, y: event._realY + 0.5 });
     const playerCenter = () => {
@@ -203,7 +242,7 @@
         } catch (_error) { return null; }
     };
 
-    const environment = () => {
+    const environment = (needBeam = false) => {
         const m = map();
         const player = typeof $gamePlayer !== "undefined" ? $gamePlayer : null;
         if (!player || !m || typeof m.getCurrentEventHp !== "function") return failure("mapUnavailable");
@@ -216,7 +255,12 @@
         const templates = typeof $dataTemplateMap !== "undefined" ? $dataTemplateMap?.events : null;
         const template = templates?.find(event => event?.name === TEMPLATE_NAME);
         if (!template || !template.note.includes(TAG)) return failure("projectileTemplateUnavailable");
-        return { ok: true, map: m, template };
+        let beamTemplate = null;
+        if (needBeam) {
+            beamTemplate = templates?.find(event => event?.name === BEAM_TEMPLATE_NAME) || null;
+            if (!beamTemplate || !beamTemplate.note.includes(BEAM_TAG)) return failure("beamTemplateUnavailable");
+        }
+        return { ok: true, map: m, template, beamTemplate };
     };
 
     // ---------- 状態 ----------
@@ -247,6 +291,8 @@
     };
     const liveArrows = seq => seq.arrows.filter(arrow => !arrow.gone);
     const emitting = seq => seq.slot < seq.slots;
+    const beamActive = seq => !!seq.beam && seq.beam.active;
+    const busy = seq => emitting(seq) || beamActive(seq); // 連射(側面の矢)の途中、またはビームが出ている間は、同じカードの再発動を拒否する
     const visualCount = () => { let n = 0; for (const seq of sequences.values()) for (const arrow of seq.arrows) if (!arrow.gone && arrow.event) n++; return n; };
 
     // ---------- 演出(表示だけ) ----------
@@ -276,7 +322,7 @@
     };
     // 発動(予約)の演出: 通常のカットイン1回・主人公の片手(連射の間ずっと)。Apolloは一時召喚の表示Eventが連射の間出る。
     const presentStart = seq => {
-        try { root.ProjectRCharacterPresentation?.request?.("ArmExtend", { source: "card", detail: CARD, frames: seq.cfg.emitFrames + 14, degree: seq.firstAim }); } catch (_error) { /* 表示のみ */ }
+        try { root.ProjectRCharacterPresentation?.request?.("ArmExtend", { source: "card", detail: CARD, frames: Math.max(seq.cfg.emitFrames, seq.cfg.beamFrames || 0) + 14, degree: seq.firstAim }); } catch (_error) { /* 表示のみ */ }
         try { if (root.ProjectRCutIn?.isCardEnabled?.(CARD)) root.ProjectRCutIn.show({ kind: "card", godId: godIdFor(seq.definition), cardId: CARD }); } catch (_error) { /* 表示のみ */ }
     };
     // 矢を放つ演出(発射の時刻PRESENT_EVERY回に1回。Lv2も3方向でまとめて1回): Apolloが弓を引いて放つ・閃光・音
@@ -309,7 +355,7 @@
             const event = m.event(ally.eventId);
             if (!event || event._erased) continue;
             if (!(ally.hp < ally.mhp) && !cfg.fullHp) continue; // HP満タンは素通り(仮)
-            list.push({ kind: "ally", key: "a" + ally.actorId, id: ally.eventId, actorId: ally.actorId, order: 0, event, polygon: bodyOf(event, eventCenter(event)) });
+            list.push({ kind: "ally", key: "a" + ally.actorId, id: ally.eventId, actorId: ally.actorId, hp: ally.hp, mhp: ally.mhp, order: 0, event, polygon: bodyOf(event, eventCenter(event)) });
         }
         if (cfg.selfHeal) {
             const p = r.protagonist();
@@ -357,7 +403,8 @@
         const degrees = directionDegrees(aim, cfg.directions, cfg.spacing);
         const made = [];
         for (let k = 0; k < degrees.length; k++) {
-            const degree = degrees[k], index = slot * cfg.directions + k;
+            if (cfg.beam && k === cfg.centerIndex) continue; // 中央の矢はビームに置き換わる
+            const degree = degrees[k], index = slot * cfg.sideCount + made.length;
             const start = { x: origin.x + Math.sin(rad(degree)) * cfg.originOffset, y: origin.y - Math.cos(rad(degree)) * cfg.originOffset };
             // 見た目のEventには上限がある。超えた矢は見た目なしで、判定・命中は同じように飛ぶ。
             const visual = visualCount() < VISUAL_ARROW_BUDGET;
@@ -371,7 +418,7 @@
             if (!spawned.ok) { seq.spawnFailures++; continue; }
             if (arrow.event && glowCount(seq) < GLOW_BUDGET) arrow.glow = pvPlay("apollo_eros.glow", { eventId: arrow.eventId, instance: "g" + seq.serial + "." + index })?.note || null;
         }
-        seq.next += degrees.length;
+        seq.next += cfg.sideCount;
         if (made[0]) presentEmit(seq, made[0]);
         return made;
     };
@@ -467,23 +514,158 @@
         pushLog(hitLog, { ...record });
     };
 
+    // ---------- ビーム(Lv3。中央の矢の置き換え) ----------
+    // 凸多角形どうしの重なり(接するだけは重ならない)。分離軸判定。
+    const convexOverlap = (A, B) => {
+        for (const poly of [A, B]) {
+            for (let i = 0; i < poly.length; i++) {
+                const p = poly[i], q = poly[(i + 1) % poly.length], nx = -(q.y - p.y), ny = q.x - p.x, len = Math.hypot(nx, ny) || 1;
+                let minA = Infinity, maxA = -Infinity, minB = Infinity, maxB = -Infinity;
+                for (const v of A) { const d = (v.x * nx + v.y * ny) / len; if (d < minA) minA = d; if (d > maxA) maxA = d; }
+                for (const v of B) { const d = (v.x * nx + v.y * ny) / len; if (d < minB) minB = d; if (d > maxB) maxB = d; }
+                if (maxA <= minB + EPSILON || maxB <= minA + EPSILON) return false;
+            }
+        }
+        return true;
+    };
+    // 出発点から向きdegreeへ進んでマップの端(ループしない方向)に出るまでの距離
+    const edgeDistance = (origin, degree) => {
+        const m = map(), ux = Math.sin(rad(degree)), uy = -Math.cos(rad(degree));
+        const along = (p, u, size, loop) => (loop ? Infinity : (u > 1e-9 ? (size - p) / u : (u < -1e-9 ? (0 - p) / u : Infinity)));
+        return Math.max(0, Math.min(along(origin.x, ux, m.width(), m.isLoopHorizontal()), along(origin.y, uy, m.height(), m.isLoopVertical())));
+    };
+    // ビームの当たり(向きに合わせた長方形): 長さ length x 幅 width。壁・Regionで止まらない(壁越え)。
+    const beamRectangle = (origin, degree, length, width) => {
+        const ux = Math.sin(rad(degree)), uy = -Math.cos(rad(degree)), nx = -uy, ny = ux, hw = width / 2;
+        return [[0, -hw], [length, -hw], [length, hw], [0, hw]].map(([a, b]) => ({ x: origin.x + ux * a + nx * b, y: origin.y + uy * a + ny * b }));
+    };
+    // ビームの見た目: 1マスの区間Eventを並べ、向きと位置を毎更新合わせる(マウスへの追従)。表示だけ。
+    const spawnSegment = (seq, x, y, degree) => {
+        const m = seq.env.map, before = new Set(m.events());
+        try {
+            const at = visualReal(x, y, degree);
+            const id = m.spawnEvent(seq.env.beamTemplate.id, at.x, at.y, false, shownDegree(degree));
+            const event = id && m.event(id);
+            if (!event || before.has(event) || !isBeamEvent(event) || typeof event.rotateTo !== "function") throw Error("beamSegmentCreationFailed");
+            event.rotateTo(shownDegree(degree));
+            return { eventId: id, event, map: m, shownHeading: degree };
+        } catch (_error) {
+            for (const event of m.events()) if (!before.has(event) && isBeamEvent(event)) { try { command("DestroyEvent", { target: String(event.eventId()), destroyNearby: "", permanent: "false" }, event.eventId()); } catch (_e) { /* 後片付け */ } }
+            return null;
+        }
+    };
+    const destroySegment = segment => {
+        const m = map();
+        if (!segment || !m || segment.map !== m || m.event(segment.eventId) !== segment.event) return;
+        try { command("DestroyEvent", { target: String(segment.eventId), destroyNearby: "", permanent: "false" }, segment.eventId); } catch (_error) { /* 後片付けの失敗は握りつぶす */ }
+    };
+    const destroyBeamVisuals = seq => {
+        const beam = seq.beam;
+        if (!beam) return;
+        for (const segment of beam.segments.splice(0)) destroySegment(segment);
+        stopNote(beam.glow); beam.glow = null;
+    };
+    const updateBeamVisual = seq => {
+        const beam = seq.beam, need = Math.min(BEAM_SEGMENT_BUDGET, Math.ceil(beam.length - 1e-6));
+        while (beam.segments.length > need) destroySegment(beam.segments.pop());
+        const ux = Math.sin(rad(beam.heading)), uy = -Math.cos(rad(beam.heading));
+        for (let i = 0; i < need; i++) {
+            const center = need === 1 ? beam.length / 2 : Math.min(i + 0.5, beam.length - 0.5);
+            const x = beam.origin.x + ux * center, y = beam.origin.y + uy * center;
+            let segment = beam.segments[i];
+            if (!segment) { segment = spawnSegment(seq, x, y, beam.heading); if (!segment) continue; beam.segments[i] = segment; continue; }
+            const event = segment.event;
+            if (!event || event._erased) continue;
+            event.isPlayerChild = false;
+            const at = visualReal(x, y, beam.heading);
+            event.setPosition(at.x, at.y);
+            if (Math.abs(normalize(beam.heading - segment.shownHeading + 180) - 180) > 0.01) { event.rotateTo(shownDegree(beam.heading)); segment.shownHeading = beam.heading; }
+        }
+        beam.segments = beam.segments.filter(Boolean);
+    };
+    const beamSummary = seq => seq.beam ? { active: seq.beam.active, ticks: seq.beam.ticks, tickIndex: seq.beam.tickIndex, maxTicks: seq.beam.maxTicks, length: seq.beam.length, heading: seq.beam.heading,
+        damageTotal: seq.beam.damageTotal, healTotal: seq.beam.healTotal, segments: seq.beam.segments.length, perTarget: Object.fromEntries(Object.entries(seq.beam.perTarget).map(([k, v]) => [k, { ...v }])) } : null;
+    // このframeのビーム: 向きと出発点をいまのマウス・プレイヤーへ合わせ、見た目を更新し、tickの時刻なら効果を与える対象を返す。
+    const planBeam = (seq, getTargets) => {
+        const cfg = seq.cfg, beam = seq.beam;
+        const aim = aimNow() ?? beam.heading;
+        const c = playerCenter();
+        beam.heading = aim;
+        beam.origin = { x: c.x + Math.sin(rad(aim)) * cfg.originOffset, y: c.y - Math.cos(rad(aim)) * cfg.originOffset };
+        beam.length = Math.min(cfg.beamLength, edgeDistance(beam.origin, aim));
+        if (!beam.started) {
+            beam.started = true;
+            playSe("BeamSoundEffect", "Bell1", 70, 100);
+            const apollo = root.ProjectRGodSummonVisual?.getTransientEventId?.("apollo") || 0;
+            startShortVfx("apollo_eros.beamstart", { eventId: apollo || "player", instance: "bs" + seq.serial });
+        }
+        if (!beam.glow && seq.tick >= 1) { // Apolloの表示Eventは発動の次の更新で現れる。現れたら、ビームの間そこへ光を付ける(最大12更新待つ)
+            const apollo = root.ProjectRGodSummonVisual?.getTransientEventId?.("apollo") || 0;
+            if (apollo || seq.tick >= 12) beam.glow = pvPlay("apollo_eros.beamglow", { eventId: apollo || "player", instance: "bg" + seq.serial })?.note || "none";
+            if (beam.glow === "none") beam.glow = null;
+        }
+        try { updateBeamVisual(seq); } catch (_error) { /* 表示のみ */ }
+        const due = seq.tick % beam.tickFrames === 0 && seq.tick / beam.tickFrames < beam.maxTicks;
+        const tickIndex = due ? seq.tick / beam.tickFrames : -1;
+        const list = [];
+        if (due && beam.length > EPSILON) {
+            const rect = beamRectangle(beam.origin, aim, beam.length, cfg.beamWidth);
+            for (const target of getTargets()) {
+                if (target.kind === "self") continue; // 主人公はビームの出発点にいるため、ビームの対象にしない(仮)
+                if (target.kind === "ally" && !(target.hp < target.mhp)) continue; // HP満タンへの当たりは回復にならないので有効な当たりに数えない
+                const rec = beam.perTarget[target.key];
+                if (rec && (rec.ticks >= beam.maxTicks || rec.lastTick === tickIndex)) continue; // 1対象あたり最大tick数・同じtickで二重に当てない
+                if (convexOverlap(rect, target.polygon)) list.push(target);
+            }
+        }
+        return { due, tickIndex, targets: list };
+    };
+    const applyBeamTick = (seq, plan) => {
+        const cfg = seq.cfg, beam = seq.beam;
+        beam.tickIndex = plan.tickIndex;
+        beam.ticks++;
+        for (const target of plan.targets) {
+            const rec = beam.perTarget[target.key] || (beam.perTarget[target.key] = { kind: target.kind, id: target.id, ticks: 0, damage: 0, healed: 0, lastTick: -1 });
+            if (rec.ticks >= beam.maxTicks || rec.lastTick === plan.tickIndex) continue;
+            rec.lastTick = plan.tickIndex;
+            try {
+                if (target.kind === "enemy") {
+                    if (target.event._erased || hpOf(target.id) <= 0) continue;
+                    const before = hpOf(target.id);
+                    dealFixed(target.id, cfg.beamTickDamage, "erosb:" + seq.serial + ":" + plan.tickIndex, cfg);
+                    rec.ticks++; rec.damage += before - hpOf(target.id); beam.damageTotal += before - hpOf(target.id);
+                    startShortVfx("apollo_eros.hit", { eventId: target.id, instance: "bh" + seq.serial + "." + plan.tickIndex + "." + target.id });
+                } else {
+                    const result = healAlly(target, cfg.beamTickHeal);
+                    if (!result.ok || !(result.applied > 0)) continue;
+                    rec.ticks++; rec.healed += result.applied; beam.healTotal += result.applied;
+                    startShortVfx("apollo_eros.heal", { eventId: target.id, instance: "bh" + seq.serial + "." + plan.tickIndex + "." + target.id });
+                }
+                if (frameNo - beam.lastSoundFrame >= BEAM_SOUND_GAP_FRAMES) { beam.lastSoundFrame = frameNo; playSe("ImpactSoundEffect", "Chime1", 45, 90); }
+            } catch (error) { rec.error = String(error?.message || error); }
+        }
+        pushLog(hitLog, { serial: seq.serial, beam: true, tick: plan.tickIndex, frame: frameNo, targets: plan.targets.map(x => x.key) });
+    };
+    const endBeam = seq => { if (!seq.beam || !seq.beam.active) return; seq.beam.active = false; destroyBeamVisuals(seq); };
+
     // ---------- 発動(予約) ----------
     const activate = context => {
         if (mode === "commit") return commitPlan ? { ok: true } : failure("noCommitPlan");
         if (!deck.isCardBattleActive() || !root.ProjectRCardCatalog) return failure("battleInactive");
         if (pendingSeq) return failure("volleyPending");
-        for (const seq of sequences.values()) if (emitting(seq)) return failure("sequenceActive"); // 連射の途中は、別の手札の同じカードでも発動しない
+        for (const seq of sequences.values()) if (busy(seq)) return failure("sequenceActive"); // 連射の途中は、別の手札の同じカードでも発動しない
         if (!balanceReady()) return failure("balanceUnavailable");
         const cfg = config();
         if (!cfg) return failure("balanceInvalid");
-        const env = environment();
+        const env = environment(cfg.beam);
         if (!env.ok) return failure(env.reason);
         const summons = root.ProjectRGodSummonManager;
         if (!summons) return failure("godSummonUnavailable");
         let seq = null;
-        const result = summons.perform({ definition: context?.definition, lifetimeFrames: cfg.emitFrames + 4 }, summon => {
+        const result = summons.perform({ definition: context?.definition, lifetimeFrames: Math.max(cfg.emitFrames, cfg.beamFrames || 0) + 4 }, summon => {
             if (!Number.isFinite(summon.degree) || !(summon.distance >= EPSILON)) return failure("invalidMousePosition");
             seq = { serial: ++serial, instanceId: context.instance.instanceId, definition: context.definition, cfg, level: cfg.level, count: cfg.count, slots: cfg.perDirection, slot: 0, schedule: emitSchedule(cfg.perDirection, cfg.emitFrames),
+                beam: cfg.beam ? { active: true, frames: cfg.beamFrames, tickFrames: cfg.beamTickFrames, maxTicks: cfg.beamMaxTicks, ticks: 0, tickIndex: -1, segments: [], heading: normalize(summon.degree), origin: null, length: 0, perTarget: {}, damageTotal: 0, healTotal: 0, glow: null, started: false, lastSoundFrame: -Infinity, shownHeading: null } : null,
                 tick: 0, next: 0, arrows: [], hits: [], committed: false, aborted: false, summonId: summon.summonId, firstAim: normalize(summon.degree), lastAim: normalize(summon.degree),
                 env, map: env.map, spawnFailures: 0 };
             return { ok: true };
@@ -503,8 +685,8 @@
         return state ? state.hand.findIndex(card => card.instanceId === instanceId) : -1;
     };
     const finishPending = seq => { if (pendingSeq === seq) pendingSeq = null; };
-    const resultOf = (seq, extra = {}) => ({ serial: seq.serial, arrows: seq.count, emitted: seq.next, hits: seq.hits.map(h => ({ ...h })), cfg: { ...seq.cfg }, instanceId: seq.instanceConsumed ?? seq.instanceId, ...extra });
-    const destroySeq = seq => { for (const arrow of seq.arrows) destroyArrow(arrow); };
+    const resultOf = (seq, extra = {}) => ({ serial: seq.serial, arrows: seq.count, emitted: seq.next, hits: seq.hits.map(h => ({ ...h })), beam: beamSummary(seq), cfg: { ...seq.cfg }, instanceId: seq.instanceConsumed ?? seq.instanceId, ...extra });
+    const destroySeq = seq => { for (const arrow of seq.arrows) destroyArrow(arrow); destroyBeamVisuals(seq); if (seq.beam) seq.beam.active = false; };
     // 取り消し: 矢を消し、カード・Cooldown・手札・山札・ゲージは一切変えていないので、戻す物は無い(確定前のみ)。
     const abortSeq = (seq, reason, extra = {}) => {
         if (seq.aborted) return;
@@ -576,8 +758,10 @@
         // 2) 動かして当たりを調べる
         const live = liveArrows(seq).filter(arrow => !fresh.has(arrow));
         const impacts = [];
+        let gathered = null; // このframeの当たり対象(必要になった時に1回だけ集める)
+        const getTargets = () => gathered || (gathered = gatherTargets(cfg));
         if (live.length) {
-            const targets = gatherTargets(cfg);
+            const targets = getTargets();
             for (const arrow of live) {
                 const outcome = stepArrow(seq, arrow, targets);
                 if (!outcome) continue;
@@ -585,14 +769,18 @@
                 else { arrow.end = outcome.end; destroyArrow(arrow); }
             }
         }
-        // 3) 最初の有効な命中でカードを消費する。消費できなければ全部消して何も与えない。
-        if (impacts.length && !seq.committed && !commitSeq(seq)) return;
+        // 2b) ビーム(Lv3): 向き・見た目を合わせ、tickの時刻なら効果を与える対象を求める
+        const plan = beamActive(seq) ? planBeam(seq, getTargets) : null;
+        // 3) 最初の有効な命中(矢の命中、またはビームの有効な効果)でカードを消費する。消費できなければ全部消して何も与えない。
+        if ((impacts.length || (plan && plan.targets.length)) && !seq.committed && !commitSeq(seq)) return;
         impacts.sort((a, b) => a.arrow.index - b.arrow.index);
         for (const impact of impacts) applyImpact(seq, impact.arrow, impact.target);
+        if (plan && plan.due) applyBeamTick(seq, plan);
+        if (seq.beam && seq.beam.active && seq.tick + 1 >= seq.beam.frames) endBeam(seq);
         seq.tick++;
         if (seq.committed) lastResult = { ok: true, pending: false, consumed: true, committed: true, ...resultOf(seq) };
         // 4) 全部放ち終わって、飛んでいる矢が無ければ終わり。確定していなければ外れ(非消費)。
-        if (!emitting(seq) && !liveArrows(seq).length) {
+        if (!busy(seq) && !liveArrows(seq).length) {
             if (!seq.committed) abortSeq(seq, "missed");
             else { // 正常な終わり(確定済み): 消費は済んでいて、矢を全部放ち終えた
                 sequences.delete(seq.serial); releaseSummon(seq.summonId);
@@ -640,19 +828,24 @@
         _onMapLoaded.apply(this, arguments);
         const m = map();
         if (!m) return;
-        const tracked = new Set([...sequences.values()].flatMap(s => s.arrows.map(a => a.event)));
-        for (const event of m.events()) if (isArrow(event) && !tracked.has(event)) destroyArrow({ eventId: event.eventId(), event, map: m, gone: false });
+        const tracked = new Set([...sequences.values()].flatMap(s => s.arrows.map(a => a.event).concat(s.beam ? s.beam.segments.map(g => g.event) : [])));
+        for (const event of m.events()) if ((isArrow(event) || isBeamEvent(event)) && !tracked.has(event)) destroyArrow({ eventId: event.eventId(), event, map: m, gone: false });
     };
 
     const tempObjectCount = () => {
-        let arrows = 0, events = 0, glows = 0;
-        for (const seq of sequences.values()) for (const arrow of liveArrows(seq)) { arrows++; if (arrow.event) events++; if (arrow.glow) glows++; }
-        return { arrows, events, glows, short: vfxJobs.length, total: events + glows + vfxJobs.length }; // arrows=飛んでいる矢(判定)、events=そのうち見た目のEvent、total=一時的な表示物の合計
+        let arrows = 0, events = 0, glows = 0, segments = 0, beamGlow = 0;
+        for (const seq of sequences.values()) {
+            for (const arrow of liveArrows(seq)) { arrows++; if (arrow.event) events++; if (arrow.glow) glows++; }
+            if (seq.beam) { segments += seq.beam.segments.length; if (seq.beam.glow) beamGlow++; }
+        }
+        return { arrows, events, glows, segments, beamGlow, short: vfxJobs.length, total: events + glows + segments + beamGlow + vfxJobs.length }; // arrows=飛んでいる矢(判定)、events=そのうち見た目のEvent、total=一時的な表示物の合計
     };
     root.ProjectRApolloErosArrow = Object.freeze({
         CARD, implementedMaxLevel: IMPLEMENTED_MAX_LEVEL,
         constants: Object.freeze({ ALONG_HALF, ACROSS_HALF, SELF_MIN_TRAVEL, PRESENT_EVERY, GLOW_BUDGET, SHORT_VFX_BUDGET, SHORT_VFX_FRAMES }),
-        limits: Object.freeze({ VISUAL_ARROW_BUDGET, MAX_TOTAL_ARROWS }),
+        limits: Object.freeze({ VISUAL_ARROW_BUDGET, MAX_TOTAL_ARROWS, MAX_BEAM_LENGTH, BEAM_SEGMENT_BUDGET }),
+        getBeam: () => { const s = [...sequences.values()].find(x => x.beam); return s ? beamSummary(s) : null; },
+        geometry3: Object.freeze({ convexOverlap, beamRectangle, edgeDistance }),
         cardLevel,
         config: level => { const c = config(level); return c ? { ...c } : null; },
         emitSchedule, directionDegrees,
@@ -660,7 +853,7 @@
         geometry: Object.freeze({ distanceToPolygon, footprint, centroid, visualReal }),
         isPending: () => !!pendingSeq,
         getPending: () => pendingSeq ? { serial: pendingSeq.serial, instanceId: pendingSeq.instanceId, emitted: pendingSeq.next, arrows: liveArrows(pendingSeq).length } : null,
-        getSequences: () => [...sequences.values()].map(s => ({ serial: s.serial, committed: s.committed, level: s.level, emitted: s.next, slot: s.slot, slots: s.slots, count: s.count, tick: s.tick, arrows: liveArrows(s).length, hits: s.hits.length })),
+        getSequences: () => [...sequences.values()].map(s => ({ serial: s.serial, committed: s.committed, level: s.level, beam: beamSummary(s), emitted: s.next, slot: s.slot, slots: s.slots, count: s.count, tick: s.tick, arrows: liveArrows(s).length, hits: s.hits.length })),
         getActiveArrows: () => [...sequences.values()].flatMap(s => liveArrows(s).map(a => ({ serial: s.serial, eventId: a.eventId, index: a.index, slot: a.slot, direction: a.direction, hidden: a.hidden, aim: a.aim, heading: a.heading,
             x: a.x, y: a.y, age: a.age, travelled: a.travelled, lock: a.lock, glow: !!a.glow }))),
         getEmissionLog: () => emissionLog.map(entry => ({ ...entry })),

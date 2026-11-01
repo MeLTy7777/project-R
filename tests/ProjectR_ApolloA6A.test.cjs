@@ -18,21 +18,21 @@ const override = (w, scope, key, value) => { const r = balanceOf(w).setOverride(
 const leader = w => w.ctx.$gameParty.leader();
 const spySe = w => { const se = [], am = w.ctx.AudioManager, original = am.playSe; am.playSe = s => { se.push(s.name); }; return { se, restore: () => { am.playSe = original; } }; };
 
-test("登録: 特殊 / 最大5枚 / Cooldown 5秒 / Ground / Apolloの指輪 / 登録上の最大LvはA6BでLv2まで(Lv3は使えない)。黄金の矢・旧カードは不変", () => {
+test("登録: 特殊 / 最大5枚 / Cooldown 5秒 / Ground / Apolloの指輪 / 登録上の最大LvはA6CでLv3まで。黄金の矢・旧カードは不変", () => {
     const w = erosWorld();
-    assert.deepEqual(plain(w.ctx.ProjectRCardDeck.definitions.card(EROS)), { cardId: EROS, ringId: "apollo", maxCopies: 5, cooldownSeconds: 5, maxLevel: 2, rarity: "special", category: "special", targetType: "ground" });
+    assert.deepEqual(plain(w.ctx.ProjectRCardDeck.definitions.card(EROS)), { cardId: EROS, ringId: "apollo", maxCopies: 5, cooldownSeconds: 5, maxLevel: 3, rarity: "special", category: "special", targetType: "ground" });
     const row = w.ctx.ProjectRCardCatalog.godDesign("apollo").find(r => r.designId === 9);
-    assert.deepEqual([row.runtimeCardId, row.implemented, row.implementedLevels, row.workbookTargetType, row.classification, row.maxCopies, row.cooldownSeconds], [EROS, true, 2, "Ground", "special", 5, 5]);
+    assert.deepEqual([row.runtimeCardId, row.implemented, row.implementedLevels, row.workbookTargetType, row.classification, row.maxCopies, row.cooldownSeconds], [EROS, true, 3, "Ground", "special", 5, 5]);
     assert.equal(row.maxLevel, 3, "ワークブックの最大Lv3は設計行のまま");
     assert.equal(w.ctx.ProjectRCardCatalog.godStatus("apollo").implemented, 2, "Apolloの実装済みは黄金の矢とエロスの矢");
     assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.inactiveRuntimeCards()).filter(id => id.startsWith("apollo_")).sort(),
         ["apollo_gigas_slayer", "apollo_hyacinthus", "apollo_laurel_wreath", "apollo_lyre_rhythm", "apollo_oracle", "apollo_plague_rain"], "残りの6枚は未登録");
     assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.runtimeIdAudit().problems), []);
     assert.equal(w.ctx.ProjectRCardCatalog.buildGodDeck("apollo"), null, "Apolloの本番の初期デッキ(30枚)は有効にしない");
-    // Lv3は使えない: レベルを上げようとしてもLv2まで
+    // Lv4は無い: レベルを上げようとしてもLv3まで
     const d = deckApi(w);
-    const up = d.setCardLevel(EROS, 3);
-    assert.equal(Number(d.getPersistentData().cardOwnership[EROS].level), 2, "Lv3へ上げられない(最大Lv2) " + JSON.stringify(plain(up)));
+    const up = d.setCardLevel(EROS, 4);
+    assert.equal(Number(d.getPersistentData().cardOwnership[EROS].level) <= 3, true, "Lv4へ上げられない(最大Lv3) " + JSON.stringify(plain(up)));
     assert.equal(w.ctx.ProjectRCardDeck.definitions.card("apollo_golden_volley").maxLevel, 3, "黄金の矢のLvは不変");
     assert.equal(w.ctx.ProjectRCardDeck.definitions.card("apollo_golden_arrow").maxCopies, 3, "旧カードは不変");
 });

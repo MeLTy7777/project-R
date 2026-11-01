@@ -21,19 +21,20 @@ const spySe = w => { const se = [], am = w.ctx.AudioManager, original = am.playS
 // 3方向の的: 狙い(右=90度)・その左右80度(10度・170度)へ r マス。
 const threeTargets = (w, r = 6) => { parkOthers(w, [3, 4, 5]); placePolar(w, 3, r, 90); placePolar(w, 4, r, 10); placePolar(w, 5, r, 170); };
 
-test("登録: 最大LvはLv2まで(Lv3は使えない)。Lv1は10本のまま、Lv2は3方向x7本=21本。黄金の矢・旧カードは不変", () => {
+test("登録: Lv2の値(Lv3の行はA6C)。Lv1は10本のまま、Lv2は3方向x7本=21本。黄金の矢・旧カードは不変", () => {
     const w = lv2();
-    assert.deepEqual(plain(w.ctx.ProjectRCardDeck.definitions.card(EROS)), { cardId: EROS, ringId: "apollo", maxCopies: 5, cooldownSeconds: 5, maxLevel: 2, rarity: "special", category: "special", targetType: "ground" });
+    assert.deepEqual(plain(w.ctx.ProjectRCardDeck.definitions.card(EROS)), { cardId: EROS, ringId: "apollo", maxCopies: 5, cooldownSeconds: 5, maxLevel: 3, rarity: "special", category: "special", targetType: "ground" });
     const row = w.ctx.ProjectRCardCatalog.godDesign("apollo").find(r => r.designId === 9);
-    assert.deepEqual([row.implemented, row.implementedLevels, row.maxLevel], [true, 2, 3], "実装はLv2まで。ワークブックの最大Lv3は設計行のまま");
+    assert.deepEqual([row.implemented, row.implementedLevels, row.maxLevel], [true, 3, 3], "実装はLv3まで(A6C)");
     assert.equal(api(w).cardLevel(), 2);
     const lv1 = plain(api(w).config(1)), cfg2 = plain(api(w).config(2));
     assert.deepEqual([lv1.directions, lv1.perDirection, lv1.count, lv1.damage, lv1.heal, lv1.radius], [1, 10, 10, 20, 50, 3], "Lv1の値は変わらない");
     assert.deepEqual([cfg2.directions, cfg2.perDirection, cfg2.count, cfg2.spacing, cfg2.damage, cfg2.heal, cfg2.radius, cfg2.emitSeconds, cfg2.originOffset], [3, 7, 21, 80, 20, 50, 3, 1, 0],
         "Lv2: 3方向・80度・7本・計21本。追尾3・20・50・1秒は引き継ぐ。出発点のずらしは0");
     const d = deckApi(w);
-    d.setCardLevel(EROS, 3);
-    assert.equal(Number(d.getPersistentData().cardOwnership[EROS].level), 2, "Lv3へ上げられない");
+    d.setCardLevel(EROS, 4);
+    assert.ok(Number(d.getPersistentData().cardOwnership[EROS].level) <= 3, "Lv4へ上げられない");
+    d.setCardLevel(EROS, 2);
     assert.equal(api(w).cardLevel(), 2);
     assert.equal(w.ctx.ProjectRCardCatalog.buildGodDeck("apollo"), null, "Apolloの本番の初期デッキ(30枚)は有効にしない");
     assert.equal(w.ctx.ProjectRCardDeck.definitions.card("apollo_golden_volley").maxLevel, 3, "黄金の矢のLvは不変");

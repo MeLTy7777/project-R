@@ -137,6 +137,9 @@
         "apollo_eros.glow": { library: "ProjectR_Eros_Glow", sheet: EROS_GLOW_SHEET, anchor: "target", loop: "infinite", scale: 100, opacity: 200, offsetY: 0, blend: "Add" },
         "apollo_eros.hit": { library: "ProjectR_Eros_HitDamage", sheet: EROS_HITDAMAGE_SHEET, anchor: "target", scale: 100, opacity: 255, offsetY: -18, blend: "Add" },
         "apollo_eros.heal": { library: "ProjectR_Eros_HitHeal", sheet: EROS_HITHEAL_SHEET, anchor: "target", scale: 100, opacity: 255, offsetY: -12, blend: "Add" },
+        // エロスの矢 Lv3(Apollo-A6C): ビームの始まりの閃光(大きめ)と、ビームの間Apolloの表示Eventへ付く光。ビームの本体は専用の区間Event(Map002「ProjectR Apollo Eros Beam Segment」)で、向きをマウスへ毎frame追従させる。
+        "apollo_eros.beamstart": { library: "ProjectR_Eros_Muzzle", sheet: EROS_MUZZLE_SHEET, anchor: "target", scale: 190, opacity: 255, offsetY: -18, blend: "Add" },
+        "apollo_eros.beamglow": { library: "ProjectR_Eros_Glow", sheet: EROS_GLOW_SHEET, anchor: "target", loop: "infinite", scale: 190, opacity: 210, offsetY: -18, blend: "Add" },
         // 神の消失: 神(表示Event)の位置に黒いノイズ。
         "hermes.vanish": { library: "ProjectR_Hermes_Vanish", sheet: NOISE_SHEET, anchor: "event", stick: true, scale: 110, opacity: 255, offsetY: -24 }
     };

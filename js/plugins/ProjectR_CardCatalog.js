@@ -29,7 +29,7 @@
  *   (所持・付与・デッキ・Deck Builder・戦闘のどこからも使えない)。旧Apollo 3枚は削除・改名・自動変換をせず共存します。
  *   既存のHermes API(hermesDesign / migrationAudit() / buildFinalHermesDeck など)は、引数なしで従来と同じ結果を返します。
  *   Phase Apollo-A4: 設計ID 8 黄金の矢(apollo_golden_volley)だけを実装済みにし、実行時にレジストリへ登録します(Lv1〜3。Lv3の長押しはビーム。ProjectR_ApolloGoldenVolley)。残りの7枚は予約のままです。
- *   Phase Apollo-A6A: 設計ID 9 エロスの矢(apollo_eros_arrow)のLv1を実装済みにします(ProjectR_ApolloErosArrow)。Phase Apollo-A6BでLv2(80度間隔の3方向x7本)も実装し、登録上のmaxLevelは2です(Lv3は実装まで使えません)。残りの6枚は予約のままです。
+ *   Phase Apollo-A6A: 設計ID 9 エロスの矢(apollo_eros_arrow)のLv1を実装済みにします(ProjectR_ApolloErosArrow)。Phase Apollo-A6BでLv2(80度間隔の3方向x7本)、A6CでLv3(追尾範囲7・中央が3秒のビーム)も実装し、登録上のmaxLevelは3です。残りの6枚は予約のままです。
  *
  * 【累積レベル規則】
  *   Lv2はLv1の効果を残して追加、Lv3はLv1とLv2を残して追加します。
@@ -139,8 +139,8 @@
             migration: migration("apollo_golden_arrow", "coexist-pending", "implemented-as-new-id",
                 "Phase Apollo-A4でLv1〜2、A5AでLv3の扇、A5Bでビームを新しいruntime ID apollo_golden_volley として実装(Lv3は未実装)。旧「黄金の弓矢」(最大3・Cooldown 4・矢1本・Skill式)とは数値も効果も別カードで、自動変換しない。旧カードは削除・上書きせず共存。") }),
         apolloRow(9, "エロスの矢", "special", 5, 5, { workbookTargetType: "Ground", targetType: "ground", category: "special",
-            runtimeCardId: "apollo_eros_arrow", implemented: true, status: "implemented", targetTypeStatus: "confirmed", implementedLevels: 2,
-            migration: migration(null, "new", "implemented", "Phase Apollo-A6AでLv1、A6BでLv2を新ランタイムID apollo_eros_arrow として実装(Lv3は未実装で、登録上の最大Lvは2)。旧カードに対応なし。新規。") }),
+            runtimeCardId: "apollo_eros_arrow", implemented: true, status: "implemented", targetTypeStatus: "confirmed", implementedLevels: 3,
+            migration: migration(null, "new", "implemented", "Phase Apollo-A6AでLv1、A6BでLv2、A6CでLv3を新ランタイムID apollo_eros_arrow として実装(登録上の最大Lvは3)。旧カードに対応なし。新規。") }),
         apolloRow(10, "竪琴", "special", 2, 4, { workbookTargetType: "その他", targetType: "instant", category: "special",
             runtimeCardId: "apollo_lyre_rhythm", legacyCandidates: Object.freeze(["apollo_lyre_calm"]),
             migration: migration("apollo_lyre_calm", "coexist-pending", "reserved-not-implemented",
@@ -200,8 +200,8 @@
         // 黄金の矢(Apollo-A4。Lv1〜2のみ実装): Apollo / 強力 / 最大5枚 / 最大Lv3(所持上限は設計どおり。Lv3の効果は未実装でLv2と同じ) / Cooldown 3秒 / Ground(マウス位置が撃つ方向)。
         Object.freeze({ cardId: "apollo_golden_volley", ringId: "apollo", maxCopies: 5, cooldownSeconds: 3, maxLevel: 3,
             rarity: "strong", category: "attack", targetType: "ground" }),
-        // エロスの矢(Apollo-A6A/A6B。Lv1〜2を実装): Apollo / 特殊 / 最大5枚 / Cooldown 5秒 / Ground(マウス方向)。Lv3の効果は未実装なので登録上の最大Lvは2(ワークブックの最大Lv3は設計行のまま)。
-        Object.freeze({ cardId: "apollo_eros_arrow", ringId: "apollo", maxCopies: 5, cooldownSeconds: 5, maxLevel: 2,
+        // エロスの矢(Apollo-A6A/A6B/A6C。Lv1〜3を実装): Apollo / 特殊 / 最大5枚 / Cooldown 5秒 / Ground(マウス方向)。
+        Object.freeze({ cardId: "apollo_eros_arrow", ringId: "apollo", maxCopies: 5, cooldownSeconds: 5, maxLevel: 3,
             rarity: "special", category: "special", targetType: "ground" })
     ]);
     const registerRuntimeCards = () => {

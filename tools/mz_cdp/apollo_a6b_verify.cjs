@@ -64,8 +64,8 @@ const CARD = "apollo_eros_arrow", API = "ProjectRApolloErosArrow", GV = "Project
     const v = await json(`({ def: ProjectRCardDeck.definitions.card('${CARD}'), lv1: ${API}.config(1), lv2: ${API}.config(2), limits: ${API}.limits,
       fields: ['directionCount','directionSpacingDegrees','arrowsPerDirection','directionOriginOffsetTiles'].every(function(k) { return !!ProjectRCardBalance.fieldOf(k); }),
       row: ProjectRCardCatalog.godDesign('apollo').find(function(r) { return r.designId === 9; }).implementedLevels, lv: ProjectRCardDeck.setCardLevel('${CARD}', 3) && ProjectRCardDeck.getPersistentData().cardOwnership['${CARD}'].level })`);
-    rec("L0 boot", v.def.maxLevel === 2 && v.lv1.count === 10 && v.lv1.directions === 1 && v.lv2.directions === 3 && v.lv2.perDirection === 7 && v.lv2.count === 21 && v.lv2.spacing === 80 && v.lv2.radius === 3 && v.lv2.damage === 20 && v.lv2.heal === 50
-      && v.lv2.originOffset === 0 && v.fields && v.row === 2 && v.lv === 2 && v.limits.VISUAL_ARROW_BUDGET === 30, JSON.stringify(v).slice(0, 500));
+    rec("L0 boot", v.def.maxLevel === 3 && v.lv1.count === 10 && v.lv1.directions === 1 && v.lv2.directions === 3 && v.lv2.perDirection === 7 && v.lv2.count === 21 && v.lv2.spacing === 80 && v.lv2.radius === 3 && v.lv2.damage === 20 && v.lv2.heal === 50
+      && v.lv2.originOffset === 0 && v.fields && v.row === 3 && v.lv === 3 && v.limits.VISUAL_ARROW_BUDGET === 30, JSON.stringify(v).slice(0, 500));
   });
 
   await check("L1 21本(実マウス+実キーQ): 1方向7本 x 3方向が1秒(60更新)に。3方向は狙い・その左右80度。出発点は同じ。Event・VFXの絵は上限内", async () => {
