@@ -41,7 +41,7 @@ const CARD = "apollo_golden_volley", API = "ProjectRApolloGoldenVolley", IN = "P
     const v = await json(`({ e3: ${API}.effectsForLevel(3), p: ${IN}.getPressProfile('${CARD}'), reg: ${API}.pressRegistered, beam: ProjectRCardCatalog.godDesign('apollo')[0].beamImplemented, impl: ProjectRCardCatalog.godDesign('apollo')[0].implementedLevels,
       other: ['hermes_sweep','hermes_zetsu','apollo_golden_arrow','apollo_plague_attack','apollo_lyre_calm'].map(function(id) { return ${IN}.getPressProfile(id); }) })`);
     rec("W0 boot", v.e3.projectileCount === 11 && v.e3.spreadDegrees === 10 && v.e3.thickWidthTiles === 0.9 && v.e3.splitTotal === 100 && v.e3.damage === 50 && v.p.holdSeconds === 0.5 && v.p.thresholdFrames === 30 && v.p.fireOn === "release" && v.reg
-      && v.beam === false && v.impl === 3 && v.other.every(x => x === null), JSON.stringify(v));
+      && v.beam === true && v.impl === 3 && v.other.every(x => x === null), JSON.stringify(v));
   });
 
   await check("W1 Lv3 tap(実マウス+実キー): 短く押して離す → 11本・10度刻み・マウス方向が中心。発射では消費せず、命中で1回だけ消費。50ダメージ", async () => {
@@ -61,20 +61,24 @@ const CARD = "apollo_golden_volley", API = "ProjectRApolloGoldenVolley", IN = "P
       && after.lost >= 50 && after.pile === 1 && after.last.committed === true && after.last.arrows === 11 && after.ev === 0, JSON.stringify({ aim, midHold, cnt, got, pl, after: { lost: after.lost, pile: after.pile, hits: after.last.hits } }).slice(0, 600));
   });
 
-  await check("W2 Lv3 hold(0.5秒以上): 離しても扇は出ず、カードは消費されず、Cooldownも始まらない。ビーム未実装の表示(ふきだし・診断)。直後のtapは普通に扇を撃てる", async () => {
+  await check("W2 Lv3 hold(0.5秒以上): 離しても扇は出ない(A5B: ビームが出る)。発射だけでは消費しない・Cooldownも始まらない。最初のヒットで1回消費。ビームが終わった後のtapは普通に扇", async () => {
     await scene(3);
     const handBefore = await json("ProjectRCardDeck.getBattleState().hand.map(function(c) { return c.cardId; })");
-    await ev("window.__bal = []; (function() { var r = $gamePlayer.requestBalloon; $gamePlayer.requestBalloon = function(id) { window.__bal.push(id); return r.apply(this, arguments); }; })(); 'spy'");
+    await s.slow(1);
     await c.keyDown("Q"); await sleep(750);
     const mid = { held: await json(`${IN}.getPressSessions()[0].holdReached`), arrows: await events() };
-    await c.keyUp("Q"); await settle(6);
-    const st = { arrows: await events(), pile: await pile(), hand: await json("ProjectRCardDeck.getBattleState().hand.map(function(c) { return c.cardId; })"), attempts: await json(`${API}.getBeamAttempts()`), bal: await json("window.__bal"),
-      last: await json(`${IN}.getLastResult()`), pending: await json(`${API}.isPending()`), dealt: await lost(4) };
-    await s.shot("w2_hold");
+    await s.slow(6);
+    await c.keyUp("Q"); await s.sceneFrames(1);
+    const st = { arrows: await events(), pile: await pile(), hand: await json("ProjectRCardDeck.getBattleState().hand.map(function(c) { return c.cardId; })"), log: await json(`${API}.getBeamLog()`),
+      beam: await json(`${API}.getBeam()`), last: await json(`${IN}.getLastResult()`) };
+    await s.slow(1);
+    await wait(`!${API}.isPending()`, 8000); await settle(10);
+    const after = { pile: await pile(), dealt: await lost(4), r: await json(`${API}.getLastResult()`) };
+    await wait(`!${API}.getBeam()`, 8000); await settle(10);
     await c.tap("Q", 60); await s.sceneFrames(3);
     const fan = await events();
-    rec("W2 hold", mid.held === true && mid.arrows === 0 && st.arrows === 0 && st.pile === 0 && JSON.stringify(st.hand) === JSON.stringify(handBefore) && st.attempts.length === 1 && JSON.stringify(st.bal) === "[8]"
-      && st.last.ok === false && st.last.detail === "beamUnavailable" && st.last.variant === "hold" && !st.pending && st.dealt === 0 && fan >= 8, JSON.stringify({ mid, st, fan }).slice(0, 700));
+    rec("W2 hold", mid.held === true && mid.arrows === 0 && st.arrows === 0 && st.pile === 0 && JSON.stringify(st.hand) === JSON.stringify(handBefore) && st.log.length === 1 && st.beam && st.beam.width === 3
+      && st.last.variant === "hold" && st.last.detail === "volleyReserved" && after.pile === 1 && after.r.kind === "beam" && after.r.targets[0].hits === 11 && fan >= 8, JSON.stringify({ mid, st, after: { pile: after.pile, dealt: after.dealt, hits: after.r.targets }, fan }).slice(0, 700));
   });
 
   await check("W3 Lv1/Lv2は従来どおり即時: キーを押している間にもう矢が出ていて、押下セッションは作られない。離しても追加の発動なし", async () => {

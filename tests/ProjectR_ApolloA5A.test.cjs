@@ -72,31 +72,36 @@ test("tap/holdの境界(戦闘時計): 29更新で離す=tap(扇) / 30更新で�
     assert.equal(attempts(a30.w).length, 1);
 });
 
-test("holdの分岐(ビーム予約): 安全に失敗する。カードは消費せず、Cooldownは始まらず、扇も撃たない。Playtestでだけ「未実装」の表示(ふきだし)が出る", () => {
+test("holdの分岐: ビームを撃つ(扇は撃たない)。矢のEventは出ず、発射だけでは消費しない(最初のヒットまで確定待ち)。外れなら非消費。ビームの詳細は ProjectR_ApolloA5B.test.cjs", () => {
     const w = volleyWorld({ level: 3 });
     parkOthers(w, [4]);
     placePolar(w, 4, 5, 90);
     aimDegree(w, 90, 4);
-    const balloons = []; const rb = w.ctx.$gamePlayer.requestBalloon; w.ctx.$gamePlayer.requestBalloon = function(id) { balloons.push(id); return rb.apply(this, arguments); };
     const before = plain(state(w));
-    press(w, 45);
+    press(w, 45, { settleFrames: 1 });
     const res = plain(input(w).getLastResult());
-    assert.equal(res.ok, false);
-    assert.equal(res.detail, "beamUnavailable");
     assert.equal(res.variant, "hold");
-    assert.deepEqual(plain(state(w)), before, "手札・山札・Cooldownは変わらない");
-    assert.equal(pile(w), 0);
-    assert.equal(arrows(w).length, 0); assert.equal(arrowEvents(w).length, 0);
-    assert.equal(api(w).isPending(), false);
-    frames(w, 30);
-    assert.equal(lost(w, 4), 0, "敵は無傷(扇が出ていない)");
+    assert.equal(res.detail, "volleyReserved", "予約(まだ消費していない)");
+    assert.equal(arrows(w).length, 0); assert.equal(arrowEvents(w).length, 0, "扇の矢は出ない");
+    assert.notEqual(api(w).getBeam(), null, "ビームが飛んでいる");
+    assert.equal(api(w).isPending(), true);
+    assert.deepEqual(plain(state(w)), before, "発射だけでは手札・山札・Cooldownは変わらない");
     assert.equal(attempts(w).length, 1);
-    assert.deepEqual(balloons, [8], "開発用の表示(ふきだし 沈黙)");
-    assert.equal(plain(w.ctx.ProjectRGodSummonManager.getActiveSummons()).length, 0, "召喚も作らない");
-    // 本番(Playtestでない)では表示を出さない
+    settle(w);
+    assert.equal(pile(w), 1, "最初のヒットで1回だけ消費");
+    assert.ok(lost(w, 4) >= 50);
+    // 外れ: 敵がいなければ非消費
+    const m = volleyWorld({ level: 3 });
+    parkOthers(m);
+    aimDegree(m, 90, 4);
+    const b2 = plain(state(m));
+    press(m, 40);
+    settle(m);
+    assert.equal(last(m).reason, "missed");
+    assert.deepEqual(plain(state(m)), b2);
     // 失敗の後すぐ、tapで扇を撃てる(状態が汚れない)
-    press(w, 5);
-    assert.equal(arrows(w).length, 11);
+    press(m, 5);
+    assert.equal(arrows(m).length, 11);
 });
 
 test("Lv3 tap: 11本・間隔10度。狙い=離した直後のマウス方向(押している間にマウスを動かしても、離した時の向きが中心)。発射後は追尾しない", () => {
@@ -294,6 +299,7 @@ test("繰り返しの入力: 押しっぱなしのキーリピートは1回だ�
     assert.equal(log(w).filter(e => e.type === "activate").length, 1, "40更新押した入力は1回だけ発動の依頼(hold)");
     assert.equal(arrowEvents(w).length, 0, "holdは扇を出さない");
     assert.equal(attempts(w).length, 1);
+    settle(w); // ビームは外れて終わる(確定待ちが明ける)
     // 次の入力(tap)は別の入力として扇を撃てる
     press(w, 4);
     assert.equal(arrows(w).length, 11);
@@ -341,7 +347,7 @@ test("他の入力は変わらない: 他のカード(Hermes・旧Apollo)は押�
     assert.equal(cat.godStatus("apollo").ready, false);
     assert.ok(!JSON.stringify(plain(w.ctx.ProjectRHermesProductionDeck.starterSet())).includes(VOLLEY));
     const row = cat.godDesign("apollo").find(r => r.designId === 8);
-    assert.deepEqual([row.implementedLevels, row.beamImplemented], [3, false], "ビームが実装されるまで、完成扱いにしない");
+    assert.deepEqual([row.implementedLevels, row.beamImplemented], [3, true], "Lv3まで実装済み(A5B)。ただしApolloの入手経路・30枚デッキは未実装なので本番には載らない");
     // 通常の攻撃入力(J)は押下プロファイルの対象ではない
     w.keyDown("KeyJ", 74); frames(w, 2); w.keyUp("KeyJ", 74); frames(w, 2);
     assert.equal(sessions(w).length, 0);

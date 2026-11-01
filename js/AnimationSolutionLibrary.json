@@ -484,5 +484,32 @@
     "openingAnimation": "none",
     "endingAnimation": "none",
     "animationDuration": 30
+  },
+  "ProjectR_Volley_Beam": {
+    "spritesheetFile": "Animation/ProjectR_Volley_Beam",
+    "rows": 2,
+    "columns": 4,
+    "fps": 18,
+    "zIndex": "6",
+    "blendMode": "Add",
+    "scale": 100,
+    "opacity": 240,
+    "hue": 0,
+    "offsetX": 0,
+    "offsetY": -18,
+    "flip": false,
+    "flipY": false,
+    "randomFlipX": false,
+    "randomFlipY": false,
+    "rotation": 0,
+    "randomRotation": false,
+    "playInReverse": false,
+    "bloomEffect": false,
+    "blurAmount": 15,
+    "tintColor": "#FFFFFF",
+    "intensity": 255,
+    "openingAnimation": "none",
+    "endingAnimation": "none",
+    "animationDuration": 30
   }
 }

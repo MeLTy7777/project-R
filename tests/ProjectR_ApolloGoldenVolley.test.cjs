@@ -27,7 +27,7 @@ test("登録: 強力 / 最大5枚 / 最大Lv3 / Cooldown 3秒 / Ground / Apollo�
     const row = w.ctx.ProjectRCardCatalog.godDesign("apollo").find(r => r.designId === 8);
     assert.equal(row.runtimeCardId, VOLLEY);
     assert.equal(row.implemented, true);
-    assert.equal(row.implementedLevels, 3, "実装したのはLv1〜3(Lv3は扇だけ。A5A)"); assert.equal(row.beamImplemented, false, "ビームは未実装");
+    assert.equal(row.implementedLevels, 3, "実装したのはLv1〜3(Lv3は扇だけ。A5A)"); assert.equal(row.beamImplemented, true, "ビームはA5Bで実装");
     assert.equal(w.ctx.ProjectRCardCatalog.godStatus("apollo").implemented, 1, "Apolloで実装済みはこの1枚だけ");
     assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.inactiveRuntimeCards()).filter(id => id.startsWith("apollo_")).sort(),
         ["apollo_eros_arrow", "apollo_gigas_slayer", "apollo_hyacinthus", "apollo_laurel_wreath", "apollo_lyre_rhythm", "apollo_oracle", "apollo_plague_rain"], "残りの7枚は引き続き未登録");
@@ -564,10 +564,10 @@ test("本番の取得経路には載らない: Hermesの初期付与(指輪の�
     assert.ok(!JSON.stringify(plain(production.previewStarterGrant())).includes(VOLLEY));
 });
 
-test("Lv3のビームはまだ実装していない: ヒットストップ・連続ヒット・ビーム本体のコードは無い(Lv3の扇と長押しの分岐の確認は ProjectR_ApolloA5A.test.cjs)", () => {
+test("Lv3のビームは実装済み(A5B): ビーム・ヒットストップの部品がある。詳細は ProjectR_ApolloA5B.test.cjs", () => {
     const text = fs.readFileSync(path.join(project, "js/plugins/ProjectR_ApolloGoldenVolley.js"), "utf8");
-    assert.ok(!/hitStop|spawnBeam|beamWidth/i.test(text.replace(/\/\*[\s\S]*?\*\//, "")), "コード部分にビームの機構は無い");
-    assert.ok(/ビーム本体.*未実装/.test(text));
+    assert.ok(/processBeam/.test(text) && /ProjectR_HitStop/.test(text));
+    assert.ok(fs.existsSync(path.join(project, "js/plugins/ProjectR_HitStop.js")));
 });
 
 test("実装の配線: プラグインの並び(CardCatalog/CardBalance/CardModifiers/CutIn/CharacterPresentationより後)・Map002のPrefab・複製元の不変", () => {

@@ -37,7 +37,7 @@ test("VFX: 成功が確定した後にだけ、出発点(ライブラリ+位置�
 test("VFXの対応表: カードID→ライブラリ名→基準→画像が揃い、ライブラリJSON(js/AnimationSolutionLibrary.json)とスプライトシートの実体と一致する", () => {
     const w = zetsuWorld();
     const vfx = w.ctx.ProjectRPresentationVfx;
-    assert.deepEqual(plain(vfx.keys()).sort(), ["apollo_volley.burst", "apollo_volley.particles", "hermes.vanish", "hermes_flute.ripple", "hermes_issen.lightning", "hermes_issen.trail", "hermes_psychopomp.collect", "hermes_psychopomp.manifest", "hermes_psychopomp.soul", "hermes_psychopomp.strike", "hermes_strength.circle", "hermes_strength.light", "hermes_sweep.staff", "hermes_veil.aura", "hermes_veil.circle", "hermes_veil.touch", "hermes_zetsu.arrival", "hermes_zetsu.departure"]);
+    assert.deepEqual(plain(vfx.keys()).sort(), ["apollo_volley.beam", "apollo_volley.burst", "apollo_volley.particles", "hermes.vanish", "hermes_flute.ripple", "hermes_issen.lightning", "hermes_issen.trail", "hermes_psychopomp.collect", "hermes_psychopomp.manifest", "hermes_psychopomp.soul", "hermes_psychopomp.strike", "hermes_strength.circle", "hermes_strength.light", "hermes_sweep.staff", "hermes_veil.aura", "hermes_veil.circle", "hermes_veil.touch", "hermes_zetsu.arrival", "hermes_zetsu.departure"]);
     const library = JSON.parse(read("js/AnimationSolutionLibrary.json"));
     for (const key of vfx.keys()) {
         const mapping = vfx.mapping(key);
@@ -50,7 +50,7 @@ test("VFXの対応表: カードID→ライブラリ名→基準→画像が揃�
         const rect = { "Animation/ProjectR_Issen_Trail": [160, 560], "Animation/ProjectR_Issen_Lightning": [160, 560], "Animation/ProjectR_Strength_Circle": [240, 240], "Animation/ProjectR_Strength_Light": [240, 320],
             "Animation/ProjectR_Veil_Circle": [480, 480], "Animation/ProjectR_Veil_Touch": [144, 144], "Animation/ProjectR_Veil_Aura": [96, 96],
             "Animation/ProjectR_Soul_Manifest": [192, 192], "Animation/ProjectR_Soul_Hover": [96, 96], "Animation/ProjectR_Soul_Collect": [192, 192], "Animation/ProjectR_Psychopomp_Strike": [192, 192],
-            "Animation/ProjectR_Volley_Burst": [256, 256], "Animation/ProjectR_Volley_Particles": [128, 128] }[mapping.sheet.file] || [frame, frame];
+            "Animation/ProjectR_Volley_Beam": [144, 144], "Animation/ProjectR_Volley_Burst": [256, 256], "Animation/ProjectR_Volley_Particles": [128, 128] }[mapping.sheet.file] || [frame, frame];
         assert.deepEqual([size.w / mapping.sheet.columns, size.h / mapping.sheet.rows], rect, `1コマ${rect.join("x")}px x 8コマ`);
         assert.equal(entry.rows * entry.columns, 8);
     }

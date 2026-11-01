@@ -61,7 +61,7 @@ async function attach(t, dialogs) {
         if (m.sheet && (entry.rows !== m.sheet.rows || entry.columns !== m.sheet.columns || entry.fps !== m.sheet.fps)) problems.push(`${k}: 行/列/FPS不一致 ${entry.rows}x${entry.columns}@${entry.fps} vs ${m.sheet.rows}x${m.sheet.columns}@${m.sheet.fps}`);
       }
       void lib;
-      rec("V1 library entries + sheets", keys.length === 18 && problems.length === 0, problems.join(" | ") || `${keys.length}件`);
+      rec("V1 library entries + sheets", keys.length === 19 && problems.length === 0, problems.join(" | ") || `${keys.length}件`);
     });
 
     await check("V2 ライブラリ再生: 16キーを「Show VFX From Library」で再生できる(mode=library)。再生の成否はゲーム状態に影響しない", async () => {

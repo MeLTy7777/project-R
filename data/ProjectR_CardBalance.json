@@ -40,6 +40,14 @@
     "projectileSpeed": { "label": "弾の速さ", "unit": "マス/秒", "min": 0.1, "max": 60 },
     "spreadDegrees": { "label": "弾と弾の間隔(角度)", "unit": "度", "min": 0.5, "max": 90 },
     "thickWidthTiles": { "label": "太い弾の幅(0=太い弾なし)", "unit": "マス", "min": 0, "max": 10 },
+    "beamWidthTiles": { "label": "ビームの幅", "unit": "マス", "min": 0.1, "max": 20 },
+    "beamSpeed": { "label": "ビームの先端が進む速さ", "unit": "マス/秒", "min": 1, "max": 200 },
+    "beamRangeTiles": { "label": "ビームの射程", "unit": "マス", "min": 1, "max": 100 },
+    "beamHitsPerTile": { "label": "先端が1マス進む間のヒット回数", "unit": "回/マス", "min": 0.1, "max": 20 },
+    "beamHitDamage": { "label": "ビームの1ヒットのダメージ", "unit": "HP", "min": 0, "max": 99999, "integer": true },
+    "beamMaxHitsPerTarget": { "label": "1回の発動で同じ敵に当たる最大ヒット数", "unit": "回", "min": 1, "max": 100, "integer": true },
+    "hitStopFrames": { "label": "ヒットストップ(1ヒットで止める長さ。0=なし)", "unit": "frame", "min": 0, "max": 60, "integer": true },
+    "hitStopMaxFrames": { "label": "ヒットストップの合計上限(1発動・1体)", "unit": "frame", "min": 0, "max": 300, "integer": true },
     "regenPerSecond": { "label": "毎秒の継続回復", "unit": "HP/秒", "min": 0, "max": 99999, "reserved": true },
     "dotDamage": { "label": "継続ダメージ(1回分)", "unit": "HP", "min": 0, "max": 99999, "integer": true, "reserved": true },
     "criticalMultiplier": { "label": "クリティカル倍率", "unit": "倍", "min": 1, "max": 20, "reserved": true },
@@ -115,6 +123,8 @@
       "name": "黄金の矢", "designId": 8, "cooldownSeconds": 3,
       "constants": {
         "projectileSpeed": 20, "rangeTiles": 40, "pathWidthTiles": 0.3, "splitTicks": 5,
+        "beamWidthTiles": 3, "beamSpeed": 40, "beamRangeTiles": 40, "beamHitsPerTile": 3, "beamHitDamage": 50, "beamMaxHitsPerTarget": 11,
+        "hitStopFrames": 3, "hitStopMaxFrames": 30,
         "element": 0, "weaknessMultiplier": 1
       },
       "levels": {

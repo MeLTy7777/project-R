@@ -62,17 +62,27 @@ const near = (a, b, t) => Math.abs(a - b) <= t;
   rec('OS1 Lv3 tap(実カーソル+実キーQ): 押している間は撃たず、離すと11本が離した時のカーソル方向±10度刻みで出て、カーソルを動かしても追尾せず命中。消費は1回', held === 0 && o1.uses.length === 1 && o1.uses[0].pending && mid.pending
     && JSON.stringify(mid.pending.degrees.map(d => Math.round(d * 100) / 100)) === JSON.stringify(want) && hit >= 50 && last.committed === true && last.arrows === 11, JSON.stringify({ aimDeg, held, mid: mid.n, hit, uses: o1.uses }).slice(0, 400));
   await sleep(5600);
-  // OS2: Lv3 hold(0.7秒) → ビームの分岐 = 安全に失敗(未実装)。消費なし・扇なし
+  // OS2: Lv3 hold(0.75秒) → ビーム(A5B)。扇は出ない。発射では消費せず、最初のヒットで1回だけ消費。同じ敵へ最大11ヒット(550)
   await ev("SceneManager._scene._spriteset._eventHpBars.forEach(function(b) { b.currentHp = b.targetHp = 1000; b.refresh(); }); $gameMap.event(4).locate(14, 15); 'ok'"); await sleep(3500);
   await mouseTile(14.5, 15.5);
-  const pile0 = await json('ProjectRCardDeck.getBattleState().cooldownPile.length'), before = (await obs()).uses.length;
-  await send('keydown Q'); await sleep(750); await send('keyup Q'); await sleep(500);
-  const o2 = await obs(), pile1 = await json("ProjectRCardDeck.getBattleState().cooldownPile.length"), ev2 = await json("$gameMap.events().filter(function(e) { return e && /projectRGoldenVolley/.test(e.event().note || ''); }).length");
-  rec('OS2 Lv3 hold(0.75秒): 離しても扇は出ず、カードは消費されずCooldownも始まらない(ビーム未実装 = beamUnavailable)', o2.uses.length === before + 1 && !o2.uses[before].ok && o2.uses[before].detail === 'beamUnavailable' && pile1 === pile0 && ev2 === 0 && (await json(API + '.getBeamAttempts().length')) === 1, JSON.stringify({ use: o2.uses[before], pile0, pile1, ev2 }));
-  // OS3: 直後のtapは普通に扇を撃てる(状態が汚れていない)。確定待ちの間の素早い2回目は拒否
-  await send('tap Q 60'); await sleep(100); await send('tap Q 60'); await sleep(150);
-  const o3 = await obs(), n3 = await json("$gameMap.events().filter(function(e) { return e && /projectRGoldenVolley/.test(e.event().note || ''); }).length");
-  rec('OS3 holdの後すぐ別の入力のtap → 扇(11本)。確定待ちの間のもう1回は volleyPending で拒否され、矢は増えない', n3 <= 11 && n3 >= 1 && o3.uses[before + 1].pending && o3.uses[before + 2].detail === 'volleyPending', JSON.stringify({ n3, uses: o3.uses.slice(before) }));
+  const pile0 = await json("ProjectRCardDeck.getBattleState().cooldownPile.length"), before = (await obs()).uses.length;
+  await send('keydown Q'); await sleep(750); await send('keyup Q'); await sleep(60);
+  const early = { pile: await json("ProjectRCardDeck.getBattleState().cooldownPile.length"), beam: await json(API + ".getBeam() !== null"), arrows: await json("$gameMap.events().filter(function(e) { return e && /projectRGoldenVolley/.test(e.event().note || ''); }).length") };
+  await sleep(1500);
+  const o2 = await obs(), pile1 = await json("ProjectRCardDeck.getBattleState().cooldownPile.length"), r2 = await json(API + ".getLastResult()");
+  rec('OS2 Lv3 hold(0.75秒): 扇は出ず、ビームが出る。発射では消費せず、最初のヒットで1回だけ消費。敵へ11ヒット(550)', o2.uses.length === before + 1 && o2.uses[before].detail === 'volleyReserved' && early.pile === pile0 && early.beam && early.arrows === 0
+    && pile1 === pile0 + 1 && r2.kind === 'beam' && r2.targets.length === 1 && r2.targets[0].hits === 11 && r2.targets[0].damage === 550, JSON.stringify({ use: o2.uses[before], early, pile0, pile1, targets: r2.targets }));
+  await sleep(5600);
+  // OS3: ビームの確定待ちの間の素早い再入力は拒否。ビームが終わった後のtapは扇
+  await ev("SceneManager._scene._spriteset._eventHpBars.forEach(function(b) { b.currentHp = b.targetHp = 1000; b.refresh(); }); $gameMap.event(4).locate(37, 3); 'ok'"); await sleep(3500); // 敵をビームの外へ(外れのビームは約0.4秒、確定待ちのまま続く)
+  await send('keydown Q'); await sleep(750); await send('keyup Q'); await sleep(60);
+  await send('tap Q 60'); await sleep(100); await send('tap Q 60'); await sleep(100);
+  const o3 = await obs();
+  rec('OS3 ビームの確定待ちの間にもう一度tapしても拒否(volleyPending)。ビームは1本のまま', o3.uses.length === before + 4 && o3.uses[before + 1].detail === 'volleyReserved' && o3.uses[before + 2].detail === 'volleyPending' && o3.uses[before + 3].detail === 'volleyPending', JSON.stringify({ uses: o3.uses.slice(before + 1) }));
+  await sleep(4000);
+  await send('tap Q 60'); await sleep(150);
+  const n4 = await json("$gameMap.events().filter(function(e) { return e && /projectRGoldenVolley/.test(e.event().note || ''); }).length");
+  rec('OS4 ビームが終わった後のtapは扇(11本のうち残っている矢)', n4 >= 1 && n4 <= 11, JSON.stringify({ n4 }));
   await sleep(3000);
   const stuckOs = JSON.parse(await send("keys")); await sleep(300);
   const stuckPage = await ev("Object.keys(Input._currentState).filter(function(k) { return Input._currentState[k]; })");
