@@ -10,7 +10,7 @@ const ENEMIES = [3, 4, 5, 6];
 const HP = 100000;
 
 // order: 引き順(既定は手札5枚すべてエロスの矢)。x,y: 出発点(アリーナの何もない広間)。
-function erosWorld({ x = 12, y = 25, order = null, bars = ENEMIES, random = 0.999, balance = null } = {}) {
+function erosWorld({ x = 12, y = 25, order = null, bars = ENEMIES, random = 0.999, balance = null, level = 1 } = {}) {
     const w = buildWorld();
     assert.deepEqual(w.failures, [], "全pluginが本番順で読み込める");
     w.enterMap(4, x, y);
@@ -21,6 +21,7 @@ function erosWorld({ x = 12, y = 25, order = null, bars = ENEMIES, random = 0.99
     assert.equal(started.ok, true, JSON.stringify(started));
     const d = deckApi(w);
     assert.equal(d.setCardOwned(EROS, true).ok, true);
+    if (level !== 1) assert.equal(d.setCardLevel(EROS, level).ok, true);
     if (balance) balance(w);
     restartWithOrder(w, order || [EROS, EROS, EROS, EROS, EROS, ...OTHER]);
     w.frames(2);

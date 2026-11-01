@@ -63,8 +63,8 @@ const CARD = "apollo_eros_arrow", API = "ProjectRApolloErosArrow", GV = "Project
     const lib = await ev(`Promise.all(${JSON.stringify(libs)}.map(function(n) { return Promise.resolve(getAnimationFromLibrary(n)).then(function(a) { return !!a; }, function() { return false; }); })).then(function(r) { return r.every(Boolean); })`);
     const files = ["img/characters/VFX/$ProjectR_ErosArrow.png", ...libs.map(n => `img/pictures/Animation/${n}.png`)].every(f => fs.existsSync(f));
     const d = v.def, cf = v.cfg;
-    rec("E0 boot", d.maxCopies === 5 && d.cooldownSeconds === 5 && d.maxLevel === 1 && d.rarity === "special" && d.targetType === "ground" && cf.count === 10 && cf.emitFrames === 60 && cf.radius === 3 && cf.damage === 20 && cf.heal === 50
-      && v.keys.length === 4 && v.fields && v.template && v.status.implemented === 2 && v.lv === 1 && lib === true && files, JSON.stringify({ ...v, lib, files }).slice(0, 600));
+    rec("E0 boot", d.maxCopies === 5 && d.cooldownSeconds === 5 && d.maxLevel === 2 && d.rarity === "special" && d.targetType === "ground" && cf.count === 10 && cf.emitFrames === 60 && cf.radius === 3 && cf.damage === 20 && cf.heal === 50
+      && v.keys.length === 4 && v.fields && v.template && v.status.implemented === 2 && v.lv === 2 && lib === true && files, JSON.stringify({ ...v, lib, files }).slice(0, 600));
   });
 
   await check("E1 連射と方向転換(実マウス+実キーQ): 10本が60更新に等間隔。途中でマウスを動かすと、あとの矢は新しい方向へ出る", async () => {

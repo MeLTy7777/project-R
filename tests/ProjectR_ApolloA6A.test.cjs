@@ -1,6 +1,6 @@
 "use strict";
 // Phase Apollo-A6A: Apollo「エロスの矢」(設計ID 9 / apollo_eros_arrow)Lv1。実エンジン(実Map004 + 全plugin + 実Hendrix/DotMove)。
-// MZ実機(マウス・実キー・描画)は対象外 → tools/mz_cdp/apollo_a6a_verify.cjs。Lv2〜3は実装していないことも確かめる。
+// MZ実機(マウス・実キー・描画)は対象外 → tools/mz_cdp/apollo_a6a_verify.cjs。Lv1の確認(Lv2はA6B)。
 const path = require("node:path");
 const { execFileSync } = require("node:child_process");
 const fx = require("./ProjectR_ApolloErosFixture.cjs");
@@ -18,21 +18,21 @@ const override = (w, scope, key, value) => { const r = balanceOf(w).setOverride(
 const leader = w => w.ctx.$gameParty.leader();
 const spySe = w => { const se = [], am = w.ctx.AudioManager, original = am.playSe; am.playSe = s => { se.push(s.name); }; return { se, restore: () => { am.playSe = original; } }; };
 
-test("登録: 特殊 / 最大5枚 / Cooldown 5秒 / Ground / Apolloの指輪 / 登録上の最大Lvは1(Lv2〜3は使えない)。黄金の矢・旧カードは不変", () => {
+test("登録: 特殊 / 最大5枚 / Cooldown 5秒 / Ground / Apolloの指輪 / 登録上の最大LvはA6BでLv2まで(Lv3は使えない)。黄金の矢・旧カードは不変", () => {
     const w = erosWorld();
-    assert.deepEqual(plain(w.ctx.ProjectRCardDeck.definitions.card(EROS)), { cardId: EROS, ringId: "apollo", maxCopies: 5, cooldownSeconds: 5, maxLevel: 1, rarity: "special", category: "special", targetType: "ground" });
+    assert.deepEqual(plain(w.ctx.ProjectRCardDeck.definitions.card(EROS)), { cardId: EROS, ringId: "apollo", maxCopies: 5, cooldownSeconds: 5, maxLevel: 2, rarity: "special", category: "special", targetType: "ground" });
     const row = w.ctx.ProjectRCardCatalog.godDesign("apollo").find(r => r.designId === 9);
-    assert.deepEqual([row.runtimeCardId, row.implemented, row.implementedLevels, row.workbookTargetType, row.classification, row.maxCopies, row.cooldownSeconds], [EROS, true, 1, "Ground", "special", 5, 5]);
+    assert.deepEqual([row.runtimeCardId, row.implemented, row.implementedLevels, row.workbookTargetType, row.classification, row.maxCopies, row.cooldownSeconds], [EROS, true, 2, "Ground", "special", 5, 5]);
     assert.equal(row.maxLevel, 3, "ワークブックの最大Lv3は設計行のまま");
     assert.equal(w.ctx.ProjectRCardCatalog.godStatus("apollo").implemented, 2, "Apolloの実装済みは黄金の矢とエロスの矢");
     assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.inactiveRuntimeCards()).filter(id => id.startsWith("apollo_")).sort(),
         ["apollo_gigas_slayer", "apollo_hyacinthus", "apollo_laurel_wreath", "apollo_lyre_rhythm", "apollo_oracle", "apollo_plague_rain"], "残りの6枚は未登録");
     assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.runtimeIdAudit().problems), []);
     assert.equal(w.ctx.ProjectRCardCatalog.buildGodDeck("apollo"), null, "Apolloの本番の初期デッキ(30枚)は有効にしない");
-    // Lv2〜3は使えない: レベルを上げようとしても1のまま
+    // Lv3は使えない: レベルを上げようとしてもLv2まで
     const d = deckApi(w);
     const up = d.setCardLevel(EROS, 3);
-    assert.equal(Number(d.getPersistentData().cardOwnership[EROS].level), 1, "Lv3へ上げられない " + JSON.stringify(plain(up)));
+    assert.equal(Number(d.getPersistentData().cardOwnership[EROS].level), 2, "Lv3へ上げられない(最大Lv2) " + JSON.stringify(plain(up)));
     assert.equal(w.ctx.ProjectRCardDeck.definitions.card("apollo_golden_volley").maxLevel, 3, "黄金の矢のLvは不変");
     assert.equal(w.ctx.ProjectRCardDeck.definitions.card("apollo_golden_arrow").maxCopies, 3, "旧カードは不変");
 });
@@ -49,7 +49,7 @@ test("バランス: 本数・連射の時間・追尾の範囲・曲がる速さ
         [10, 1, 3, 720, 20, 50, 12, 2, 0, 1, false, false]);
     assert.equal(balanceOf(w).cooldownSeconds(EROS), 5);
     const fields = plain(balanceOf(w).fields());
-    for (const key of ["emitSeconds", "homingRadiusTiles", "homingTurnRate", "projectileLifetimeSeconds", "selfHealEnabled", "fullHpAlliesEligible", "projectileSpeed", "damage", "healAmount", "projectileCount"]) {
+    for (const key of ["emitSeconds", "homingRadiusTiles", "homingTurnRate", "projectileLifetimeSeconds", "selfHealEnabled", "fullHpAlliesEligible", "projectileSpeed", "damage", "healAmount", "arrowsPerDirection", "directionCount", "directionSpacingDegrees", "directionOriginOffsetTiles"]) {
         assert.ok(fields[key], key + " がフィールド定義にある");
     }
     const described = plain(balanceOf(w).describe(EROS));
@@ -57,11 +57,11 @@ test("バランス: 本数・連射の時間・追尾の範囲・曲がる速さ
     assert.equal(balanceOf(w).validate(EROS, "constant", "homingRadiusTiles", 21).ok, false);
     assert.equal(balanceOf(w).validate(EROS, "constant", "projectileLifetimeSeconds", 5).ok, false, "寿命の上限は4秒(矢Eventの安全網300frame未満)");
     assert.equal(balanceOf(w).validate(EROS, "constant", "selfHealEnabled", 0.5).ok, false);
-    assert.equal(balanceOf(w).validate(EROS, 1, "projectileCount", 0).ok, false);
-    override(w, 2, "damage", 5); override(w, 3, "projectileCount", 3); // Lv2〜3の行を触っても、実装しているLv1の効果は変わらない(Lv2〜3は未実装)
-    assert.deepEqual([api(w).config().damage, api(w).config().count], [20, 10], "Lv2〜3の設定はLv1に影響しない");
+    assert.equal(balanceOf(w).validate(EROS, 1, "arrowsPerDirection", 0).ok, false);
+    override(w, 3, "arrowsPerDirection", 3); // Lv3の行を触っても、実装しているLv1〜2の効果は変わらない(Lv3は未実装)
+    assert.deepEqual([api(w).config().damage, api(w).config().count], [20, 10], "Lv3の設定はLv1に影響しない");
     balanceOf(w).resetCard(EROS);
-    override(w, "constant", "emitSeconds", 0.5); override(w, 1, "projectileCount", 4); override(w, 1, "damage", 33);
+    override(w, "constant", "emitSeconds", 0.5); override(w, 1, "arrowsPerDirection", 4); override(w, 1, "damage", 33);
     const changed = plain(api(w).config());
     assert.deepEqual([changed.emitFrames, changed.count, changed.damage], [30, 4, 33]);
 });
@@ -80,7 +80,7 @@ test("連射: 1秒(60更新)にちょうど10本。0,6,…,54更新目に等間�
     assert.deepEqual(plain(api(w).emitSchedule(10, 60)), [0, 6, 12, 18, 24, 30, 36, 42, 48, 54]);
     assert.deepEqual(plain(api(w).emitSchedule(4, 30)), [0, 7, 15, 22]);
     const half = erosWorld();
-    override(half, "constant", "emitSeconds", 0.5); override(half, 1, "projectileCount", 5);
+    override(half, "constant", "emitSeconds", 0.5); override(half, 1, "arrowsPerDirection", 5);
     parkOthers(half, []); aimDegree(half, 90, 3); fire(half); frames(half, 40);
     assert.deepEqual(plain(api(half).getEmissionLog()).map(e => e.tick), [0, 6, 12, 18, 24], "0.5秒・5本");
 });
