@@ -2,6 +2,7 @@
 // 使い方: MZ_OUT=<出力> node tools/mz_cdp/apollo_a6a_verify.cjs   (新しいNW.jsセッションで実行する。run_mz.ps1 相当)
 //   Apolloの指輪・カードの所持・仲間(PartyCombat)・壁(Region 255)はこのセッションのメモリ上だけ(セーブしない・ファイルを書かない)。入力はCDP(人間の手動確認ではない)。
 //   視覚の証拠(連射・追尾・回復・壁越え・複数の対象)は MZ_OUT の e*.png に残る。
+const { IMPLEMENTED: A7I, STILL_RESERVED: A7R, N: A7N } = require("./apollo_implemented.cjs");
 const fs = require("fs");
 const { session } = require("./lib.cjs");
 const OUT = process.env.MZ_OUT || "mz_out";
@@ -64,7 +65,7 @@ const CARD = "apollo_eros_arrow", API = "ProjectRApolloErosArrow", GV = "Project
     const files = ["img/characters/VFX/$ProjectR_ErosArrow.png", ...libs.map(n => `img/pictures/Animation/${n}.png`)].every(f => fs.existsSync(f));
     const d = v.def, cf = v.cfg;
     rec("E0 boot", d.maxCopies === 5 && d.cooldownSeconds === 5 && d.maxLevel === 3 && d.rarity === "special" && d.targetType === "ground" && cf.count === 10 && cf.emitFrames === 60 && cf.radius === 3 && cf.damage === 20 && cf.heal === 50
-      && v.keys.length === 6 && v.fields && v.template && v.status.implemented === 2 && v.lv === 3 && lib === true && files, JSON.stringify({ ...v, lib, files }).slice(0, 600));
+      && v.keys.length === 6 && v.fields && v.template && v.status.implemented === A7N && v.lv === 3 && lib === true && files, JSON.stringify({ ...v, lib, files }).slice(0, 600));
   });
 
   await check("E1 連射と方向転換(実マウス+実キーQ): 10本が60更新に等間隔。途中でマウスを動かすと、あとの矢は新しい方向へ出る", async () => {

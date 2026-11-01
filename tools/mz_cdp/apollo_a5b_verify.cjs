@@ -2,6 +2,7 @@
 // 使い方: MZ_OUT=<出力> node tools/mz_cdp/apollo_a5b_verify.cjs   (新しいNW.jsセッションで実行する。run_mz.ps1 相当)
 //   Apolloの指輪・カードの所持・壁(Region 255)・敵の移動はこのセッションのメモリ上だけ(セーブしない・ファイルを書かない)。入力はCDP(人間の手動確認ではない)。
 //   実際のヒット数・ダメージ・ヒットストップのframeは、結果のJSON(MZ_OUT/apollo_a5b_verify.json)とスクリーンショットに残る。
+const { IMPLEMENTED: A7I, STILL_RESERVED: A7R, N: A7N } = require("./apollo_implemented.cjs");
 const fs = require("fs");
 const { session } = require("./lib.cjs");
 const OUT = process.env.MZ_OUT || "mz_out";
@@ -46,7 +47,7 @@ const CARD = "apollo_golden_volley", API = "ProjectRApolloGoldenVolley", IN = "P
       fields: ['beamWidthTiles','beamSpeed','beamRangeTiles','beamHitsPerTile','beamHitDamage','beamMaxHitsPerTarget','hitStopFrames','hitStopMaxFrames'].every(function(k) { return ProjectRCardBalance.constant('${CARD}', k) !== undefined; }),
       impl: ProjectRCardCatalog.godDesign('apollo')[0].beamImplemented, deck: ProjectRCardCatalog.buildGodDeck('apollo') })`);
     const lib = await ev(`new Promise(function(res) { Promise.resolve(getAnimationFromLibrary('ProjectR_Volley_Beam')).then(function(a) { res(!!a); }, function() { res(false); }); })`);
-    rec("B0 boot", JSON.stringify(v.cfg) === JSON.stringify({ width: 3, speed: 40, range: 40, perTile: 3, damage: 50, maxHits: 11, stopFrames: 3, stopMax: 30 }) && v.hs === "function" && v.keys.length === 4 && v.fields && v.impl === true && v.deck === null && lib === true && fs.existsSync("img/pictures/Animation/ProjectR_Volley_Beam.png"), JSON.stringify({ ...v, lib }));
+    rec("B0 boot", JSON.stringify(v.cfg) === JSON.stringify({ width: 3, speed: 40, range: 40, perTile: 3, damage: 50, maxHits: 11, stopFrames: 3, stopMax: 30 }) && v.hs === "function" && v.keys.length === 4 && v.fields && v.impl === true && (v.deck === null) === (A7R.length > 0) && lib === true && fs.existsSync("img/pictures/Animation/ProjectR_Volley_Beam.png"), JSON.stringify({ ...v, lib }));
   });
 
   await check("B1 実キーのhold(0.75秒): 扇ではなくビーム。矢のEventは出ない。発射では消費せず、最初のヒットで1回だけ消費。同じ敵へ11ヒット(550)。ビームのVFXは終わると全部消える", async () => {
