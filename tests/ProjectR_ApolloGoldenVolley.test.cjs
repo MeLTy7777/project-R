@@ -27,7 +27,7 @@ test("登録: 強力 / 最大5枚 / 最大Lv3 / Cooldown 3秒 / Ground / Apollo�
     const row = w.ctx.ProjectRCardCatalog.godDesign("apollo").find(r => r.designId === 8);
     assert.equal(row.runtimeCardId, VOLLEY);
     assert.equal(row.implemented, true);
-    assert.equal(row.implementedLevels, 2, "実装したのはLv1〜2");
+    assert.equal(row.implementedLevels, 3, "実装したのはLv1〜3(Lv3は扇だけ。A5A)"); assert.equal(row.beamImplemented, false, "ビームは未実装");
     assert.equal(w.ctx.ProjectRCardCatalog.godStatus("apollo").implemented, 1, "Apolloで実装済みはこの1枚だけ");
     assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.inactiveRuntimeCards()).filter(id => id.startsWith("apollo_")).sort(),
         ["apollo_eros_arrow", "apollo_gigas_slayer", "apollo_hyacinthus", "apollo_laurel_wreath", "apollo_lyre_rhythm", "apollo_oracle", "apollo_plague_rain"], "残りの7枚は引き続き未登録");
@@ -39,14 +39,14 @@ test("旧カードの実装ファイル(ProjectR_ApolloGoldenArrow.js)はこのP
     assert.equal(git("diff", "--stat", "96745ec", "--", "js/plugins/ProjectR_CardDeckCore.js", "js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js").trim(), "", "CardDeckCore・Hendrix・DotMoveも不変");
 });
 
-test("累積レベル: Lv1=3本・間隔15度・50ダメージ / Lv2=5本・太い中央+スリップ100/5秒(間隔15度とダメージ50はLv1から引き継ぐ)。Lv3の所持はLv2と同じ(未実装)", () => {
+test("累積レベル: Lv1=3本・間隔15度・50ダメージ / Lv2=5本・太い中央+スリップ100/5秒(間隔15度とダメージ50はLv1から引き継ぐ)。Lv3(A5A)は11本・間隔10度で、Lv2の太い中央・スリップ・50ダメージを引き継ぐ", () => {
     const w = volleyWorld();
     const lv = n => plain(api(w).effectsForLevel(n));
     assert.deepEqual(lv(1), { damage: 50, projectileCount: 3, spreadDegrees: 15, thickWidthTiles: 0, splitTotal: 0, splitSeconds: 5 });
     assert.deepEqual(lv(2), { damage: 50, projectileCount: 5, spreadDegrees: 15, thickWidthTiles: 0.9, splitTotal: 100, splitSeconds: 5 });
-    assert.deepEqual(lv(3), lv(2), "Lv3の行はまだ無いので、解決結果はLv2のまま");
-    assert.deepEqual(plain(balanceOf(w).levels(VOLLEY)).find(row => row.level === 3).effects, {}, "Lv3の固有の効果はバランス設定に無い");
-    assert.equal(api(w).implementedMaxLevel, 2);
+    assert.deepEqual(lv(3), { damage: 50, projectileCount: 11, spreadDegrees: 10, thickWidthTiles: 0.9, splitTotal: 100, splitSeconds: 5 }, "Lv3は本数と間隔だけを置換し、残りはLv2から引き継ぐ");
+    assert.deepEqual(plain(balanceOf(w).levels(VOLLEY)).find(row => row.level === 3).effects, { projectileCount: 11, spreadDegrees: 10 });
+    assert.equal(api(w).implementedMaxLevel, 3);
     assert.equal(balanceOf(w).cooldownSeconds(VOLLEY), 3);
     assert.equal(balanceOf(w).constant(VOLLEY, "element"), 0, "属性は割り当てない(無属性)");
     assert.equal(balanceOf(w).constant(VOLLEY, "weaknessMultiplier"), 1);
@@ -564,17 +564,10 @@ test("本番の取得経路には載らない: Hermesの初期付与(指輪の�
     assert.ok(!JSON.stringify(plain(production.previewStarterGrant())).includes(VOLLEY));
 });
 
-test("Lv3は実装していない: 11本・ビーム・連続ヒット・長押し・ヒットストップは無い。長押しの登録も無い", () => {
-    const w = volleyWorld({ level: 3 });
-    parkOthers(w);
-    aimDegree(w, 90, 4);
-    fire(w);
-    assert.equal(arrows(w).length, 5, "Lv3を所持していても5本(Lv2と同じ)");
-    assert.equal(w.ctx.ProjectRCardBattleInput.getPressSessions().length, 0, "長押しのプロファイルは使わない");
-    assert.equal(w.ctx.ProjectRCardBattleInput.getPressLog().filter(e => e.cardId === VOLLEY).length, 0);
+test("Lv3のビームはまだ実装していない: ヒットストップ・連続ヒット・ビーム本体のコードは無い(Lv3の扇と長押しの分岐の確認は ProjectR_ApolloA5A.test.cjs)", () => {
     const text = fs.readFileSync(path.join(project, "js/plugins/ProjectR_ApolloGoldenVolley.js"), "utf8");
-    assert.ok(!/registerPressProfile|hitStop|ヒットストップ\(実装|beam/i.test(text.replace(/\/\*[\s\S]*?\*\//, "")), "コード部分にLv3の機構は無い");
-    assert.ok(/Lv3.*未実装/.test(text));
+    assert.ok(!/hitStop|spawnBeam|beamWidth/i.test(text.replace(/\/\*[\s\S]*?\*\//, "")), "コード部分にビームの機構は無い");
+    assert.ok(/ビーム本体.*未実装/.test(text));
 });
 
 test("実装の配線: プラグインの並び(CardCatalog/CardBalance/CardModifiers/CutIn/CharacterPresentationより後)・Map002のPrefab・複製元の不変", () => {

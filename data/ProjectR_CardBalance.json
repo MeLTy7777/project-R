@@ -119,7 +119,8 @@
       },
       "levels": {
         "1": { "damage": 50, "projectileCount": 3, "spreadDegrees": 15, "thickWidthTiles": 0, "splitTotal": 0, "splitSeconds": 5 },
-        "2": { "projectileCount": 5, "thickWidthTiles": 0.9, "splitTotal": 100 }
+        "2": { "projectileCount": 5, "thickWidthTiles": 0.9, "splitTotal": 100 },
+        "3": { "projectileCount": 11, "spreadDegrees": 10 }
       }
     }
   }

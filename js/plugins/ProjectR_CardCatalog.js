@@ -28,7 +28,7 @@
  *   runtimeCardId は衝突確認済みの「予約ID」で、implemented=false の間は CardDeckCore のレジストリへ登録しません
  *   (所持・付与・デッキ・Deck Builder・戦闘のどこからも使えない)。旧Apollo 3枚は削除・改名・自動変換をせず共存します。
  *   既存のHermes API(hermesDesign / migrationAudit() / buildFinalHermesDeck など)は、引数なしで従来と同じ結果を返します。
- *   Phase Apollo-A4: 設計ID 8 黄金の矢(apollo_golden_volley)だけを実装済みにし、実行時にレジストリへ登録します(Lv1〜2。ProjectR_ApolloGoldenVolley)。残りの7枚は予約のままです。
+ *   Phase Apollo-A4: 設計ID 8 黄金の矢(apollo_golden_volley)だけを実装済みにし、実行時にレジストリへ登録します(Lv1〜3の扇。Lv3のビームは未実装。ProjectR_ApolloGoldenVolley)。残りの7枚は予約のままです。
  *
  * 【累積レベル規則】
  *   Lv2はLv1の効果を残して追加、Lv3はLv1とLv2を残して追加します。
@@ -133,10 +133,10 @@
         god: "apollo", ringId: "apollo", targetTypeStatus: "provisional", status: "reserved", ...extra });
     const APOLLO = Object.freeze([
         apolloRow(8, "黄金の矢", "strong", 5, 3, { workbookTargetType: "Ground", targetType: "ground", category: "attack",
-            runtimeCardId: "apollo_golden_volley", implemented: true, status: "implemented", targetTypeStatus: "confirmed", implementedLevels: 2,
+            runtimeCardId: "apollo_golden_volley", implemented: true, status: "implemented", targetTypeStatus: "confirmed", implementedLevels: 3, beamImplemented: false,
             legacyCandidates: Object.freeze(["apollo_golden_arrow"]),
             migration: migration("apollo_golden_arrow", "coexist-pending", "implemented-as-new-id",
-                "Phase Apollo-A4でLv1〜2を新しいruntime ID apollo_golden_volley として実装(Lv3は未実装)。旧「黄金の弓矢」(最大3・Cooldown 4・矢1本・Skill式)とは数値も効果も別カードで、自動変換しない。旧カードは削除・上書きせず共存。") }),
+                "Phase Apollo-A4でLv1〜2、A5AでLv3の扇(ビームは未実装)を新しいruntime ID apollo_golden_volley として実装(Lv3は未実装)。旧「黄金の弓矢」(最大3・Cooldown 4・矢1本・Skill式)とは数値も効果も別カードで、自動変換しない。旧カードは削除・上書きせず共存。") }),
         apolloRow(9, "エロスの矢", "special", 5, 5, { workbookTargetType: "Ground", targetType: "ground", category: "special",
             runtimeCardId: "apollo_eros_arrow",
             migration: migration(null, "new", "reserved-not-implemented", "新ランタイムID apollo_eros_arrow を予約。旧カードに対応なし。新規。") }),

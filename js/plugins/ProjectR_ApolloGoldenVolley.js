@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc v1.0.0 Apollo「黄金の矢」(設計ID 8 / apollo_golden_volley) Lv1〜2: マウス方向へ黄金の矢を3/5本同時に発射。命中が確定してから消費。
+ * @plugindesc v1.1.0 Apollo「黄金の矢」(設計ID 8 / apollo_golden_volley) Lv1〜3(扇): マウス方向へ黄金の矢を3/5/11本同時に発射。命中が確定してから消費。Lv3は長押し(ビーム)の分岐だけ予約。
  * @author ProjectR
  * @base ProjectR_CardDeckCore
  * @base ProjectR_CardCatalog
@@ -11,6 +11,7 @@
  * @base Hendrix_Action_Engine
  * @base DotMoveSystem
  * @orderAfter ProjectR_CardModifiers
+ * @orderAfter ProjectR_CardBattleInput
  * @orderAfter ProjectR_CutIn
  * @orderAfter ProjectR_CharacterPresentation
  * @orderAfter ProjectR_HermesZetsu
@@ -27,8 +28,16 @@
  * 新カード「黄金の矢」(ワークブック「カード一覧」のCard ID 8)。ランタイムIDは apollo_golden_volley。旧「黄金の弓矢」
  * (apollo_golden_arrow)はそのまま残り、置き換えません。Apollo / 強力 / 最大5枚 / 最大Lv3 / Cooldown 3秒 / Ground。
  * 数値はすべて data/ProjectR_CardBalance.json(開発用エディタ F6)が持ちます。このPluginは幾何と手順だけを持ちます。
- * このPhase(A4)ではLv1〜2だけを実装しています。Lv3(11本・長押しのビーム・連続ヒット・ヒットストップ)は未実装で、
- * Lv3を所持していても効果はLv2と同じです(バランス設定にLv3の行が無いため)。
+ * Phase A4でLv1〜2、Phase A5AでLv3の「通常の扇」と長押し入力の分岐(予約)を実装しました。
+ * Lv3のビーム本体(長押し0.5秒で1本の太いビーム・連続ヒット・ヒットストップ)は未実装(Phase A5B)です。
+ *
+ * 【Lv3(Phase A5A)】
+ *   Lv3だけ、このカードのキーは「押した瞬間」ではなく「離した時」に発動します(A3の押下時間の検出。`when` でLv3のときだけ有効。Lv1〜2は従来どおり即時)。
+ *   ・0.5秒(戦闘時計で30更新)未満で離す(tap): 11本・間隔10度の扇を発射(中心=離した直後のマウス方向。中央の太い矢とスリップ100はLv2から引き継ぐ)。
+ *   ・0.5秒以上押して離す(hold): ビームの分岐を選ぶ。**ビームは未実装なので、安全に失敗**する(`beamUnavailable`)。カードは消費せず、Cooldownも始まらず、
+ *     扇も撃たない。Playtestだけ、プレイヤーの頭上にふきだし(沈黙)と診断記録(getBeamAttempts)を出す(開発用の「未実装」表示)。
+ *   ・1回の入力で両方は発動しない(1回の押下につき発動の依頼は1回)。押している間の取消(手札の入れ替わり・会話・フォーカス喪失・戦闘終了)では何も発動しない。
+ *   ・消費は A4 と同じ: 扇のいずれかの矢が最初に当たった瞬間に1回だけ。全部外れたら消費しない。
  *
  * 【効果(累積レベル。同じ効果の数値は置換、別の効果は足す)】
  *   Lv1: マウス方向へ、高速でまっすぐ飛ぶ黄金の矢を3本同時に発射。矢の間隔は15度。1本につき固定50ダメージ。
@@ -75,7 +84,9 @@
     const TEMPLATE_NAME = "ProjectR Apollo Golden Volley Arrow";
     const THICK_IMAGE = "VFX/$ProjectR_GoldenArrowThick";
     const BOW_SPRITE = "ProjectR_Bow_DEV";
-    const IMPLEMENTED_MAX_LEVEL = 2;
+    const IMPLEMENTED_MAX_LEVEL = 3; // Lv3は「扇」まで。ビームは未実装(A5B)
+    const BEAM_LEVEL = 3;
+    const HOLD_SECONDS = 0.5; // Lv3: これ以上押して離すとビームの分岐(戦闘時計で30更新)
     const TEMPLATE_HITBOX = 0.3;
     const ALONG_TILES = 0.3; // 矢のhitboxの進行方向の長さ(幅だけが可変)
     const EPSILON = 1e-8;
@@ -202,10 +213,25 @@
         }
     };
 
+    const activationVariant = () => { try { return root.ProjectRCardBattleInput?.getActivationVariant?.() ?? null; } catch (_error) { return null; } };
+    const beamAttempts = [];
+    const isPlaytest = () => typeof Utils !== "undefined" && typeof Utils.isOptionValid === "function" && Utils.isOptionValid("test") === true;
+    const beamUnavailable = () => {
+        beamAttempts.push({ level: cardLevel(), variant: "hold", at: typeof Graphics !== "undefined" ? Graphics.frameCount ?? null : null });
+        if (beamAttempts.length > 20) beamAttempts.shift();
+        if (isPlaytest()) { // 開発用の「ビームは未実装」表示(本番では何も出さない)
+            try { $gamePlayer.requestBalloon(8); } catch (_error) { /* 表示のみ */ }
+            try { if (typeof console !== "undefined") console.info("[ProjectR] 黄金の矢 Lv3 のビーム(長押し)は未実装です(Phase A5B)。カードは消費されません。"); } catch (_error) { /* 表示のみ */ }
+        }
+        return failure("beamUnavailable");
+    };
+
     const activate = context => {
         if (mode === "commit") return commitPlan ? { ok: true } : failure("noCommitPlan");
         if (!deck.isCardBattleActive() || !root.ProjectRCardCatalog) return failure("battleInactive");
         if (pendingVolley) return failure("volleyPending");
+        // Lv3の長押し(hold)はビームの分岐。ビームは未実装なので、何も消費せず・撃たず・Cooldownも始めずに失敗する。
+        if (cardLevel() >= BEAM_LEVEL && activationVariant() === "hold") return beamUnavailable();
         if (!balanceReady()) return failure("balanceUnavailable");
         const env = environment();
         if (!env.ok) return failure(env.reason);
@@ -239,6 +265,14 @@
         // ルーターには「まだ消費しない」と伝える。確定(最初の命中)の時にrequestUseCardの正規経路で1回だけ消費する。
         return failure("reserved");
     };
+
+    // Lv3だけ、離した時に発動する(tap=扇 / hold=ビームの分岐)。Lv1〜2は押した瞬間に発動(従来どおり)。
+    const input = root.ProjectRCardBattleInput;
+    const pressRegistered = typeof input?.registerPressProfile === "function"
+        ? input.registerPressProfile(CARD, { holdSeconds: HOLD_SECONDS, fireOn: "release", when: () => {
+            if (!balanceReady()) return false;
+            return cardLevel() >= BEAM_LEVEL;
+        } }) : { ok: false, reason: "inputUnavailable" };
 
     const previousGround = deck.getActivationHandler("ground");
     deck.registerActivationHandler("ground", context => context.definition.cardId === CARD
@@ -517,7 +551,8 @@
         get SPEED() { return tune("projectileSpeed"); },
         get RANGE_TILES() { return tune("rangeTiles"); },
         effectsForLevel, cardLevel, arrowDegrees, centerIndexOf, slipSchedule, moveSpeedFor,
-        implementedMaxLevel: IMPLEMENTED_MAX_LEVEL,
+        implementedMaxLevel: IMPLEMENTED_MAX_LEVEL, holdSeconds: HOLD_SECONDS, beamLevel: BEAM_LEVEL, pressRegistered: pressRegistered.ok === true,
+        getBeamAttempts: () => beamAttempts.map(entry => ({ ...entry })),
         isPending: () => !!pendingVolley,
         getPending: () => pendingVolley ? { serial: pendingVolley.serial, instanceId: pendingVolley.instanceId, level: pendingVolley.level, degree: pendingVolley.aim,
             degrees: pendingVolley.degrees.slice(), arrows: liveArrows(pendingVolley).length } : null,

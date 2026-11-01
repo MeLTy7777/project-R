@@ -11,7 +11,7 @@
  *
  * Playtest専用。F8のConsoleから使います(アリーナの固定APIは変えません)。
  *   ProjectRApolloTest.start(level = 1)  Apolloの指輪を持ち、アリーナでテストを始め、手札5枚すべてを黄金の矢にして再開始する。
- *   ProjectRApolloTest.setLevel(level)   所持データのレベル 1〜3(戦闘中でも反映。Lv3の効果は未実装でLv2と同じ)
+ *   ProjectRApolloTest.setLevel(level)   所持データのレベル 1〜3(戦闘中でも反映。Lv3は11本の扇。長押しのビームは未実装で、長押しで離すと「未実装」表示のまま失敗)
  *   ProjectRApolloTest.status()          手札・Lv・確定待ち・飛んでいる矢・スリップ・直近の結果(読み取り)
  *   ProjectRApolloTest.end()             アリーナのテストを終了(所持データと、この入口が渡したApolloの指輪は開始前へ戻る)
  *
@@ -89,7 +89,7 @@
             hand: state ? state.hand.map(card => card.cardId) : [],
             counts: state ? { draw: state.drawPile.length, discard: state.discardPile.length, cooldown: state.cooldownPile.length } : null,
             pending: v?.getPending?.() ?? null, arrows: v?.getActiveArrows?.() ?? [], slips: v?.getActiveSlips?.() ?? [],
-            last: v?.getLastResult?.() ?? null,
+            last: v?.getLastResult?.() ?? null, beamAttempts: v?.getBeamAttempts?.() ?? [], press: root.ProjectRCardBattleInput?.getPressSessions?.() ?? [],
             cutIn: root.ProjectRCutIn?.getActive?.() ?? [], vfx: root.ProjectRPresentationVfx?.diagnostics?.() ?? null
         };
     };

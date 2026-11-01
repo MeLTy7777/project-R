@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc v1.2.0 カード戦闘中だけ Q/E/X/C/V を手札(左から1～5枠)へ排他的に渡します。押下時間の検出(任意)つき。
+ * @plugindesc v1.3.0 カード戦闘中だけ Q/E/X/C/V を手札(左から1～5枠)へ排他的に渡します。押下時間の検出(任意)つき。
  * @author ProjectR
  * @base ProjectR_CardDeckCore
  * @orderAfter ProjectR_CardDeckCore
@@ -27,7 +27,9 @@
  * ProjectRCardBattleInput.getDiagnostics() : 直近のキー入力の判定(診断用。保存しない)
  * ProjectRCardBattleInput.getKeyLabels() : ["Q","E","X","C","V"]
  * 押下時間の検出(Phase Apollo-A3・任意。登録しないカードは従来どおり押した瞬間に発動):
- *   registerPressProfile(cardId, { holdSeconds, fireOn?:"manual"|"release", onPress?, onHold?, onRelease?, onCancel? })
+ *   registerPressProfile(cardId, { holdSeconds, fireOn?:"manual"|"release", when?, onPress?, onHold?, onRelease?, onCancel? })
+ *     when(): 任意(Phase Apollo-A5A)。押した瞬間に評価し、falseを返す(または例外)なら、その押下だけは従来どおり「押した瞬間に発動」になる
+ *             (Lvなど実行時の条件で、押下プロファイルを使うかどうかをカードが決める。Lv1〜2は即時発動、Lv3だけ長押しを見る、など)。
  *     onXxx(session): session = { id, index, cardId, heldFrames, heldSeconds, holdReached, activated, activate(variant), cancel(reason) }
  *     onRelease/onCancel の第2情報: session.variant("tap"|"hold") / session.reason。カードを消費するのは session.activate() だけ。
  *   unregisterPressProfile(cardId) / getPressProfile(cardId) / getPressSessions() / getPressLog() / cancelPress(handIndex?, reason?)
@@ -114,6 +116,7 @@
     };
     const framesFor = seconds => Math.max(1, Math.round(seconds * 60));
     const registerPressProfile = (cardId, profile = {}) => {
+        if (profile.when !== undefined && typeof profile.when !== "function") return { ok: false, reason: "invalidWhen" };
         const id = String(cardId ?? "").trim();
         const holdSeconds = Number(profile.holdSeconds);
         if (!id) return { ok: false, reason: "invalidCardId" };
@@ -123,7 +126,7 @@
         if (fireOn !== "manual" && fireOn !== "release") return { ok: false, reason: "invalidFireOn" };
         if (fireOn === "manual" && !profile.onRelease && !profile.onHold && !profile.onPress) return { ok: false, reason: "noActivationPath" }; // 発動する経路が無いと、押してもカードが使えなくなる
         profiles.set(id, Object.freeze({ holdSeconds, thresholdFrames: framesFor(holdSeconds), fireOn,
-            onPress: profile.onPress, onHold: profile.onHold, onRelease: profile.onRelease, onCancel: profile.onCancel }));
+            when: profile.when, onPress: profile.onPress, onHold: profile.onHold, onRelease: profile.onRelease, onCancel: profile.onCancel }));
         return { ok: true, thresholdFrames: framesFor(holdSeconds) };
     };
     const sessionView = session => ({
@@ -150,6 +153,7 @@
         const card = handCard(index);
         const profile = card ? profiles.get(String(card.cardId)) : null;
         if (!profile) return false;
+        if (profile.when) { let use = false; try { use = !!profile.when(); } catch (_error) { use = false; } if (!use) return false; }
         const session = { id: ++pressSerial, index, cardId: String(card.cardId), instanceId: card.instanceId ?? null, profile, heldFrames: 0, holdReached: false, activated: false, state: "pressing" };
         pressSessions.set(index, session);
         logPress({ type: "press", id: session.id, index, cardId: session.cardId });

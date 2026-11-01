@@ -1,6 +1,6 @@
-# Apollo「黄金の矢」(設計ID 8 / `apollo_golden_volley`) Lv1〜2 — 実装メモ (Phase Apollo-A4)
+# Apollo「黄金の矢」(設計ID 8 / `apollo_golden_volley`) Lv1〜3(扇) — 実装メモ (Phase Apollo-A4 / A5A)
 
-状態: **実装済み(Lv1〜2)**。Lv3(11本・長押しのビーム・連続ヒット・ヒットストップ)は**未実装**です。
+状態: **Lv1〜2 実装済み(A4)・Lv3 は「通常の扇」と長押しの分岐だけ実装済み(A5A)**。Lv3の**ビーム本体**(長押し0.5秒で1本の太いビーム・連続ヒット・ヒットストップ)は**未実装**(Phase A5B)です。ビームが完成するまで、本番の取得経路には載せていません(§10)。
 正本: ワークブック `ProjectR_CardManagement_Template(3)(4).xlsx`(SHA-256 `8cb974a7…271b0`)の「カード一覧」Card ID 8。数値の控えは `docs/ProjectR_Apollo_Workbook_Snapshot.json`。
 設計の監査と未決事項は `docs/ProjectR_ApolloCardDesignAudit_A0.md`(§13 が A4)。旧Apollo「黄金の弓矢」(`apollo_golden_arrow`)は**1文字も変えず共存**しています。
 
@@ -16,6 +16,20 @@
 | 壁 | 矢は壁を通り抜けない | ワークブック「壁越え: いいえ」 |
 | 成功 / 失敗 | 射程内の敵にヒット = 成功 / 攻撃が外れる = 失敗(失敗は**カードを消費しない**) | ワークブック + 既存の非消費の方針 |
 | 属性 | **無属性のまま**(割り当てない) | A3 までの決定 |
+
+## 1b. Lv3(Phase A5A)
+
+| 項目 | 内容 |
+|---|---|
+| 扇(tap) | Lv3は**離した時**に発動。0.5秒(戦闘時計で30更新)**未満**で離すと **11本・間隔10度**。中心は**離した直後のマウス方向**(押している間にマウスを動かしても、離した時の向きが中心) |
+| Lv2の引き継ぎ | 中央(index 5)の矢だけ太く(0.9)、当たった敵へ5秒で計100のスリップ。1本50ダメージ・まっすぐ飛ぶ・非貫通・壁・VFXはA4と同じ |
+| ビームの分岐(hold) | 0.5秒**以上**押して離すと「ビーム」の分岐を選ぶ。**ビームは未実装**なので**安全に失敗**(`beamUnavailable`): カードは消費せず、Cooldownは始まらず、扇も撃たない。Playtestだけ、プレイヤーの頭上に「沈黙」のふきだしとConsoleの案内、診断記録(`getBeamAttempts()`) |
+| 1回の入力 | 1回の押下につき発動の依頼は1回(`session.activate`)。tapとholdの両方が出ることはない。キーリピートは無視 |
+| 取消 | 押している間の手札の入れ替わり(`handChanged`)・会話/メニュー(`blocked:…`)・戦闘終了/フォーカス喪失/`Input.clear`(`reset`)・手動では何も発動しない(離しても扇もビームも出ない) |
+| Lv1〜2 | 従来どおり**押した瞬間**に発動(押下セッションを作らない)。`registerPressProfile` の新しい `when()` が、Lv3のときだけ押下プロファイルを使う |
+| 消費 | A4と同じ後払い: 扇のいずれかの矢が**最初に当たった瞬間に1回だけ**消費。全部外れたら非消費。確定待ち中の再入力(tap/hold とも)は `volleyPending` で拒否 |
+| 数値 | Lv3の行 `{ projectileCount: 11, spreadDegrees: 10 }` だけを `ProjectR_CardBalance.json` に追加(それ以外はLv2から引き継ぎ)。F6エディタでLv3の本数・間隔を変えられる(偶数にすると中央の矢=太い矢・スリップは無くなる) |
+| 0.5秒のしきい値 | プラグインの定数(`HOLD_SECONDS`)。ワークブックの値で、バランスJSONの項目にはしていない |
 
 ## 2. 仕様にない数値(仮の既定値。すべて `data/ProjectR_CardBalance.json` と開発用エディタ F6 で変えられる)
 
@@ -74,6 +88,7 @@
 | 区分 | ファイル |
 |---|---|
 | 新規 | `js/plugins/ProjectR_ApolloGoldenVolley.js`(本体) / `js/plugins/ProjectR_CombatTestArenaApollo.js`(DEVの入口。Playtest限定) |
+| A5Aの変更 | `js/plugins/ProjectR_ApolloGoldenVolley.js`(v1.1.0)/ `js/plugins/ProjectR_CardBattleInput.js`(v1.3.0: 押下プロファイルに任意の `when()`)/ `js/plugins/ProjectR_CardCatalog.js`(`implementedLevels: 3`・`beamImplemented: false`)/ `js/plugins/ProjectR_CombatTestArenaApollo.js` / `data/ProjectR_CardBalance.json`(Lv3の行)/ テスト `tests/ProjectR_ApolloA5A.test.cjs` / 実機 `tools/mz_cdp/apollo_a5a_verify.cjs`・`apollo_a5a_os_input.cjs` |
 | 変更(追加のみ) | `data/Map002.json`(矢のPrefabを1件追加。既存の8件は不変) / `data/ProjectR_CardBalance.json`(黄金の矢と項目 `spreadDegrees`・`thickWidthTiles`、`projectileCount`/`projectileSpeed` の予約印を外した) / `js/plugins/ProjectR_CardCatalog.js`(設計ID 8を実装済みにし、実行時に登録) / `ProjectR_CharacterPresentation.js`(`ArmExtend`) / `ProjectR_CutIn.js`・`ProjectR_GodSummonVisual.js`・`ProjectR_PresentationVfx.js`(黄金の矢の分) / `js/plugins.js`(2行 + CutInの対象) / `js/AnimationSolutionLibrary.json`(2件を末尾へ追加) |
 | 素材 | 画像6枚(上の表) |
 | テスト・ツール | `tests/ProjectR_ApolloGoldenVolley.test.cjs` / `tests/ProjectR_ApolloVolleyFixture.cjs` / `tools/mz_cdp/apollo_a4_verify.cjs` / `tools/mz_cdp/apollo_a4_os_input.cjs` / `tools/gen_dev_a4_assets.cjs` / `tools/gen_dev3h_character.cjs`(`ArmExtend`) |
@@ -81,11 +96,13 @@
 ## 7. Playtest で自分で試す手順(F8のConsole)
 
 ```js
-ProjectRApolloTest.start(1)   // Lv1(3本)。2 なら Lv2(5本・太い中央+スリップ)
+ProjectRApolloTest.start(1)   // Lv1(3本)。2 なら Lv2(5本・太い中央+スリップ)、3 なら Lv3(11本の扇。短押しで離す)
 ```
 マウスを敵へ向けて **Q / E / X / C / V**(手札5枚はすべて黄金の矢)。矢が飛んでいる間は手札のカードが減らず、**当たった瞬間**に1枚消費されます。外れたときは減りません。
 `ProjectRApolloTest.status()` で確定待ち・飛んでいる矢・スリップ・直近の結果を読み取れます。`ProjectRApolloTest.setLevel(2)` でLvを変更、`ProjectRApolloTest.end()` で終了。
 数値は **F6(バランスエディタ)** で「黄金の矢」を選んで変えられます(Playtest限定。製品のJSONは変わりません)。Apolloの指輪の入手イベントはまだ無いので、テスト用の入口だけが指輪を渡します(New Gameで使い、セーブしないでください)。
+
+Lv3では、**短く押して離す**と扇、**0.5秒以上押して離す**とビームの分岐(未実装の表示: 頭上のふきだし)になります。`ProjectRApolloTest.status()` の `beamAttempts` / `press` で分岐と押下の状態を読めます。
 
 ## 8. 検証
 
@@ -95,4 +112,12 @@ ProjectRApolloTest.start(1)   // Lv1(3本)。2 なら Lv2(5本・太い中央+�
 
 - **確認済みの方針(ユーザー指示)**: 外れは非消費・属性は無属性・旧カードは不変・Lv3は別Phase・被ダメージの重ねがけ規則は変えない。
 - **この実装で決めた仮の扱い**(後から変えられる。変えるときは数行): スリップの再命中は「置換」/ 矢は1本につき1回当たると消える(貫通なし)/ 直接ダメージの自然なクリティカルは他の固定ダメージのカードと同じ扱い(スリップは無し)/ 太い矢の幅と速さ・射程の既定値。
-- **Lv3 の前に必要**: 長押しの発動(基盤は A3 にある。tap = 扇 / hold = ビーム の割り当てはこの Phase では使っていない)・ヒットストップ・連続ヒット・ビーム(幅3マス)・「各矢のダメージが収束」の定義(ビーム1本の合計がいくつか)。詳細は監査 §13.5。
+- **Lv3 のビーム(A5B)の前に必要**: ヒットストップ(全体停止か敵だけか、長さ)・連続ヒット(1マスあたり3ヒット。ヒット間隔・敵ごとの上限)・ビーム(幅3マス。掃き判定は `arrowBody` の幅を変えるだけ)・「各矢のダメージが収束」の定義(ビーム1本の合計がいくつか)・ビームの確定(消費)のタイミング(離した時か)。長押しの入力(tap/hold・取消・重複)は A5A で実装・実機確認済みで、holdの分岐は `activate` の `beamUnavailable` を置き換えるだけで繋げられる。詳細は監査 §14。
+
+## 10. 本番の取得経路には載せない(Phase A5A)
+
+Lv3 の長押し(ビーム)が未実装のうちは、黄金の矢を本番で入手できません。現状の根拠(テストで固定):
+- Apollo の指輪の入手イベント・初期セットの付与(`apollo.ring.starter`)が**未実装**。Hermes の初期付与にも黄金の矢は含まれない。
+- Apollo の30枚デッキは、他の7枚が未実装なので組み立てられない(`ProjectRCardCatalog.buildGodDeck("apollo") === null`)。
+- カタログは `implementedLevels: 3` かつ `beamImplemented: false`(「完成」ではない)。Lv3 にできるのは開発用の `setCardLevel` / `ProjectRApolloTest` だけ。
+- Apollo の指輪の入手を実装する Phase は、ビーム(A5B)の完成を確かめてから行うこと。
