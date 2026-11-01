@@ -78,6 +78,9 @@
     const SOUL_HOVER_SHEET = Object.freeze({ file: "Animation/ProjectR_Soul_Hover", rows: 2, columns: 4, fps: 8 });
     const SOUL_COLLECT_SHEET = Object.freeze({ file: "Animation/ProjectR_Soul_Collect", rows: 2, columns: 4, fps: 16 });
     const PSYCHO_STRIKE_SHEET = Object.freeze({ file: "Animation/ProjectR_Psychopomp_Strike", rows: 2, columns: 4, fps: 20 });
+    // Apollo-A4(自作のDEV素材。tools/gen_dev_a4_assets.cjs): 黄金の矢の発射の閃光(1コマ256px・上向きの電撃の扇)と、Apolloから漂う光の粒子(1コマ128px)。
+    const VOLLEY_BURST_SHEET = Object.freeze({ file: "Animation/ProjectR_Volley_Burst", rows: 2, columns: 4, fps: 24 });
+    const VOLLEY_PARTICLES_SHEET = Object.freeze({ file: "Animation/ProjectR_Volley_Particles", rows: 2, columns: 4, fps: 10 });
     const defaults = {
         // 出発点: 予備動作の間(移動の前)にプレイヤーへ出し、stickでその場(出発点)に固定する。移動後もノイズは出発点に残る。
         "hermes_zetsu.departure": { library: "ProjectR_Zetsu_Departure", sheet: NOISE_SHEET, anchor: "player", stick: true, scale: 100, opacity: 255, offsetY: -24 },
@@ -103,6 +106,9 @@
         "hermes_psychopomp.soul": { library: "ProjectR_Soul_Hover", sheet: SOUL_HOVER_SHEET, anchor: "target", loop: "infinite", scale: 100, opacity: 240, offsetY: -18, blend: "Add" },
         "hermes_psychopomp.collect": { library: "ProjectR_Soul_Collect", sheet: SOUL_COLLECT_SHEET, anchor: "target", scale: 100, opacity: 255, offsetY: -16, blend: "Add" },
         "hermes_psychopomp.strike": { library: "ProjectR_Psychopomp_Strike", sheet: PSYCHO_STRIKE_SHEET, anchor: "target", scale: 100, opacity: 255, offsetY: -22, blend: "Add" },
+        // 黄金の矢(Apollo-A4): 発射の閃光は発動時に固定した向きへ回す(rotate:"aim")。光の粒子はApolloの表示Eventから漂う(play時の eventId)。
+        "apollo_volley.burst": { library: "ProjectR_Volley_Burst", sheet: VOLLEY_BURST_SHEET, anchor: "player", rotate: "aim", stick: true, scale: 100, opacity: 255, offsetY: -24, blend: "Add" },
+        "apollo_volley.particles": { library: "ProjectR_Volley_Particles", sheet: VOLLEY_PARTICLES_SHEET, anchor: "event", stick: true, scale: 100, opacity: 235, offsetY: -30, blend: "Add" },
         // 神の消失: 神(表示Event)の位置に黒いノイズ。
         "hermes.vanish": { library: "ProjectR_Hermes_Vanish", sheet: NOISE_SHEET, anchor: "event", stick: true, scale: 110, opacity: 255, offsetY: -24 }
     };

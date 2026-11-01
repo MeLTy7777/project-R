@@ -28,6 +28,7 @@
  *   runtimeCardId は衝突確認済みの「予約ID」で、implemented=false の間は CardDeckCore のレジストリへ登録しません
  *   (所持・付与・デッキ・Deck Builder・戦闘のどこからも使えない)。旧Apollo 3枚は削除・改名・自動変換をせず共存します。
  *   既存のHermes API(hermesDesign / migrationAudit() / buildFinalHermesDeck など)は、引数なしで従来と同じ結果を返します。
+ *   Phase Apollo-A4: 設計ID 8 黄金の矢(apollo_golden_volley)だけを実装済みにし、実行時にレジストリへ登録します(Lv1〜2。ProjectR_ApolloGoldenVolley)。残りの7枚は予約のままです。
  *
  * 【累積レベル規則】
  *   Lv2はLv1の効果を残して追加、Lv3はLv1とLv2を残して追加します。
@@ -132,9 +133,10 @@
         god: "apollo", ringId: "apollo", targetTypeStatus: "provisional", status: "reserved", ...extra });
     const APOLLO = Object.freeze([
         apolloRow(8, "黄金の矢", "strong", 5, 3, { workbookTargetType: "Ground", targetType: "ground", category: "attack",
-            runtimeCardId: "apollo_golden_volley", legacyCandidates: Object.freeze(["apollo_golden_arrow"]),
-            migration: migration("apollo_golden_arrow", "coexist-pending", "reserved-not-implemented",
-                "新ランタイムID apollo_golden_volley を予約。旧「黄金の弓矢」(最大3・Cooldown 4・矢1本・Skill式)とは数値も効果も別カードで、自動変換しない。旧カードは削除・上書きせず共存。") }),
+            runtimeCardId: "apollo_golden_volley", implemented: true, status: "implemented", targetTypeStatus: "confirmed", implementedLevels: 2,
+            legacyCandidates: Object.freeze(["apollo_golden_arrow"]),
+            migration: migration("apollo_golden_arrow", "coexist-pending", "implemented-as-new-id",
+                "Phase Apollo-A4でLv1〜2を新しいruntime ID apollo_golden_volley として実装(Lv3は未実装)。旧「黄金の弓矢」(最大3・Cooldown 4・矢1本・Skill式)とは数値も効果も別カードで、自動変換しない。旧カードは削除・上書きせず共存。") }),
         apolloRow(9, "エロスの矢", "special", 5, 5, { workbookTargetType: "Ground", targetType: "ground", category: "special",
             runtimeCardId: "apollo_eros_arrow",
             migration: migration(null, "new", "reserved-not-implemented", "新ランタイムID apollo_eros_arrow を予約。旧カードに対応なし。新規。") }),
@@ -193,7 +195,10 @@
         Object.freeze({ cardId: "hermes_veil", ringId: "hermes", maxCopies: 3, cooldownSeconds: 10, maxLevel: 3,
             rarity: "special", category: "support", targetType: "cursor" }),
         Object.freeze({ cardId: "hermes_psychopomp", ringId: "hermes", maxCopies: 3, cooldownSeconds: 10, maxLevel: 3,
-            rarity: "normal", category: "support", targetType: "instant" })
+            rarity: "normal", category: "support", targetType: "instant" }),
+        // 黄金の矢(Apollo-A4。Lv1〜2のみ実装): Apollo / 強力 / 最大5枚 / 最大Lv3(所持上限は設計どおり。Lv3の効果は未実装でLv2と同じ) / Cooldown 3秒 / Ground(マウス位置が撃つ方向)。
+        Object.freeze({ cardId: "apollo_golden_volley", ringId: "apollo", maxCopies: 5, cooldownSeconds: 3, maxLevel: 3,
+            rarity: "strong", category: "attack", targetType: "ground" })
     ]);
     const registerRuntimeCards = () => {
         const registry = root.ProjectRCardDeck?.definitions;

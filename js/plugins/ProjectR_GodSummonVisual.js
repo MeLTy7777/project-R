@@ -69,7 +69,7 @@
  * @text カード別の一時召喚の位置(JSON)
  * @desc {"cardId":{"x":横tile,"y":縦tile,"forward":前方tile}}。指定したカードだけ、一時召喚の表示位置を変える(未指定は上の既定)。絶は主人公の真後ろ(包む位置)。forwardは発動時の向き(マウス方向。方向を使わないカードは主人公の向き)の前方へ。
  * @type note
- * @default {"hermes_zetsu":{"x":0,"y":-0.25},"hermes_sweep":{"forward":0.95,"y":-0.15},"hermes_reed_flute":{"forward":0.95,"y":-0.15},"hermes_issen":{"forward":0.95,"y":-0.15},"hermes_strength":{"x":0,"y":-0.25}}
+ * @default {"hermes_zetsu":{"x":0,"y":-0.25},"hermes_sweep":{"forward":0.95,"y":-0.15},"hermes_reed_flute":{"forward":0.95,"y":-0.15},"hermes_issen":{"forward":0.95,"y":-0.15},"hermes_strength":{"x":0,"y":-0.25},"apollo_golden_volley":{"forward":0.95,"y":-0.15}}
  *
  * @param VanishNoiseCardIds
  * @text 黒いノイズとともに消える神のカードID(JSON配列)
@@ -125,7 +125,7 @@
     const transientOffset = { x: finiteOr(params.TransientOffsetX, 0.75), y: finiteOr(params.TransientOffsetY, -0.75) };
     const holdFrames = Math.max(1, Math.floor(finiteOr(params.TransientHoldFrames, 45)));
     // カード別の位置。表示だけ(Hendrixの親子追従でPlayerと一緒に動くので、移動後もそのまま付いてくる)。
-    const DEFAULT_CARD_OFFSETS = '{"hermes_zetsu":{"x":0,"y":-0.25},"hermes_sweep":{"forward":0.95,"y":-0.15},"hermes_reed_flute":{"forward":0.95,"y":-0.15},"hermes_issen":{"forward":0.95,"y":-0.15},"hermes_strength":{"x":0,"y":-0.25}}';
+    const DEFAULT_CARD_OFFSETS = '{"hermes_zetsu":{"x":0,"y":-0.25},"hermes_sweep":{"forward":0.95,"y":-0.15},"hermes_reed_flute":{"forward":0.95,"y":-0.15},"hermes_issen":{"forward":0.95,"y":-0.15},"hermes_strength":{"x":0,"y":-0.25},"apollo_golden_volley":{"forward":0.95,"y":-0.15}}';
     const cardOffsets = (() => {
         try {
             const raw = JSON.parse(String(params.CardOffsetsJson === undefined ? DEFAULT_CARD_OFFSETS : params.CardOffsetsJson).trim() || "{}");

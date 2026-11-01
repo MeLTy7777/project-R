@@ -368,6 +368,14 @@ const ACTIONS = {
         p.sparks = i === 2 ? [{ x: CX + 21, y: 17, r: 3.4, c: [200, 232, 255] }, { x: CX + 26, y: 12, r: 2.4, c: [235, 246, 255] }, { x: CX + 17, y: 11, r: 2, c: [200, 232, 255] }] :
             i === 3 ? [{ x: CX + 24, y: 14, r: 2, c: [200, 232, 255] }] : [];
         return p; } },
+    // 黄金の矢(Apollo-A4)の主人公モーション「手を前に突きだす」: 片腕をまっすぐ前へ伸ばし、手のひらから黄金の火花が出る。
+    ArmExtend: { frames: 4, make: i => {
+        const p = basePose(), t = [0.3, 0.75, 1, 0.9][i];
+        p.aF.a = lerp(10, 92, t); p.aF.e = lerp(14, 2, t); p.aF.o = lerp(7, -9, t); p.aF.oe = lerp(3, 0, t);
+        p.aB.a = lerp(-4, 8, t); p.aB.e = 18; p.aB.o = 7;
+        p.lean = lerp(0, 2, t); p.headDx = lerp(0, 1, t); p.dy = 0; p.lF.a = 8 * t; p.lB.a = -8 * t;
+        p.sparks = i >= 2 ? [{ x: CX + 22, y: 20, r: 3.6, c: [255, 220, 110] }, { x: CX + 27, y: 15, r: 2.4, c: [255, 240, 170] }, { x: CX + 18, y: 14, r: 2, c: [255, 220, 110] }] : [];
+        return p; } },
     Ultimate: { frames: 8, make: i => {
         const p = basePose(), crouch = [0.8, 1, 0.3, 0, 0, 0, 0, 0][i], up = [0, 0, 0.5, 1, 1, 1, 1, 1][i];
         p.dy = Math.round(5 * crouch) - Math.round(3 * up); p.lF.a = 28 * crouch; p.lB.a = -28 * crouch; p.lF.e = -56 * crouch; p.lB.e = -56 * crouch;

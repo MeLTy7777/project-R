@@ -71,7 +71,7 @@ test("登録: 新Hermes 7枚のランタイムIDは重複せず、定義は1つ�
     assert.equal(total, 30);
     // Mapは同じキーを二重に持てない。追加登録は7件で、旧カードと重ならない。
     const registered = w.ctx.ProjectRCardCatalog.registeredRuntimeCards();
-    assert.deepEqual([...registered].sort(), [...IDS].sort());
+    assert.deepEqual([...registered].sort(), [...IDS, "apollo_golden_volley"].sort(), "Hermes 7枚 + 黄金の矢(Apollo-A4)");
     for (const id of LEGACY.concat(APOLLO)) assert.ok(!registered.includes(id), id);
     assert.deepEqual(plain(w.prod().starterSet().map(c => [c.cardId, c.copies])), plain(STARTER.map(r => [r[0], r[2]])));
     assert.equal(w.prod().starterTotal(), 30);

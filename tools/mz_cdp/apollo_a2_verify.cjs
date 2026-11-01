@@ -8,6 +8,8 @@ const norm = p => String(p || "").replace(/\\/g, "/").replace(/\/?$/, "/");
 const TMP_SAVE = norm(process.env.MZ_TMP_SAVE);
 const RESERVED = ["apollo_golden_volley", "apollo_eros_arrow", "apollo_lyre_rhythm", "apollo_laurel_wreath", "apollo_hyacinthus", "apollo_gigas_slayer", "apollo_oracle", "apollo_plague_rain"];
 const LEGACY = ["apollo_golden_arrow", "apollo_plague_attack", "apollo_lyre_calm"];
+// 黄金の矢(apollo_golden_volley)はPhase A4で実装・登録済み。残りの7枚が引き続き予約(未登録)。
+const INACTIVE = RESERVED.filter(id => id !== "apollo_golden_volley");
 const COPIES = [5, 5, 2, 3, 3, 5, 3, 4];
 (async () => {
   if (!process.env.MZ_TMP_SAVE) throw new Error("MZ_TMP_SAVE(一時のsaveフォルダ)を指定してください");
@@ -32,23 +34,23 @@ const COPIES = [5, 5, 2, 3, 3, 5, 3, 4];
   await check("A1 カタログ: 15設計(Hermes 7 + Apollo 8)・Apolloの予約ID・最大コピー合計30・コピー上限(5/5/2/3/3/5/3/4)", async () => {
     const v = await json("({ n: ProjectRCardCatalog.designs().length, gods: ProjectRCardCatalog.gods(), ids: ProjectRCardCatalog.godDesign('apollo').map(function(d) { return d.runtimeCardId; }), copies: ProjectRCardCatalog.godDesign('apollo').map(function(d) { return d.maxCopies; }), total: ProjectRCardCatalog.godTotalMaxCopies('apollo'), status: ProjectRCardCatalog.godStatus('apollo'), hermes: ProjectRCardCatalog.godTotalMaxCopies('hermes'), ready: [ProjectRCardCatalog.isGodDeckReady('hermes'), ProjectRCardCatalog.isGodDeckReady('apollo')], deck: ProjectRCardCatalog.buildGodDeck('apollo') })");
     rec("A1 catalog", v.n === 15 && JSON.stringify(v.gods) === '["hermes","apollo"]' && JSON.stringify(v.ids) === JSON.stringify(RESERVED) && JSON.stringify(v.copies) === JSON.stringify(COPIES) && v.total === 30 && v.hermes === 30
-      && v.status.reserved === 8 && v.status.implemented === 0 && v.ready[0] === true && v.ready[1] === false && v.deck === null, JSON.stringify(v).slice(0, 300));
+      && v.status.reserved === 7 && v.status.implemented === 1 && v.ready[0] === true && v.ready[1] === false && v.deck === null, JSON.stringify(v).slice(0, 300));
   });
 
   await check("A2 衝突なし・未登録: runtimeIdAuditが問題0件、予約8枚はレジストリに無く、旧Apollo 3枚とHermes 7枚は従来どおり登録されている", async () => {
     const v = await json("({ audit: ProjectRCardCatalog.runtimeIdAudit(), inactive: ProjectRCardCatalog.inactiveRuntimeCards(), registry: ProjectRCardDeck.definitions.cardDefinitions().map(function(c) { return c.cardId; }), registered: ProjectRCardCatalog.registeredRuntimeCards() })");
-    rec("A2 audit", v.audit.problems.length === 0 && v.inactive.length === 8 && RESERVED.every(id => v.registry.indexOf(id) < 0) && LEGACY.every(id => v.registry.indexOf(id) >= 0)
-      && v.registry.length === 14 && v.registered.length === 7, JSON.stringify({ problems: v.audit.problems, registry: v.registry.length, registered: v.registered.length }));
+    rec("A2 audit", v.audit.problems.length === 0 && v.inactive.length === 7 && JSON.stringify(v.inactive) === JSON.stringify(INACTIVE) && INACTIVE.every(id => v.registry.indexOf(id) < 0) && v.registry.indexOf("apollo_golden_volley") >= 0 && LEGACY.every(id => v.registry.indexOf(id) >= 0)
+      && v.registry.length === 15 && v.registered.length === 8, JSON.stringify({ problems: v.audit.problems, registry: v.registry.length, registered: v.registered.length }));
   });
 
   await check("A3 本番で使えない: 予約カードは解放・付与(API/プラグインコマンド)できず、デッキにも入らない。Hermesの指輪の初期付与は30枚のままApolloを含まない", async () => {
     await fresh();
-    const v = await json(`(function() { var out = { own: [], grant: [] }; ${JSON.stringify(RESERVED)}.forEach(function(id) { out.own.push(ProjectRCardDeck.setCardOwned(id, true).ok); out.grant.push(ProjectRCardInventory.grantCopies(id, 1, { source: 't' }).ok); });
+    const v = await json(`(function() { var out = { own: [], grant: [] }; ${JSON.stringify(INACTIVE)}.forEach(function(id) { out.own.push(ProjectRCardDeck.setCardOwned(id, true).ok); out.grant.push(ProjectRCardInventory.grantCopies(id, 1, { source: 't' }).ok); });
       var cmd = function(p, n, a) { PluginManager.callCommand(new Game_Interpreter(), p, n, a); };
       cmd('ProjectR_CardInventory', 'GrantCardCopies', { cardId: 'apollo_oracle', copies: '2', rewardId: '' }); cmd('ProjectR_MenuIntegration', 'GrantCard', { cardId: 'apollo_oracle' });
       out.oracle = ProjectRCardInventory.getOwnedCopies('apollo_oracle'); out.oracleOwned = ProjectRCardDeck.isCardOwned('apollo_oracle');
-      out.deckReasons = ProjectRCardDeck.getDeckInvalidReasons(${JSON.stringify(RESERVED)}).map(function(r) { return r.code; }).filter(function(x, i, a) { return a.indexOf(x) === i; });
-      ProjectRCardDeck.assignRingToPlayer('apollo'); out.afterRing = ${JSON.stringify(RESERVED)}.some(function(id) { return ProjectRCardDeck.isCardOwned(id); }); return out; })()`);
+      out.deckReasons = ProjectRCardDeck.getDeckInvalidReasons(${JSON.stringify(INACTIVE)}).map(function(r) { return r.code; }).filter(function(x, i, a) { return a.indexOf(x) === i; });
+      ProjectRCardDeck.assignRingToPlayer('apollo'); out.afterRing = ${JSON.stringify(INACTIVE)}.some(function(id) { return ProjectRCardDeck.isCardOwned(id); }); return out; })()`);
     await fresh();
     const hermes = await json(`(function() { var r = ProjectRHermesProductionDeck.acquireRing('hermes', { source: 'a2' }); var ids = ProjectRCardDeck.definitions.cardDefinitions().map(function(c) { return c.cardId; });
       return { ok: r.ok, total: ProjectRCardCatalog.hermesDesign().reduce(function(s, d) { return s + ProjectRCardInventory.getOwnedCopies(d.runtimeCardId); }, 0), apollo: ids.filter(function(id) { return /^apollo_/.test(id) && ProjectRCardInventory.getOwnedCopies(id) > 0; }), deck: ProjectRCardDeck.getDeck().length }; })()`);
@@ -64,7 +66,7 @@ const COPIES = [5, 5, 2, 3, 3, 5, 3, 4];
     const v = await json("(function() { var ids = ProjectRMenuCore.deck.collection({}).map(function(c) { return c.cardId; }); return { scene: SceneManager._scene.constructor.name, apollo: ids.filter(function(id) { return /^apollo_/.test(id); }), total: ids.length }; })()");
     await s.shot("apollo_a2_deckbuilder");
     await ev("SceneManager.pop(); 'pop'"); await ready();
-    rec("A4 deck builder", v.scene === "Scene_ProjectRDeckBuilder" && JSON.stringify(v.apollo.sort()) === JSON.stringify(LEGACY.slice().sort()) && RESERVED.every(id => v.apollo.indexOf(id) < 0), JSON.stringify(v));
+    rec("A4 deck builder", v.scene === "Scene_ProjectRDeckBuilder" && JSON.stringify(v.apollo.sort()) === JSON.stringify(LEGACY.slice().sort()) && INACTIVE.every(id => v.apollo.indexOf(id) < 0), JSON.stringify(v));
   });
 
   await check("A5 混成デッキ(予約定義を実機のメモリ上だけで登録): Hermes + Apollo の30枚が有効。Apolloの指輪を外すとApolloのカード15枚だけが指輪不足。コピー上限は5/5/2/3/3/5/3/4", async () => {
@@ -104,7 +106,7 @@ const COPIES = [5, 5, 2, 3, 3, 5, 3, 4];
     await ev("Scene_Load.prototype.reloadMapIfUpdated.call(null); SceneManager.goto(Scene_Map); 'go'"); await ready();
     const after = await snap();
     // 予約定義が登録されていない状態の読み込み = いまの本番: 登録を取り除いてから、もう一度読み込む
-    await ev(`${JSON.stringify(RESERVED)}.forEach(function(id) { ProjectRCardDeck.definitions.cards.delete(id); }); 'unregister'`);
+    await ev(`${JSON.stringify(INACTIVE)}.forEach(function(id) { ProjectRCardDeck.definitions.cards.delete(id); }); 'unregister'`);
     await ev("window.__loadResult = 'pending'; DataManager.loadGame(1).then(function() { window.__loadResult = 'loaded'; }, function(e) { window.__loadResult = 'ERR ' + e; }); 'req'");
     await wait("window.__loadResult !== 'pending'", 8000);
     await ev("Scene_Load.prototype.reloadMapIfUpdated.call(null); SceneManager.goto(Scene_Map); 'go'"); await ready();

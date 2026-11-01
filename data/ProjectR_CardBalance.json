@@ -36,8 +36,10 @@
     "concealment": { "label": "認識阻害(標的にされない)", "type": "boolean", "editable": false },
     "ignoreDefense": { "label": "防御無視", "type": "boolean", "editable": false },
     "hitCount": { "label": "ヒット数", "unit": "回", "min": 1, "max": 100, "integer": true, "reserved": true },
-    "projectileCount": { "label": "弾の本数", "unit": "本", "min": 1, "max": 50, "integer": true, "reserved": true },
-    "projectileSpeed": { "label": "弾の速さ", "unit": "マス/秒", "min": 0.1, "max": 60, "reserved": true },
+    "projectileCount": { "label": "弾の本数", "unit": "本", "min": 1, "max": 50, "integer": true },
+    "projectileSpeed": { "label": "弾の速さ", "unit": "マス/秒", "min": 0.1, "max": 60 },
+    "spreadDegrees": { "label": "弾と弾の間隔(角度)", "unit": "度", "min": 0.5, "max": 90 },
+    "thickWidthTiles": { "label": "太い弾の幅(0=太い弾なし)", "unit": "マス", "min": 0, "max": 10 },
     "regenPerSecond": { "label": "毎秒の継続回復", "unit": "HP/秒", "min": 0, "max": 99999, "reserved": true },
     "dotDamage": { "label": "継続ダメージ(1回分)", "unit": "HP", "min": 0, "max": 99999, "integer": true, "reserved": true },
     "criticalMultiplier": { "label": "クリティカル倍率", "unit": "倍", "min": 1, "max": 20, "reserved": true },
@@ -107,6 +109,17 @@
         "1": { "hitMultiplier": 1.5, "hitSeconds": 0.8 },
         "2": { "hitMultiplier": 2 },
         "3": { "hitMultiplier": 3, "speedFactor": 2, "speedSeconds": 1 }
+      }
+    },
+    "apollo_golden_volley": {
+      "name": "黄金の矢", "designId": 8, "cooldownSeconds": 3,
+      "constants": {
+        "projectileSpeed": 20, "rangeTiles": 40, "pathWidthTiles": 0.3, "splitTicks": 5,
+        "element": 0, "weaknessMultiplier": 1
+      },
+      "levels": {
+        "1": { "damage": 50, "projectileCount": 3, "spreadDegrees": 15, "thickWidthTiles": 0, "splitTotal": 0, "splitSeconds": 5 },
+        "2": { "projectileCount": 5, "thickWidthTiles": 0.9, "splitTotal": 100 }
       }
     }
   }

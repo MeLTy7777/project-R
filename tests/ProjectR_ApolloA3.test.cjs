@@ -453,8 +453,8 @@ test("名簿(読み取り専用): 主人公+出撃中の仲間だけ。NPC・敵
 test("互換性: Apollo 8枚は未登録のまま・旧Apollo/Hermesの定義と保存デッキは不変・登録/チェーンの順序(CardModifiersが最外)・既存の入力と属性は従来どおり", () => {
     const w = dmWorld();
     const d = deckApi(w);
-    for (const id of ["apollo_golden_volley", "apollo_eros_arrow", "apollo_lyre_rhythm", "apollo_laurel_wreath", "apollo_hyacinthus", "apollo_gigas_slayer", "apollo_oracle", "apollo_plague_rain"]) assert.equal(d.definitions.card(id), null, id);
-    assert.equal(d.definitions.cardDefinitions().length, 14);
+    for (const id of ["apollo_golden_volley", "apollo_eros_arrow", "apollo_lyre_rhythm", "apollo_laurel_wreath", "apollo_hyacinthus", "apollo_gigas_slayer", "apollo_oracle", "apollo_plague_rain"]) { if (id === "apollo_golden_volley") assert.ok(d.definitions.card(id), id + " はPhase A4で実装済み(登録)"); else assert.equal(d.definitions.card(id), null, id); }
+    assert.equal(d.definitions.cardDefinitions().length, 15, "旧7 + 実行時に追加した7 + 黄金の矢(A4)");
     const legacy = ["apollo_golden_arrow", "apollo_plague_attack", "apollo_lyre_calm"].map(id => plain(d.definitions.card(id)));
     assert.deepEqual(legacy.map(c => [c.maxCopies, c.cooldownSeconds, c.targetType]), [[3, 4, "direction"], [2, 12, "direction"], [3, 10, "ally"]]);
     const command = w.ctx.PluginManager._commands["Hendrix_Action_Engine:UpdateEventHp"];

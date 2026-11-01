@@ -36,7 +36,7 @@ test("既定値: 7枚のLv1〜3の効果・定数・クールダウンは、JSON
     const w = hermesWorld({ card: SWEEP });
     const api = balanceOf(w);
     assert.equal(api.isReady(), true, JSON.stringify(api.status()));
-    assert.deepEqual(plain(api.cardIds()).sort(), CARDS.slice().sort());
+    assert.deepEqual(plain(api.cardIds()).sort(), [...CARDS, "apollo_golden_volley"].sort(), "Hermes 7枚 + 黄金の矢(Apollo-A4)");
     for (const card of CARDS) {
         for (const level of [1, 2, 3]) assert.deepEqual(plain(api.effects(card, level)), GOLDEN[card][level], `${card} Lv${level}`);
         assert.equal(api.cooldownSeconds(card), GOLDEN_COOLDOWN[card], `${card} cooldown`);
@@ -57,7 +57,7 @@ test("カードのランタイムIDは設計IDと別: JSONの designId がカタ
         assert.ok(entry, row.runtimeCardId);
         assert.equal(entry.designId, row.designId, row.runtimeCardId);
     }
-    for (const id of Object.keys(snapshot.cards)) assert.ok(/^hermes_[a-z_]+$/.test(id), "ランタイムIDで書く: " + id);
+    for (const id of Object.keys(snapshot.cards)) assert.ok(/^(hermes|apollo)_[a-z_]+$/.test(id), "ランタイムIDで書く: " + id);
 });
 
 test("累積と置換: Lv2はLv1を残して足す。同じ効果の新しい数値は前の値を置き換える(加算でも乗算でもない)", () => {

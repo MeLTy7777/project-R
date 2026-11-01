@@ -79,7 +79,7 @@ test("移行監査: 設計ID ↔ ランタイムID。実装済みは薙ぎ払い
     const mapped = new Set(audit.map(a => a.legacyCardId).filter(Boolean));
     const unmapped = plain(w.ctx.ProjectRCardCatalog.unmappedLegacyCards()).map(c => c.cardId);
     for (const id of [...mapped, ...unmapped]) assert.ok(registry.has(id), `${id} は残っている`);
-    const accounted = new Set([...mapped, ...unmapped, "hermes_zetsu", "hermes_sweep", "hermes_reed_flute", "hermes_issen", "hermes_strength", "hermes_veil", "hermes_psychopomp"]);
+    const accounted = new Set([...mapped, ...unmapped, "hermes_zetsu", "hermes_sweep", "hermes_reed_flute", "hermes_issen", "hermes_strength", "hermes_veil", "hermes_psychopomp", "apollo_golden_volley"]);
     assert.deepEqual([...registry].filter(id => !accounted.has(id)), [], "監査に載っていないカードは無い");
     assert.deepEqual(unmapped.filter(id => id.startsWith("apollo_")).sort(), ["apollo_golden_arrow", "apollo_lyre_calm", "apollo_plague_attack"], "Apolloは対象外・保持");
 });
@@ -88,7 +88,7 @@ test("重複・二重発動の防止: 同じcardIdの定義は1つ。1つのcard
     const w = buildWorld();
     const ids = deckApi(w).definitions.cardDefinitions().map(c => c.cardId);
     assert.equal(new Set(ids).size, ids.length);
-    assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.registeredRuntimeCards()), ["hermes_zetsu", "hermes_sweep", "hermes_reed_flute", "hermes_issen", "hermes_strength", "hermes_veil", "hermes_psychopomp"]);
+    assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.registeredRuntimeCards()), ["hermes_zetsu", "hermes_sweep", "hermes_reed_flute", "hermes_issen", "hermes_strength", "hermes_veil", "hermes_psychopomp", "apollo_golden_volley"]);
     // runtime追加の登録は、既存cardIdがあれば何もしない(同じ関数を再実行相当: 既存定義を保つ)
     const before = deckApi(w).definitions.card("hermes_zetsu");
     assert.equal(deckApi(w).definitions.cards.has("hermes_zetsu"), true);
