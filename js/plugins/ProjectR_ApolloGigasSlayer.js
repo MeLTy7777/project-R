@@ -121,8 +121,8 @@
     //   ・apollo_gigas.beamlane: 遮られたときの1マス幅のレーン。左右の端まで光が続き、隣り合うレーンと隙間なくつながる。
     try {
         const sheet = file => Object.freeze({ file: "Animation/" + file, rows: 2, columns: 4, fps: 18 });
-        root.ProjectRPresentationVfx?.register?.("apollo_gigas.beam", { library: "ProjectR_Gigas_Beam", sheet: sheet("ProjectR_Gigas_Beam"), anchor: "player", beam: true, segmentTiles: 3, stick: true, scale: 100, opacity: 240, offsetY: -9, blend: "Add" });
-        root.ProjectRPresentationVfx?.register?.("apollo_gigas.beamlane", { library: "ProjectR_Gigas_BeamLane", sheet: sheet("ProjectR_Gigas_BeamLane"), anchor: "player", beam: true, segmentTiles: 2, stick: true, scale: 100, opacity: 240, offsetY: -9, blend: "Add" });
+        root.ProjectRPresentationVfx?.register?.("apollo_gigas.beam", { library: "ProjectR_Gigas_Beam", sheet: sheet("ProjectR_Gigas_Beam"), anchor: "player", beam: true, segmentTiles: 3, stick: true, scale: 100, opacity: 240, offsetY: -9, axisScale: true, blend: "Add" });
+        root.ProjectRPresentationVfx?.register?.("apollo_gigas.beamlane", { library: "ProjectR_Gigas_BeamLane", sheet: sheet("ProjectR_Gigas_BeamLane"), anchor: "player", beam: true, segmentTiles: 2, stick: true, scale: 100, opacity: 240, offsetY: -9, axisScale: true, blend: "Add" });
     } catch (_error) { /* 表示のみ */ }
     const status = () => root.ProjectRApolloStatus || null;
     const hitStop = () => root.ProjectRHitStop;

@@ -55,6 +55,7 @@
     { "file": "apollo_a9_eight_verify.cjs", "kind": "verify", "status": "maintained", "input": "cdp+key", "phase": "Apollo-A9", "expectedChecks": 3, "covers": "Apollo 8枚(Lv3)を手札に来た順に実キーで全部使う: 効果の同時成立・衝突なし・Event/絵の上限・処理時間・戦闘終了の後片付け" },
     { "file": "apollo_a9_os_input.cjs", "kind": "os-input", "status": "maintained", "input": "os", "phase": "Apollo-A9", "expectedChecks": 5, "covers": "竪琴Lv3のOSレベルの実キー: 選べるのは合計5回(5周ではない)・UI 5/5・6回目は通常の攻撃・外した押下も1回・後片付け。NW.jsを前面にできる環境で実行する(前面が取れないとOS0で理由を出して止まる)" },
     { "file": "apollo_a10_gigas_beam_verify.cjs", "kind": "verify", "status": "maintained", "input": "cdp+key", "phase": "Apollo-A10", "expectedChecks": 6, "covers": "ギガース殺しLv3のビーム: 撃つのは1本・絵は幅3マスの1列(不透明3.00マス)・中心が当たり判定の中心線と一致・判定は幅3マス全体(継ぎ目も11ヒット)・壁で遮られたときは隣り合う3枚・後片付け" },
-    { "file": "apollo_a11_golden_beam_verify.cjs", "kind": "verify", "status": "maintained", "input": "cdp+key", "phase": "Apollo-A11", "expectedChecks": 6, "covers": "黄金の矢Lv3のビームの絵: 横・縦・斜め2方向で幅3.00マス・中心のずれ~0(従来の絵は約2.42マス・最大0.38マスずれ)。遮られたとき(横・縦・斜め)は隣り合う3枚で帯ごとの長さが判定と一致。判定・11ヒット・消費は従来どおり。後片付け" }
+    { "file": "apollo_a11_golden_beam_verify.cjs", "kind": "verify", "status": "maintained", "input": "cdp+key", "phase": "Apollo-A11", "expectedChecks": 6, "covers": "黄金の矢Lv3のビームの絵: 横・縦・斜め2方向で幅3.00マス・中心のずれ~0(従来の絵は約2.42マス・最大0.38マスずれ)。遮られたとき(横・縦・斜め)は隣り合う3枚で帯ごとの長さが判定と一致。判定・11ヒット・消費は従来どおり。後片付け" },
+    { "file": "apollo_a12_short_beam_verify.cjs", "kind": "verify", "status": "maintained", "input": "cdp+key", "phase": "Apollo-A12", "expectedChecks": 4, "covers": "黄金の矢Lv3とギガース殺しLv3の短いビーム区間: 壁のすぐ前(0.5 / 1.5 / 2.5マス)・横/縦/斜め・1つの帯だけ壁、で絵の幅が3マス(レーン1マス)のまま・先端が判定の長さ・手前が撃つ位置から。従来の一様拡縮の幅(0.39 / 1.21 / 2.01)と比較。後片付け" }
   ]
 }

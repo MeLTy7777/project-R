@@ -214,6 +214,22 @@
         return { ok: true, mode: "sheet", note };
     };
 
+    // 短いビーム区間の幅を戻す予約(note -> { x, y, left })。公式Show VFXは絵の登録が少し遅れることがある(stop の予約と同じ)ので、登録されたらSpriteの拡縮を縦横別に直す(最長 PENDING_SCALE_FRAMES)。
+    const PENDING_SCALE_FRAMES = 120;
+    const pendingScales = new Map();
+    const sweepPendingScales = () => {
+        const pictures = root.AnimatedPictureManager?._animatedPictures || [];
+        for (const [note, want] of [...pendingScales]) {
+            let done = false;
+            for (const picture of pictures) {
+                if (String(picture?.note ?? "") !== note || !picture.sprite?.scale) continue;
+                const sx = picture.sprite.scale.x < 0 ? -want.x : want.x, sy = picture.sprite.scale.y < 0 ? -want.y : want.y;
+                picture.sprite.scale.set(sx, sy); done = true;
+            }
+            if (done || want.left <= 1) pendingScales.delete(note); else want.left--;
+        }
+    };
+
     // ビーム: 区間を並べて再生する。戻り値の notes で、終わったあとに stop() できる。anchors は、区間を置いた画像なしの錨Event(終わったら removeAnchor)。
     //   公式Show VFXの「プレイヤーへ結び付けた位置オフセット」は、プレイヤーの絵の拡縮で効き方が変わる(実機で約2倍)ため、区間はワールドの位置に置いた錨Event
     //   (GodSummonVisual.spawnAnchor。拡縮なし)へ結び付けて置く。origin(発射点のタイル座標)が無い・錨が作れないときだけ、プレイヤー基準のオフセットで置く(精度は落ちる)。
@@ -225,8 +241,13 @@
         const visual = root.ProjectRGodSummonVisual;
         const useAnchors = !!origin && Number.isFinite(origin.x) && Number.isFinite(origin.y) && typeof visual?.spawnAnchor === "function";
         for (let j = 0; j < count; j++) {
-            let center, scale = definition.scale;
-            if (length < seg) { center = length / 2; scale = Math.max(1, Math.round(definition.scale * length / seg)); }
+            let center, scale = definition.scale, axisLength = null;
+            if (length < seg) {
+                center = length / 2; scale = Math.max(1, Math.round(definition.scale * length / seg));
+                // axisScale: 公式Show VFXの拡縮は縦横一様のため、短い区間は幅も縮む。幅3マスのビームは判定が3マスのままなので、
+                //   絵が出たあとに幅だけ元へ戻す(長さ方向だけ縮める = 先端は判定の届く所までで、壁の向こうへは描かない)。この印のあるキーだけ(他のVFXは従来どおり)。
+                if (definition.axisScale === true) axisLength = length / seg;
+            }
             else center = Math.min(j * seg, length - seg) + seg / 2;
             const shaped = { ...definition, scale }, extra = { rotation: degree, instance: `${instance ?? "beam"}.${j}` };
             let r = null;
@@ -236,6 +257,7 @@
             }
             if (!r) r = playSheet(key, shaped, { x: (ux * center + nx * side) * tile, y: (uy * center + ny * side) * tile }, !!definition.stick, extra);
             if (!r.ok) return r;
+            if (axisLength !== null && r.note) pendingScales.set(r.note, { x: definition.scale / 100, y: Math.max(0.005, definition.scale / 100 * axisLength), left: PENDING_SCALE_FRAMES });
             notes.push(r.note);
         }
         return { ok: true, mode: "beam", segments: count, notes, anchors };
@@ -311,6 +333,7 @@
         let removed = 0;
         const wanted = String(note ?? "");
         if (!wanted.startsWith(NOTE_PREFIX)) return 0;
+        pendingScales.delete(wanted);
         for (let i = active.length - 1; i >= 0; i--) if (active[i].note === wanted) active.splice(i, 1);
         try {
             for (const picture of [...(manager?._animatedPictures || [])]) {
@@ -337,6 +360,7 @@
     // 自分が出したVFXだけを公式のdisposeで外す。ほかのVFXには触れない。
     const clear = () => {
         pendingStops.clear();
+        pendingScales.clear();
         const manager = root.AnimatedPictureManager;
         const libraryNotes = new Set(active.filter(a => a.library).map(a => "library_" + a.library));
         active.length = 0;
@@ -365,6 +389,7 @@
         Game_Map.prototype.update = function(sceneActive) {
             _update.apply(this, arguments);
             if (sceneActive !== false && pendingStops.size) { try { sweepPendingStops(); } catch (_error) { /* 表示のみ */ } }
+            if (sceneActive !== false && pendingScales.size) { try { sweepPendingScales(); } catch (_error) { /* 表示のみ */ } }
         };
     }
     if (typeof DataManager !== "undefined") {
@@ -383,6 +408,6 @@
         play, clear, stop, register, probeLibrary,
         mapping: key => mappings.has(key) ? { ...mappings.get(key) } : null,
         keys: () => [...mappings.keys()],
-        diagnostics: () => ({ ...stats, active: active.length, activeKeys: active.map(item => item.key), libraries: Object.fromEntries(libraryKnown) })
+        diagnostics: () => ({ ...stats, pendingScales: pendingScales.size, active: active.length, activeKeys: active.map(item => item.key), libraries: Object.fromEntries(libraryKnown) })
     };
 })();

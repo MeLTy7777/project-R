@@ -170,8 +170,8 @@
     //   従来のキー(apollo_volley.beam / beamlane)は PresentationVfx に残してある(他のカード・互換のため。このカードは使わない)。
     try {
         const sheet = file => Object.freeze({ file: "Animation/" + file, rows: 2, columns: 4, fps: 18 });
-        root.ProjectRPresentationVfx?.register?.("apollo_golden.beam", { library: "ProjectR_Golden_Beam", sheet: sheet("ProjectR_Golden_Beam"), anchor: "player", beam: true, segmentTiles: 3, stick: true, scale: 100, opacity: 240, offsetY: -9, blend: "Add" });
-        root.ProjectRPresentationVfx?.register?.("apollo_golden.beamlane", { library: "ProjectR_Golden_BeamLane", sheet: sheet("ProjectR_Golden_BeamLane"), anchor: "player", beam: true, segmentTiles: 2, stick: true, scale: 100, opacity: 240, offsetY: -9, blend: "Add" });
+        root.ProjectRPresentationVfx?.register?.("apollo_golden.beam", { library: "ProjectR_Golden_Beam", sheet: sheet("ProjectR_Golden_Beam"), anchor: "player", beam: true, segmentTiles: 3, stick: true, scale: 100, opacity: 240, offsetY: -9, axisScale: true, blend: "Add" });
+        root.ProjectRPresentationVfx?.register?.("apollo_golden.beamlane", { library: "ProjectR_Golden_BeamLane", sheet: sheet("ProjectR_Golden_BeamLane"), anchor: "player", beam: true, segmentTiles: 2, stick: true, scale: 100, opacity: 240, offsetY: -9, axisScale: true, blend: "Add" });
     } catch (_error) { /* 表示のみ */ }
 
     const cardLevel = () => {
