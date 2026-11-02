@@ -162,8 +162,8 @@ test("見た目とダメージの一致: 全レーンが同じ長さなら幅3�
     const spy = spyVfx(w);
     hold(w);
     const lanes = beam(w).lanes;
-    const lanePlays = spy.plays.filter(p => p.key === "apollo_volley.beamlane");
-    assert.ok(!spy.plays.some(p => p.key === "apollo_volley.beam"), "一部が遮られたので、幅3の1枚は使わない");
+    const lanePlays = spy.plays.filter(p => p.key === "apollo_golden.beamlane");
+    assert.ok(!spy.plays.some(p => p.key === "apollo_golden.beam"), "一部が遮られたので、幅3の1枚は使わない");
     assert.equal(lanePlays.length, lanes.filter(l => l.limit > 0).length);
     for (const p of lanePlays) {
         const lane = lanes.find(l => Math.abs(l.center - p.ctx.lateral) < 1e-9);
@@ -180,9 +180,9 @@ test("見た目とダメージの一致: 全レーンが同じ長さなら幅3�
     parkOthers(o, [4]); putAt(o, 4, 90, 6, 0); aimDegree(o, 90, 4);
     const spy2 = spyVfx(o);
     hold(o);
-    assert.equal(spy2.plays.filter(p => p.key === "apollo_volley.beam").length, 1);
-    assert.equal(spy2.plays.filter(p => p.key === "apollo_volley.beamlane").length, 0);
-    assert.ok(Math.abs(spy2.plays.find(p => p.key === "apollo_volley.beam").ctx.length - Math.min(beam(o).limit, api(o).visualReach())) < 1e-9);
+    assert.equal(spy2.plays.filter(p => p.key === "apollo_golden.beam").length, 1);
+    assert.equal(spy2.plays.filter(p => p.key === "apollo_golden.beamlane").length, 0);
+    assert.ok(Math.abs(spy2.plays.find(p => p.key === "apollo_golden.beam").ctx.length - Math.min(beam(o).limit, api(o).visualReach())) < 1e-9);
     settle(o);
 });
 
@@ -354,7 +354,7 @@ test("ヒットストップ・後払い・バランスは変わらない: 当た
 test("配線: チャージ用のVFXは対応表とライブラリに登録、素材がそろっている。ArmDrawは構えの動作に登録。プラグインパラメータとドキュメント", () => {
     const w = volleyWorld({ level: 3 });
     const keys = plain(w.ctx.ProjectRPresentationVfx.keys());
-    for (const key of ["apollo_charge.bow", "apollo_charge.bowhold", "apollo_charge.glow1", "apollo_charge.glow2", "apollo_charge.glow3", "apollo_charge.ready", "apollo_volley.beamlane"]) assert.ok(keys.includes(key), key);
+    for (const key of ["apollo_charge.bow", "apollo_charge.bowhold", "apollo_charge.glow1", "apollo_charge.glow2", "apollo_charge.glow3", "apollo_charge.ready", "apollo_golden.beamlane"]) assert.ok(keys.includes(key), key);
     const lib = JSON.parse(fs.readFileSync(path.join(project, "js/AnimationSolutionLibrary.json"), "utf8"));
     for (const name of ["ProjectR_Volley_BeamLane", "ProjectR_Charge_Bow", "ProjectR_Charge_BowHold", "ProjectR_Charge_Glow", "ProjectR_Charge_Ready"]) {
         assert.ok(lib[name], name);

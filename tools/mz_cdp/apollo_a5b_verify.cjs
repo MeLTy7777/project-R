@@ -24,7 +24,7 @@ const CARD = "apollo_golden_volley", API = "ProjectRApolloGoldenVolley", IN = "P
   const lost = async id => 1000000 - await barHp(id);
   const pile = () => json("ProjectRCardDeck.getBattleState().cooldownPile.filter(function(e) { return e.instance.cardId === '" + CARD + "'; }).length");
   const events = () => json("$gameMap.events().filter(function(e) { return e && /projectRGoldenVolley/.test(e.event().note || ''); }).length");
-  const beamPics = () => json("(AnimatedPictureManager._animatedPictures || []).filter(function(p) { return /apollo_volley\\.beam/.test(String(p.note || '')); }).length");
+  const beamPics = () => json("(AnimatedPictureManager._animatedPictures || []).filter(function(p) { return /apollo_golden\\.beam/.test(String(p.note || '')); }).length");
   const scene = async (lv, enemies = { 4: [13, 15] }) => {
     await start(lv); await random(0.9); await goHome(); await staging([2, 3, 4, 5, 6]);
     await s.place(9, 15); await sleep(500);

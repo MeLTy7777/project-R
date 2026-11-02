@@ -105,7 +105,7 @@ test("黄金の矢 Lv3: ビームは100マス先まで届く(当たりは地図�
     const beam = plain(api(w, GOLDEN).getBeam());
     assert.ok(beam && beam.limit > 100, "ビームの届く長さ(判定): " + (beam && beam.limit));
     const vr = api(w, GOLDEN).visualReach();
-    assert.ok(plays.some(p => p[0] === "apollo_volley.beam" && p[1].length <= vr + 1e-9), "絵の長さは画面の範囲(" + vr + ")まで");
+    assert.ok(plays.some(p => p[0] === "apollo_golden.beam" && p[1].length <= vr + 1e-9), "絵の長さは画面の範囲(" + vr + ")まで");
     assert.ok(settle(w, GOLDEN) > 0);
     assert.ok(lost(w, 3) > 0, "100マス先の敵に当たる: " + lost(w, 3));
     cleanState(w, GOLDEN);

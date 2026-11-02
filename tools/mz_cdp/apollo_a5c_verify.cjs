@@ -44,7 +44,7 @@ const CARD = "apollo_golden_volley", API = "ProjectRApolloGoldenVolley", IN = "P
   await wait("$gameMap.mapId() === 4 && !SceneManager.isSceneChanging() && !$gamePlayer.isTransferring()", 20000); await sleep(1500);
 
   await check("C0 boot: チャージ・レーンのVFXと構え(ArmDraw)・ライブラリ・素材・ビームの数値(幅3・11ヒット・550)は変わらない", async () => {
-    const v = await json(`({ keys: ProjectRPresentationVfx.keys().filter(function(k) { return /apollo_charge|beamlane/.test(k); }), cfg: ${API}.beamConfig(), hold: ${API}.holdFrames, draw: ${CP}.getProfile('protagonist').actions.ArmDraw.sprite, prio: ${CP}.PRIORITY.ArmDraw,
+    const v = await json(`({ keys: ProjectRPresentationVfx.keys().filter(function(k) { return /apollo_charge|apollo_volley\.beamlane/.test(k); }), cfg: ${API}.beamConfig(), hold: ${API}.holdFrames, draw: ${CP}.getProfile('protagonist').actions.ArmDraw.sprite, prio: ${CP}.PRIORITY.ArmDraw,
       lanes: ${API}.geometry.laneLayout(3).length })`);
     const libs = ["ProjectR_Volley_BeamLane", "ProjectR_Charge_Bow", "ProjectR_Charge_BowHold", "ProjectR_Charge_Glow", "ProjectR_Charge_Ready"];
     const lib = await ev(`Promise.all(${JSON.stringify(libs)}.map(function(n) { return Promise.resolve(getAnimationFromLibrary(n)).then(function(a) { return !!a; }, function() { return false; }); })).then(function(r) { return r.every(Boolean); })`);
@@ -108,7 +108,7 @@ const CARD = "apollo_golden_volley", API = "ProjectRApolloGoldenVolley", IN = "P
     await s.slow(6);
     await c.keyUp("Q"); await s.sceneFrames(3);
     const lanes = await json(`${API}.getBeam().lanes`);
-    const picsNow = await pics("/apollo_volley\\.beam/");
+    const picsNow = await pics("/apollo_golden\\.beam/");
     await s.shot("c3_sidewall_early"); await s.sceneFrames(6); await s.shot("c3_sidewall_hit");
     await s.slow(1);
     await wait(`!${API}.getBeam()`, 10000); await settle(10);

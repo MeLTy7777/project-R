@@ -334,7 +334,7 @@ test("VFX: ビームの区間(3マス)を並べて再生し、終わったあと
     pv.play = (...a) => { const r = play.apply(pv, a); plays.push([a, plain(r)]); return r; };
     pv.stop = (...a) => { stops.push(a[0]); return stop.apply(pv, a); };
     hold(w);
-    const beamPlay = plays.find(p => p[0][0] === "apollo_volley.beam");
+    const beamPlay = plays.find(p => p[0][0] === "apollo_golden.beam");
     assert.ok(beamPlay, "ビームのVFXを再生");
     const limit = Math.min(beam(w).limit, api(w).visualReach());
     assert.ok(Math.abs(beamPlay[0][1].length - limit) < 1e-9 && beamPlay[0][1].degree === 90);
@@ -347,13 +347,13 @@ test("VFX: ビームの区間(3マス)を並べて再生し、終わったあと
     frames(w, 31);
     assert.equal(plain(w.ctx.ProjectRGodSummonVisual.getAnchors()).length, 0, "終わったら錨Eventも全部外す");
     assert.equal(plain(api(w).getActiveVfxJobs()).length, 0, "30frame後にVFXジョブは終わる");
-    assert.deepEqual(stops.filter(n => /apollo_volley.beam/.test(n)).sort(), beamPlay[1].notes.slice().sort(), "再生した全部の区間を外す");
+    assert.deepEqual(stops.filter(n => /apollo_golden.beam/.test(n)).sort(), beamPlay[1].notes.slice().sort(), "再生した全部の区間を外す");
     settle(w);
     // 素材とライブラリ
     const lib = JSON.parse(fs.readFileSync(path.join(project, "js/AnimationSolutionLibrary.json"), "utf8"));
     assert.ok(lib.ProjectR_Volley_Beam && lib.ProjectR_Volley_Beam.spritesheetFile === "Animation/ProjectR_Volley_Beam");
     assert.ok(fs.existsSync(path.join(project, "img/pictures/Animation/ProjectR_Volley_Beam.png")));
-    assert.ok(pv.keys().includes("apollo_volley.beam"));
+    assert.ok(pv.keys().includes("apollo_golden.beam"));
     // VFXが例外を投げても結果は同じ
     const f = volleyWorld({ level: 3 });
     parkOthers(f, [4]); putAt(f, 4, 90, 6, 0); aimDegree(f, 90, 4);

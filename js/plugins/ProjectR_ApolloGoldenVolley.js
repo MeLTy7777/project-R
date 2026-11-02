@@ -163,6 +163,16 @@
     const normalize = degree => ((degree % 360) + 360) % 360;
     const modifiers = () => root.ProjectRCardModifiers;
     const occlusion = () => root.ProjectR?.CombatOcclusion || null;
+    // ビームの絵(Phase A11): 幅3マスの当たり判定と絵の幅・中心を一致させるため、従来の共有の絵(apollo_volley.beam / apollo_volley.beamlane: 光が端へ向けて細り、
+    //   見える幅が約2.46マス・中心が実機で18px上にずれていた)とは別に、黄金の矢専用の絵を登録する(ギガース殺しの apollo_gigas.* と同じ方法・別の素材)。
+    //   ・apollo_golden.beam: 幅3マス(144px)の端まで光が続き、端に縁の線がある。offsetY -9 は実機で測った値(アンカー位置が+18px下になるのを、Hendrixが二重に適用するoffsetで打ち消す)。
+    //   ・apollo_golden.beamlane: 遮られたときの1マス幅のレーン。左右の端まで光が続き、隣り合うレーンと隙間なくつながる。
+    //   従来のキー(apollo_volley.beam / beamlane)は PresentationVfx に残してある(他のカード・互換のため。このカードは使わない)。
+    try {
+        const sheet = file => Object.freeze({ file: "Animation/" + file, rows: 2, columns: 4, fps: 18 });
+        root.ProjectRPresentationVfx?.register?.("apollo_golden.beam", { library: "ProjectR_Golden_Beam", sheet: sheet("ProjectR_Golden_Beam"), anchor: "player", beam: true, segmentTiles: 3, stick: true, scale: 100, opacity: 240, offsetY: -9, blend: "Add" });
+        root.ProjectRPresentationVfx?.register?.("apollo_golden.beamlane", { library: "ProjectR_Golden_BeamLane", sheet: sheet("ProjectR_Golden_BeamLane"), anchor: "player", beam: true, segmentTiles: 2, stick: true, scale: 100, opacity: 240, offsetY: -9, blend: "Add" });
+    } catch (_error) { /* 表示のみ */ }
 
     const cardLevel = () => {
         try {
@@ -626,10 +636,10 @@
                 const b = volley.beam, vr = visualReach(), limits = b.lanes.map(l => Math.min(l.limit, vr)), job = { frames: BEAM_VFX_FRAMES, notes: [], anchors: [] };
                 const collect = r => { if (r?.ok && Array.isArray(r.notes)) { job.notes.push(...r.notes); if (Array.isArray(r.anchors)) job.anchors.push(...r.anchors); } };
                 if (Math.max(...limits) - Math.min(...limits) < UNIFORM_LANE_GAP) { // 遮られていない(または一様に遮られた)ビーム: 幅3マスの1枚で描く
-                    if (b.limit > 0) collect(root.ProjectRPresentationVfx?.play("apollo_volley.beam", { degree: volley.aim, length: Math.min(b.limit, vr), instance: "v" + volley.serial, origin: b.origin }));
+                    if (b.limit > 0) collect(root.ProjectRPresentationVfx?.play("apollo_golden.beam", { degree: volley.aim, length: Math.min(b.limit, vr), instance: "v" + volley.serial, origin: b.origin }));
                 } else { // 一部のレーンだけ遮られた: レーンごとに、そのレーンの長さまで描く(ダメージの届く範囲と同じ)
                     for (const lane of b.lanes) {
-                        if (lane.limit > 0) collect(root.ProjectRPresentationVfx?.play("apollo_volley.beamlane", { degree: volley.aim, length: Math.min(lane.limit, vr), lateral: lane.center,
+                        if (lane.limit > 0) collect(root.ProjectRPresentationVfx?.play("apollo_golden.beamlane", { degree: volley.aim, length: Math.min(lane.limit, vr), lateral: lane.center,
                             instance: `v${volley.serial}.l${lane.index}`, origin: b.origin }));
                     }
                 }
