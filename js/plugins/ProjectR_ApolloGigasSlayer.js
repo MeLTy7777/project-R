@@ -115,6 +115,15 @@
     const modifiers = () => root.ProjectRCardModifiers;
     const occlusion = () => root.ProjectR?.CombatOcclusion || null;
     const geo = () => root.ProjectRApolloGoldenVolley?.geometry || null;
+    // ビームの絵(Phase A10): 幅3マスの当たり判定と絵の幅・中心を一致させるため、黄金の矢のビームの絵(apollo_volley.beam: 光が端へ向けて細る・offsetY -18)とは別に、
+    //   ギガース殺し専用の絵を登録する(offsetY -9は実機で測った値: アンカー位置が+18px下になるのを、Hendrixが二重に適用するoffsetで打ち消し、絵の中心を撃つ位置の中心線に合わせる)。ProjectRPresentationVfx.register(公式の差し込み口)で、黄金の矢のVFXは変えない。
+    //   ・apollo_gigas.beam: 幅3マス(144px)の端まで光が続き、端に縁の線がある。撃つ位置の中心線に重ねる。
+    //   ・apollo_gigas.beamlane: 遮られたときの1マス幅のレーン。左右の端まで光が続き、隣り合うレーンと隙間なくつながる。
+    try {
+        const sheet = file => Object.freeze({ file: "Animation/" + file, rows: 2, columns: 4, fps: 18 });
+        root.ProjectRPresentationVfx?.register?.("apollo_gigas.beam", { library: "ProjectR_Gigas_Beam", sheet: sheet("ProjectR_Gigas_Beam"), anchor: "player", beam: true, segmentTiles: 3, stick: true, scale: 100, opacity: 240, offsetY: -9, blend: "Add" });
+        root.ProjectRPresentationVfx?.register?.("apollo_gigas.beamlane", { library: "ProjectR_Gigas_BeamLane", sheet: sheet("ProjectR_Gigas_BeamLane"), anchor: "player", beam: true, segmentTiles: 2, stick: true, scale: 100, opacity: 240, offsetY: -9, blend: "Add" });
+    } catch (_error) { /* 表示のみ */ }
     const status = () => root.ProjectRApolloStatus || null;
     const hitStop = () => root.ProjectRHitStop;
     const num = v => { const n = Number(v); return Number.isFinite(n) ? n : NaN; };
@@ -375,9 +384,9 @@
             const collect = r => { if (r?.ok && Array.isArray(r.notes)) { job.notes.push(...r.notes); if (Array.isArray(r.anchors)) job.anchors.push(...r.anchors); } };
             const vfx = root.ProjectRPresentationVfx;
             if (Math.max(...limits) - Math.min(...limits) < UNIFORM_LANE_GAP) {
-                if (b.limit > 0) collect(vfx?.play("apollo_volley.beam", { degree: b.degree, length: Math.min(b.limit, vr), instance: "g" + shot.serial, origin: b.origin }));
+                if (b.limit > 0) collect(vfx?.play("apollo_gigas.beam", { degree: b.degree, length: Math.min(b.limit, vr), instance: "g" + shot.serial, origin: b.origin }));
             } else {
-                for (const lane of b.lanes) if (lane.limit > 0) collect(vfx?.play("apollo_volley.beamlane", { degree: b.degree, length: Math.min(lane.limit, vr), lateral: lane.center, instance: `g${shot.serial}.l${lane.index}`, origin: b.origin }));
+                for (const lane of b.lanes) if (lane.limit > 0) collect(vfx?.play("apollo_gigas.beamlane", { degree: b.degree, length: Math.min(lane.limit, vr), lateral: lane.center, instance: `g${shot.serial}.l${lane.index}`, origin: b.origin }));
             }
             if (job.notes.length) vfxJobs.push(job);
         } catch (_error) { /* 表示のみ */ }
