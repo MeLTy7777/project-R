@@ -46,8 +46,8 @@
  *     軽減は ProjectR_ApolloStatus を通して DamageModifiers へ(HPを減らす呼び出し1回につき1回)。受付期間はカードの戦闘時計で進む。
  *   ・受付期間中に使用者のHPが減ると(どの経路でも。HPの監視)、その時の使用者の位置にヒヤシンスが咲き、Apolloが一時召喚で現れる。花は半径2マス・bloomSeconds(8秒)続き、
  *     中にいる味方(主人公と出撃中の仲間)のうちHPが減っている者を、bloomHealTickSeconds(0.5秒)ごとに 50 x 間隔 回復する。受付期間が終わっても花は残る。
- *   ・Lv2: 出撃中の仲間(PartyRoster)にも同じ受付期間が付く。仲間は被ダメージの軽減が「受けた後の差し戻し」になる(PartyCombat の被ダメージ窓口は DamageModifiers に接続していないため)。
- *     受けたダメージ D のうち、軽減されなかった D - round(D x 0.1) を直後に回復する。一撃で倒れた(ダウン)仲間は戻らない。仲間が被弾したら、その仲間の位置にも花が咲く。
+ *   ・Lv2: 出撃中の仲間(PartyRoster)にも同じ受付期間が付く。仲間の被ダメージは、ダウン判定の前に x0.1 へ軽減される(Phase A9。ProjectR_ApolloStatus が PartyCombat.damageAlly を包んで
+ *     "ally:<actorId>" の状態の倍率を掛ける。致死の一撃も軽減後のダメージで判定される)。仲間が被弾したら、その仲間の位置にも花が咲く。
  *   ・Lv3: 受付期間5秒。使用者の移動速度x1.8(CardModifiers.setMoveSpeedFactor。受付期間の間)。
  *
  * 【仮の決め(ワークブックに無い部分)】
@@ -160,7 +160,7 @@
     const endWindow = (w, reason) => {
         const i = windows.indexOf(w);
         if (i >= 0) windows.splice(i, 1);
-        if (w.kind === "player") status()?.remove?.("player", GUARD_ID, reason);
+        status()?.remove?.(w.key, GUARD_ID, reason); // 主人公は "player"、仲間は "ally:<actorId>"(ProjectR_ApolloStatus が仲間の被ダメージへダウン判定の前に掛ける)
         for (const n of w.notes) stopNote(n);
         note({ type: "windowEnd", key: w.key, reason, bloomed: w.bloomed });
         lastResult = lastResult && { ...lastResult, windows: lastResult.windows?.map(x => x.key === w.key ? { ...x, ended: reason, bloomed: w.bloomed } : x) };
@@ -171,8 +171,8 @@
         const hp = member.key === "player" ? leader()?.hp : member.hp;
         const w = { key: member.key, kind: member.key === "player" ? "player" : "ally", actorId: member.actorId ?? null, remaining: cfg.acceptSeconds, prevHp: hp, bloomed: false, cfg, definition, notes: [], reduced: 0, refunded: 0, damaged: 0 };
         windows.push(w);
+        status().apply(w.key, GUARD_ID, { seconds: cfg.acceptSeconds, damageTaken: cfg.guardTaken, source: CARD });
         if (w.kind === "player") {
-            status().apply("player", GUARD_ID, { seconds: cfg.acceptSeconds, damageTaken: cfg.guardTaken, source: CARD });
             const played = pvPlay("apollo_hyacinth.guard", {});
             if (played?.note) w.notes.push(played.note);
         }
@@ -265,8 +265,6 @@
     const hpNow = w => participantHp(w);
     const onDamaged = (w, amount, current) => {
         w.damaged += amount;
-        const refund = w.kind === "ally" ? amount - Math.round(amount * w.cfg.guardTaken) : 0;
-        if (refund > 0 && !current.down) { const got = healMember({ key: w.key, actorId: w.actorId }, refund); w.refunded += got; if (got) w.prevHp = (hpNow(w)?.hp ?? w.prevHp); }
         if (!w.bloomed) {
             const m = roster().members({ includeDown: true }).find(x => x.key === w.key);
             const point = m ? positionOf(m) : null;

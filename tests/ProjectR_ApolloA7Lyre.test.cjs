@@ -58,7 +58,7 @@ test("登録と数値: 最大Lv3・Cooldown 4・特殊/最大2・instant。Lv1=3
 test("保護ファイルは変えていない(CardDeckCore・Hendrix・DotMove・DamageModifiers・PartyCombat・PartyRoster・CardModifiers・CardBattleInput・Gun/Sword・他のApollo)", () => {
     assert.equal(git("diff", "--stat", "a130221", "--", "js/plugins/ProjectR_CardDeckCore.js", "js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js", "js/plugins/ProjectR_DamageModifiers.js", "js/plugins/ProjectR_PartyCombat.js",
         "js/plugins/ProjectR_PartyRoster.js", "js/plugins/ProjectR_CardModifiers.js", "js/plugins/ProjectR_CardBattleInput.js", "js/plugins/ProjectR_GunSystem.js", "js/plugins/ProjectR_SwordSystem.js", "js/plugins/ProjectR_CombatPresence.js",
-        "js/plugins/ProjectR_ApolloLyreCalm.js", "js/plugins/ProjectR_ApolloHyacinthus.js", "js/plugins/ProjectR_ApolloPlagueRain.js", "js/plugins/ProjectR_ApolloLaurelWreath.js").trim(), "");
+        "js/plugins/ProjectR_ApolloLyreCalm.js", "js/plugins/ProjectR_ApolloPlagueRain.js").trim(), "");
 });
 
 test("バランス/F6: 新しい項目が定義され、範囲外は拒否。上書きが累積どおりに効く", () => {

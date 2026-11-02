@@ -9,7 +9,7 @@ const ENEMIES = [3, 4, 5, 6];
 const HP = 100000;
 
 // card: ランタイムID。order: 引き順(既定は手札5枚すべてそのカード)。
-function cardWorld(card, { x = 12, y = 25, order = null, bars = ENEMIES, random = 0.999, balance = null, level = 1, bigMap = null } = {}) {
+function cardWorld(card, { x = 12, y = 25, order = null, bars = ENEMIES, random = 0.999, balance = null, level = 1, bigMap = null, owned = [] } = {}) {
     const w = buildWorld();
     if (bigMap) w.bigMap = bigMap; // { width, height }: 壁の無い広い床の地図(射程∞のテスト用)
     assert.deepEqual(w.failures, [], "全pluginが本番順で読み込める");
@@ -22,6 +22,7 @@ function cardWorld(card, { x = 12, y = 25, order = null, bars = ENEMIES, random 
     const d = deckApi(w);
     assert.equal(d.setCardOwned(card, true).ok, true);
     if (level !== 1) assert.equal(d.setCardLevel(card, level).ok, true);
+    for (const id of owned) { assert.equal(d.setCardOwned(id, true).ok, true); if (level !== 1) assert.equal(d.setCardLevel(id, level).ok, true); } // 複数のカードを同時に試す用
     if (balance) balance(w);
     restartWithOrder(w, order || [card, card, card, card, card, ...OTHER]);
     w.frames(2);

@@ -53,7 +53,7 @@
  *
  * 【仮の決め(ワークブックに無い部分)】
  *   ・パッチの半径は新しい足し分も5(trailRadius は radiusTiles と同じ)。成長の期間は7秒・足すのは2マス動くたび。
- *   ・仲間の被ダメージ軽減は「受けた後の差し戻し」(PartyCombat の被ダメージ窓口は DamageModifiers に接続していないため)。受けたダメージ D のうち D - round(D x 0.7) を戻す。ダウンした仲間は戻らない。
+ *   ・仲間の被ダメージ軽減は、ダウン判定の前に掛ける(Phase A9。ProjectR_ApolloStatus が PartyCombat.damageAlly を包んで、根の中の仲間の "ally:<actorId>" 状態の x0.7 を掛ける。根を出ると即、外れる)。
  *   ・「敵の遠距離攻撃」の判定: Hendrixが敵の弾として扱うEvent(敵が生成した弾 = _inheritedEnemyName を持つ、または <attacker: 敵の名前>)。
  *     現行の本番データには敵の弾のPrefabが無く(監査文書 §8)、実機の確認は敵の弾に見立てたEventで行う。敵の弾が実装されたら、そのまま防げる。
  *   ・壁は1.5秒(wallSeconds)・弾を防ぐ半径0.8(wallBlockRadiusTiles)。根の絵(パッチの円)は同時6つまで・根のEventは最大24個。
@@ -283,13 +283,9 @@
             let rec = members.get(m.key);
             if (!rec) { rec = { healAcc: 0, prevHp: m.hp, insideFrames: 0, healed: 0, refunded: 0 }; members.set(m.key, rec); }
             const p = positionOf(m), inside = insideAny(p);
-            // 仲間の被ダメージの軽減(差し戻し)。根に触れている間に減ったHPの 1 - x0.7 を戻す
-            if (m.key !== "player" && inside && m.hp < rec.prevHp - EPSILON) {
-                const D = rec.prevHp - m.hp, refund = D - Math.round(D * cfg.damageTaken);
-                if (refund > 0) { const got = healMember(m, refund); rec.refunded += got; }
-            }
             if (inside) {
                 rec.insideFrames++;
+                if (m.key !== "player") status().apply(m.key, ROOTS_ID, { seconds: STATUS_SECONDS, damageTaken: cfg.damageTaken, source: CARD }); // 仲間の被ダメージ(ダウン判定の前に掛かる。ProjectR_ApolloStatus)
                 if (m.key === "player") {
                     status().apply("player", ROOTS_ID, { seconds: STATUS_SECONDS, damageTaken: cfg.damageTaken, weakness: cfg.weaknessScale, weaknessMode: "excessScale", source: CARD });
                     if (cfg.speedBonus > 0) modifiers()?.setMoveSpeedFactor?.(SPEED_ID, 1 + cfg.speedBonus, STATUS_SECONDS);
@@ -298,7 +294,7 @@
                     rec.healAcc = 0;
                     if (m.hp < m.mhp) { const got = healMember(m, cfg.healAmount); rec.healed += got; totalHealed += got; }
                 }
-            } else rec.healAcc = 0;
+            } else { rec.healAcc = 0; if (m.key !== "player" && status().has(m.key, ROOTS_ID)) status().remove(m.key, ROOTS_ID, "left"); } // 仲間は根を出た瞬間に軽減が外れる
             const cur = m.key === "player" ? leader()?.hp : roster().allies({ includeDown: true }).find(x => x.key === m.key)?.hp;
             rec.prevHp = Number.isFinite(cur) ? cur : m.hp;
         }

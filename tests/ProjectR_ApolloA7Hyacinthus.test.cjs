@@ -164,7 +164,7 @@ test("Lv1の仲間: パーティーメンバーには付与されない(Lv2か�
     assert.equal(allyHp(w, 2), far, "遠い仲間は回復しない");
 });
 
-test("Lv2: 出撃中の仲間にも受付期間が付く。仲間が被弾すると受けたダメージの90%が戻り、その仲間の位置に花が咲く。一撃でダウンした仲間は戻らない", () => {
+test("Lv2: 出撃中の仲間にも受付期間が付く。仲間の被ダメージはダウン判定の前に90%軽減され、その仲間の位置に花が咲く。致死の一撃でも、軽減後のダメージならダウンしない", () => {
     const w = world(2);
     parkOthers(w, [6]); put(w, 12, 25);
     addAlly(w, { actorId: 2, eventId: 6, cx: 20, cy: 25, maxHp: 400, hp: 400 });
@@ -173,19 +173,22 @@ test("Lv2: 出撃中の仲間にも受付期間が付く。仲間が被弾する
     frames(w, 5);
     w.ctx.ProjectRPartyCombat.damageAlly(2, 100);
     frames(w, 3);
-    assert.equal(allyHp(w, 2), 400 - 10, "100のダメージの90%(90)が戻る");
+    assert.equal(allyHp(w, 2), 400 - 10, "100のダメージの90%が軽減されて10だけ減る");
     const b = blooms(w);
     assert.equal(b.length, 1); assert.equal(b[0].owner, "ally:2");
     assert.ok(Math.abs(b[0].x - 20.5) < 0.6, "仲間の位置に咲く " + b[0].x);
-    assert.equal(windows(w).find(x => x.key === "ally:2").refunded, 90);
-    // ダウン: 一撃で倒れたら戻らない
+    assert.equal(windows(w).find(x => x.key === "ally:2").refunded, 0, "差し戻しではなく、ダメージを渡す前に軽減する");
+    // 致死の一撃: HP50への100は、軽減しないとダウン。90%軽減後の10なら生き残る(Phase A9。以前は「受けた後の差し戻し」でダウンを防げなかった)
     const w2 = world(2);
     parkOthers(w2, [6]); put(w2, 12, 25);
     addAlly(w2, { actorId: 2, eventId: 6, cx: 20, cy: 25, maxHp: 400, hp: 50 });
     use(w2); frames(w2, 5);
     w2.ctx.ProjectRPartyCombat.damageAlly(2, 100);
     frames(w2, 3);
-    assert.equal(allyHp(w2, 2), 0, "ダウンした仲間は戻らない");
+    assert.equal(allyHp(w2, 2), 40, "軽減後の10だけ減り、ダウンしない");
+    assert.equal(w2.ctx.ProjectRPartyCombat.members()[0].down, false);
+    w2.ctx.ProjectRPartyCombat.damageAlly(2, 500); frames(w2, 2);
+    assert.equal(w2.ctx.ProjectRPartyCombat.members()[0].down, true, "軽減後(500の10% = 50)でもHP40を超えるなら、ダウンする(軽減は致死を無くすのではなく、先に掛かるだけ)");
     // Lv1では仲間は軽減されない
     const w3 = world(1);
     parkOthers(w3, [6]); put(w3, 12, 25);

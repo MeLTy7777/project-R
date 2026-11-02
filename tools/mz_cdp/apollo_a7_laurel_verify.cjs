@@ -135,7 +135,7 @@ const CARD = "apollo_laurel_wreath", API = "ProjectRApolloLaurelWreath", GV = "P
     rec("L4 lv3-wall", r1.inside === false && r1.outside === true && r1.own === true && r1.walls === 1 && r1.wallEvents === 1 && r1.stats.blocked >= 1 && r2.walls === 0 && r2.wallEvents === 0 && lv2Alive === true, JSON.stringify({ r1, r2, lv2Alive }));
   });
 
-  await check("L5 仲間・取消・性能(実機): Lv1の仲間が根の中で回復・被ダメージ30%戻る。戦闘終了で根・壁・錨・状態・速度が全部消える。frame処理時間", async () => {
+  await check("L5 仲間・取消・性能(実機): Lv1の仲間が根の中で回復・被ダメージが30%軽減(A9からダウン判定の前に掛かる)。戦闘終了で根・壁・錨・状態・速度が全部消える。frame処理時間", async () => {
     await scene(1);
     await noGrow();
     await ev(`(function() { var p = ProjectRPartyCombat; p.registerAlly({ actorId: 2, name: 'ally2', maxHp: 1000, normalAttack: { id: 'n2', range: 1.5, cooldownSeconds: 1 } }); p.startSession([2]); p.damageAlly(2, 500); $gameMap.event(6).linkedActorId = 2; $gameMap.event(6).locate(11, 15); return 'ally'; })()`);
@@ -144,8 +144,8 @@ const CARD = "apollo_laurel_wreath", API = "ProjectRApolloLaurelWreath", GV = "P
     const a0 = await json("ProjectRPartyCombat.members().filter(function(m) { return m.actorId === 2; })[0].hp");
     await sleep(1100);
     const a1 = await json("ProjectRPartyCombat.members().filter(function(m) { return m.actorId === 2; })[0].hp");
-    await ev("ProjectRPartyCombat.damageAlly(2, 100); 'hit'"); await sleep(300);
-    const refunded = (await json(`${API}.getMembers()`)).find(m => m.key === 'ally:2').refunded; // 差し戻し(100の30%)。間にHoTが入るので、HPの差ではなく差し戻しの量で見る
+    const hit = await json("(function() { var m = ProjectRPartyCombat, hp = function() { return m.members().filter(function(x) { return x.actorId === 2; })[0].hp; }; var b = hp(); m.damageAlly(2, 100); return { b: b, a: hp() }; })()"); await sleep(300); // 同じ呼び出しの中で前後を読む(間に回復が入らない)
+    const taken = hit.b - hit.a; // 100 x 0.7 = 70
     await ev("ProjectRCardDeck.endCardBattle(); 'ended'"); await sleep(500);
     const after = await leftovers();
     await scene(3, { 4: [12, 15] });
@@ -154,8 +154,8 @@ const CARD = "apollo_laurel_wreath", API = "ProjectRApolloLaurelWreath", GV = "P
     const t = await json("window.__perf.t"); await ev("window.__perf.on = false; 'off'");
     t.sort((a, b) => a - b);
     const avg = t.reduce((a, b) => a + b, 0) / t.length, p95 = t[Math.floor(t.length * 0.95)], max = t[t.length - 1];
-    rec("L5 ally-cleanup-perf", a1 - a0 >= 45 && a1 - a0 <= 56 && refunded === 30 && clean(after) && after.pics === 0 && t.length > 100 && avg < 8 && p95 < 14 && s.errors().length === 0,
-      JSON.stringify({ heal: a1 - a0, refunded, after, perf: { n: t.length, avg: +avg.toFixed(2), p95: +p95.toFixed(2), max: +max.toFixed(2) }, errors: s.errors().slice(0, 2) }));
+    rec("L5 ally-cleanup-perf", a1 - a0 >= 45 && a1 - a0 <= 56 && taken === 70 && clean(after) && after.pics === 0 && t.length > 100 && avg < 8 && p95 < 14 && s.errors().length === 0,
+      JSON.stringify({ heal: a1 - a0, taken, after, perf: { n: t.length, avg: +avg.toFixed(2), p95: +p95.toFixed(2), max: +max.toFixed(2) }, errors: s.errors().slice(0, 2) }));
   });
 
   await sleep(6000);

@@ -187,6 +187,26 @@
         };
     }
 
+    // ---- 仲間(PartyCombat)の被ダメージ: ダウンの判定より前に倍率を掛ける(Phase A9) ----
+    //   PartyCombat.damageAlly は「HPを減らして0ならその場でダウン」までを1回で行う窓口で、DamageModifiers には繋がっていない。
+    //   軽減を「受けた後の差し戻し」にすると、一撃で倒れる攻撃は軽減されてもダウンしてしまう。そこでこの窓口を包み、
+    //   "ally:<actorId>" の状態の被ダメージ倍率を、ダメージを渡す前に掛ける(PartyCombat 本体は変えない)。倍率が 1 の仲間・状態が無い仲間は素通り。
+    const partyCombat = root.ProjectRPartyCombat;
+    if (partyCombat && typeof partyCombat.damageAlly === "function") {
+        const _damageAlly = partyCombat.damageAlly;
+        partyCombat.damageAlly = function(actorId, amount) {
+            const id = Number.parseInt(actorId, 10);
+            const factor = states.has("ally:" + id) ? factorOf("ally:" + id).damageTaken : 1;
+            if (!(Number(amount) > 0) || Math.abs(factor - 1) <= EPSILON) return _damageAlly.apply(this, arguments);
+            const reduced = Math.round(Number(amount) * factor);
+            note({ type: "allyDamage", target: "ally:" + id, amount: Number(amount), reduced, factor });
+            if (reduced > 0) return _damageAlly.call(this, actorId, reduced);
+            const member = partyCombat.members().find(x => x.actorId === id);
+            if (!member) return { ok: false, reason: "notInParty" };
+            return member.down ? { ok: false, reason: "alreadyDown" } : { ok: true, hp: member.hp, down: false, reduced: 0 }; // 軽減で0になった被弾はHPを減らさない
+        };
+    }
+
     const _endBattle = deck.endBattle;
     deck.endBattle = function() { clear("battleEnd"); return _endBattle.apply(this, arguments); };
     if (typeof Game_Map !== "undefined") {

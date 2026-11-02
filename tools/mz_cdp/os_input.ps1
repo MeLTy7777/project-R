@@ -15,6 +15,7 @@ public static class Win {
   [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
   [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
+  [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
   [DllImport("user32.dll")] public static extern bool ClientToScreen(IntPtr h, ref POINT p);
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int x, int y);
   [DllImport("user32.dll")] public static extern void keybd_event(byte vk, byte scan, uint flags, UIntPtr extra);
@@ -38,6 +39,7 @@ function Press($code, $up) {
 function Run($act, $key, $x, $y, $hold) {
   switch ($act) {
     "focus" { $h = Get-Hwnd; [Win]::ShowWindow($h, 9) | Out-Null; [Win]::SetForegroundWindow($h) | Out-Null; Start-Sleep -Milliseconds 300; return "focused" }
+    "fg" { $h = Get-Hwnd; if ([Win]::GetForegroundWindow() -eq $h) { return "fg-nw" } else { return "fg-other" } }
     "origin" { $h = Get-Hwnd; $pt = New-Object Win+POINT; $pt.X = 0; $pt.Y = 0; [Win]::ClientToScreen($h, [ref]$pt) | Out-Null; return ('{"x":' + $pt.X + ',"y":' + $pt.Y + '}') }
     "tap" { Press $vk[$key] $false; Start-Sleep -Milliseconds $hold; Press $vk[$key] $true; return "tapped $key" }
     "keydown" { Press $vk[$key] $false; return "down $key" }
