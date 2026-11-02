@@ -34,7 +34,7 @@
     const deck = () => root.ProjectRCardDeck;
     const arena = () => root.ProjectRCombatTestArena;
     const volley = () => root[APIS[CARD]];
-    const fail = reason => ({ ok: false, reason });
+    const fail = (reason, extra = {}) => ({ ok: false, reason, ...extra });
     let grantedRing = false; // このDEVの入口が渡した指輪(戦闘の余韻が明けたら返す)
     let returnRing = false;
 
@@ -115,5 +115,137 @@
             if (deck().setRingUnowned("apollo")?.ok) { grantedRing = false; returnRing = false; }
         } catch (_error) { /* DEV用。次の更新で再試行 */ }
     };
-    root.ProjectRApolloTest = Object.freeze({ start, setLevel, status, end });
+    // ===== Phase A13: 指輪・30枚デッキの統合確認(Playtest専用) =====
+    // 本番の取得経路(指輪の入手・初期セットの付与)は一切変えない。ここは、開発者がConsoleから「Apolloの指輪を持った」状態を一時的に作り、
+    // 本物のデッキ(Core)・所持枚数(CardInventory)・デッキ構築画面・手札/Cooldown/捨て札・セーブの形で確かめるための入口。
+    // 変えるのは $gameSystem の2か所(_projectRCardDeckData / _projectRCardInventory)だけで、最初の変更の前に控えを取り、reset() で必ず元へ戻す。
+    // テスト中にセーブしないこと(セーブする場合は使い捨てのフォルダだけ。保護された5つのセーブは絶対に上書きしない)。isDirty() で控えが残っているか分かる。
+    const SAVE_KEYS = ["_projectRCardDeckData", "_projectRCardInventory"];
+    const REWARD = "dev.a13";
+    let kept = null;
+    const gameSystem = () => (typeof $gameSystem !== "undefined" ? $gameSystem : null);
+    const keep = () => {
+        const s = gameSystem();
+        if (!s || kept) return;
+        kept = {};
+        for (const key of SAVE_KEYS) kept[key] = s[key] === undefined ? null : JSON.stringify(s[key]);
+    };
+    const catalog = () => root.ProjectRCardCatalog;
+    const inventory = () => root.ProjectRCardInventory;
+    const godRows = god => catalog()?.godDesign?.(god) ?? [];
+    const ringOf = god => catalog()?.godStatus?.(god)?.ringId ?? null;
+    const grantRing = (god = "apollo") => {
+        const d = deck(), ring = ringOf(god);
+        if (!d || !ring) return fail("ringUnavailable");
+        keep();
+        const result = d.assignRingToPlayer(ring);
+        return result?.ok ? { ok: true, ring, owner: d.getRingOwner(ring) } : fail("ringTransferRefused", { reasons: result?.reasons });
+    };
+    const revokeRing = (god = "apollo") => {
+        const d = deck(), ring = ringOf(god);
+        if (!d || !ring) return fail("ringUnavailable");
+        keep();
+        const result = d.setRingUnowned(ring);
+        return result?.ok ? { ok: true, ring, owner: d.getRingOwner(ring) } : fail("ringTransferRefused", { reasons: result?.reasons });
+    };
+    // その神の全カードを、コピー上限ぶん所持(CardInventory)・解放(Core)・指定のLevelにする。デッキは変えない。
+    const unlock = (level = 3, gods = ["apollo"]) => {
+        const d = deck(), inv = inventory();
+        if (!d || !inv) return fail("pluginsUnavailable");
+        keep();
+        const granted = {};
+        for (const god of gods) {
+            const bundle = {};
+            for (const row of godRows(god)) {
+                if (!row.runtimeCardId || !row.implemented) continue;
+                if (!d.setCardOwned(row.runtimeCardId, true).ok) return fail("cardUnavailable", { cardId: row.runtimeCardId });
+                d.setCardLevel(row.runtimeCardId, level);
+                bundle[row.runtimeCardId] = row.maxCopies;
+            }
+            const result = inv.grantBundle(`${REWARD}.${god}`, bundle, { source: "dev", mode: "topUp" });
+            if (!result?.ok && result?.code !== "REWARD_ALREADY_GRANTED") return fail("grantRefused", { god, result });
+            granted[god] = Object.keys(bundle).length;
+        }
+        return { ok: true, level, granted };
+    };
+    const countBy = ids => { const counts = {}; for (const id of ids) counts[id] = (counts[id] || 0) + 1; return counts; };
+    const deckInfo = () => {
+        const d = deck(), inv = inventory();
+        const ids = d?.getDeck?.() ?? [];
+        return {
+            deck: ids, size: ids.length, counts: countBy(ids),
+            valid: !!d?.isDeckValid?.(ids), reasons: (d?.getDeckInvalidReasons?.(ids) ?? []).map(r => r.code + (r.cardId ? ":" + r.cardId : "")),
+            inventoryReasons: (inv?.validateDeck?.(ids) ?? []).map(r => r.code + (r.cardId ? ":" + r.cardId : "")),
+            rings: { apollo: d?.getRingOwner?.(ringOf("apollo")) ?? null, hermes: d?.getRingOwner?.(ringOf("hermes")) ?? null },
+            battleActive: !!d?.isCardBattleActive?.()
+        };
+    };
+    // 神の30枚の参考一覧(ProjectRCardCatalog.buildGodDeck)を装備する。検証はCoreとCardInventoryの結果をそのまま返す(自動では直さない)。
+    const buildDeck = (god = "apollo") => {
+        const d = deck(), ids = catalog()?.buildGodDeck?.(god);
+        if (!d || !ids) return fail("deckUnavailable");
+        keep();
+        const result = d.setDeck(ids);
+        return { ok: !!result?.ok, ...deckInfo() };
+    };
+    // 2つの指輪を持った混成デッキ: 各神の30枚の一覧から1枚おきに15枚ずつ(各カードのコピー上限・所持枚数の範囲内)。
+    const buildMixedDeck = () => {
+        const d = deck(), a = catalog()?.buildGodDeck?.("apollo"), h = catalog()?.buildGodDeck?.("hermes");
+        if (!d || !a || !h) return fail("deckUnavailable");
+        keep();
+        const ids = [...h.filter((_, i) => i % 2 === 0), ...a.filter((_, i) => i % 2 === 0)];
+        const result = d.setDeck(ids);
+        return { ok: !!result?.ok, ...deckInfo() };
+    };
+    const sceneName = () => (typeof SceneManager !== "undefined" && SceneManager._scene ? SceneManager._scene.constructor.name : null);
+    const openDeckBuilder = () => { const m = root.ProjectRMenuIntegration; if (!m?.openDeckBuilder) return fail("menuUnavailable"); m.openDeckBuilder(); return { ok: true }; };
+    const closeScene = () => { if (typeof SceneManager !== "undefined" && sceneName() !== "Scene_Map") { SceneManager.pop(); return { ok: true }; } return fail("noSubScene"); };
+    // 装備したデッキで、本物の山札・手札・Cooldown・捨て札の戦闘を始める(手札の並びは変えない。山札はCoreの本物のシャッフル)。
+    //   useArena = true(既定): アリーナ(ダミーの敵・HUD)を始めてから、装備のデッキで戦闘を始め直す。**アリーナの開始は両方の指輪を主人公へ渡す**(アリーナの仕様)ので、
+    //   指輪の有無による拒否はこの経路では確かめられない。useArena = false: アリーナを使わず、Coreへ装備のデッキでそのまま戦闘の開始を求める(指輪・所持の検証がそのまま効く)。
+    const startDeckBattle = (useArena = true) => {
+        const d = deck(), a = arena();
+        if (!d || !a) return fail("pluginsUnavailable");
+        if (useArena === false) {
+            const direct = d.startCardBattle();
+            return direct.ok ? { ok: true, hand: d.getBattleState().hand.map(c => c.cardId), counts: { draw: d.getBattleState().drawPile.length } } : fail("battleStartFailed", { reasons: (direct.reasons || []).map(r => r.code) });
+        }
+        const equipped = [...d.getDeck()];
+        let startedArena = false;
+        if (!a.status().cardBattleActive) {
+            const started = a.startHermes();
+            if (!started.ok) return fail(started.reason || "arenaStartFailed");
+            startedArena = true;
+        }
+        d.setDeck(equipped); // アリーナの開始が差し替えたデッキを、装備していたデッキへ戻す
+        const result = d.startCardBattle();
+        if (!result.ok) {
+            if (startedArena) { try { a.endTest(); } catch (_error) { /* DEV用 */ } } // このデッキでは戦闘を始められない: 入口が始めたアリーナも終える
+            return fail("battleStartFailed", { reasons: (result.reasons || []).map(r => r.code) });
+        }
+        return { ok: true, hand: d.getBattleState().hand.map(c => c.cardId), counts: { draw: d.getBattleState().drawPile.length } };
+    };
+    // 手札の最初の cardId を、本物の使用経路(requestUseCard)で使う。
+    const useCard = cardId => {
+        const d = deck();
+        if (!d?.isCardBattleActive?.()) return fail("battleInactive");
+        const index = d.getBattleState().hand.findIndex(c => c.cardId === cardId);
+        if (index < 0) return fail("notInHand");
+        return { ...d.requestUseCard(index), index };
+    };
+    const isDirty = () => !!kept;
+    // 一時データを元へ戻す: 戦闘があれば終え、2か所の控えを書き戻す(指輪・所持・解放・Level・デッキ・CardInventoryの付与記録がすべて元の値になる)。
+    const reset = () => {
+        const d = deck(), s = gameSystem();
+        try { if (d?.isCardBattleActive?.()) arena()?.endTest?.(); } catch (_error) { /* DEV用 */ }
+        try { d?.endCardBattle?.(); } catch (_error) { /* DEV用 */ }
+        if (kept && s) {
+            for (const key of SAVE_KEYS) { if (kept[key] === null) delete s[key]; else s[key] = JSON.parse(kept[key]); }
+        }
+        const restored = !!kept;
+        kept = null; grantedRing = false; returnRing = false;
+        return { ok: true, restored };
+    };
+    root.ProjectRApolloTest = Object.freeze({ start, setLevel, status, end,
+        grantRing, revokeRing, unlock, buildDeck, buildMixedDeck, deckInfo, openDeckBuilder, closeScene, sceneName, startDeckBattle, useCard, isDirty, reset });
 })();

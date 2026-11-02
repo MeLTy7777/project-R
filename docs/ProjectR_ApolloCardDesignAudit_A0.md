@@ -638,3 +638,37 @@ Lv3の竪琴は「3秒間に選べる音符が合計5回」(5周ではない)。
 - **B4 被ダメージの重ねがけ規則(§10 A5)は未確定**: 各カードの状態は台帳が積にまとめる仮の規則。
 - **B5 竪琴Lv3のOSレベル確認**: この環境ではNW.jsを前面にできなかったため未実施。前面で実行できる環境では `run_mz.ps1 -Script tools\mz_cdp\apollo_a9_os_input.cjs` で確認できる。
 - **B6** 最終バランスの承認・絵/音/カットインの本番素材・Apolloの取得経路(指輪の入手・初期セット)の承認は未決。**取得経路は無効のまま**。
+
+## Phase A13: Apolloの指輪・30枚デッキの統合(確認結果)
+**範囲**: 既存のMZのしくみ(指輪の所有 = `ProjectRCardDeck`、カードの所持枚数 = `ProjectRCardInventory`、デッキ構築画面 = `Scene_ProjectRDeckBuilder`、手札・Cooldown・捨て札 = `BattleDeckSession`、セーブ = `$gameSystem`)を通して確認した。ビーム・カード効果は変更なし。**本番の取得経路(指輪の入手・初期セットの付与)は無効のまま。物語イベント・NPC・新しい指輪の付与規則は作っていない。**
+
+### A13.1 Playtest専用の入口(`ProjectRApolloTest` の拡張。`js/plugins/ProjectR_CombatTestArenaApollo.js`。Playtestでしか読み込まれない)
+| 関数 | 内容 |
+|---|---|
+| `grantRing(god)` / `revokeRing(god)` | 指輪を一時的に主人公へ渡す / 返す(戦闘中はCoreの規則どおり拒否) |
+| `unlock(level, gods)` | その神の全カードをコピー上限ぶん所持(CardInventory)・解放・指定Levelにする(デッキは変えない) |
+| `buildDeck(god)` / `buildMixedDeck()` | `buildGodDeck` の30枚を装備 / 2神の混成(各神の一覧から1枚おき15枚ずつ) |
+| `deckInfo()` | 装備デッキの組成・有効か・理由・CardInventoryの検証・指輪の所有者 |
+| `openDeckBuilder()` / `closeScene()` / `sceneName()` | 既存のデッキ構築画面を開く / 閉じる |
+| `startDeckBattle(useArena = true)` / `useCard(cardId)` | 装備のデッキで本物の山札・手札の戦闘を始める / 手札のカードを本物の使用経路(`requestUseCard`)で使う |
+| `reset()` / `isDirty()` | 一時データ(`$gameSystem._projectRCardDeckData` と `_projectRCardInventory` の2か所)を、最初の変更の前の控えへ完全に戻す |
+- **注意(アリーナの仕様)**: アリーナ(`ProjectRCombatTestArena`)の開始は、テストのために **両方の指輪と必要なカードを主人公へ渡す**。このため「指輪が無いと戦闘が始まらない」は、`startDeckBattle(false)`(アリーナを使わず、Coreへそのまま戦闘の開始を求める)で確かめる。
+- テスト中にセーブしない。セーブを確かめるときは、使い捨てのフォルダだけを指す(下記)。
+
+### A13.2 結果(自動テスト `tests/ProjectR_ApolloA13DeckIntegration.test.cjs` 9件 + 実機 `tools/mz_cdp/apollo_a13_deck_verify.cjs` 11/11)
+- **初期状態**: Apolloの指輪もカードも無い。`ProjectRHermesProductionDeck.starterSet()` にApolloは無く、`acquireRing("apollo")` は `granted:false / noStarterForRing`(カードは付与されない)。本番データ(Map・CommonEvents)にApolloの指輪を渡すコマンドは無い。
+- **30枚デッキ**: 指輪 + 所持(CardInventory `topUp`)を一時的に与えると有効。組成は **5/5/2/3/3/5/3/4 = 30枚(8種)**、コピー上限どおり、CardInventoryの検証も通る。8枚すべてLv1〜3(最大Lv3。Lv4の指定は3に丸められる)。
+- **デッキ構築画面(実機)**: 「DECK 30 / 30 ✔ 使用可能なデッキ」・Apolloの8種が `Lv3/3 n/n枚` で並ぶ。混成デッキ(Hermes 15 + Apollo 15)で、UIの「戻す」でApolloの黄金の矢を1枚外す(29枚・無効)→「追加」でHermesのカードを1枚足す(30枚・有効 = 置き換え)。
+- **指輪なしの拒否**: Apolloの指輪が無いとデッキは無効(`REQUIRED_RING_NOT_OWNED`)。画面は「アポロンの指輪を主人公が持っていないため使えません…(計14枚)。指輪を戻すと再び使えます」と出し、`canUseCard` は偽、Coreへの戦闘の開始は拒否される。片方の指輪だけ返すと、その神のカードだけが無効になる。
+- **本物のデッキ・手札で8枚**: 装備した30枚の戦闘(山札25・手札5)で、実キー(Q/E/X/C/V)により8枚すべてを使った。即時4枚(神託・月桂冠・ヒュアキントス・竪琴)は使った瞬間に消費、矢の4枚(ギガース・疫病・黄金・エロス)は命中で消費。山札・手札・捨て札・Cooldownの合計は常に30。外れは消費せず手札も詰まらない(ギガース殺しで確認)。
+- **Cooldown・再シャッフル**: 70回使い続けても手札は常に5枚・合計30、山札が尽きると捨て札が再シャッフルされて山札へ戻る。
+- **セーブ/ロード(使い捨てのフォルダだけ)**: `StorageManager` を一時フォルダへ向け、ほかの場所への書き込みは例外で拒否した。スロット3へ保存 → 状態を壊す → `Scene_Load.executeLoad(3)` で、指輪・所持枚数(5/5/2/3/3/5/3/4)・Lv2・30枚デッキが戻った。戦闘中の山札・手札・Cooldownは保存されない。**保護された5つのセーブ(`save/`)のSHA-256は、前後で同一**。
+- **後片付けとHermes互換**: `reset()` で一時データは最初の控えに完全に戻る(JSON一致)。Hermesの指輪・デッキ・初期セット(30枚)・`godStatus("hermes").ready` は変わらず、Apolloのデータが無いセーブを読み込んでもApolloは増えない。
+- ログ: 実機の最初の試行で見つかった2点は、テスト側の手順の誤りで、製品の不具合ではない(① `Scene_Save.executeSave` が呼ぶ `$gameSystem.onBeforeSave()` を呼ばずに保存した → ロード時にBGMが null、② `SceneManager.pop()` が `Scene_Map` を作り直す途中で次の画面を開いた)。
+
+### A13.3 本番投入の残りのブロッカー(確定仕様として扱わない)
+1. **敵の遠距離攻撃(敵の弾)の本番データが無い**: 月桂冠 Lv3(弾を壁で防ぐ)・神託(予告線・スロー)は、Hendrix公式のspawnで敵Eventが撃ったDEVの弾までの確認(A9)。
+2. **敵の攻撃の予兆(telegraph)が無い**: 神託 Lv1の「次の敵の攻撃を予測する」は弾の予告線だけ。近接・接触の攻撃は予測できない(敵AI側の予兆が必要。別の仕様判断)。
+3. **製品の仲間が0人**: ヒュアキントス Lv2・月桂冠の仲間への軽減は、登録した試験用の仲間でだけ確認(ダウン判定の前の軽減はA9で修正済み)。
+4. **被ダメージの重ねがけ規則(§10 A5)・最終バランス・本番素材の承認が未決**。
+5. **Apolloの本番の取得経路が未決**: 指輪の入手(物語イベント/ショップ/報酬)・初期セット・カードの入手経路・Lvの上げ方は、設計の決定が必要(今回は作っていない)。このPhaseで確認した範囲では、決まれば `ProjectRCardInventory.grantBundle` と `ProjectRCardDeck.assignRingToPlayer` の既存の仕組みでそのまま扱える。
