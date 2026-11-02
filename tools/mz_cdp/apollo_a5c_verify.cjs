@@ -49,7 +49,7 @@ const CARD = "apollo_golden_volley", API = "ProjectRApolloGoldenVolley", IN = "P
     const libs = ["ProjectR_Volley_BeamLane", "ProjectR_Charge_Bow", "ProjectR_Charge_BowHold", "ProjectR_Charge_Glow", "ProjectR_Charge_Ready"];
     const lib = await ev(`Promise.all(${JSON.stringify(libs)}.map(function(n) { return Promise.resolve(getAnimationFromLibrary(n)).then(function(a) { return !!a; }, function() { return false; }); })).then(function(r) { return r.every(Boolean); })`);
     const files = ["img/pictures/Animation/ProjectR_Volley_BeamLane.png", "img/pictures/Animation/ProjectR_Charge_Bow.png", "img/pictures/Animation/ProjectR_Charge_BowHold.png", "img/pictures/Animation/ProjectR_Charge_Glow.png", "img/pictures/Animation/ProjectR_Charge_Ready.png", "img/characters/$DEV3H_ArmDraw_f4.png"].every(f => fs.existsSync(f));
-    rec("C0 boot", v.keys.length === 7 && JSON.stringify(v.cfg) === JSON.stringify({ width: 3, speed: 40, range: 40, perTile: 3, damage: 50, maxHits: 11, stopFrames: 3, stopMax: 30 }) && v.hold === 30 && v.draw === "$DEV3H_ArmDraw_f4" && v.prio === 80 && v.lanes === 3 && lib === true && files, JSON.stringify({ ...v, lib, files }));
+    rec("C0 boot", v.keys.length === 7 && JSON.stringify(v.cfg) === JSON.stringify({ width: 3, speed: 40, range: 0, perTile: 3, damage: 50, maxHits: 11, stopFrames: 3, stopMax: 30 }) && v.hold === 30 && v.draw === "$DEV3H_ArmDraw_f4" && v.prio === 80 && v.lanes === 3 && lib === true && files, JSON.stringify({ ...v, lib, files }));
   });
 
   await check("C1 チャージ → 発射(実マウス+実キー): 押して0.25秒でApolloが弓を引き主人公が構える。0.55秒で満タンの合図。チャージ中は矢・ビーム・ダメージ・消費なし。離すとビーム。カットイン1回・効果音は合図1回と発射1回", async () => {

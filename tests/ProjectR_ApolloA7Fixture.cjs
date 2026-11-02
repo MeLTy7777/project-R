@@ -9,8 +9,9 @@ const ENEMIES = [3, 4, 5, 6];
 const HP = 100000;
 
 // card: ランタイムID。order: 引き順(既定は手札5枚すべてそのカード)。
-function cardWorld(card, { x = 12, y = 25, order = null, bars = ENEMIES, random = 0.999, balance = null, level = 1 } = {}) {
+function cardWorld(card, { x = 12, y = 25, order = null, bars = ENEMIES, random = 0.999, balance = null, level = 1, bigMap = null } = {}) {
     const w = buildWorld();
+    if (bigMap) w.bigMap = bigMap; // { width, height }: 壁の無い広い床の地図(射程∞のテスト用)
     assert.deepEqual(w.failures, [], "全pluginが本番順で読み込める");
     w.enterMap(4, x, y);
     w.frames(3);

@@ -42,7 +42,7 @@ test("登録: Lv2の値(Lv3の行はA6C)。Lv1は10本のまま、Lv2は3方向x
 
 test("保護ファイルは変えていない(CardDeckCore・Hendrix・DotMove・黄金の矢・HitStop・CardBattleInput・旧Apollo)", () => {
     assert.equal(git("diff", "--stat", "a3472e1", "--", "js/plugins/ProjectR_CardDeckCore.js", "js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js",
-        "js/plugins/ProjectR_ApolloGoldenVolley.js", "js/plugins/ProjectR_ApolloGoldenArrow.js", "js/plugins/ProjectR_HitStop.js", "js/plugins/ProjectR_CardBattleInput.js", "js/plugins/ProjectR_CharacterPresentation.js").trim(), "");
+        "js/plugins/ProjectR_ApolloGoldenArrow.js", "js/plugins/ProjectR_HitStop.js", "js/plugins/ProjectR_CardBattleInput.js", "js/plugins/ProjectR_CharacterPresentation.js").trim(), "");
 });
 
 test("バランス/F6: 方向の数・方向の間隔・1方向の本数・出発点のずらしがJSONとエディタにあり、不正値は拒否。合計が多すぎる設定は発動を拒否して非消費", () => {

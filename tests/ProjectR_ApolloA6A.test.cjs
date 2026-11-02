@@ -40,14 +40,14 @@ test("登録: 特殊 / 最大5枚 / Cooldown 5秒 / Ground / Apolloの指輪 / �
 
 test("保護ファイルは変えていない(CardDeckCore・Hendrix・DotMove・HitStop・黄金の矢・旧Apollo)", () => {
     assert.equal(git("diff", "--stat", "d1ed4f1", "--", "js/plugins/ProjectR_CardDeckCore.js", "js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js",
-        "js/plugins/ProjectR_ApolloGoldenVolley.js", "js/plugins/ProjectR_ApolloGoldenArrow.js", "js/plugins/ProjectR_HitStop.js", "js/plugins/ProjectR_CardBattleInput.js").trim(), "");
+        "js/plugins/ProjectR_ApolloGoldenArrow.js", "js/plugins/ProjectR_HitStop.js", "js/plugins/ProjectR_CardBattleInput.js").trim(), "");
 });
 
 test("バランス: 本数・連射の時間・追尾の範囲・曲がる速さ・ダメージ・回復・Cooldown・寿命・速さがJSON/F6にあり、不正値は拒否する", () => {
     const w = erosWorld();
     const cfg = plain(api(w).config());
     assert.deepEqual([cfg.count, cfg.emitSeconds, cfg.radius, cfg.turnRate, cfg.damage, cfg.heal, cfg.speed, cfg.lifetimeSeconds, cfg.element, cfg.weaknessMultiplier, cfg.selfHeal, cfg.fullHp],
-        [10, 1, 3, 720, 20, 50, 12, 2, 0, 1, false, false]);
+        [10, 1, 3, 720, 20, 50, 12, 0, 0, 1, false, false]);
     assert.equal(balanceOf(w).cooldownSeconds(EROS), 5);
     const fields = plain(balanceOf(w).fields());
     for (const key of ["emitSeconds", "homingRadiusTiles", "homingTurnRate", "projectileLifetimeSeconds", "selfHealEnabled", "fullHpAlliesEligible", "projectileSpeed", "damage", "healAmount", "arrowsPerDirection", "directionCount", "directionSpacingDegrees", "directionOriginOffsetTiles"]) {
@@ -56,7 +56,8 @@ test("バランス: 本数・連射の時間・追尾の範囲・曲がる速さ
     const described = plain(balanceOf(w).describe(EROS));
     assert.ok(JSON.stringify(described).includes("homingRadiusTiles") && JSON.stringify(described).includes("healAmount"), "エディタ用のdescribeに出る");
     assert.equal(balanceOf(w).validate(EROS, "constant", "homingRadiusTiles", 21).ok, false);
-    assert.equal(balanceOf(w).validate(EROS, "constant", "projectileLifetimeSeconds", 5).ok, false, "寿命の上限は4秒(矢Eventの安全網300frame未満)");
+    assert.equal(balanceOf(w).validate(EROS, "constant", "projectileLifetimeSeconds", 56).ok, false, "寿命の上限は55秒(矢Eventの安全網3600frame未満)");
+    assert.equal(balanceOf(w).validate(EROS, "constant", "projectileLifetimeSeconds", 0).ok, true, "0 = ∞(地図の端まで・寿命は上限つき)");
     assert.equal(balanceOf(w).validate(EROS, "constant", "selfHealEnabled", 0.5).ok, false);
     assert.equal(balanceOf(w).validate(EROS, 1, "arrowsPerDirection", 0).ok, false);
     override(w, 3, "arrowsPerDirection", 3); // Lv3の行を触っても、実装しているLv1〜2の効果は変わらない(Lv3は未実装)
@@ -143,7 +144,8 @@ test("追尾の範囲(3マス): 範囲の外の敵へは曲がらず、内側な
 
 test("味方への追尾と回復: 出撃中の仲間へ曲がり、1本につき50(最大HPまで)。敵のダメージは入らない。主人公は既定で対象外", () => {
     const w = erosWorld();
-    parkOthers(w, []); const c = center(w);
+    for (const id of [2, 3, 4, 5]) placeEnemy(w, id, 2 + id, 34); // 射程が∞(マップの端まで)なので、矢の通り道から離れた左下へ退避
+    const c = center(w);
     addAlly(w, { actorId: 2, eventId: 6, cx: c.x + 5, cy: c.y - 2, maxHp: 400, hp: 100 });
     aimDegree(w, 90, 3);
     const leaderHp = leader(w).hp;

@@ -479,7 +479,7 @@ test("バランス設定: 本数・間隔・ダメージ・太さ・スリップ
     // 射程
     const far = volleyWorld({ level: 1 });
     const fb = balanceOf(far);
-    assert.equal(fb.setOverride(VOLLEY, "constant", "rangeTiles", 3).ok, true);
+    assert.equal(fb.setOverride(VOLLEY, "constant", "bowRangeTiles", 3).ok, true);
     parkOthers(far);
     aimDegree(far, 90, 4);
     fire(far);

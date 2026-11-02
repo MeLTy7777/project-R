@@ -62,6 +62,10 @@
  * 【狙い】発動の瞬間のマウス方向を固定します(Ground=マウス位置。効果は「指定の方向」へ撃つ)。矢はrotateToを一度だけ設定し、
  *   以後のマウス移動には追従しません。マウスがプレイヤーと同じ位置で方向が決まらないときは失敗(非消費)。
  *
+
+ * 【射程(∞)】ワークブックの射程は∞。Phase A8で、矢(扇)・ビームとも「壁・敵・マップの端まで」届くようにしました(従来は40マスで止まっていた)。
+ *   設定 bowRangeTiles / bowBeamRangeTiles の 0 = ∞(既定)。有限の値を入れればそこで止まります(F6)。到達はマップの対角線までの有限の値、矢の寿命は最大約58秒。ビームの絵は画面に映る範囲まで描きます。
+ *
  * 【壁】矢は壁を通り抜けません(Region 255 / <VisionWall> / <CombatWall> / 通行不能タイルの縁。ProjectR_CombatOcclusion.firstBlockerBetween)。
  *   矢の体(公式のhitbox)を掃いて判定するので、速い矢でも壁や敵をすり抜けません。マップの端・<destroyProjectile>は公式checkCollideで判定。
  *
@@ -140,6 +144,20 @@
     const effectsForLevel = level => balance().effects(CARD, level);
     const tune = key => balance().constant(CARD, key);
     const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
+    const map = () => (typeof $gameMap !== "undefined" ? $gameMap : null);
+    // ---- 射程(ワークブック: ∞)。設定の 0 = ∞ = 「壁・当たり・マップの端まで」。有限の値を設定すればそこで止まる(F6)。 ----
+    //   マップに閉じた有限の値で計算する: 到達距離の上限 = マップの対角線 + 2マス、寿命の上限 = HARD_LIFETIME_FRAMES(約58秒。Event の安全網 3600frame より短い)。
+    //   見た目(ビームの絵)は、画面に映る範囲(画面の対角線)までを描く(それより遠くは画面の外)。当たり(判定)の到達とは別に、描く長さだけを抑える。
+    const HARD_LIFETIME_FRAMES = 3500;
+    const mapReach = () => { const m = map(); return m ? Math.hypot(m.width(), m.height()) + 2 : 0; };
+    const reachOf = value => (Number(value) > 0 ? Number(value) : mapReach());
+    const visualReach = () => {
+        const m = map(), tile = m?.tileWidth?.() || 48;
+        const w = (typeof Graphics !== "undefined" && Graphics.width) || 816, h = (typeof Graphics !== "undefined" && Graphics.height) || 624;
+        return clamp(Math.ceil(Math.hypot(w, h) / tile), 24, 64);
+    };
+    const lifetimeFramesFor = (range, speed) => Math.min(HARD_LIFETIME_FRAMES, Math.ceil(range / Math.max(0.1, speed) * 60) + 60);
+
     const failure = (reason, extra = {}) => ({ ok: false, reason, ...extra });
     const rad = degree => degree * Math.PI / 180;
     const normalize = degree => ((degree % 360) + 360) % 360;
@@ -173,7 +191,6 @@
     const moveSpeedFor = tilesPerSecond => Math.log2(Math.max(0.01, tilesPerSecond) * 256 / 60);
 
     // ---------- 環境・Hendrix呼び出し ----------
-    const map = () => (typeof $gameMap !== "undefined" ? $gameMap : null);
     const command = (name, args, eventId = 0) => {
         const interpreter = new Game_Interpreter();
         interpreter._eventId = eventId;
@@ -191,6 +208,10 @@
     const hpOf = id => { const v = modifiers()?.eventHp?.(id); return Number.isFinite(v) ? v : (map()?.getCurrentEventHp?.(id) ?? 0); };
     const isEnemy = event => !!event && !event._erased && !!event.event?.()?.note?.includes("<enemy>");
     const isArrow = event => !!event?.event?.()?.note?.includes(TAG);
+    // 実測: 矢は移動ルート(moveToPosition('forward'))で飛ぶ。MZの自律移動は Game_CharacterBase.isNearTheScreen(画面中心から画面1つ分の外では動かない)で止まるため、
+    //   これまでの実際の射程の上限は「画面の外へ出るところ」(実機1920x1080で横40マス/縦22.5マス)だった。この矢だけは、画面の外でも動き続ける(マップの端・壁・寿命で終わる)。
+    const _isNearTheScreen = Game_CharacterBase.prototype.isNearTheScreen;
+    Game_CharacterBase.prototype.isNearTheScreen = function() { return (this instanceof Game_Event && isArrow(this)) ? true : _isNearTheScreen.apply(this, arguments); };
     const releaseSummon = id => { try { root.ProjectRGodSummonManager?.release?.(id); } catch (_error) { /* 表示のみ */ } };
     const centerOf = event => ({ x: event._realX + 0.5, y: event._realY + 0.5 });
 
@@ -267,9 +288,9 @@
     const num = key => { const v = tune(key); return Number.isFinite(Number(v)) ? Number(v) : NaN; };
     const beamConfig = () => {
         try {
-            const cfg = { width: num("beamWidthTiles"), speed: num("beamSpeed"), range: num("beamRangeTiles"), perTile: num("beamHitsPerTile"), damage: num("beamHitDamage"),
+            const cfg = { width: num("beamWidthTiles"), speed: num("beamSpeed"), range: num("bowBeamRangeTiles"), perTile: num("beamHitsPerTile"), damage: num("beamHitDamage"),
                 maxHits: Math.floor(num("beamMaxHitsPerTarget")), stopFrames: Math.floor(num("hitStopFrames")), stopMax: Math.floor(num("hitStopMaxFrames")) };
-            const ok = cfg.width > 0 && cfg.speed > 0 && cfg.range > 0 && cfg.perTile > 0 && cfg.damage >= 0 && cfg.maxHits >= 1 && cfg.stopFrames >= 0 && cfg.stopMax >= 0;
+            const ok = cfg.width > 0 && cfg.speed > 0 && cfg.range >= 0 && cfg.perTile > 0 && cfg.damage >= 0 && cfg.maxHits >= 1 && cfg.stopFrames >= 0 && cfg.stopMax >= 0;
             return ok ? Object.freeze(cfg) : null;
         } catch (_error) { return null; }
     };
@@ -518,7 +539,7 @@
             let origin = summon.center;
             if (!origin || ![origin.x, origin.y].every(Number.isFinite)) { const p = $gamePlayer.centerPositionPoint(); origin = { x: p.x, y: p.y }; }
             origin = { x: origin.x, y: origin.y };
-            const lanes = buildLanes(origin, aim, cfg.width, cfg.range);
+            const lanes = buildLanes(origin, aim, cfg.width, reachOf(cfg.range));
             const limit = Math.max(0, ...lanes.map(l => l.limit));
             volley = { kind: "beam", serial: ++serial, instanceId: context.instance.instanceId, definition: context.definition, level, effects, aim, degrees: [aim], count: 0, arrows: [], hits: [],
                 committed: false, summonId: summon.summonId, cfg, element: tune("element"), weaknessMultiplier: tune("weaknessMultiplier"), slipTicks: Math.floor(tune("splitTicks")),
@@ -561,8 +582,8 @@
                 arrows.push(spawned.arrow);
             }
             volley = { serial: ++serial, instanceId: context.instance.instanceId, definition: context.definition, level, effects, aim, degrees, count, spacing,
-                centerIndex: center, thickWidth, arrows, hits: [], committed: false, summonId: summon.summonId, range: tune("rangeTiles"),
-                stepTiles: tune("projectileSpeed") / 60, maxFrames: Math.ceil(tune("rangeTiles") / Math.max(0.1, tune("projectileSpeed")) * 60) + 60,
+                centerIndex: center, thickWidth, arrows, hits: [], committed: false, summonId: summon.summonId, range: reachOf(tune("bowRangeTiles")),
+                stepTiles: tune("projectileSpeed") / 60, maxFrames: lifetimeFramesFor(reachOf(tune("bowRangeTiles")), tune("projectileSpeed")),
                 element: tune("element"), weaknessMultiplier: tune("weaknessMultiplier"), slipTicks: Math.floor(tune("splitTicks")), settled: false };
             return { ok: true };
         });
@@ -602,13 +623,13 @@
         particleWait = PARTICLE_WAIT_FRAMES;
         if (volley.kind === "beam") { // 幅3マスの黄金のビーム(VFX Designerライブラリ ProjectR_Volley_Beam を区間ごとに並べる)
             try {
-                const b = volley.beam, limits = b.lanes.map(l => l.limit), job = { frames: BEAM_VFX_FRAMES, notes: [], anchors: [] };
+                const b = volley.beam, vr = visualReach(), limits = b.lanes.map(l => Math.min(l.limit, vr)), job = { frames: BEAM_VFX_FRAMES, notes: [], anchors: [] };
                 const collect = r => { if (r?.ok && Array.isArray(r.notes)) { job.notes.push(...r.notes); if (Array.isArray(r.anchors)) job.anchors.push(...r.anchors); } };
                 if (Math.max(...limits) - Math.min(...limits) < UNIFORM_LANE_GAP) { // 遮られていない(または一様に遮られた)ビーム: 幅3マスの1枚で描く
-                    if (b.limit > 0) collect(root.ProjectRPresentationVfx?.play("apollo_volley.beam", { degree: volley.aim, length: b.limit, instance: "v" + volley.serial, origin: b.origin }));
+                    if (b.limit > 0) collect(root.ProjectRPresentationVfx?.play("apollo_volley.beam", { degree: volley.aim, length: Math.min(b.limit, vr), instance: "v" + volley.serial, origin: b.origin }));
                 } else { // 一部のレーンだけ遮られた: レーンごとに、そのレーンの長さまで描く(ダメージの届く範囲と同じ)
                     for (const lane of b.lanes) {
-                        if (lane.limit > 0) collect(root.ProjectRPresentationVfx?.play("apollo_volley.beamlane", { degree: volley.aim, length: lane.limit, lateral: lane.center,
+                        if (lane.limit > 0) collect(root.ProjectRPresentationVfx?.play("apollo_volley.beamlane", { degree: volley.aim, length: Math.min(lane.limit, vr), lateral: lane.center,
                             instance: `v${volley.serial}.l${lane.index}`, origin: b.origin }));
                     }
                 }
@@ -877,7 +898,9 @@
         CARD,
         get LEVELS() { return balance().levels(CARD); },
         get SPEED() { return tune("projectileSpeed"); },
-        get RANGE_TILES() { return tune("rangeTiles"); },
+        get RANGE_TILES() { return tune("bowRangeTiles"); }, // 0 = ∞
+        get EFFECTIVE_RANGE_TILES() { return reachOf(tune("bowRangeTiles")); },
+        visualReach,
         effectsForLevel, cardLevel, arrowDegrees, centerIndexOf, slipSchedule, moveSpeedFor,
         implementedMaxLevel: IMPLEMENTED_MAX_LEVEL, holdSeconds: HOLD_SECONDS, beamLevel: BEAM_LEVEL, pressRegistered: pressRegistered.ok === true,
         getBeamLog: () => beamLog.map(entry => ({ ...entry })),

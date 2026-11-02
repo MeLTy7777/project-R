@@ -48,9 +48,12 @@
  *   Lv3: 幅が3マスになり、連続ヒットする。連続ヒット仕様は黄金の矢と同じ。
  *   成功: 範囲内に敵がいた場合 / 失敗: 範囲外 / 対象なし時: 対象外。壁越え: いいえ。複数対象: はい。
  *
+ * 【射程(∞)】ワークブックの射程は∞。Phase A8で、矢(Lv1〜2)・ビーム(Lv3)とも「壁・敵・マップの端まで」届くようにしました(従来は40マスで止まっていた)。
+ *   設定 bowRangeTiles / bowBeamRangeTiles の 0 = ∞(既定)。有限の値を入れればそこで止まります(F6)。到達はマップの対角線までの有限の値、矢の寿命は最大約58秒。ビームの絵は画面に映る範囲まで描きます。
+ *
  * 【仮の決め(ワークブックに無い部分。バランス設定で変えられるものは変えられる)】
  *   ・オートチャージ = 発動してから 0.5秒(chargeSeconds)後に自動で放つ(長押し不要)。放つ瞬間のマウス方向へ撃つ(チャージ中は照準に追従)。
- *   ・矢の速さ20マス/秒・射程40マス。矢は最初に当たった敵で止まる(Lv1〜2は貫通なし)。壁・マップの端で止まる。
+ *   ・矢の速さ20マス/秒・射程は∞(Phase A8。壁・マップの端まで)。矢は最初に当たった敵で止まる(Lv1〜2は貫通なし)。壁・マップの端で止まる。
  *   ・弱点状態の被ダメージx2 と 傷状態のx1.1 は積(x2.2)。状態は命中の「後」に付くので、その命中自体のダメージは倍になりません。
  *     傷のスリップは1秒ごとに30(5回で150)で、スリップも被ダメージ倍率(弱点x2・傷x1.1)の対象です(HPを減らす呼び出しはすべて同じ窓口を通るため)。
  *   ・再命中は状態の持続時間の更新(重ねがけしない。スリップの位相は保つ)。Lv3の連続ヒットでは、ヒットごとに更新されます。
@@ -92,6 +95,20 @@
     const effectsForLevel = level => balance().effects(CARD, level);
     const tune = key => balance().constant(CARD, key);
     const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
+    const map = () => (typeof $gameMap !== "undefined" ? $gameMap : null);
+    // ---- 射程(ワークブック: ∞)。設定の 0 = ∞ = 「壁・当たり・マップの端まで」。有限の値を設定すればそこで止まる(F6)。 ----
+    //   マップに閉じた有限の値で計算する: 到達距離の上限 = マップの対角線 + 2マス、寿命の上限 = HARD_LIFETIME_FRAMES(約58秒。Event の安全網 3600frame より短い)。
+    //   見た目(ビームの絵)は、画面に映る範囲(画面の対角線)までを描く(それより遠くは画面の外)。当たり(判定)の到達とは別に、描く長さだけを抑える。
+    const HARD_LIFETIME_FRAMES = 3500;
+    const mapReach = () => { const m = map(); return m ? Math.hypot(m.width(), m.height()) + 2 : 0; };
+    const reachOf = value => (Number(value) > 0 ? Number(value) : mapReach());
+    const visualReach = () => {
+        const m = map(), tile = m?.tileWidth?.() || 48;
+        const w = (typeof Graphics !== "undefined" && Graphics.width) || 816, h = (typeof Graphics !== "undefined" && Graphics.height) || 624;
+        return clamp(Math.ceil(Math.hypot(w, h) / tile), 24, 64);
+    };
+    const lifetimeFramesFor = (range, speed) => Math.min(HARD_LIFETIME_FRAMES, Math.ceil(range / Math.max(0.1, speed) * 60) + 60);
+
     const failure = (reason, extra = {}) => ({ ok: false, reason, ...extra });
     const rad = degree => degree * Math.PI / 180;
     const normalize = degree => ((degree % 360) + 360) % 360;
@@ -100,7 +117,6 @@
     const geo = () => root.ProjectRApolloGoldenVolley?.geometry || null;
     const status = () => root.ProjectRApolloStatus || null;
     const hitStop = () => root.ProjectRHitStop;
-    const map = () => (typeof $gameMap !== "undefined" ? $gameMap : null);
     const num = v => { const n = Number(v); return Number.isFinite(n) ? n : NaN; };
     const seName = (key, fallback) => String(params[key] === undefined ? fallback : params[key]).trim();
     const playSe = (name, volume = 80, pitch = 100) => { try { if (name && typeof AudioManager !== "undefined") AudioManager.playSe({ name, volume, pitch, pan: 0 }); } catch (_error) { /* 表示のみ */ } };
@@ -116,17 +132,17 @@
     const config = level => {
         try {
             const e = effectsForLevel(level);
-            const c = { level, damage: num(e.damage), chargeSeconds: num(tune("chargeSeconds")), speed: num(tune("projectileSpeed")), range: num(tune("rangeTiles")), width: num(tune("pathWidthTiles")),
+            const c = { level, damage: num(e.damage), chargeSeconds: num(tune("chargeSeconds")), speed: num(tune("projectileSpeed")), range: num(tune("bowRangeTiles")), width: num(tune("pathWidthTiles")),
                 weakSeconds: num(e.weakSeconds), weakTaken: num(e.weakDamageTaken), element: tune("element"), weaknessMultiplier: tune("weaknessMultiplier") };
             c.chargeFrames = Math.max(0, Math.round(c.chargeSeconds * 60));
             c.wound = Number(e.woundSeconds) > 0;
             if (c.wound) Object.assign(c, { woundSeconds: num(e.woundSeconds), woundDps: num(e.woundDamagePerSecond), woundTick: num(e.woundTickSeconds), woundTaken: num(e.woundDamageTaken) });
             c.beam = level >= BEAM_LEVEL && Number(e.beamWidthTiles) > 0;
-            if (c.beam) Object.assign(c, { beamWidth: num(e.beamWidthTiles), beamSpeed: num(tune("beamSpeed")), beamRange: num(tune("beamRangeTiles")), perTile: num(tune("beamHitsPerTile")),
+            if (c.beam) Object.assign(c, { beamWidth: num(e.beamWidthTiles), beamSpeed: num(tune("beamSpeed")), beamRange: num(tune("bowBeamRangeTiles")), perTile: num(tune("beamHitsPerTile")),
                 maxHits: Math.floor(num(tune("beamMaxHitsPerTarget"))), stopFrames: Math.floor(num(tune("hitStopFrames"))), stopMax: Math.floor(num(tune("hitStopMaxFrames"))) });
-            const ok = c.damage >= 0 && c.chargeSeconds >= 0 && c.speed > 0 && c.range > 0 && c.width > 0 && c.weakSeconds > 0 && c.weakTaken >= 1
+            const ok = c.damage >= 0 && c.chargeSeconds >= 0 && c.speed > 0 && c.range >= 0 && c.width > 0 && c.weakSeconds > 0 && c.weakTaken >= 1
                 && (!c.wound || (c.woundSeconds > 0 && c.woundDps >= 0 && c.woundTick > 0 && c.woundTaken >= 1))
-                && (!c.beam || (c.beamWidth > 0 && c.beamSpeed > 0 && c.beamRange > 0 && c.perTile > 0 && c.maxHits >= 1 && c.stopFrames >= 0 && c.stopMax >= 0));
+                && (!c.beam || (c.beamWidth > 0 && c.beamSpeed > 0 && c.beamRange >= 0 && c.perTile > 0 && c.maxHits >= 1 && c.stopFrames >= 0 && c.stopMax >= 0));
             return ok ? Object.freeze(c) : null;
         } catch (_error) { return null; }
     };
@@ -148,6 +164,10 @@
     const hpOf = id => { const v = modifiers()?.eventHp?.(id); return Number.isFinite(v) ? v : (map()?.getCurrentEventHp?.(id) ?? 0); };
     const isEnemy = event => !!event && !event._erased && !!event.event?.()?.note?.includes("<enemy>");
     const isArrow = event => !!event?.event?.()?.note?.includes(TAG);
+    // 実測: 矢は移動ルート(moveToPosition('forward'))で飛ぶ。MZの自律移動は Game_CharacterBase.isNearTheScreen(画面中心から画面1つ分の外では動かない)で止まるため、
+    //   これまでの実際の射程の上限は「画面の外へ出るところ」(実機1920x1080で横40マス/縦22.5マス)だった。この矢だけは、画面の外でも動き続ける(マップの端・壁・寿命で終わる)。
+    const _isNearTheScreen = Game_CharacterBase.prototype.isNearTheScreen;
+    Game_CharacterBase.prototype.isNearTheScreen = function() { return (this instanceof Game_Event && isArrow(this)) ? true : _isNearTheScreen.apply(this, arguments); };
     const releaseSummon = id => { try { root.ProjectRGodSummonManager?.release?.(id); } catch (_error) { /* 表示のみ */ } };
     const environment = () => {
         const m = map();
@@ -333,7 +353,7 @@
         if (apolloEvent) pvPlay("apollo_volley.particles", { eventId: apolloEvent });
         const p = $gamePlayer.centerPositionPoint(), origin = { x: p.x, y: p.y };
         if (cfg.beam) {
-            const lanes = geo().buildLanes(origin, degree, cfg.beamWidth, cfg.beamRange);
+            const lanes = geo().buildLanes(origin, degree, cfg.beamWidth, reachOf(cfg.beamRange));
             const limit = Math.max(0, ...lanes.map(l => l.limit));
             shot.beam = { origin, degree, lanes, limit, head: 0, sampled: 0, done: false };
             shot.phase = "beam";
@@ -343,20 +363,21 @@
             if (!spawned.ok) { abortShot(shot, spawned.reason); return; }
             shot.arrow = spawned.arrow;
             shot.stepTiles = cfg.speed / 60;
-            shot.maxFrames = Math.ceil(cfg.range / Math.max(0.1, cfg.speed) * 60) + 60;
+            shot.range = reachOf(cfg.range);
+            shot.maxFrames = lifetimeFramesFor(shot.range, cfg.speed);
             shot.phase = "flight";
         }
         lastResult = { ok: true, pending: !shot.committed, consumed: shot.committed, committed: shot.committed, level: shot.level, serial: shot.serial, degree, phase: shot.phase, instanceId: shot.instanceId };
     };
     const presentBeam = shot => {
         try {
-            const b = shot.beam, limits = b.lanes.map(l => l.limit), job = { frames: BEAM_VFX_FRAMES, notes: [], anchors: [] };
+            const b = shot.beam, vr = visualReach(), limits = b.lanes.map(l => Math.min(l.limit, vr)), job = { frames: BEAM_VFX_FRAMES, notes: [], anchors: [] };
             const collect = r => { if (r?.ok && Array.isArray(r.notes)) { job.notes.push(...r.notes); if (Array.isArray(r.anchors)) job.anchors.push(...r.anchors); } };
             const vfx = root.ProjectRPresentationVfx;
             if (Math.max(...limits) - Math.min(...limits) < UNIFORM_LANE_GAP) {
-                if (b.limit > 0) collect(vfx?.play("apollo_volley.beam", { degree: b.degree, length: b.limit, instance: "g" + shot.serial, origin: b.origin }));
+                if (b.limit > 0) collect(vfx?.play("apollo_volley.beam", { degree: b.degree, length: Math.min(b.limit, vr), instance: "g" + shot.serial, origin: b.origin }));
             } else {
-                for (const lane of b.lanes) if (lane.limit > 0) collect(vfx?.play("apollo_volley.beamlane", { degree: b.degree, length: lane.limit, lateral: lane.center, instance: `g${shot.serial}.l${lane.index}`, origin: b.origin }));
+                for (const lane of b.lanes) if (lane.limit > 0) collect(vfx?.play("apollo_volley.beamlane", { degree: b.degree, length: Math.min(lane.limit, vr), lateral: lane.center, instance: `g${shot.serial}.l${lane.index}`, origin: b.origin }));
             }
             if (job.notes.length) vfxJobs.push(job);
         } catch (_error) { /* 表示のみ */ }
@@ -423,7 +444,7 @@
         if (best && (!wall || best.fraction <= wall.fraction + EPSILON)) return best;
         if (wall) return { blocked: "wall" };
         if (root.checkCollide(arrow.eventId, "<destroyProjectile>") || root.checkCollide(arrow.eventId, "map boundary")) return { blocked: "boundary" };
-        if (shot.cfg.range > 0 && arrow.travelled > shot.cfg.range) return { blocked: "range" };
+        if (arrow.travelled > shot.range) return { blocked: "range" };
         if (arrow.stalled >= STALL_FRAMES) return { blocked: "stalled" };
         if (arrow.age > shot.maxFrames) return { blocked: "lifetime" };
         return null;

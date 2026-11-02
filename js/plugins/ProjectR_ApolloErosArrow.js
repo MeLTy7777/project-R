@@ -64,6 +64,9 @@
  *   ・連射: 10本を 1秒(60更新。0,6,12,…,54更新目)に等間隔で放つ。矢ごとに「その瞬間のマウス方向」と「その瞬間のプレイヤー位置」から出る(途中の方向転換で後の矢の向きが変わる)。
  *   ・矢: 速さ・寿命・追尾の範囲・曲がる速さ・ダメージ・回復量・本数・連射の時間は data/ProjectR_CardBalance.json と開発用エディタ F6 で変えられる。
  *     矢は壁・Region・通行不能を無視して通り抜ける(ワークブック「壁越え: はい」)。マップの端・寿命でだけ消える。
+ *   ・射程(∞。Phase A8): ワークブックの射程は∞。矢の寿命 projectileLifetimeSeconds の 0 = ∞(既定)= マップの端まで飛ぶ(従来は2秒 = 24マスで消えていた)。
+ *     安全網として、寿命の上限は「マップの対角線 x 2 を飛ぶ時間」かつ約58秒。有限の値(秒)も設定できる。追尾範囲(3/7マス)は射程ではない(曲がる相手を探す範囲だけ)。
+ *     Lv3のビームの到達は bowBeamRangeTiles の 0 = ∞(既定)= マップの端まで(従来は12マス)。持続の3秒とは別。ビームの絵は画面に映る範囲(画面の対角線)まで区間Eventを並べる。
  *   ・追尾: 矢の「からだ(当たり判定)」まで3マス以内にいる対象へ、曲がる速さの上限つきで向きを寄せる。いったん狙った対象は、範囲内にいる間は変えない。
  *   ・命中: 矢の通った線(掃き)と対象の当たり判定の交差で1本につき1回。当たった矢は消える(貫通なし・二重命中なし)。敵へは固定20(属性なし・弱点倍率1)、味方へは回復50(最大HPまで)。
  *     複数の対象に別々に当たってよい。敵を回復することも、味方を傷つけることもない(判定の対象がそもそも別)。
@@ -100,8 +103,10 @@
     const IMPLEMENTED_MAX_LEVEL = 3;
     const BEAM_TEMPLATE_NAME = "ProjectR Apollo Eros Beam Segment";
     const BEAM_TAG = "<projectRErosBeam>";
-    const MAX_BEAM_LENGTH = 24; // ビームの長さの上限(マス)。見た目の区間の上限と同じ(見えないビームを作らない)
-    const BEAM_SEGMENT_BUDGET = 24; // ビームの見た目の区間(Event)の同時の上限
+    // 射程(ワークブック: ∞)。設定の 0 = ∞ = マップの端まで(壁は通り抜ける)。有限の値を設定すればそこで止まる(F6)。マップに閉じた有限の値で計算する。
+    const HARD_LIFETIME_FRAMES = 3500; // 矢の寿命の上限(約58秒。Event の安全網 3600frame より短い)
+    const PATH_FACTOR = 2; // 矢の寿命(射程∞のとき) = マップの対角線 x この倍率 を飛ぶ時間(追尾で曲がる分の余裕)
+    const BEAM_SEGMENT_MAX = 64; // ビームの見た目の区間(Event)の同時の上限。実際の数は画面に映る範囲(画面の対角線)まで
     const BEAM_SOUND_GAP_FRAMES = 15; // ビームの効果の音は、この間隔より近いものを間引く
     const BEAM_MAX_TICKS_LIMIT = 100; // 設定の誤りで暴走させない(1対象あたりの最大tick数)
     const VISUAL_ARROW_BUDGET = 30; // 矢の見た目(Event)の同時の上限。超えた矢は見た目なしで(判定・命中は同じに)飛ぶ
@@ -133,6 +138,8 @@
     const occlusion = () => root.ProjectR?.CombatOcclusion || null;
     const roster = () => root.ProjectRPartyRoster || null;
     const map = () => (typeof $gameMap !== "undefined" ? $gameMap : null);
+    const mapReach = () => { const m = map(); return m ? Math.hypot(m.width(), m.height()) + 2 : 0; };
+    const segmentBudget = () => { const m = map(), tile = m?.tileWidth?.() || 48, w = (typeof Graphics !== "undefined" && Graphics.width) || 816, h = (typeof Graphics !== "undefined" && Graphics.height) || 624; return clamp(Math.ceil(Math.hypot(w, h) / tile), 24, BEAM_SEGMENT_MAX); };
 
     const cardLevel = () => {
         try {
@@ -156,22 +163,23 @@
             cfg.sideCount = cfg.directions - (cfg.beam && cfg.centerIndex >= 0 ? 1 : 0);
             if (cfg.beam) {
                 Object.assign(cfg, { beamSeconds, beamHealRate: Number(effects.beamHealPerSecond), beamDamageRate: Number(effects.beamDamagePerSecond), beamTickSeconds: Number(effects.beamTickSeconds),
-                    beamWidth: Number(effects.beamWidthTiles), beamRange: Number(effects.beamRangeTiles) });
+                    beamWidth: Number(effects.beamWidthTiles), beamRange: Number(effects.bowBeamRangeTiles ?? 0) });
                 cfg.beamFrames = Math.max(1, Math.round(beamSeconds * 60));
                 cfg.beamTickFrames = Math.max(1, Math.round(cfg.beamTickSeconds * 60));
                 cfg.beamMaxTicks = Math.max(1, Math.floor(beamSeconds / cfg.beamTickSeconds + 1e-6));
                 cfg.beamTickHeal = Math.round(cfg.beamHealRate * cfg.beamTickSeconds);
                 cfg.beamTickDamage = Math.round(cfg.beamDamageRate * cfg.beamTickSeconds);
-                cfg.beamLength = Math.min(cfg.beamRange, MAX_BEAM_LENGTH);
+                cfg.beamLength = cfg.beamRange > 0 ? cfg.beamRange : mapReach(); // 0 = ∞ = マップの端まで(マップの対角線までの有限の値)
             }
             cfg.count = cfg.sideCount * cfg.perDirection;
-            const beamOk = !cfg.beam || (cfg.beamHealRate >= 0 && cfg.beamDamageRate >= 0 && cfg.beamTickSeconds > 0 && cfg.beamTickSeconds <= cfg.beamSeconds && cfg.beamWidth > 0 && cfg.beamRange >= 1 && cfg.beamMaxTicks <= BEAM_MAX_TICKS_LIMIT);
+            const beamOk = !cfg.beam || (cfg.beamHealRate >= 0 && cfg.beamDamageRate >= 0 && cfg.beamTickSeconds > 0 && cfg.beamTickSeconds <= cfg.beamSeconds && cfg.beamWidth > 0 && cfg.beamRange >= 0 && cfg.beamMaxTicks <= BEAM_MAX_TICKS_LIMIT);
             const ok = beamOk && cfg.radius >= 0 && cfg.directions >= 1 && cfg.perDirection >= 1 && cfg.count <= MAX_TOTAL_ARROWS && (cfg.directions === 1 || cfg.spacing > 0) && cfg.originOffset >= 0 && cfg.damage >= 0 && cfg.heal >= 0 && cfg.emitSeconds > 0 && cfg.speed > 0 && cfg.radius >= 0 && cfg.turnRate > 0
-                && cfg.lifetimeSeconds > 0 && Number.isFinite(cfg.element) && Number.isFinite(cfg.weaknessMultiplier);
+                && cfg.lifetimeSeconds >= 0 && Number.isFinite(cfg.element) && Number.isFinite(cfg.weaknessMultiplier);
             if (!ok) return null;
             cfg.emitFrames = Math.max(1, Math.round(cfg.emitSeconds * 60));
-            cfg.lifetimeFrames = Math.max(1, Math.round(cfg.lifetimeSeconds * 60));
             cfg.step = cfg.speed / 60;
+            // 寿命: 0 = ∞ → マップの端に出るまで(境界で消える)。安全網として、マップの対角線 x PATH_FACTOR を飛ぶ時間(上限 HARD_LIFETIME_FRAMES)で必ず消える。
+            cfg.lifetimeFrames = cfg.lifetimeSeconds > 0 ? Math.min(HARD_LIFETIME_FRAMES, Math.max(1, Math.round(cfg.lifetimeSeconds * 60))) : Math.min(HARD_LIFETIME_FRAMES, Math.ceil(mapReach() * PATH_FACTOR / Math.max(0.01, cfg.step)) + 60);
             return cfg;
         } catch (_error) { return null; }
     };
@@ -566,7 +574,7 @@
         stopNote(beam.glow); beam.glow = null;
     };
     const updateBeamVisual = seq => {
-        const beam = seq.beam, need = Math.min(BEAM_SEGMENT_BUDGET, Math.ceil(beam.length - 1e-6));
+        const beam = seq.beam, need = Math.min(segmentBudget(), Math.ceil(beam.length - 1e-6));
         while (beam.segments.length > need) destroySegment(beam.segments.pop());
         const ux = Math.sin(rad(beam.heading)), uy = -Math.cos(rad(beam.heading));
         for (let i = 0; i < need; i++) {
@@ -843,7 +851,7 @@
     root.ProjectRApolloErosArrow = Object.freeze({
         CARD, implementedMaxLevel: IMPLEMENTED_MAX_LEVEL,
         constants: Object.freeze({ ALONG_HALF, ACROSS_HALF, SELF_MIN_TRAVEL, PRESENT_EVERY, GLOW_BUDGET, SHORT_VFX_BUDGET, SHORT_VFX_FRAMES }),
-        limits: Object.freeze({ VISUAL_ARROW_BUDGET, MAX_TOTAL_ARROWS, MAX_BEAM_LENGTH, BEAM_SEGMENT_BUDGET }),
+        limits: Object.freeze({ VISUAL_ARROW_BUDGET, MAX_TOTAL_ARROWS, BEAM_SEGMENT_MAX, HARD_LIFETIME_FRAMES, PATH_FACTOR }), segmentBudget, mapReach,
         getBeam: () => { const s = [...sequences.values()].find(x => x.beam); return s ? beamSummary(s) : null; },
         geometry3: Object.freeze({ convexOverlap, beamRectangle, edgeDistance }),
         cardLevel,

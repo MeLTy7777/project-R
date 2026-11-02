@@ -73,12 +73,12 @@ const CARD = "apollo_eros_arrow", API = "ProjectRApolloErosArrow", GV = "Project
   await check("M0 boot: Lv3の登録(最大Lv3)・数値(追尾7・14本・ビーム3秒/300/80/0.1秒/幅0.9)・Lv1〜2は不変・VFXキー・ビーム区間のPrefabと素材・F6の項目", async () => {
     const v = await json(`({ def: ProjectRCardDeck.definitions.card('${CARD}'), c1: ${API}.config(1), c2: ${API}.config(2), c3: ${API}.config(3), limits: ${API}.limits,
       keys: ProjectRPresentationVfx.keys().filter(function(k) { return /apollo_eros/.test(k); }).sort(), template: !!$dataTemplateMap.events.find(function(e) { return e && e.name === 'ProjectR Apollo Eros Beam Segment'; }),
-      fields: ['beamDurationSeconds','beamHealPerSecond','beamDamagePerSecond','beamTickSeconds','beamWidthTiles','beamRangeTiles','homingRadiusTiles'].every(function(k) { return !!ProjectRCardBalance.fieldOf(k); }),
+      fields: ['beamDurationSeconds','beamHealPerSecond','beamDamagePerSecond','beamTickSeconds','beamWidthTiles','bowBeamRangeTiles','homingRadiusTiles'].every(function(k) { return !!ProjectRCardBalance.fieldOf(k); }),
       lv: ProjectRCardDeck.setCardLevel('${CARD}', 3) && ProjectRCardDeck.getPersistentData().cardOwnership['${CARD}'].level })`);
     const file = fs.existsSync("img/characters/VFX/$ProjectR_ErosBeam.png");
     const c3 = v.c3;
     rec("M0 boot", v.def.maxLevel === 3 && v.c1.radius === 3 && v.c2.radius === 3 && !v.c2.beam && c3.radius === 7 && c3.beam && c3.count === 14 && c3.sideCount === 2 && c3.beamSeconds === 3 && c3.beamHealRate === 300 && c3.beamDamageRate === 80 && c3.beamTickSeconds === 0.1
-      && c3.beamTickHeal === 30 && c3.beamTickDamage === 8 && c3.beamMaxTicks === 30 && c3.beamWidth === 0.9 && c3.beamLength === 12 && v.keys.length === 6 && v.template && v.fields && v.lv === 3 && file && v.limits.MAX_BEAM_LENGTH === 24, JSON.stringify({ c3, keys: v.keys, template: v.template, file }).slice(0, 600));
+      && c3.beamTickHeal === 30 && c3.beamTickDamage === 8 && c3.beamMaxTicks === 30 && c3.beamWidth === 0.9 && c3.beamRange === 0 && c3.beamLength > 24 && v.keys.length === 6 && v.template && v.fields && v.lv === 3 && file && v.limits.HARD_LIFETIME_FRAMES === 3500, JSON.stringify({ c3, keys: v.keys, template: v.template, file }).slice(0, 600));
   });
 
   await check("M1 追尾範囲7 対 3(実機): 側面の矢から5マス外れた敵へ、Lv2は外れ、Lv3は曲がって当たる(ビームの外なのでダメージは矢だけ)", async () => {
@@ -113,7 +113,7 @@ const CARD = "apollo_eros_arrow", API = "ProjectRApolloErosArrow", GV = "Project
     const log = (await json(`${API}.getEmissionLog()`)).slice(-14), last = await lastR();
     const dirs = [...new Set(log.map(e => e.direction))].sort();
     rec("M2 14+beam", log.length === 14 && JSON.stringify(dirs) === "[0,2]" && JSON.stringify([...new Set(log.map(e => e.tick))]) === "[0,8,17,25,34,42,51]" && near(log[0].degree, 10, 4) && near(log[1].degree, 170, 4)
-      && last.beam.ticks === 30 && lastTick >= 170 && m.arrows <= 14 && m.segs >= 1 && m.segs <= 12 && m.pics <= 14 && m.temp <= 40 && last.reason === "missed" && JSON.stringify(await hand()) === JSON.stringify(before) && clean3(await leftovers3()),
+      && last.beam.ticks === 30 && lastTick >= 170 && m.arrows <= 14 && m.segs >= 1 && m.segs <= 64 && m.pics <= 14 && m.temp <= 14 + 64 + 6 + 1 + 6 && last.reason === "missed" && JSON.stringify(await hand()) === JSON.stringify(before) && clean3(await leftovers3()),
       JSON.stringify({ n: log.length, dirs, deg: log.slice(0, 2).map(e => Math.round(e.degree)), ticks: last.beam.ticks, lastTick, m }));
   });
 

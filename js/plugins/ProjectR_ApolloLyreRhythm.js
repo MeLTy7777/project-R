@@ -42,22 +42,23 @@
  *        3秒間に各音符が順番に3回流れてくる。攻撃ボタンをタイミングよく押すたびにその音符の効果を得られる。同じ音符を選択すると効果が重なる。音符は全部で3回押せる。
  *        音符を選択した瞬間に効果を得られる。同じ音符を押すと効果時間が更新される。病状態 = -10%攻撃力ダウン・被ダメージ5%増加・弱点属性被ダメージ3%増加。
  *   Lv2: すべて同じ音符を選ぶと、その効果の範囲が画面内すべてになり、味方の異常状態を解除するクレンズ効果も追加する。
- *   Lv3: 音符の流れる量が、3秒間に順番に5回に増加。
+ *   Lv3: 3秒間に選べる音符が合計5回に増加(更新: Lv1〜2は最大3回・Lv3は最大5回。「音符が5周流れる」ではない)。
  *   成功: 各音符をタイミングよく押す / 失敗: タイミングを外す。演出: 竪琴を持った Apollo が後ろに / 音符を選ぶたびに演奏・指揮者のように手を振る / 選ぶたびに範囲が水面の波のように揺らぎ、音符の効果に対応した色の波紋 / 金色と各音符の色。
  *
  * 【実装】
- *   ・使った瞬間に消費(instant)。3秒(rhythmSeconds)の「演奏」が始まる。音符は 火力 → 速度 → ヒール → 病 の順で、これを rounds 周(Lv1〜2は3周 = 12個、Lv3は5周 = 20個)、
- *     3秒に等間隔で並べる(0.25秒 / Lv3は0.15秒ごとに1つが「ライン」(プレイヤーの足元の位置)に届く)。最初の音符は発動から noteLeadSeconds(0.6秒)後に届く。
- *   ・攻撃ボタン(Hendrixの攻撃入力 = 共通イベント1)を押すと、その瞬間に最も近い音符(前後 hitWindowSeconds = 0.1秒以内。音符の間隔の半分を超えない)を選ぶ。押すたびに1回を使い(最大3回 = maxPresses)、
+ *   ・使った瞬間に消費(instant)。3秒(rhythmSeconds)の「演奏」が始まる。音符は 火力 → 速度 → ヒール → 病 の順で、これを rounds 周、3秒に等間隔で並べる。
+ *     周回数は「選べる回数」から決める(4種の音符がそれぞれ maxPresses 個以上流れ、全部同じ音符を選べるようにするため。Lv1〜2は3周 = 12個(0.25秒おき)、Lv3は選べる回数が5回なので5個ずつ = 20個(0.15秒おき))。
+ *     「音符が5周流れる」ことが Lv3 の効果ではない。Lv3の効果は「3秒間に選べるのが最大5回」。最初の音符は発動から noteLeadSeconds(0.6秒)後に届く。
+ *   ・攻撃ボタン(Hendrixの攻撃入力 = 共通イベント1)を押すと、その瞬間に最も近い音符(前後 hitWindowSeconds = 0.1秒以内。音符の間隔の半分を超えない)を選ぶ。押すたびに1回を使い(最大 maxPresses 回。Lv1〜2は3回・Lv3は5回)、
  *     タイミングを外した押下も1回に数える(効果なし)。演奏中は、押した攻撃入力は音符の選択に使われ、剣・銃は動かない(回数を使い切ると、あとは通常の攻撃へ戻る)。
  *   ・選んだ瞬間の効果(半径5マスの味方 = 主人公+出撃中の仲間 / 病は半径5マスの敵):
  *       火力: 攻撃力・魔力 +10% x 重なり(8秒。押すたびに時間を更新)。速度: 移動速度 +10% x 重なり(8秒。主人公のみ)。
  *       ヒール: 即時100 + 3秒かけて100(重なりごとに加算)。病: 敵に病(5秒。攻撃力 -10% x 重なり・被ダメージ +5% x 重なり・弱点 +3% x 重なり)。
- *   ・Lv2: 3回とも同じ音符で、3回目を選んだ瞬間、その3回目の効果の範囲が「画面内すべて」になり、味方の異常状態を解除する(クレンズ)。
+ *   ・Lv2〜: 選べる回数ぶん(Lv2は3回・Lv3は5回)すべて同じ音符で、最後の1回を選んだ瞬間、その効果の範囲が「画面内すべて」になり、味方の異常状態を解除する(クレンズ)。
  *   ・見た目: プレイヤーの足元から右へ並ぶ音符が左のラインへ流れる(色: 火力=赤 / 速度=青 / ヒール=緑 / 病=紫)。選ぶたびに、その音符の色の波紋(水面の波)が半径5マスへ広がり、Apolloが演奏し、主人公は手を振る(ArmSweep)。
  *
  * 【仮の決め(ワークブックに無い部分)】
- *   ・「3秒間に各音符が順番に3回」は「4種類を順番に3周 = 12個」と読んだ(押せるのは3回)。Lv3は5周 = 20個(押せる回数は3回のまま)。
+ *   ・「3秒間に各音符が順番に3回」は「4種類を順番に3周 = 12個」と読んだ(押せるのは3回)。Lv3は「選べる回数が5回」(音符の流れる周回数ではない)。流れる量は選べる回数から決め、Lv3は全部同じ音符を5回選べるよう各種5個(20個)にした(流れる量そのものの指定は設計に無く、仮の決め)。
  *   ・効果の「重なり」は加算(火力 1 + 0.1 x n、病 1 + 0.05 x n など)。同じ音符を押すと時間は更新。重なりの上限は押せる回数(3)なので、上限は自然に3。監査文書 §10 B9 は未確定のまま。
  *   ・病の持続は5秒(ワークブックに無い)。クレンズの「異常状態」= 行動制限(restriction)を持つ・能力を下げる特徴を持つ・睡眠(32)・病(33)のState(死亡(1)・精神安定(34)は除く)。
  *   ・タイミングを外した押下も1回に数える。回数を使い切ったあと・演奏が終わったあとの攻撃は通常どおり。
@@ -115,16 +116,18 @@
     const config = level => {
         try {
             const e = effectsForLevel(level);
-            const c = { level, radius: num(tune("radiusTiles")), rhythmSeconds: num(tune("rhythmSeconds")), lead: num(tune("noteLeadSeconds")), rounds: Math.floor(num(e.noteRounds)), maxPresses: Math.floor(num(tune("maxPresses"))),
+            const c = { level, radius: num(tune("radiusTiles")), rhythmSeconds: num(tune("rhythmSeconds")), lead: num(tune("noteLeadSeconds")), minRounds: Math.floor(num(e.noteRounds)), maxPresses: Math.floor(num(e.maxPresses)),
                 hitWindow: num(tune("hitWindowSeconds")), buffSeconds: num(tune("buffSeconds")), attackBonus: num(tune("lyreAttackBonus")), speedBonus: num(tune("lyreSpeedBonus")),
                 healInstant: num(tune("lyreHealInstant")), healRegen: num(tune("lyreHealRegenTotal")), healRegenSeconds: num(tune("lyreHealRegenSeconds")),
                 plagueSeconds: num(tune("lyrePlagueSeconds")), plagueAttack: num(tune("lyrePlagueAttackDown")), plagueTaken: num(tune("lyrePlagueDamageTaken")), plagueWeak: num(tune("lyrePlagueWeakness")),
                 screenWide: Number(e.screenWide) === 1, cleanse: Number(e.cleanse) === 1 };
+            // 音符の流れる量は「選べる回数」から決める: 4種の音符それぞれが maxPresses 個以上流れる(全部同じ音符を maxPresses 回選べる)。noteRounds は下限(Lv1〜2の3周)。
+            c.rounds = Math.max(c.minRounds, c.maxPresses);
             c.notes = c.rounds * KINDS.length;
             c.interval = c.rhythmSeconds / Math.max(1, c.notes);
             c.windowFrames = Math.max(1, Math.round(Math.min(c.hitWindow, c.interval * 0.5 - 0.01) * 60));
             c.intervalFrames = c.interval * 60; c.leadFrames = Math.round(c.lead * 60); c.totalFrames = Math.round(c.rhythmSeconds * 60) + c.leadFrames;
-            const ok = c.radius > 0 && c.rhythmSeconds > 0 && c.lead >= 0 && c.rounds >= 1 && c.notes <= MAX_NOTES && c.maxPresses >= 1 && c.hitWindow > 0 && c.buffSeconds > 0 && c.attackBonus >= 0 && c.speedBonus >= 0
+            const ok = c.radius > 0 && c.rhythmSeconds > 0 && c.lead >= 0 && c.minRounds >= 1 && c.rounds >= 1 && c.notes <= MAX_NOTES && c.maxPresses >= 1 && c.hitWindow > 0 && c.buffSeconds > 0 && c.attackBonus >= 0 && c.speedBonus >= 0
                 && c.healInstant >= 0 && c.healRegen >= 0 && c.healRegenSeconds > 0 && c.plagueSeconds > 0 && c.plagueAttack >= 0 && c.plagueTaken >= 0 && c.plagueWeak >= 0 && c.windowFrames >= 1;
             return ok ? Object.freeze(c) : null;
         } catch (_error) { return null; }
@@ -256,14 +259,15 @@
             const n = best.n; n.state = "picked"; n.pressedAt = s.frame;
             const picked = s.results.filter(r => r.hit).map(r => r.kind);
             result.hit = true; result.kind = n.kind; result.index = n.index; result.offset = s.frame - n.arrive;
-            const same3 = picked.length + 1 === s.cfg.maxPresses && [...picked, n.kind].every(k => k === n.kind);
-            const wide = s.cfg.screenWide && same3;
+            const sameAll = picked.length + 1 === s.cfg.maxPresses && [...picked, n.kind].every(k => k === n.kind);
+            const wide = s.cfg.screenWide && sameAll; // 選べる回数ぶん(Lv1〜2は3回・Lv3は5回)すべて同じ音符のとき
             Object.assign(result, applyEffect(s, n.kind, wide));
             result.wide = wide;
             if (wide && s.cfg.cleanse) { result.cleansed = cleanse(); s.cleansed += result.cleansed; }
             presentPress(s, n, wide);
         }
         s.results.push(result);
+        if (s.ui) updateUi(s); // 回数の表示(使った/選べる)をすぐ更新
         if (lastResult) { lastResult.presses = s.presses; lastResult.results = s.results.map(r => ({ ...r })); }
         note({ type: "press", serial: s.serial, ...result });
         return { ok: true, ...result };
@@ -310,8 +314,9 @@
                 return sp;
             });
             const line = new Sprite(new Bitmap(6, 48)); line.bitmap.fillRect(0, 0, 6, 48, "#ffe9a0"); line.anchor.set(0.5, 0.5); line.opacity = 200; layer.addChild(line);
+            const counter = new Sprite(new Bitmap(96, 30)); counter.anchor.set(0.5, 0.5); counter.opacity = 235; layer.addChild(counter); // 「使った回数/選べる回数」
             scene.addChild(layer);
-            s.ui = { layer, sprites, line, flashes: new Map(), flash(index, kind) { this.flashes.set(index, 20); }, destroyed: false };
+            s.ui = { layer, sprites, line, counter, shown: null, flashes: new Map(), flash(index, kind) { this.flashes.set(index, 20); }, destroyed: false };
         } catch (_error) { s.ui = null; }
     };
     const updateUi = s => {
@@ -320,6 +325,11 @@
         try {
             const px = $gamePlayer.screenX(), py = $gamePlayer.screenY() + 30, cfg = s.cfg, travel = Math.max(1, cfg.leadFrames), speed = 300 / travel; // 発動から noteLeadSeconds 後に最初の音符がラインへ(右300pxから)
             ui.line.x = px; ui.line.y = py;
+            if (ui.counter) {
+                ui.counter.x = px; ui.counter.y = py + 40;
+                const text = `${s.presses}/${s.cfg.maxPresses}`;
+                if (ui.shown !== text) { ui.shown = text; ui.counter.bitmap.clear(); ui.counter.bitmap.fontSize = 20; ui.counter.bitmap.textColor = s.presses >= s.cfg.maxPresses ? "#ff9a7a" : "#ffe9a0"; ui.counter.bitmap.drawText(text, 0, 0, 96, 30, "center"); }
+            }
             for (let i = 0; i < s.notes.length; i++) {
                 const n = s.notes[i], sp = ui.sprites[i], dt = n.arrive - s.frame; // ラインまでの残りframe
                 const x = px + dt * speed, visible = x > px - 80 && x < px + 330 && n.state !== "picked";
@@ -403,7 +413,7 @@
         getBuffs: () => ({ attack: buffs.attack && { ...buffs.attack }, speed: buffs.speed && { ...buffs.speed }, stacks: { ...stacks }, regens: [...regens].map(([k, r]) => ({ key: k, rate: r.rate, remaining: r.remaining, healed: r.healed })), plague: [...plagueTargets] }),
         getLastResult: () => lastResult ? JSON.parse(JSON.stringify(lastResult)) : null,
         getLog: () => log.map(e => ({ ...e })),
-        getUi: () => session?.ui ? { active: true, sprites: session.ui.sprites.length, visible: session.ui.sprites.filter(sp => sp.visible).length } : { active: false },
-        getTempObjectCount: () => { const c = { sprites: session?.ui ? session.ui.sprites.length + 1 : 0, waves: session ? session.waves.length : 0 }; c.total = c.sprites + c.waves; return c; }
+        getUi: () => session?.ui ? { active: true, counter: session.ui.shown, sprites: session.ui.sprites.length, visible: session.ui.sprites.filter(sp => sp.visible).length } : { active: false },
+        getTempObjectCount: () => { const c = { sprites: session?.ui ? session.ui.sprites.length + 2 : 0, waves: session ? session.waves.length : 0 }; c.total = c.sprites + c.waves; return c; }
     });
 })();

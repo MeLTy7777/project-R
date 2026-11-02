@@ -138,6 +138,12 @@ function buildWorld({ playtest = true } = {}) {
         ctx.DataManager.createGameObjects();
         ctx.$gameParty.setupStartingMembers();
         ctx.$dataMap = mapData(mapId);
+        if (world.bigMap) { // 射程∞のテスト用: 壁の無い広い床の地図に置き換える(Eventは元のまま。bigMap = { width, height })
+            const d = ctx.$dataMap, floor = d.data[(0 * d.height + y) * d.width + x], w2 = world.bigMap.width, h2 = world.bigMap.height;
+            const data = new Array(w2 * h2 * 6).fill(0);
+            for (let i = 0; i < w2 * h2; i++) data[i] = floor;
+            d.width = w2; d.height = h2; d.data = data;
+        }
         ctx.DataManager.onLoad(ctx.$dataMap);
         if (!ctx.$dataTemplateMap) { // Hendrixの templateMapId(=2)。Apollo奥義の矢などの雛形Event
             ctx.$dataTemplateMap = mapData(2);

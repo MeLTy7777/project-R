@@ -42,8 +42,8 @@ test("登録と数値: 最大Lv3・Cooldown 3・強力/最大5。Lv1=100ダメ�
 });
 
 test("保護ファイルは変えていない(CardDeckCore・Hendrix・DotMove・黄金の矢・エロスの矢・HitStop・CardBattleInput・PartyRoster・PartyCombat・DamageModifiers・旧Apollo)", () => {
-    assert.equal(git("diff", "--stat", "115f01d", "--", "js/plugins/ProjectR_CardDeckCore.js", "js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js", "js/plugins/ProjectR_ApolloGoldenVolley.js",
-        "js/plugins/ProjectR_ApolloErosArrow.js", "js/plugins/ProjectR_ApolloGoldenArrow.js", "js/plugins/ProjectR_HitStop.js", "js/plugins/ProjectR_CardBattleInput.js", "js/plugins/ProjectR_PartyRoster.js",
+    assert.equal(git("diff", "--stat", "115f01d", "--", "js/plugins/ProjectR_CardDeckCore.js", "js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js",
+        "js/plugins/ProjectR_ApolloGoldenArrow.js", "js/plugins/ProjectR_HitStop.js", "js/plugins/ProjectR_CardBattleInput.js", "js/plugins/ProjectR_PartyRoster.js",
         "js/plugins/ProjectR_PartyCombat.js", "js/plugins/ProjectR_DamageModifiers.js", "js/plugins/ProjectR_ApolloDiseaseAttack.js", "js/plugins/ProjectR_ApolloLyreCalm.js").trim(), "");
 });
 

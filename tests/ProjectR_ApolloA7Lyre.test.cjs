@@ -40,13 +40,14 @@ const pressAt = (w, index, offset = 0) => {
 const kindIndex = (w, kind, nth = 0) => notes(w).filter(n => n.kind === kind)[nth].index;
 const setup = (level, opts = {}) => { const w = world(level, opts); parkOthers(w, opts.keep || []); put(w, 12, 25); return w; };
 
-test("登録と数値: 最大Lv3・Cooldown 4・特殊/最大2・instant。Lv1=3周12個(0.25秒おき)・押せるのは3回。Lv2は全部同じなら画面全体+クレンズ。Lv3は5周20個(0.15秒おき)。Apollo本番デッキは無効", () => {
+test("登録と数値: 最大Lv3・Cooldown 4・特殊/最大2・instant。Lv1=3周12個(0.25秒おき)・押せるのは3回。Lv2は全部同じなら画面全体+クレンズ。Lv3は選べる回数が5回(音符は各種5個 = 20個・0.15秒おき)。Apollo本番デッキは無効", () => {
     const w = world(3);
     assert.deepEqual(plain(w.ctx.ProjectRCardDeck.definitions.card(C)), { cardId: C, ringId: "apollo", maxCopies: 2, cooldownSeconds: 4, maxLevel: 3, rarity: "special", category: "special", targetType: "instant" });
     const c1 = plain(api(w).config(1)), c2 = plain(api(w).config(2)), c3 = plain(api(w).config(3));
     assert.deepEqual([c1.rounds, c1.notes, c1.interval, c1.maxPresses, c1.rhythmSeconds, c1.lead, c1.radius, c1.screenWide, c1.cleanse, c1.buffSeconds], [3, 12, 0.25, 3, 3, 0.6, 5, false, false, 8]);
     assert.deepEqual([c2.rounds, c2.notes, c2.screenWide, c2.cleanse], [3, 12, true, true], "Lv2はLv1を引き継ぎ画面全体とクレンズを足す");
-    assert.deepEqual([c3.rounds, c3.notes, c3.interval, c3.maxPresses, c3.screenWide, c3.cleanse], [5, 20, 0.15, 3, true, true], "Lv3は音符の周回だけ5周(置換)。押せる回数は3回のまま");
+    assert.deepEqual([c3.rounds, c3.notes, c3.interval, c3.maxPresses, c3.screenWide, c3.cleanse], [5, 20, 0.15, 5, true, true], "Lv3は選べる回数が5回(置換)。音符の流れる量は選べる回数から決まる(全部同じ音符を5回選べる)");
+    assert.deepEqual([c1.maxPresses, c2.maxPresses, c1.minRounds, c3.minRounds], [3, 3, 3, 3], "Lv1〜2は3回のまま。周回数の下限は3");
     assert.ok(c1.windowFrames >= 1 && c1.windowFrames <= 6 && c3.windowFrames >= 1 && c3.windowFrames < c1.windowFrames + 1, "判定の幅は音符の間隔の半分を超えない " + c1.windowFrames + "/" + c3.windowFrames);
     assert.equal(w.ctx.ProjectRCardCatalog.buildGodDeck("apollo") === null, require("./ProjectR_ApolloImplemented.cjs").STILL_RESERVED.length > 0);
     const row = w.ctx.ProjectRCardCatalog.godDesign("apollo").find(r => r.designId === 10);
@@ -57,7 +58,7 @@ test("登録と数値: 最大Lv3・Cooldown 4・特殊/最大2・instant。Lv1=3
 test("保護ファイルは変えていない(CardDeckCore・Hendrix・DotMove・DamageModifiers・PartyCombat・PartyRoster・CardModifiers・CardBattleInput・Gun/Sword・他のApollo)", () => {
     assert.equal(git("diff", "--stat", "a130221", "--", "js/plugins/ProjectR_CardDeckCore.js", "js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js", "js/plugins/ProjectR_DamageModifiers.js", "js/plugins/ProjectR_PartyCombat.js",
         "js/plugins/ProjectR_PartyRoster.js", "js/plugins/ProjectR_CardModifiers.js", "js/plugins/ProjectR_CardBattleInput.js", "js/plugins/ProjectR_GunSystem.js", "js/plugins/ProjectR_SwordSystem.js", "js/plugins/ProjectR_CombatPresence.js",
-        "js/plugins/ProjectR_ApolloLyreCalm.js", "js/plugins/ProjectR_ApolloGoldenVolley.js", "js/plugins/ProjectR_ApolloErosArrow.js", "js/plugins/ProjectR_ApolloGigasSlayer.js", "js/plugins/ProjectR_ApolloHyacinthus.js", "js/plugins/ProjectR_ApolloPlagueRain.js", "js/plugins/ProjectR_ApolloLaurelWreath.js").trim(), "");
+        "js/plugins/ProjectR_ApolloLyreCalm.js", "js/plugins/ProjectR_ApolloHyacinthus.js", "js/plugins/ProjectR_ApolloPlagueRain.js", "js/plugins/ProjectR_ApolloLaurelWreath.js").trim(), "");
 });
 
 test("バランス/F6: 新しい項目が定義され、範囲外は拒否。上書きが累積どおりに効く", () => {
@@ -68,7 +69,10 @@ test("バランス/F6: 新しい項目が定義され、範囲外は拒否。上
     for (const key of ["noteRounds", "maxPresses", "lyreAttackBonus", "screenWide", "cleanse"]) assert.ok(described.includes(key), key);
     assert.equal(balanceOf(w).validate(C, 1, "noteRounds", 0).ok, false);
     assert.equal(balanceOf(w).validate(C, 1, "noteRounds", 11).ok, false, "音符は最大40個(4種 x 10周)");
-    assert.equal(balanceOf(w).validate(C, "constant", "maxPresses", 0).ok, false);
+    assert.equal(balanceOf(w).validate(C, 1, "maxPresses", 0).ok, false);
+    assert.equal(balanceOf(w).validate(C, 3, "maxPresses", 11).ok, false);
+    override(w, 3, "maxPresses", 7); assert.deepEqual([api(w).config(1).maxPresses, api(w).config(2).maxPresses, api(w).config(3).maxPresses, api(w).config(3).notes], [3, 3, 7, 28], "選べる回数はレベル別。音符は各種7個");
+    balanceOf(w).resetCard(C);
     override(w, 1, "noteRounds", 4); override(w, 2, "cleanse", 0); override(w, "constant", "buffSeconds", 6);
     assert.deepEqual([api(w).config(1).rounds, api(w).config(2).rounds, api(w).config(3).rounds, api(w).config(2).cleanse, api(w).config(3).cleanse, api(w).config(1).buffSeconds], [4, 4, 5, false, false, 6]);
     balanceOf(w).resetCard(C);
@@ -248,21 +252,51 @@ test("Lv2: 3回とも同じ音符(火力)を選ぶと、3回目の効果の範�
     assert.deepEqual([api(w1).abnormalState(1), api(w1).abnormalState(34), api(w1).abnormalState(32), api(w1).abnormalState(33)], [false, false, true, true]);
 });
 
-test("Lv3: 音符が5周20個(0.15秒おき)。押せるのは3回のまま。判定の幅はさらに狭い。全部同じ音符で3回選ぶと画面全体+クレンズ(Lv2から引き継ぐ)", () => {
-    const w = setup(3);
+test("Lv3: 選べるのは合計5回(5周ではない)。5回選べて6回目は音符に使われない。Lv1〜2は3回のまま。5回とも同じ音符なら画面全体+クレンズ(Lv2から引き継ぐ)。UIの回数は n/5", () => {
+    const w = setup(3, { keep: [4] });
+    placeEnemy(w, 4, center(w).x + 7, center(w).y + 2); // 半径5の外(画面内)
     use(w);
-    assert.deepEqual([session(w).notes, session(w).rounds, session(w).maxPresses], [20, 5, 3]);
+    assert.deepEqual([session(w).notes, session(w).rounds, session(w).maxPresses], [20, 5, 5]);
     const n = notes(w);
     assert.deepEqual([n[1].arrive - n[0].arrive, n[19].arrive], [9, 36 + Math.round(19 * 9)]);
-    assert.deepEqual(n.filter(x => x.kind === "heal").length, 5);
-    pressAt(w, kindIndex(w, "speed", 0)); pressAt(w, kindIndex(w, "speed", 2)); const t = pressAt(w, kindIndex(w, "speed", 4));
-    assert.deepEqual([t.hit, t.wide], [true, true]);
-    assert.equal(session(w).presses, 3);
-    // 判定の幅はLv3では前後4frame。最後の音符を8frame過ぎたあとは外れる
-    const w2 = setup(3);
+    assert.equal(n.filter(x => x.kind === "plague").length, 5, "各種5個(全部同じ音符を5回選べる)");
+    const results = [];
+    for (let i = 0; i < 4; i++) { results.push(pressAt(w, kindIndex(w, "plague", i))); assert.equal(results[i].hit, true); assert.equal(results[i].wide, false, (i + 1) + "回目はまだ画面全体にならない"); }
+    assert.equal(status(w).has("event:4", "lyre_plague"), false, "4回目までは半径5");
+    const fifth = pressAt(w, kindIndex(w, "plague", 4));
+    assert.deepEqual([fifth.hit, fifth.wide], [true, true], "5回目(最後)の選択で画面全体");
+    assert.equal(session(w).presses, 5);
+    assert.equal(status(w).has("event:4", "lyre_plague"), true);
+    // 6回目は音符に使われない(回数は増えない・結果も増えない)
+    attack(w);
+    assert.equal(session(w).presses, 5); assert.equal(plain(api(w).getResults()).length, 5, "6回目は選べない");
+    // Lv1〜2は3回: 4回目は使われない
+    for (const lv of [1, 2]) {
+        const wl = setup(lv);
+        use(wl);
+        assert.equal(session(wl).maxPresses, 3);
+        for (let i = 0; i < 3; i++) pressAt(wl, kindIndex(wl, "plague", i));
+        attack(wl);
+        assert.equal(session(wl).presses, 3, "Lv" + lv + "は3回まで"); assert.equal(plain(api(wl).getResults()).length, 3);
+    }
+    // 5回のうち1つでも違う音符なら画面全体にならない(最後の1回が別の音符)
+    const w2 = setup(3, { keep: [4] });
+    placeEnemy(w2, 4, center(w2).x + 7, center(w2).y + 2);
     use(w2);
-    const miss = pressAt(w2, 19, 8);
-    assert.equal(miss.hit, false);
+    for (let i = 0; i < 4; i++) pressAt(w2, kindIndex(w2, "plague", i));
+    const last2 = pressAt(w2, kindIndex(w2, "attack", 4));
+    assert.deepEqual([last2.hit, last2.wide], [true, false]); assert.equal(status(w2).has("event:4", "lyre_plague"), false, "混ざったら画面全体にならない(病は半径5の敵だけ)");
+    // 外れた押下も1回に数え、5回で打ち切り(外れ・取消の挙動は従来どおり)
+    const w3 = setup(3);
+    use(w3);
+    pressAt(w3, 0, 0);
+    const miss = pressAt(w3, 19, 8); // 最後の音符を8frame過ぎたあと = 外れ
+    assert.equal(miss.hit, false); assert.equal(session(w3).presses, 2);
+    // UIの回数表示(描画できる環境のとき): 使った回数/選べる回数
+    const ui = plain(api(w3).getUi());
+    if (ui.active) assert.equal(ui.counter, "2/5");
+    // 判定の幅はLv3では前後4frame
+    assert.equal(api(w3).config(3).windowFrames, 4);
 });
 
 test("仲間(PartyRoster): ヒールの音符は半径5の仲間も回復(即時100)。半径の外の仲間は回復しない。火力・速度は主人公のみ", () => {

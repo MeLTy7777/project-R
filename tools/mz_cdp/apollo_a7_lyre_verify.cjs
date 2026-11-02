@@ -65,7 +65,7 @@ const CARD = "apollo_lyre_rhythm", API = "ProjectRApolloLyreRhythm", GV = "Proje
     const lib = await ev(`Promise.all(${JSON.stringify(libs)}.map(function(n) { return Promise.resolve(getAnimationFromLibrary(n)).then(function(a) { return !!a; }, function() { return false; }); })).then(function(r) { return r.every(Boolean); })`);
     const files = libs.map(n => `img/pictures/Animation/${n}.png`).every(f => fs.existsSync(f));
     const d = v.def;
-    rec("Y0 boot", d.maxCopies === 2 && d.cooldownSeconds === 4 && d.maxLevel === 3 && d.rarity === "special" && d.targetType === "instant" && v.c1.notes === 12 && v.c2.screenWide === true && v.c2.cleanse === true && v.c3.notes === 20 && v.c3.maxPresses === 3
+    rec("Y0 boot", d.maxCopies === 2 && d.cooldownSeconds === 4 && d.maxLevel === 3 && d.rarity === "special" && d.targetType === "instant" && v.c1.notes === 12 && v.c2.screenWide === true && v.c2.cleanse === true && v.c3.notes === 20 && v.c3.maxPresses === 5 && v.c1.maxPresses === 3 && v.c2.maxPresses === 3
       && v.keys.length === 5 && v.fields && v.legacy === 3 && v.attackKey === 1 && lib === true && files && v.status.implemented >= 7, JSON.stringify({ ...v, lib, files }).slice(0, 500));
   });
 
@@ -119,13 +119,16 @@ const CARD = "apollo_lyre_rhythm", API = "ProjectRApolloLyreRhythm", GV = "Proje
     rec("Y3 lv2", mid.far === false && third && third.wide === true && post.far === true && post.sleep === false && post.plague === false && third.cleansed >= 2, JSON.stringify({ mid, wide: third && third.wide, post, cleansed: third && third.cleansed }));
   });
 
-  await check("Y4 Lv3(実機): 音符が20個・押せるのは3回。全部同じ音符(速度)で3回=画面全体。判定が狭い(±4frame)", async () => {
+  await check("Y4 Lv3(実機): 音符が20個・選べるのはちょうど5回(5周ではない・6回目は選べず通常の攻撃)。5回とも同じ音符(速度)で+50%・5回目だけ画面全体。カウンターは5/5。判定が狭い(±4frame)", async () => {
     await scene(3);
     await fireTap(); await sleep(200);
     const n = (await notes()).length, ui = await json(`${API}.getUi()`);
-    const r1 = await pressNote(await kindIdx("speed", 0)), r2 = await pressNote(await kindIdx("speed", 2)), r3 = await pressNote(await kindIdx("speed", 4));
+    const r = []; for (const nth of [0, 1, 2, 3, 4]) r.push(await pressNote(await kindIdx("speed", nth)));
+    const shots0 = await ev("ProjectRGunSystem.status().shots"); await c.keyDown("J"); await sleep(60); await c.keyUp("J"); await sleep(300);
+    const sixth = { results: (await json(`${API}.getResults()`)).length, shots: (await ev("ProjectRGunSystem.status().shots")) - shots0 };
+    const r1 = r[0], r2 = r[1], r3 = r[2];
     const speed = await ev("ProjectRCardModifiers.moveSpeedFactor()");
-    rec("Y4 lv3", n === 20 && ui.sprites === 20 && r1 && r1.hit && r2 && r2.hit && r3 && r3.hit && r3.wide === true && Math.abs(speed - 1.3) < 1e-9, JSON.stringify({ n, ui, r: [r1 && r1.hit, r2 && r2.hit, r3 && r3.hit && r3.wide], speed }));
+    rec("Y4 lv3", n === 20 && ui.sprites === 20 && r1 && r1.hit && r2 && r2.hit && r.length === 5 && sixth.results === 5 && sixth.shots === 1 && r.every(x => x && x.hit) && r.slice(0, 4).every(x => x.wide !== true) && r[4].wide === true && Math.abs(speed - 1.5) < 1e-9, JSON.stringify({ n, ui, r: r.map(x => x && [x.hit, x.wide]), speed, sixth }));
   });
 
   await check("Y5 取消と後片付け・性能(実機): 演奏中・効果中の戦闘終了で、音符のUI・波紋・火力・速度・リジェネ・病が全部消える。frame処理時間", async () => {

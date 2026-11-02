@@ -34,8 +34,9 @@ test("登録とLv3の数値: 最大Lv3。追尾範囲 Lv1〜2=3 / Lv3=7。Lv3は
     assert.deepEqual([c2.radius, c2.beam, c2.count, c2.directions, c2.sideCount], [3, false, 21, 3, 3], "Lv2は不変(追尾3・ビームなし)");
     assert.deepEqual([c3.radius, c3.beam, c3.count, c3.directions, c3.sideCount, c3.perDirection, c3.spacing, c3.damage, c3.heal, c3.emitSeconds],
         [7, true, 14, 3, 2, 7, 80, 20, 50, 1], "Lv3: 追尾7・側面2方向x7=14本。Lv2の80度・20・50・1秒を引き継ぐ");
-    assert.deepEqual([c3.beamSeconds, c3.beamFrames, c3.beamHealRate, c3.beamDamageRate, c3.beamTickSeconds, c3.beamTickFrames, c3.beamMaxTicks, c3.beamTickHeal, c3.beamTickDamage, c3.beamWidth, c3.beamRange, c3.beamLength],
-        [3, 180, 300, 80, 0.1, 6, 30, 30, 8, 0.9, 12, 12]);
+    assert.deepEqual([c3.beamSeconds, c3.beamFrames, c3.beamHealRate, c3.beamDamageRate, c3.beamTickSeconds, c3.beamTickFrames, c3.beamMaxTicks, c3.beamTickHeal, c3.beamTickDamage, c3.beamWidth, c3.beamRange],
+        [3, 180, 300, 80, 0.1, 6, 30, 30, 8, 0.9, 0]);
+    assert.ok(c3.beamLength > 24, "ビームの到達は∞(マップの対角線までの有限の値): " + c3.beamLength);
     assert.equal(w.ctx.ProjectRCardCatalog.buildGodDeck("apollo") === null, require("./ProjectR_ApolloImplemented.cjs").STILL_RESERVED.length > 0, "Apolloの本番の初期デッキ(30枚)は有効にしない");
     deckApi(w).setCardLevel(EROS, 4);
     assert.ok(Number(deckApi(w).getPersistentData().cardOwnership[EROS].level) <= 3, "Lv4は無い");
@@ -45,16 +46,16 @@ test("登録とLv3の数値: 最大Lv3。追尾範囲 Lv1〜2=3 / Lv3=7。Lv3は
 });
 
 test("保護ファイルは変えていない(CardDeckCore・Hendrix・DotMove・黄金の矢・HitStop・CardBattleInput・PartyRoster・PartyCombat・CharacterPresentation・旧Apollo)", () => {
-    assert.equal(git("diff", "--stat", "c4ca439", "--", "js/plugins/ProjectR_CardDeckCore.js", "js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js", "js/plugins/ProjectR_ApolloGoldenVolley.js",
+    assert.equal(git("diff", "--stat", "c4ca439", "--", "js/plugins/ProjectR_CardDeckCore.js", "js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js",
         "js/plugins/ProjectR_ApolloGoldenArrow.js", "js/plugins/ProjectR_HitStop.js", "js/plugins/ProjectR_CardBattleInput.js", "js/plugins/ProjectR_PartyRoster.js", "js/plugins/ProjectR_PartyCombat.js", "js/plugins/ProjectR_CharacterPresentation.js").trim(), "");
 });
 
 test("バランス/F6: ビームの持続・回復/秒・ダメージ/秒・間隔・幅・長さがLv3の行にあり、数値の置き換えが累積規則どおり。不正値は拒否し、発動も拒否して非消費", () => {
     const w = lv3();
     const fields = plain(balanceOf(w).fields());
-    for (const key of ["beamDurationSeconds", "beamHealPerSecond", "beamDamagePerSecond", "beamTickSeconds", "beamWidthTiles", "beamRangeTiles", "homingRadiusTiles"]) assert.ok(fields[key], key);
+    for (const key of ["beamDurationSeconds", "beamHealPerSecond", "beamDamagePerSecond", "beamTickSeconds", "beamWidthTiles", "bowBeamRangeTiles", "homingRadiusTiles"]) assert.ok(fields[key], key);
     const described = JSON.stringify(plain(balanceOf(w).describe(EROS)));
-    for (const key of ["beamDurationSeconds", "beamHealPerSecond", "beamDamagePerSecond", "beamTickSeconds", "beamWidthTiles", "beamRangeTiles"]) assert.ok(described.includes(key), key + " がF6の表に出る");
+    for (const key of ["beamDurationSeconds", "beamHealPerSecond", "beamDamagePerSecond", "beamTickSeconds", "beamWidthTiles", "bowBeamRangeTiles"]) assert.ok(described.includes(key), key + " がF6の表に出る");
     assert.equal(balanceOf(w).validate(EROS, 3, "beamDurationSeconds", 5).ok, false, "持続の上限は4秒(Eventの安全網300frame未満)");
     assert.equal(balanceOf(w).validate(EROS, 3, "beamTickSeconds", 0.01).ok, false);
     assert.equal(balanceOf(w).validate(EROS, 3, "beamWidthTiles", 0).ok, false);
@@ -110,7 +111,7 @@ test("Lv3の本数: 側面の2方向(狙いの左右80度)x7本=14本だけが�
     const first = log.filter(e => e.slot === 0).map(e => Math.round(e.degree));
     assert.deepEqual(first, [10, 170], "狙い90の左右80度");
     assert.ok(maxArrowEvents <= 14, "矢のEventは同時に14まで: " + maxArrowEvents);
-    assert.ok(maxSegments >= 1 && maxSegments <= 12, "ビームの区間Eventは長さ12マスで最大12: " + maxSegments);
+    assert.ok(maxSegments >= 1 && maxSegments <= api(w).segmentBudget(), "ビームの区間Event(絵は画面に映る範囲まで)は予算以内: " + maxSegments);
     assert.ok(Math.abs(activeFrames - 180) <= 1, "ビームは3秒(180更新): " + activeFrames);
     assert.equal(seenBeams.size, 1, "ビームは1本");
     assert.equal(lastResult(w).arrows, 14);
@@ -344,14 +345,14 @@ test("演出と上限: カットイン・ArmExtend・Apolloは1回。弓・閃�
     assert.equal(spy.se.filter(n => n === "Bell1").length, 1, "ビームの始まりの音は1回");
     assert.ok(spy.se.filter(n => n === "Chime2").length <= 4);
     assert.ok(spy.se.filter(n => n === "Chime1").length <= 14 + 12, "命中の音は矢の命中数+ビームの間引き(15更新に1回=12回)以内: " + spy.se.length);
-    assert.ok(max.events <= 14 && max.segments <= 12 && max.glows <= 6 && max.short <= 6 && max.beamGlow <= 1, JSON.stringify(max));
-    assert.ok(max.total <= 14 + 12 + 6 + 1 + 6, JSON.stringify(max));
+    assert.ok(max.events <= 14 && max.segments <= api(w).segmentBudget() && max.glows <= 6 && max.short <= 6 && max.beamGlow <= 1, JSON.stringify(max));
+    assert.ok(max.total <= 14 + api(w).segmentBudget() + 6 + 1 + 6, JSON.stringify(max));
     assert.equal(plain(api(w).getTempObjectCount()).total, 0); assert.equal(beamSegmentEvents(w).length, 0);
     // ビームの長さの上限
-    const big = lv3({ balance: b => b.ctx.ProjectRCardBalance.setOverride(EROS, 3, "beamRangeTiles", 100) });
+    const big = lv3({ balance: b => b.ctx.ProjectRCardBalance.setOverride(EROS, 3, "bowBeamRangeTiles", 100) });
     parkOthers(big, []); aimDegree(big, 90, 3); fire(big); frames(big, 3);
-    assert.equal(beamOf(big).length, 24, "ビームの長さは24マスが上限(見えない当たりを作らない)");
-    assert.ok(beamSegmentEvents(big).length <= 24);
+    assert.ok(beamOf(big).length > 24 && beamOf(big).length <= 100 + 1e-9, "有限の射程100でも、長さはマップの端までで止まる(24マスの上限は無い): " + beamOf(big).length);
+    assert.ok(beamSegmentEvents(big).length <= api(big).segmentBudget(), "区間Eventは画面に映る範囲の予算以内(見えない当たりも、無限のEventも作らない)");
     const g = api(w).geometry3;
     assert.equal(g.edgeDistance({ x: w.ctx.$gameMap.width() - 3, y: 10 }, 90), 3, "マップの端でビームは短くなる");
     assert.equal(g.convexOverlap([{ x: 0, y: 0 }, { x: 2, y: 0 }, { x: 2, y: 1 }, { x: 0, y: 1 }], [{ x: 2, y: 0 }, { x: 3, y: 0 }, { x: 3, y: 1 }, { x: 2, y: 1 }]), false, "接するだけは重ならない");

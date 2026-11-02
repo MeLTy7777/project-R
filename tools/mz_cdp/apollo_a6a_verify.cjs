@@ -126,6 +126,7 @@ const CARD = "apollo_eros_arrow", API = "ProjectRApolloErosArrow", GV = "Project
 
   await check("E4 味方への追尾と50回復(実機): 出撃中の仲間のHPが50ずつ戻り(最大400)、<enemy>枠のEventにダメージは入らない", async () => {
     await scene({});
+    for (const id of [2, 3, 4, 5]) await locate(id, 2 + id, 34); // 射程が∞なので、矢の通り道から離れた左下へ退避
     await addAlly(6, 15, 14, 100, 400);
     await aimAt(15, 15); await sleep(200);
     const hp0 = await allyHp(), enemyHp0 = await barHp(6);

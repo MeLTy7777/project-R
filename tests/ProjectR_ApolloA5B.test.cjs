@@ -336,7 +336,7 @@ test("VFX: ビームの区間(3マス)を並べて再生し、終わったあと
     hold(w);
     const beamPlay = plays.find(p => p[0][0] === "apollo_volley.beam");
     assert.ok(beamPlay, "ビームのVFXを再生");
-    const limit = beam(w).limit;
+    const limit = Math.min(beam(w).limit, api(w).visualReach());
     assert.ok(Math.abs(beamPlay[0][1].length - limit) < 1e-9 && beamPlay[0][1].degree === 90);
     assert.equal(beamPlay[1].ok, true); assert.equal(beamPlay[1].mode, "beam");
     assert.equal(beamPlay[1].segments, Math.ceil(limit / 3 - 1e-9), "3マスの区間を並べる");
@@ -387,8 +387,8 @@ test("バランス設定: ビームの幅・速さ・射程・ヒット間隔・
     const base = volleyWorld({ level: 3 });
     const B = base.ctx.ProjectRCardBalance;
     const cfg = plain(api(base).beamConfig());
-    assert.deepEqual(cfg, { width: 3, speed: 40, range: 40, perTile: 3, damage: 50, maxHits: 11, stopFrames: 3, stopMax: 30 });
-    for (const [key, value] of [["beamWidthTiles", 0], ["beamSpeed", 0], ["beamHitsPerTile", 0], ["beamMaxHitsPerTarget", 0], ["beamHitDamage", -1], ["hitStopFrames", -1], ["beamRangeTiles", 0]]) {
+    assert.deepEqual(cfg, { width: 3, speed: 40, range: 0, perTile: 3, damage: 50, maxHits: 11, stopFrames: 3, stopMax: 30 });
+    for (const [key, value] of [["beamWidthTiles", 0], ["beamSpeed", 0], ["beamHitsPerTile", 0], ["beamMaxHitsPerTarget", 0], ["beamHitDamage", -1], ["hitStopFrames", -1], ["bowBeamRangeTiles", -1]]) {
         assert.equal(B.setOverride(VOLLEY, "constant", key, value).ok, false, `${key}=${value} は拒否`);
     }
     assert.equal(B.setOverride(VOLLEY, "constant", "beamMaxHitsPerTarget", 2.5).ok, false, "整数のみ");
@@ -397,7 +397,7 @@ test("バランス設定: ビームの幅・速さ・射程・ヒット間隔・
     parkOthers(w, [3, 4]);
     putAt(w, 3, 90, 5, 1.2); // 幅3なら当たり(体の端0.7)、幅1(±0.5)なら体の端が0.7>0.5で外
     putAt(w, 4, 90, 4, 0);
-    tune(w, "beamWidthTiles", 1); tune(w, "beamHitDamage", 70); tune(w, "beamMaxHitsPerTarget", 3); tune(w, "beamRangeTiles", 6); tune(w, "beamSpeed", 20);
+    tune(w, "beamWidthTiles", 1); tune(w, "beamHitDamage", 70); tune(w, "beamMaxHitsPerTarget", 3); tune(w, "bowBeamRangeTiles", 6); tune(w, "beamSpeed", 20);
     aimDegree(w, 90, 4);
     hold(w);
     const b = beam(w);
@@ -414,7 +414,7 @@ test("バランス設定: ビームの幅・速さ・射程・ヒット間隔・
     assert.equal(api(h).effectsForLevel(2).projectileCount, 5);
     // 編集用: 項目の定義がある
     const defs = JSON.parse(fs.readFileSync(path.join(project, "data/ProjectR_CardBalance.json"), "utf8"));
-    for (const key of ["beamWidthTiles", "beamSpeed", "beamRangeTiles", "beamHitsPerTile", "beamHitDamage", "beamMaxHitsPerTarget", "hitStopFrames", "hitStopMaxFrames"]) {
+    for (const key of ["beamWidthTiles", "beamSpeed", "bowBeamRangeTiles", "beamHitsPerTile", "beamHitDamage", "beamMaxHitsPerTarget", "hitStopFrames", "hitStopMaxFrames"]) {
         assert.ok(defs.fields[key] && !defs.fields[key].reserved, key);
         assert.ok(Object.prototype.hasOwnProperty.call(defs.cards[VOLLEY].constants, key), key);
     }

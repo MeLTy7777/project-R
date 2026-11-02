@@ -168,9 +168,9 @@ test("見た目とダメージの一致: 全レーンが同じ長さなら幅3�
     for (const p of lanePlays) {
         const lane = lanes.find(l => Math.abs(l.center - p.ctx.lateral) < 1e-9);
         assert.ok(lane, "レーンの中心");
-        assert.ok(Math.abs(p.ctx.length - lane.limit) < 1e-9, `描く長さ = レーンの届く長さ: ${p.ctx.length} vs ${lane.limit}`);
+        assert.ok(Math.abs(p.ctx.length - Math.min(lane.limit, api(w).visualReach())) < 1e-9, `描く長さ = レーンの届く長さ: ${p.ctx.length} vs ${lane.limit}`);
         assert.equal(p.ctx.degree, 90); assert.equal(p.result.mode, "beam");
-        assert.equal(p.result.segments, Math.ceil(lane.limit / 2 - 1e-9), "2マスの区間を並べる");
+        assert.equal(p.result.segments, Math.ceil(Math.min(lane.limit, api(w).visualReach()) / 2 - 1e-9), "2マスの区間を並べる");
     }
     settle(w); frames(w, 32);
     assert.equal(anchors(w).length, 0, "終わったら錨Eventも全部外す");
@@ -182,7 +182,7 @@ test("見た目とダメージの一致: 全レーンが同じ長さなら幅3�
     hold(o);
     assert.equal(spy2.plays.filter(p => p.key === "apollo_volley.beam").length, 1);
     assert.equal(spy2.plays.filter(p => p.key === "apollo_volley.beamlane").length, 0);
-    assert.ok(Math.abs(spy2.plays.find(p => p.key === "apollo_volley.beam").ctx.length - beam(o).limit) < 1e-9);
+    assert.ok(Math.abs(spy2.plays.find(p => p.key === "apollo_volley.beam").ctx.length - Math.min(beam(o).limit, api(o).visualReach())) < 1e-9);
     settle(o);
 });
 
@@ -194,7 +194,7 @@ test("ダメージ・ヒット間隔・上限・幅は変わらない: 遮られ
     hold(w); settle(w);
     const r = last(w);
     for (const t of r.targets) { assert.equal(t.hits, 11); assert.equal(t.damage, 550); }
-    assert.deepEqual(plain(api(w).beamConfig()), { width: 3, speed: 40, range: 40, perTile: 3, damage: 50, maxHits: 11, stopFrames: 3, stopMax: 30 });
+    assert.deepEqual(plain(api(w).beamConfig()), { width: 3, speed: 40, range: 0, perTile: 3, damage: 50, maxHits: 11, stopFrames: 3, stopMax: 30 });
     assert.equal(r.totalDamage, 1100);
     const samples = r.hits.filter(h => h.target === 4).map(h => h.sample);
     assert.equal(new Set(samples).size, 11);
