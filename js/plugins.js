@@ -74,6 +74,7 @@ var $plugins =
 ,{"name":"ProjectR_HermesVeil","status":true,"description":"v1.0.0 Hermes「ヴェイル」(設計ID 3): マウスに追従する半径5マスの魔法陣。5秒間、範囲内の味方は敵に標的にされず(Lv2 移動速度+30% / Lv3 クリティカル率+50%)。","parameters":{"CriticalMode":"additive","OverlapPolicy":"coexist","RequireFriendlyInside":"false","FriendlyEventTag":"<npc>"}}
 ,{"name":"ProjectR_HermesPsychopomp","status":true,"description":"v1.0.0 Hermes「サイコポンポス」(設計ID 2): 10秒間、主人公が倒した敵が魂を落とす。半径5マスで回収してHP回復(Lv3は攻撃力+3%を3秒・重ね掛け)。","parameters":{"StackingMode":"additive","AfterWindow":"remove","RecastPolicy":"refresh","CollectAtFullHp":"true","MaxHermesVisuals":"3"}}
 ,{"name":"ProjectR_HitStop","status":true,"description":"v1.0.0 共通ヒットストップ(当たったイベントだけを数frame止める。時計・入力・弾・他の敵は止めない)。","parameters":{}}
+,{"name":"ProjectR_EnemyAttack","status":true,"description":"v1.0.0 ProjectR 敵の攻撃の予約と予兆(Phase Apollo-A14): 溜め→実行の記録そのものを予兆として公開する。","parameters":{}}
 ,{"name":"ProjectR_ApolloStatus","status":true,"description":"v1.0.0 Apollo共通の状態台帳(弱点・傷・病など。対象ごとに被ダメージ倍率・弱点修飾・攻撃力倍率・継続ダメージを1つにまとめる)。","parameters":{}}
 ,{"name":"ProjectR_ApolloGoldenVolley","status":true,"description":"v1.2.0 Apollo「黄金の矢」(設計ID 8 / apollo_golden_volley)Lv1〜3: 矢を3/5/11本、Lv3の長押しは幅3マスのビーム。命中が確定してから消費。","parameters":{"SoundEffect":"Chime2","HitSoundEffect":"Chime1","ChargeReadySoundEffect":"Bell1"}}
 ,{"name":"ProjectR_ApolloErosArrow","status":true,"description":"v1.0.0 Apollo「エロスの矢」(設計ID 9 / apollo_eros_arrow)Lv1: 1秒で10本の追尾する矢。敵に20ダメージ・味方に50回復。命中が確定してから消費。","parameters":{"ArrowSoundEffect":"Chime2","ImpactSoundEffect":"Chime1"}}
@@ -89,6 +90,7 @@ var $plugins =
 ,{"name":"ProjectR_CombatTestArenaVeil","status":true,"description":"v1.0.0 DEV専用: ヴェイル用のDEV敵AI(Hendrix検知部品)とDEV味方(<npc>)。製品の敵AIではない。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaPsychopomp","status":true,"description":"v1.0.0 DEV専用: サイコポンポスの検証用フィクスチャ(Event IDの違う敵・距離・壁)。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaApollo","status":true,"description":"v1.0.0 DEV専用 Combat Test Arena 追加: 黄金の矢のテスト開始(Playtest限定)。","parameters":{}}
+,{"name":"ProjectR_CombatTestArenaEnemies","status":true,"description":"v1.0.0 Playtest専用: 攻撃の予兆の確認用の敵(遠距離1体・近接1体)。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaProduction","status":true,"description":"v1.0.0 DEV専用: Hermes本番デッキ(H2C-A)の検証ヘルパー(新しいゲーム・セーブ往復・旧セーブ再現。Playtest限定)。","parameters":{}}
 ,{"name":"ProjectR_SwordSystem","status":true,"description":"v1.0.0 通常の剣(近接)攻撃。マウス方向のDynamic Hitbox + 当たった敵本人へDatabase武器ダメージ。","parameters":{"ForwardTiles":"1.0","HitboxWidth":"1.5","HitboxDepth":"1.2","LifetimeFrames":"3","CooldownFrames":"18"}}
 ];

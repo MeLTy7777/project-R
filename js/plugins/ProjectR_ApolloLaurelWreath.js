@@ -248,6 +248,7 @@
         if (!event || event._erased || !event.event) return false;
         const data = event.event?.(), n = String(data?.note || "");
         if (!data || n.includes("<enemy>") || n.includes(ROOT_TAG) || n.includes(WALL_TAG)) return false;
+        if (typeof Game_MaithlDynamicEvent !== "undefined" && event instanceof Game_MaithlDynamicEvent) return false; // 近接の判定のEvent(spawnEventHitbox)は遠距離の弾ではない: 根の壁は防がない(A14)
         if (event._inheritedEnemyName) return true;
         const m = n.match(/<attacker:\s*(.+?)>/i);
         return !!m && !/^(player|actor)/i.test(m[1].trim());

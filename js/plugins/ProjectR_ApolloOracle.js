@@ -42,6 +42,8 @@
  *   使った瞬間に消費(instant)。
  *   ・Lv1(予測): 使った時点で飛んでいなかった「次の敵の攻撃」を、predictSeconds(5秒)の間、待ち受ける。敵が撃った弾(Hendrixの標準で作られた、敵の弾のEvent)が現れた瞬間に、
  *     その弾の進行方向へ予告線(金色。predictLengthTiles = 12マスまで。壁で止まる)を出し、弾が消えるまで追従して出し続ける。予告は「次の1回」だけ(その後の攻撃は予告しない)。
+ *     (A14)敵が ProjectREnemyAttack で「予約」した攻撃(溜め中の遠距離・近接。予約の記録そのものが予兆)があれば、いちばん早く実行されるものを予告する: 遠距離は向きの線、
+ *     近接は範囲(1タイルの四角)。溜めが進むほど濃くなる。溜めの途中で攻撃が中断・取消されたら予告も消え、実行されたら近接は消え、遠距離は同じ線が弾へ引き継がれる。
  *     予告の前に時間切れなら何も起きない(カードは消費済み)。敵の弾以外の攻撃(接触・近接)の予兆は、現行の敵AIに存在しないため対象外(未解決。API notifyAttack で、将来の敵AIが予兆を渡せる)。
  *   ・Lv2(スロー): 使ってから slowSeconds(1秒)の間、敵Eventと敵の弾の移動速度を slowFactor(x0.5)にする(主人公・仲間・味方の弾は含まない)。Apolloの後ろに時計の絵(1秒で一周)を出す。
  *     敵のAIの攻撃の間隔(クールダウン)は変わらない(移動・弾の速さだけ)。
@@ -122,6 +124,7 @@
         if (!event || event._erased || !event.event) return false;
         const data = event.event?.(), n = String(data?.note || "");
         if (!data || n.includes("<enemy>")) return false;
+        if (typeof Game_MaithlDynamicEvent !== "undefined" && event instanceof Game_MaithlDynamicEvent) return false; // 近接の判定のEvent(spawnEventHitbox)は弾ではない(A14)
         if (event._inheritedEnemyName) return true;
         const m = n.match(/<attacker:\s*(.+?)>/i);
         return !!m && !/^(player|actor)/i.test(m[1].trim());
@@ -186,6 +189,47 @@
         state.predicted++;
         playSe("PredictSoundEffect", "Sound2", 70, 100);
         note({ type: "predict", id, x: t.x, y: t.y, degree: t.degree, length: t.length, source: t.source });
+        return t;
+    };
+
+    // 攻撃の予兆(ProjectREnemyAttack): 近接の範囲の表示(1つのタイルの半透明の四角)。溜めが進むほど濃くなる。
+    const createArea = area => {
+        try {
+            if (typeof Sprite === "undefined" || typeof Bitmap === "undefined") return null;
+            const scene = SceneManager._scene;
+            if (!scene || typeof scene.addChild !== "function") return null;
+            const tile = map()?.tileWidth?.() || 48, w = Math.max(8, Math.round(area.width * tile)), h = Math.max(8, Math.round(area.height * tile));
+            const bitmap = new Bitmap(w, h);
+            bitmap.fillRect(0, 0, w, h, "rgba(255,225,120,0.45)");
+            bitmap.fillRect(0, 0, w, 3, "rgba(255,245,190,0.95)"); bitmap.fillRect(0, h - 3, w, 3, "rgba(255,245,190,0.95)"); bitmap.fillRect(0, 0, 3, h, "rgba(255,245,190,0.95)"); bitmap.fillRect(w - 3, 0, 3, h, "rgba(255,245,190,0.95)");
+            const sprite = new Sprite(bitmap);
+            sprite.anchor.set(0.5, 0.5);
+            scene.addChild(sprite);
+            return sprite;
+        } catch (_error) { return null; }
+    };
+    const placeArea = t => {
+        const sprite = t.sprite;
+        if (!sprite || !t.area) return;
+        try {
+            const m = map(), tw = m.tileWidth?.() || 48, th = m.tileHeight?.() || 48;
+            sprite.x = (t.area.x - m.displayX()) * tw; sprite.y = (t.area.y - m.displayY()) * th;
+            sprite.opacity = Math.round(90 + 150 * (1 - Math.max(0, t.framesLeft) / Math.max(1, t.windup)));
+        } catch (_error) { /* 表示のみ */ }
+    };
+    const placeAny = t => { if (t.kind === "melee") placeArea(t); else placeLine(t); };
+    // ProjectREnemyAttack に予約された本物の攻撃(溜め中)を予告にする。向き・範囲・タイミングは予約の記録そのまま(予測を作らない)。
+    const addAttackTelegraph = record => {
+        if (!state || state.telegraphs.size >= MAX_TELEGRAPHS || !record) return null;
+        const id = "a" + record.id, melee = record.kind === "melee";
+        const t = { id, source: "attack", attackId: record.id, kind: record.kind, x: record.origin.x, y: record.origin.y, degree: record.degree, length: 0, age: 0, eventId: record.eventId, area: record.area, framesLeft: record.framesLeft, windup: record.windup, sprite: null };
+        if (melee) { t.sprite = createArea(record.area); }
+        else { t.length = pathLength(record.origin, record.degree, Math.min(record.length, state.cfg.length)); t.sprite = createLine({ length: state.cfg.length }); }
+        state.telegraphs.set(id, t);
+        placeAny(t);
+        state.predicted++;
+        playSe("PredictSoundEffect", "Sound2", 70, 100);
+        note({ type: "predict", id, source: "attack", kind: record.kind, attackId: record.id, degree: record.degree, framesLeft: record.framesLeft });
         return t;
     };
 
@@ -263,7 +307,9 @@
         // 予測: 使った後に最初に現れた敵の弾
         if (cfg.predict && !s.predictDone && s.framesLeft > 0) {
             s.framesLeft--;
-            for (const event of m.events()) {
+            const upcoming = [...(root.ProjectREnemyAttack?.list?.() ?? [])].sort((a, b) => a.framesLeft - b.framesLeft || a.id - b.id); // 溜め中の攻撃のうち、いちばん早く実行されるもの = 次の攻撃
+            if (upcoming.length && addAttackTelegraph(upcoming[0])) { s.predictDone = true; }
+            else for (const event of m.events()) {
                 if (!event || s.seen.has(event.eventId()) || !isEnemyProjectile(event)) continue;
                 const c = eventCenter(event);
                 s.seen.add(event.eventId());
@@ -276,13 +322,23 @@
         // 予告線の追従(弾が消えたら外す)
         for (const [id, t] of [...s.telegraphs]) {
             t.age++;
+            if (t.source === "attack") {
+                const r = root.ProjectREnemyAttack?.get?.(t.attackId);
+                if (r) { t.framesLeft = r.framesLeft; placeAny(t); continue; }
+                const o = root.ProjectREnemyAttack?.getOutcome?.(t.attackId), bolt = o && o.state === "fired" && o.projectileId != null ? m.event(o.projectileId) : null;
+                if (bolt && !bolt._erased && !s.telegraphs.has(o.projectileId)) { // 遠距離: 実行された弾へ、同じ予告線を引き継ぐ
+                    s.telegraphs.delete(id); t.id = o.projectileId; t.source = "projectile"; t.eventId = o.projectileId; s.telegraphs.set(t.id, t);
+                    note({ type: "handoff", attackId: t.attackId, projectileId: t.id });
+                } else removeTelegraph(id, o && o.state === "cancelled" ? "attackCancelled" : "attackFired");
+                continue;
+            }
             if (t.source === "projectile") {
                 const e = m.event(id);
                 if (!e || e._erased) { removeTelegraph(id, "projectileGone"); continue; }
                 const c = eventCenter(e);
                 t.x = c.x; t.y = c.y; t.degree = headingOf(e); t.length = pathLength({ x: c.x, y: c.y }, t.degree, cfg.length);
             } else if (--t.framesLeft <= 0) { removeTelegraph(id, "expired"); continue; }
-            placeLine(t);
+            placeAny(t);
         }
         // スロー
         if (cfg.slow && s.slowLeft > 0) { s.slowLeft--; slowAll(); updateClock(); if (s.slowLeft <= 0) { clearSlow(); stopNote(s.clockNote); s.clockNote = null; note({ type: "slowEnd", serial: s.serial }); } }
@@ -328,7 +384,7 @@
     root.ProjectRApolloOracle = Object.freeze({
         CARD, implementedMaxLevel: IMPLEMENTED_MAX_LEVEL, cardLevel, config, isEnemyProjectile, notifyAttack,
         getState: () => state ? { serial: state.serial, level: state.level, predictFramesLeft: state.framesLeft, slowFramesLeft: state.slowLeft, predicted: state.predicted, predictDone: state.predictDone, lapsed: !!state.lapsed, clock: !!state.clockNote, bonus: state.bonus ? { ...state.bonus } : null, slowed: slowedEvents.size } : null,
-        getTelegraphs: () => state ? [...state.telegraphs.values()].map(t => ({ id: t.id, x: t.x, y: t.y, degree: t.degree, length: t.length, age: t.age, source: t.source, hasSprite: !!t.sprite })) : [],
+        getTelegraphs: () => state ? [...state.telegraphs.values()].map(t => ({ id: t.id, x: t.x, y: t.y, degree: t.degree, length: t.length, age: t.age, source: t.source, kind: t.kind ?? (t.source === "projectile" ? "projectile" : null), attackId: t.attackId ?? null, framesLeft: t.source === "attack" ? t.framesLeft : null, area: t.area ? { ...t.area } : null, hasSprite: !!t.sprite })) : [],
         getLastResult: () => lastResult ? JSON.parse(JSON.stringify(lastResult)) : null,
         getLog: () => log.map(e => ({ ...e })),
         getTempObjectCount: () => { const c = { lines: state ? [...state.telegraphs.values()].filter(t => t.sprite).length : 0, clock: state?.clockNote ? 1 : 0, slowed: slowedEvents.size }; c.total = c.lines + c.clock; return c; }
