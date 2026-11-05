@@ -94,4 +94,10 @@ var $plugins =
 ,{"name":"ProjectR_CombatTestArenaBoss","status":true,"description":"v1.0.0 Playtest専用: DEVボス戦(近接+遠距離の本物の予約攻撃・3フェーズ・計測)。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaProduction","status":true,"description":"v1.0.0 DEV専用: Hermes本番デッキ(H2C-A)の検証ヘルパー(新しいゲーム・セーブ往復・旧セーブ再現。Playtest限定)。","parameters":{}}
 ,{"name":"ProjectR_SwordSystem","status":true,"description":"v1.0.0 通常の剣(近接)攻撃。マウス方向のDynamic Hitbox + 当たった敵本人へDatabase武器ダメージ。","parameters":{"ForwardTiles":"1.0","HitboxWidth":"1.5","HitboxDepth":"1.2","LifetimeFrames":"3","CooldownFrames":"18"}}
+,{"name":"ProjectR_SoulBattlePoC","status":true,"description":"v0.1.0 ProjectR SOUL戦闘 P0 PoC(オプトイン・検証専用)。動く敵ハートに既存の攻撃を当てる。","parameters":{"HeartEnemyName":"魔獣","HitboxSize":"0.8"}}
+,{"name":"ProjectR_SoulBattle","status":true,"description":"v0.1.0 ProjectR SOUL戦闘 P1 コントローラ(オプトイン)。idle/attack/defense/cleanup、フェーズ自動遷移、防御中の攻撃入力遮断、戦闘中のセーブ禁止、確実な復元。","parameters":{"AttackSeconds":"8","DefenseSeconds":"5","Rounds":"0","ShowLabel":"true"}}
+,{"name":"ProjectR_SoulBattleMelee","status":true,"description":"v0.1.0 ProjectR SOUL戦闘 P2-C 近接アダプタ。SOUL中だけ、通常の剣・剣カード・Hermes奥義・薙ぎ払いを遠い敵ハートに届かせる。","parameters":{"Enabled":"true","MaxTipTiles":"8","Margin":"0.25"}}
+,{"name":"ProjectR_SoulBattleDodge","status":true,"description":"v0.1.0 ProjectR SOUL戦闘 P3-A 基本の回避AI(オプトイン)。敵ハートが飛んでくる矢・弾を見てから避ける。","parameters":{"ReactionFrames":"8","MoveSpeed":"9","DodgeDistance":"1.8","CooldownFrames":"40","RecoveryFrames":"24","ReturnSpeed":"2.5","BoundsHalfX":"4","BoundsHalfY":"2.5","HorizonFrames":"90","Margin":"0.3"}}
+,{"name":"ProjectR_SoulBattleAIData","status":true,"description":"v0.1.0 ProjectR SOUL戦闘 P3-B 回避AIのデータ。性格5種とDEVボスの数値表(ロジックなし)。","parameters":{}}
+,{"name":"ProjectR_SoulBattleSandbox","status":true,"description":"v0.1.0 DEV専用(Playtest限定) SOUL戦闘の手動テスト用サンドボックス。F8の1コマンドでアリーナ・カード・SOUL戦闘・回避AIを用意する。","parameters":{}}
 ];
