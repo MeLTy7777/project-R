@@ -1,0 +1,517 @@
+"use strict";
+// I3: SOUL戦闘の専用バトルHUD(ProjectR_SoulBattleHUD)。表示だけのプラグインなので、(1)SOUL戦闘の間だけ有効 (2)通常HUDを隠して正確に戻す
+// (3)表示する値は既存の実行中APIの読み取りだけ (4)解像度・オプションプラグインの欠如・繰り返し・失敗でも安全 (5)戦闘の中身(ダメージ・カード・AI)は変えない、を実エンジン(Map004 + 全plugin)で確かめる。
+// 描画(Bitmap/PIXI)はハーネスでは行われない。見た目は実機のスクリーンショット(tools/mz_cdp/soul_hud_verify.cjs)で確認する。
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const cp = require("node:child_process");
+const vm = require("node:vm");
+const fx = require("./ProjectR_ApolloA7Fixture.cjs");
+const { buildWorld, plain, attachHpBars, barHp, handIds, aimDegree, center } = fx;
+
+const project = path.join(__dirname, "..");
+const read = file => fs.readFileSync(path.join(project, file), "utf8");
+let passed = 0;
+function test(name, body) { body(); console.log(`ok ${++passed} - ${name}`); }
+const frames = (w, n) => { for (let i = 0; i < n; i++) w.frames(1); };
+const quietly = fn => { const original = console.log; console.log = () => {}; try { return fn(); } finally { console.log = original; } };
+const HAND = ["hermes_issen", "apollo_golden_volley", "apollo_eros_arrow", "hermes_sweep", "apollo_gigas_slayer"];
+
+// ---- 世界: A16テストと同じアリーナ + 画面の表示物の代用品(実機ではHendrix/BattleHUDが作るもの) ----
+const display = (original = true) => ({ renderable: original, visible: true, parent: null });
+const container = () => ({ children: [], addChild(c) { c.parent = this; this.children.push(c); return c; }, removeChild(c) { const i = this.children.indexOf(c); if (i >= 0) this.children.splice(i, 1); c.parent = null; } });
+function decorate(scene, originals = {}) {
+    const tilemap = container();
+    const sp = scene._spriteset;
+    sp.addChild = c => { c.parent = sp; sp.children.push(c); return c; };
+    sp.removeChild = c => { const i = sp.children.indexOf(c); if (i >= 0) sp.children.splice(i, 1); c.parent = null; };
+    sp._tilemap = tilemap;
+    const bars = sp._eventHpBars;
+    bars.forEach((bar, i) => { bar.renderable = i === 1 && originals.bar1 === false ? false : true; });
+    const extra = { hudLayer: display(), menuButton: display(originals.menuButton ?? true), hendrixHud: display(), battleExtra: display() };
+    scene._projectRBattleHudLayer = extra.hudLayer; scene._menuButton = extra.menuButton; scene.hendrixHuds = [{ container: extra.hendrixHud, index: 0, x: 0, y: 0, updateHUD() {}, updateDrag() {}, evaluateX: () => 0, evaluateY: () => 0 }];
+    scene._decor = { tilemap, extra };
+    return scene._decor;
+}
+function arenaWorld(options = {}) {
+    const w = buildWorld();
+    assert.equal(w.failures.length, 0);
+    w.enterMap(4, 25, 26); frames(w, 5);
+    w.run("Math.random = () => 0.999;");
+    w.sb = w.ctx.ProjectRSoulSandbox; w.soul = w.ctx.ProjectRSoulBattle; w.hud = w.ctx.ProjectRSoulBattleHUD; w.deck = w.ctx.ProjectRCardDeck; w.bf = w.ctx.ProjectRBossFramework;
+    w.sc = () => w.ctx.SceneManager._scene;
+    w.originals = options.originals || {};
+    w.decor = decorate(w.sc(), options.originals);
+    w.ends = []; w.soul.onEnd(e => w.ends.push(plain(e).reason));
+    w.calls = [];
+    const original = w.ctx.PluginManager.callCommand;
+    w.ctx.PluginManager.callCommand = function(interpreter, plugin, name, args) { w.calls.push({ name, args }); return original.apply(this, arguments); };
+    return w;
+}
+function a16(options = {}, worldOptions = {}) {
+    const w = arenaWorld(worldOptions);
+    const r = quietly(() => plain(w.sb.start("a16", { openingHand: HAND, ...options })));
+    assert.equal(r.ok, true, JSON.stringify(r));
+    w.heart = r.heartEventId;
+    prepareDisplay(w);
+    frames(w, 6);
+    return w;
+}
+// ハーネスのPIXI代用品には renderable が無いので、実機の DisplayObject と同じく true を持たせる(開発用ラベル・ハートのHPバー)。
+function prepareDisplay(w) {
+    const sp = w.sc()._spriteset;
+    for (const child of sp.children) if (child._projectRSoulBattleLabel && child.renderable === undefined) child.renderable = true;
+    // 敵HPバー(ハートのバー + ダミー2体のバー)。ダミー(イベント3)のバーだけ、元から renderable=false にできる(元の値の保存を確かめる)
+    const wanted = [w.heart, 3, 4].filter(id => id && !sp._eventHpBars.some(b => b._event === w.ctx.$gameMap.event(id)));
+    if (wanted.length) attachHpBars(w, wanted, 1000);
+    sp._eventHpBars.forEach((bar, i) => { if (bar.renderable === undefined) bar.renderable = true; if (bar._event.eventId() === 3 && w.originals.bar1 === false && !w.bar1Set) { bar.renderable = false; w.bar1Set = true; } });
+}
+const hurt = (w, id, amount) => w.ctx.PluginManager.callCommand(Object.assign(new w.ctx.Game_Interpreter(), { _eventId: 0 }), "Hendrix_Action_Engine", "UpdateEventHp", { eventId: String(id), value: `-${amount}`, exceedMaxHealth: "false" });
+const hiddenFlags = w => ({ layer: w.decor.extra.hudLayer.renderable, menu: w.decor.extra.menuButton.renderable, hendrix: w.decor.extra.hendrixHud.renderable, bars: w.sc()._spriteset._eventHpBars.map(b => b.renderable) });
+const dimCount = w => w.decor.tilemap.children.filter(c => c._projectRSoulDim).length;
+const model = w => plain(w.hud.getViewModel());
+const slotAt = (w, i) => model(w).hand[i];
+
+// ---------------------------------------------------------------- 登録・安全性 ----------------------------------------------------------------
+test("登録と範囲: SOULの後・BattleHUD/CombatExtrasHUD/Sandboxの後に1回だけ。表示専用(ゲームの状態・ダメージ・セーブを書き換えない)。保護されたファイルは変更なし", () => {
+    const config = {};
+    vm.runInNewContext(read("js/plugins.js"), config);
+    const names = config.$plugins.map(p => p.name);
+    assert.equal(names.filter(n => n === "ProjectR_SoulBattleHUD").length, 1);
+    const index = names.indexOf("ProjectR_SoulBattleHUD");
+    for (const dep of ["ProjectR_SoulBattle", "ProjectR_BattleHUD", "ProjectR_CombatExtrasHUD", "ProjectR_SoulBattleSandbox", "ProjectR_BossFramework"]) assert.ok(names.indexOf(dep) >= 0 && names.indexOf(dep) < index, dep + " より後");
+    assert.equal(config.$plugins[index].status, true);
+    const source = read("js/plugins/ProjectR_SoulBattleHUD.js");
+    const header = source.split("*/")[0];
+    assert.match(header, /@base ProjectR_SoulBattle\b/);
+    const code = source.split("*/").slice(1).join("*/");
+    assert.doesNotMatch(code, /UpdateEventHp|\.setHp\(|gainHp|saveGame|StorageManager|\$gameSystem\.\w+\s*=[^=]|\$gameSystem\._\w+\s*=[^=]|\$gameVariables\.setValue|\$gameSwitches\.setValue/, "ゲーム状態・セーブを書かない(通常HUDの visible も触らないことは下の挙動テストで確認)");
+    assert.doesNotMatch(code, /requestUseCard|startCardBattle|endCardBattle|registerBoss|\.start\(|\.end\(|skipPhase|moveHeartTo/, "戦闘の制御を呼ばない");
+    const status = cp.execFileSync("git", ["status", "--porcelain"], { cwd: project, encoding: "utf8" }).split(/\r?\n/);
+    for (const file of ["js/plugins/ProjectR_BattleHUD.js", "js/plugins/ProjectR_CombatExtrasHUD.js", "js/plugins/ProjectR_SoulBattle.js", "js/plugins/ProjectR_SoulBattleSandbox.js", "js/plugins/ProjectR_SoulBattleDodge.js",
+        "js/plugins/ProjectR_BossFramework.js", "js/plugins/ProjectR_CardDeckCore.js", "js/plugins/Hendrix_Hotbar_Creator.js", "js/plugins/Hendrix_Action_Engine.js", "data/Skills.json", "data/Weapons.json", "data/Enemies.json"]) {
+        assert.ok(!status.some(line => line.slice(3) === file), file + " は変更されていない");
+    }
+});
+
+// ---------------------------------------------------------------- 有効になる条件 ----------------------------------------------------------------
+test("SOUL戦闘の間だけ有効: 通常のマップ戦闘(カード戦闘・敵が画面内)では何も隠さず、レイヤーも暗転も作らない", () => {
+    const w = arenaWorld();
+    frames(w, 10);
+    assert.deepEqual([w.hud.isActive(), w.hud.getState().hiddenCount, !!w.sc()._projectRSoulHud, dimCount(w)], [false, 0, false, 0]);
+    assert.equal(plain(w.ctx.ProjectRCombatTestArena.startScenario("apollo")).ok, true);
+    frames(w, 30);
+    assert.equal(w.deck.isCardBattleActive(), true, "カード戦闘は動いている");
+    assert.deepEqual(hiddenFlags(w), { layer: true, menu: true, hendrix: true, bars: w.sc()._spriteset._eventHpBars.map(() => true) });
+    assert.deepEqual([w.hud.isActive(), w.hud.getState().hiddenCount, !!w.sc()._projectRSoulHud, dimCount(w)], [false, 0, false, 0]);
+    assert.equal(w.hud.getViewModel(), null, "SOULでなければビューモデルは無い");
+    // P0のハート単体(SOULコントローラなし)でも有効にならない
+    w.ctx.ProjectRCombatTestArena.endTest(); frames(w, 5);
+    const c = center(w);
+    assert.equal(w.ctx.ProjectRSoulBattlePoC.start({ centerX: c.x, centerY: c.y - 8, pattern: "static" }).ok, true);
+    frames(w, 10);
+    assert.equal(w.hud.isActive(), false);
+    w.ctx.ProjectRSoulBattlePoC.end("t");
+});
+
+test("開始: 通常HUD(BattleHUD・メニューボタン・Hendrix HUD・敵HPバー・開発用ラベル)を隠し、暗転をタイルマップ内に挿入し、専用レイヤーをBattleHUDの上に付ける。visible/セーブは触らない", () => {
+    const w = a16();
+    frames(w, 6);
+    const flags = hiddenFlags(w);
+    assert.equal(flags.layer, false); assert.equal(flags.menu, false); assert.equal(flags.hendrix, false);
+    assert.ok(flags.bars.length >= 1 && flags.bars.every(v => v === false), "敵HPバーは全て隠れる(ハートのバーも)");
+    const label = w.sc()._spriteset.children.find(c => c._projectRSoulBattleLabel);
+    assert.ok(label, "開発用ラベルがある"); assert.equal(label.renderable, false);
+    for (const obj of [w.decor.extra.hudLayer, w.decor.extra.hendrixHud]) assert.equal(obj.visible, true, "visible は触らない(メニューボタンの visible はMZ本体が管理する)");
+    const state = plain(w.hud.getState());
+    assert.deepEqual([state.active, state.layer, state.layerVisible, state.dim], [true, true, true, true]);
+    assert.equal(state.hiddenCount, 3 + w.sc()._spriteset._eventHpBars.length + 1, "BattleHUD・メニューボタン・Hendrix HUD・敵HPバー全て・ラベルを記録している");
+    assert.equal(dimCount(w), 1);
+    const dim = w.decor.tilemap.children.find(c => c._projectRSoulDim);
+    assert.equal(dim.z, 2, "地面の上・通常優先のキャラの下");
+    assert.ok(dim.z > 1 && dim.z < 3);
+    const layer = w.sc()._projectRSoulHud;
+    assert.equal(layer.parent, w.sc(), "シーンの子");
+    const kids = w.sc().children;
+    assert.ok(kids.indexOf(layer) > kids.indexOf(w.decor.extra.hudLayer) || !kids.includes(w.decor.extra.hudLayer), "BattleHUDの上");
+    assert.equal(JSON.stringify(w.ctx.$gameSystem).includes("SoulHud"), false, "セーブに何も足さない");
+    assert.equal(w.ctx.$gameSystem.isSaveEnabled(), false, "セーブ禁止はSOUL側の責務のまま");
+});
+
+// ---------------------------------------------------------------- ビューモデル(既存APIの読み取り) ----------------------------------------------------------------
+test("表示する値は実行中のAPIそのもの: ボス名/HP/フェーズ=BossFramework、フェーズ/残り時間=SOUL、プレイヤーHP=先頭アクター、手札=本物のデッキ(名前・Level・Cooldown)", () => {
+    const w = a16();
+    const m = model(w);
+    const hud = plain(w.bf.getHudState()), st = plain(w.soul.getState()), leader = w.ctx.$gameParty.leader();
+    assert.equal(m.phase, "attack");
+    assert.deepEqual([m.boss.source, m.boss.name, m.boss.hp, m.boss.maxHp, m.boss.phaseLabel, m.boss.phaseIndex, m.boss.phaseCount], ["bossFramework", hud.name, hud.hp, hud.maxHp, hud.phaseLabel, hud.phaseIndex, hud.phaseCount]);
+    assert.ok(Math.abs(m.secondsLeft - st.secondsLeft) < 0.2 && m.round === st.round);
+    assert.deepEqual([m.player.name, m.player.hp, m.player.maxHp], [leader.name(), leader.hp, leader.mhp]);
+    assert.deepEqual(m.hand.map(s => s.cardId), HAND, "手札は5枚・本物の順番");
+    assert.deepEqual(m.hand.map(s => s.key), ["Q", "E", "X", "C", "V"]);
+    const defs = w.deck.definitions;
+    for (const slot of m.hand) {
+        assert.equal(slot.level, w.deck.getPersistentData().cardOwnership[slot.cardId].level, slot.cardId + " のLevel");
+        assert.equal(slot.cooldownSeconds, defs.card(slot.cardId).cooldownSeconds, slot.cardId + " のCooldown");
+        assert.equal(slot.name, w.ctx.ProjectRBattleHUD.getCardPresentation(slot.cardId).name, slot.cardId + " の名前はBattleHUDと同じ");
+        assert.equal(slot.state, "ready", slot.cardId);
+    }
+    assert.equal(m.hand[0].cooldownSeconds, 7, "一閃のCooldown(7秒)");
+    const state = plain(w.deck.getBattleState());
+    assert.deepEqual(m.counts, { draw: state.drawPile.length, discard: state.discardPile.length, cooldown: state.cooldownPile.length });
+    assert.equal(m.cardBattle, true);
+});
+
+test("値は並行して持たない: ハートのHP・プレイヤーHP・時間・手札が変われば、次の更新でビューモデルも変わる(HUD側にキャッシュした値を持たない)", () => {
+    const w = a16({ attackSeconds: 30 });
+    const id = w.heart;
+    const hp0 = model(w).boss.hp;
+    hurt(w, id, 400); frames(w, 6);
+    const m1 = model(w);
+    assert.deepEqual([m1.boss.hp, m1.boss.phaseLabel, m1.boss.phaseIndex], [plain(w.bf.getHudState()).hp, plain(w.bf.getHudState()).phaseLabel, 1]);
+    const leader = w.ctx.$gameParty.leader(); leader._hp = 100; frames(w, 6);
+    assert.equal(model(w).player.hp, 100);
+    const t0 = model(w).secondsLeft; frames(w, 70);
+    assert.ok(model(w).secondsLeft < t0 - 0.9, "残り時間が減る");
+    const before = handIds(w);
+    const cast = plain(w.deck.requestUseCard(0)); assert.ok(cast.ok || cast.pending, JSON.stringify(cast)); frames(w, 12);
+    const after = handIds(w);
+    assert.notDeepEqual(after, before);
+    assert.deepEqual(model(w).hand.map(s => s.cardId), after, "手札の入れ替わりを反映");
+    assert.equal(model(w).counts.cooldown, plain(w.deck.getBattleState()).cooldownPile.length);
+    leader._hp = leader.mhp;
+});
+
+test("カード枠の表示状態: 攻撃中=ready、移動カード(絶)=moveLock、防御ターン=全てlocked。同じカードのCooldown中の残り秒数を出す", () => {
+    const w = a16({ openingHand: ["hermes_zetsu", "hermes_issen", "hermes_issen", "hermes_sweep", "apollo_golden_volley"] });
+    frames(w, 6);
+    let m = model(w);
+    assert.equal(m.hand[0].state, "moveLock");
+    assert.deepEqual(m.hand.slice(1).map(s => s.state), ["ready", "ready", "ready", "ready"]);
+    const cast = plain(w.deck.requestUseCard(1)); assert.equal(cast.ok, true, JSON.stringify(cast)); frames(w, 15);
+    m = model(w);
+    const issen = m.hand.filter(s => s.cardId === "hermes_issen");
+    assert.ok(issen.length >= 1 && issen.every(s => s.cooling > 5 && s.cooling <= 7), "Cooldown中の同名カードの残り秒数 " + JSON.stringify(issen));
+    const pile = plain(w.deck.getBattleState()).cooldownPile.find(e => e.instance.cardId === "hermes_issen");
+    assert.ok(Math.abs(issen[0].cooling - pile.remainingSeconds) < 0.5);
+    w.soul.skipPhase(); frames(w, 6);
+    m = model(w);
+    assert.equal(m.phase, "defense");
+    assert.ok(m.hand.every(s => s.empty || s.state === "locked"), "防御ターンは全て LOCK 表示");
+    // 防御ターンでも カードは本当に使えない(HUDではなくSOULの責務)。表示と一致する
+    const pile0 = plain(w.deck.getBattleState()).cooldownPile.length;
+    assert.equal(plain(w.deck.requestUseCard(2)).reason, "soulDefense");
+    assert.equal(plain(w.deck.getBattleState()).cooldownPile.length, pile0);
+});
+
+test("防御ターン: バトルボックスの予約レイアウトだけ(攻撃の枠は消える)。ハート操作・弾幕・当たり判定は足さない: プレイヤー/ハート/弾の状態はHUDの有無で変わらない", () => {
+    const w = a16();
+    const layer = w.sc()._projectRSoulHud;
+    assert.equal(layer.box.visible, false, "攻撃ターンはボックス無し");
+    assert.ok(layer.corners.every(c => c.visible), "攻撃ターンは戦闘エリアの枠");
+    w.soul.skipPhase(); frames(w, 8);
+    assert.equal(w.hud.getViewModel().phase, "defense");
+    assert.equal(layer.box.visible, true, "防御ターンはボックス");
+    assert.ok(layer.corners.every(c => !c.visible), "枠は消える");
+    const events = () => w.ctx.$gameMap.events().filter(e => e && !e._erased).length;
+    const e0 = events(), player0 = [w.ctx.$gamePlayer._realX, w.ctx.$gamePlayer._realY];
+    frames(w, 60);
+    assert.equal(events(), e0, "HUDは弾やイベントを増やさない(弾幕なし)");
+    assert.deepEqual([w.ctx.$gamePlayer._realX, w.ctx.$gamePlayer._realY], player0, "プレイヤーは動かない(ハート操作なし)");
+    const dodge = plain(w.ctx.ProjectRSoulBattleDodge.getState());
+    assert.equal(dodge.active, true);
+    assert.equal(w.soul.getState().lockedPlayer, true);
+    assert.equal(w.ctx.ProjectRCardBattleInput.getBlockedReason({ code: "KeyU" }), "soulDefense");
+    w.soul.skipPhase(); frames(w, 8);
+    assert.equal(layer.box.visible, false); assert.ok(layer.corners.every(c => c.visible));
+});
+
+// ---------------------------------------------------------------- 復元 ----------------------------------------------------------------
+const checkRestored = (w, label, originals) => {
+    const flags = hiddenFlags(w);
+    assert.equal(flags.layer, true, label + ": BattleHUDの表示が元通り");
+    assert.equal(flags.menu, originals.menu, label + ": メニューボタンが元通り(元がfalseならfalseのまま)");
+    assert.equal(flags.hendrix, true, label);
+    assert.deepEqual(flags.bars, originals.bars, label + ": 敵HPバーが元通り");
+    const state = plain(w.hud.getState());
+    assert.deepEqual([state.active, state.hiddenCount, state.dim, state.layerVisible], [false, 0, false, false], label);
+    assert.equal(dimCount(w), 0, label + ": 暗転は外れる");
+    assert.equal(w.sc()._spriteset.children.filter(c => c._projectRSoulBattleLabel).length, 0, label + ": ラベルは片づく");
+};
+test("元の表示へ正確に戻す: 勝利・外から終了・カード戦闘の終了・戦闘セッション一括終了・マップ読み直しのどれでも1回だけ復元(元から隠れていた物は隠れたまま)", () => {
+    const cases = {
+        victory: w => { hurt(w, w.heart, 1500); frames(w, 8); },
+        externalEnd: w => { w.soul.end("external"); frames(w, 4); },
+        cardBattleEnded: w => { w.deck.endCardBattle(); frames(w, 4); },
+        combatEnded: w => { w.ctx.ProjectRCombatSession.endAll("external"); frames(w, 4); },
+        mapChanged: w => { w.ctx.$gameMap.setup(4); frames(w, 4); }
+    };
+    for (const [reason, trigger] of Object.entries(cases)) {
+        const w = a16({}, { originals: { menuButton: false, bar1: false } });
+        frames(w, 4);
+        assert.equal(w.decor.extra.menuButton.renderable, false);
+        assert.equal(w.hud.isActive(), true);
+        const restoredBefore = w.hud.getState().restores;
+        trigger(w);
+        assert.ok(w.ends.length >= 1, reason + ": SOULが終わった " + JSON.stringify(w.ends));
+        const state = plain(w.hud.getState());
+        assert.equal(state.restores, restoredBefore + 1, reason + ": 復元は1回だけ");
+        assert.deepEqual([state.active, state.hiddenCount, state.dim, state.layerVisible], [false, 0, false, false], reason);
+        assert.equal(dimCount(w), 0, reason);
+        assert.equal(w.decor.extra.menuButton.renderable, false, reason + ": 元からfalseだったメニューボタンはfalseのまま");
+        assert.equal(w.decor.extra.hudLayer.renderable, true, reason + ": BattleHUDは元通り");
+        assert.equal(w.decor.extra.hendrixHud.renderable, true, reason);
+        const bars = w.sc()._spriteset._eventHpBars;
+        const barOf3 = bars.find(x => x._event.eventId() === 3);
+        assert.equal(barOf3.renderable, false, reason + ": 元からfalseだったバーはfalseのまま");
+        assert.ok(bars.filter(x => x !== barOf3).every(x => x.renderable === true), reason + ": 他のバーは元通り");
+        assert.equal(w.sc()._spriteset.children.filter(c => c._projectRSoulBattleLabel).length, 0, reason + ": ラベルは片づく");
+        frames(w, 20);
+        assert.equal(plain(w.hud.getState()).restores, restoredBefore + 1, reason + ": 以後も何も起きない");
+    }
+});
+
+test("stop(): F8の stop() で終了しても(アリーナ退出の直前に)通常HUDは元に戻る。status()/stop()/start(\"a16\") は従来どおり", () => {
+    const w = a16();
+    const st = quietly(() => plain(w.sb.status()));
+    assert.equal(st.a16.deckSize, 30);
+    assert.equal(typeof w.sb.start, "function"); assert.equal(typeof w.sb.status, "function"); assert.equal(typeof w.sb.stop, "function");
+    const stopped = quietly(() => plain(w.sb.stop()));
+    assert.equal(stopped.ok, true);
+    // アリーナ退出の予約(マップ移動)があるため、ここではHUDの片づけを直接確認する(ハーネスはマップ移動後のフレームを回せない)
+    w.sc().update();
+    assert.deepEqual([w.hud.isActive(), w.hud.getState().hiddenCount, dimCount(w)], [false, 0, 0]);
+    assert.equal(w.decor.extra.hudLayer.renderable, true);
+});
+
+test("繰り返しの開始: 開始・終了を3回繰り返しても、隠す対象の記録は重複せず元の値を上書きしない(毎回元のtrueへ戻る)。暗転は常に1枚。ボスが無い普通のシナリオではハートのHPだけを表示する", () => {
+    const w = arenaWorld();
+    for (let i = 0; i < 3; i++) {
+        const r = quietly(() => plain(w.sb.start("dodge")));
+        assert.equal(r.ok, true, "周回" + i + " " + JSON.stringify(r));
+        frames(w, 6);
+        assert.equal(w.hud.isActive(), true);
+        assert.equal(dimCount(w), 1);
+        const count1 = w.hud.getState().hiddenCount;
+        frames(w, 20);
+        assert.equal(w.hud.getState().hiddenCount, count1, "毎フレーム増えない");
+        assert.equal(w.decor.extra.hudLayer.renderable, false);
+        const m = model(w);
+        assert.equal(m.boss.source, "heart", "BossFrameworkのボスが無いシナリオ");
+        assert.equal(m.hand.length, 5);
+        w.soul.end("t"); frames(w, 4);
+        assert.equal(w.decor.extra.hudLayer.renderable, true, "周回" + i + ": 元のtrueへ戻る");
+        assert.equal(w.decor.extra.menuButton.renderable, true);
+        assert.deepEqual([w.hud.getState().hiddenCount, dimCount(w)], [0, 0]);
+    }
+    assert.equal(w.hud.getState().activations, 3);
+    assert.equal(w.hud.getState().restores, 3);
+});
+
+// 実機で見つかった不具合の再発防止: 独自メソッドの名前が PIXI / MZ の Sprite・Container の名前を上書きしてはいけない(例: render は PIXI の描画関数)。
+// ハーネスは描画しないので、名前の衝突そのものを検査する。
+test("名前の衝突なし: 専用レイヤー/パネルの独自メソッドは、PIXI・MZ の Sprite/Container の既存メソッドを上書きしない(update だけは意図して空にする)", () => {
+    const w = a16();
+    const layer = w.sc()._projectRSoulHud;
+    const panel = layer.panels.boss;
+    const PIXI_NAMES = ["render", "renderAdvanced", "renderCanvas", "renderWebGL", "_render", "updateTransform", "calculateBounds", "getBounds", "getLocalBounds", "containsPoint", "destroy", "setParent", "addChild", "addChildAt",
+        "removeChild", "removeChildAt", "setTransform", "toGlobal", "toLocal", "displayObjectUpdateTransform", "_calculateBounds", "onTextureUpdate", "updateFrame", "_refresh", "_refreshFrame", "setFrame", "move", "setHue", "setBlendColor", "setColorTone", "isOnScreen"];
+    for (const object of [layer, panel, layer.corners[0]]) {
+        const proto = Object.getPrototypeOf(object);
+        if (proto === w.ctx.Sprite.prototype) continue;
+        for (const name of Object.getOwnPropertyNames(proto)) {
+            if (name === "constructor" || name === "update") continue;
+            assert.ok(!PIXI_NAMES.includes(name), name + " は PIXI/MZ の名前と衝突する");
+            assert.ok(!(name in w.ctx.Sprite.prototype), name + " は MZ の Sprite に既にある");
+        }
+    }
+    const own = Object.getOwnPropertyNames(Object.getPrototypeOf(layer)).filter(n => n !== "constructor" && n !== "update");
+    assert.ok(own.length >= 5 && own.every(n => n.startsWith("hud")), "Layerの独自メソッドは hud~ で始める " + own.join());
+    assert.equal(Object.prototype.hasOwnProperty.call(Object.getPrototypeOf(layer), "render"), false, "Layer は PIXI の render を上書きしていない");
+});
+
+// ---------------------------------------------------------------- 堅牢性 ----------------------------------------------------------------
+test("シーンが作り直されても(メニューから戻る等)SOULが続いていれば、新しいシーンで隠し直し、古いシーンの分は先に戻す", () => {
+    const w = a16();
+    const oldDecor = w.decor, oldScene = w.sc();
+    assert.equal(oldDecor.extra.hudLayer.renderable, false);
+    // 新しいシーン(同じ stub 構成)に差し替える
+    const next = Object.create(Object.getPrototypeOf(oldScene));
+    Object.assign(next, oldScene);
+    next.children = []; next._projectRSoulHud = null; next._projectRSoulDim = null;
+    next._spriteset = Object.assign(Object.create(Object.getPrototypeOf(oldScene._spriteset) || Object.prototype), { update() {}, children: [], _eventHpBars: [], _characterSprites: [] });
+    w.ctx.SceneManager._scene = next; 
+    const newDecor = decorate(next);
+    next._spriteset.addChild = c => { c.parent = next._spriteset; next._spriteset.children.push(c); return c; };
+    next._spriteset.removeChild = c => { const i = next._spriteset.children.indexOf(c); if (i >= 0) next._spriteset.children.splice(i, 1); };
+    next._spriteset._tilemap = newDecor.tilemap;
+    w.scene = next;
+    try { next.update(); } catch (error) { /* ハーネスの Scene.update が古いシーン参照を使う場合は直接 refresh 相当を回す */ }
+    assert.equal(oldDecor.extra.hudLayer.renderable, true, "古いシーンの通常HUDは先に戻る");
+    assert.equal(oldDecor.tilemap.children.filter(c => c._projectRSoulDim).length, 0, "古い暗転は外れる");
+    assert.equal(newDecor.extra.hudLayer.renderable, false, "新しいシーンで隠し直す");
+    assert.equal(newDecor.tilemap.children.filter(c => c._projectRSoulDim).length, 1);
+    assert.equal(w.hud.getState().hiddenCount > 0, true);
+    // シーンの終了(terminate)でも戻る
+    try { next.terminate(); } catch (error) { /* ハーネスのstubには元の terminate が使う Window の hide が無い。HUDの片づけは元の呼び出しより前に済む */ }
+    assert.equal(newDecor.extra.hudLayer.renderable, true);
+    assert.equal(w.hud.getState().hiddenCount, 0);
+});
+
+test("解像度の変更: 専用レイヤーは 1920x1080 基準で拡大縮小され、暗転は新しい画面サイズで作り直される(重複しない)", () => {
+    const w = a16();
+    const layer = w.sc()._projectRSoulHud;
+    const g = w.ctx.Graphics;
+    const w0 = g.width, h0 = g.height;
+    assert.ok(Math.abs(layer.scale.x - w0 / 1920) < 1e-9 && Math.abs(layer.scale.y - h0 / 1080) < 1e-9);
+    const dim0 = w.decor.tilemap.children.find(c => c._projectRSoulDim);
+    assert.deepEqual([dim0._dimW, dim0._dimH], [w0, h0]);
+    for (const [nw, nh] of [[1920, 1080], [1280, 720], [640, 360]]) {
+        g._width = nw; g._height = nh;
+        frames(w, 3);
+        assert.ok(Math.abs(layer.scale.x - nw / 1920) < 1e-9 && Math.abs(layer.scale.y - nh / 1080) < 1e-9, `${nw}x${nh}: 拡大率`);
+        const dims = w.decor.tilemap.children.filter(c => c._projectRSoulDim);
+        assert.equal(dims.length, 1, `${nw}x${nh}: 暗転は1枚`);
+        assert.deepEqual([dims[0]._dimW, dims[0]._dimH], [nw, nh], `${nw}x${nh}: 暗転のサイズ`);
+        assert.equal(w.hud.getState().active, true);
+    }
+    g._width = w0; g._height = h0;
+});
+
+test("無いオプションプラグイン・表示物があっても安全: BattleHUD/BossFramework/ハート/表示物が無くても例外なく動き、読めない値は空で表示する", () => {
+    const w = a16();
+    const ctx = w.ctx;
+    // BattleHUD が無い(名前の解決を自前の既定へ)
+    const savedHud = ctx.ProjectRBattleHUD; ctx.ProjectRBattleHUD = undefined;
+    frames(w, 6);
+    let m = model(w);
+    assert.equal(m.hand[0].name, "ISSEN", "BattleHUDが無ければカードIDから作った名前");
+    ctx.ProjectRBattleHUD = savedHud;
+    // BossFramework のHUD状態が読めない → SOULのハートのHPだけ
+    const savedGet = w.bf.getHudState; w.bf.getHudState = () => null;
+    frames(w, 6);
+    m = model(w);
+    assert.equal(m.boss.source, "heart"); assert.equal(m.boss.name, "SOUL");
+    assert.equal(m.boss.hp, plain(ctx.ProjectRSoulBattlePoC.getState()).hp);
+    w.bf.getHudState = () => { throw new Error("boom"); };
+    frames(w, 6);
+    assert.equal(model(w).boss.source, "heart", "例外でも落ちない");
+    w.bf.getHudState = savedGet;
+    // カードデッキ・パーティが読めない
+    const savedBattle = w.deck.getBattleState; w.deck.getBattleState = () => null;
+    frames(w, 6);
+    m = model(w);
+    assert.deepEqual([m.cardBattle, m.counts, m.hand.every(s => s.empty)], [false, null, true], "カード戦闘が読めなければ空の枠");
+    w.deck.getBattleState = savedBattle;
+    // 表示物がまったく無いシーン
+    const scene = w.sc();
+    scene._projectRBattleHudLayer = undefined; scene._menuButton = undefined; scene.hendrixHuds = []; scene._skillUI = undefined;
+    frames(w, 6);
+    assert.equal(w.hud.isActive(), true);
+    assert.equal(w.hud.getState().lastError, "", "表示の例外は出ていない");
+    // 通常HUDの表示物は renderable を持たない(古い部品)でも落ちない
+    scene._menuButton = { visible: true };
+    frames(w, 6);
+    assert.equal(w.hud.isActive(), true);
+});
+
+test("失敗しても安全: 描画の準備が例外を出したら、通常HUDを元に戻して専用HUDを止める(ゲームは進む)。メッセージ中は専用レイヤーを隠す。setEnabled(false)で即座に元へ", () => {
+    // 描画の失敗
+    const w = a16();
+    assert.equal(w.decor.extra.hudLayer.renderable, false);
+    const warn = console.warn; let warned = 0; console.warn = () => { warned++; };
+    const original = w.ctx.Bitmap.prototype.fillRect;
+    try {
+        w.ctx.Bitmap.prototype.fillRect = function() { throw new Error("render boom"); };
+        // 暗転の作り直し(解像度の変更)で描画が必要になる
+        w.ctx.Graphics._width = 1280; w.ctx.Graphics._height = 720;
+        frames(w, 3);
+    } finally { w.ctx.Bitmap.prototype.fillRect = original; console.warn = warn; w.ctx.Graphics._width = 816; w.ctx.Graphics._height = 624; }
+    assert.ok(warned >= 1, "警告を出す");
+    frames(w, 5);
+    assert.equal(w.soul.isActive(), true, "SOUL戦闘は続く(表示の失敗でゲームを止めない)");
+    // 失敗した戦闘では専用HUDを止め、通常HUDは元の表示のまま(毎フレーム警告を出し続けない)
+    const failedState = plain(w.hud.getState());
+    assert.deepEqual([failedState.failed, failedState.active, failedState.hiddenCount, w.decor.extra.hudLayer.renderable], [true, false, 0, true]);
+    assert.ok(failedState.lastReason.startsWith("error") && failedState.lastError.includes("render boom"), failedState.lastError);
+    assert.equal(warned, 1, "警告は1回だけ");
+    // 次のSOUL戦闘では、また試す(失敗の記録は戦闘ごと)
+    w.soul.end("t"); frames(w, 3);
+    assert.equal(plain(w.hud.getState()).failed, false);
+    // メッセージ中は専用レイヤーを隠す(BattleHUDと同じ)
+    const w2 = a16();
+    const layer = w2.sc()._projectRSoulHud;
+    assert.equal(layer.visible, true);
+    w2.ctx.$gameMessage.add("hello"); frames(w2, 3);
+    assert.equal(layer.visible, false, "メッセージ中は隠れる");
+    w2.ctx.$gameMessage.clear(); frames(w2, 3);
+    assert.equal(layer.visible, true);
+    // 無効化
+    assert.equal(w2.hud.setEnabled(false), false);
+    frames(w2, 2);
+    assert.deepEqual([w2.hud.isActive(), w2.hud.getState().hiddenCount, dimCount(w2), w2.decor.extra.hudLayer.renderable], [false, 0, 0, true]);
+    assert.equal(w2.soul.isActive(), true, "戦闘は続く");
+    assert.equal(w2.hud.setEnabled(true), true);
+    frames(w2, 3);
+    assert.equal(w2.hud.isActive(), true);
+});
+
+test("パネルは本物のプレイヤー/ハートに重なると薄くなる(照準・ハートを隠さない)。離れれば元の濃さへ戻る", () => {
+    const w = a16();
+    const layer = w.sc()._projectRSoulHud, ctx = w.ctx;
+    const sx = layer._lastScaleX, sy = layer._lastScaleY;
+    const savedX = ctx.$gamePlayer.screenX, savedY = ctx.$gamePlayer.screenY;
+    ctx.$gamePlayer.screenX = () => 960 * sx; ctx.$gamePlayer.screenY = () => (50 + 24) * sy;   // ボスパネルの真ん中
+    const evs = w.ctx.$gameMap.event(w.heart);
+    const sxh = evs.screenX, syh = evs.screenY;
+    evs.screenX = () => 100 * sx; evs.screenY = () => (500 + 24) * sy;                           // 画面の左・中央(どのパネルとも重ならない)
+    frames(w, 40);
+    assert.ok(layer.panels.boss.alpha < 0.5 && layer.panels.boss.alpha >= 0.44, "重なったパネルは薄い(最低0.45) " + layer.panels.boss.alpha);
+    assert.equal(layer.panels.player.alpha, 1, "重ならないパネルは濃いまま");
+    ctx.$gamePlayer.screenX = savedX; ctx.$gamePlayer.screenY = savedY; evs.screenX = sxh; evs.screenY = syh;
+    ctx.$gamePlayer.screenX = () => 960 * sx; ctx.$gamePlayer.screenY = () => 540 * sy;
+    frames(w, 60);
+    assert.equal(layer.panels.boss.alpha, 1, "離れれば元の濃さ");
+    ctx.$gamePlayer.screenX = savedX; ctx.$gamePlayer.screenY = savedY;
+});
+
+// ---------------------------------------------------------------- 戦闘の中身は変えない(I2の流れの回帰) ----------------------------------------------------------------
+test("戦闘の中身はHUDの有無で変わらない: 同じカードを同じ状況で使った結果(ダメージ・手札・Cooldown山・セッション・フェーズ)が、専用HUD有効/無効で一致する", () => {
+    const run = enabled => {
+        const w = a16({ openingHand: ["hermes_issen", "apollo_golden_volley", "apollo_eros_arrow", "hermes_sweep", "apollo_gigas_slayer"] });
+        w.hud.setEnabled(enabled);
+        frames(w, 4);
+        const c = w.ctx.$gamePlayer.centerPositionPoint(), h = w.ctx.ProjectRSoulBattlePoC.getState().hitCenter;
+        aimDegree(w, Math.atan2(h.x - c.x, c.y - h.y) * 180 / Math.PI, Math.hypot(h.x - c.x, c.y - h.y));
+        const cast = plain(w.deck.requestUseCard(0)); assert.equal(cast.ok, true, JSON.stringify(cast));
+        frames(w, 220);
+        const hurtHits = w.calls.filter(x => x.name === "UpdateEventHp" && String(x.args.eventId) === String(w.heart)).length;
+        return { damage: 1000 - barHp(w, w.heart), hits: hurtHits, hand: handIds(w), pile: plain(w.deck.getBattleState()).cooldownPile.length, phase: w.soul.getPhase(),
+            sources: plain(w.ctx.ProjectRCombatSession.sources()).sort(), bf: plain(w.bf.getState()).hp, save: w.ctx.$gameSystem.isSaveEnabled(), move: w.run("playerMovementDisabled") };
+    };
+    const on = run(true), off = run(false);
+    assert.deepEqual(on, off, "HUDの有無で戦闘の結果が同じ");
+    assert.deepEqual([on.damage, on.hits], [300, 4], "一閃Lv3の従来の値(300・4回)");
+});
+
+test("I2の流れ: 勝利でSOULが1回だけ終わり、デッキ・指輪・所持・ダミー・武器が全て元に戻り、専用HUDも片づく。a16は再び開始できる", () => {
+    const w = arenaWorld();
+    const before = JSON.stringify({ deck: w.ctx.$gameSystem._projectRCardDeckData ?? null, inv: w.ctx.$gameSystem._projectRCardInventory ?? null, dirty: w.ctx.ProjectRApolloTest.isDirty() });
+    const r = quietly(() => plain(w.sb.start("a16", { openingHand: HAND })));
+    assert.equal(r.ok, true);
+    w.heart = r.heartEventId; prepareDisplay(w);
+    frames(w, 6);
+    assert.equal(w.hud.isActive(), true);
+    hurt(w, r.heartEventId, 400); frames(w, 6);
+    assert.equal(model(w).boss.phaseIndex, 1);
+    hurt(w, r.heartEventId, 350); frames(w, 6);
+    assert.equal(model(w).boss.phaseIndex, 2);
+    hurt(w, r.heartEventId, 400); frames(w, 8);
+    assert.deepEqual(w.ends, ["victory"]);
+    assert.equal(JSON.stringify({ deck: w.ctx.$gameSystem._projectRCardDeckData ?? null, inv: w.ctx.$gameSystem._projectRCardInventory ?? null, dirty: w.ctx.ProjectRApolloTest.isDirty() }), before);
+    assert.deepEqual([w.hud.isActive(), w.hud.getState().hiddenCount, dimCount(w)], [false, 0, 0]);
+    assert.equal(w.decor.extra.hudLayer.renderable, true);
+});
+
+console.log(`\n${passed} tests passed`);
