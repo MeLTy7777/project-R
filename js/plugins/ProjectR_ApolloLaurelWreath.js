@@ -136,7 +136,8 @@
     const leader = () => (typeof $gameParty !== "undefined" ? $gameParty.leader() : null);
     const templateOf = name => { const t = typeof $dataTemplateMap !== "undefined" ? $dataTemplateMap?.events : null; return t?.find(e => e?.name === name) || null; };
     const hpOf = id => { const v = modifiers()?.eventHp?.(id); return Number.isFinite(v) ? v : (map()?.getCurrentEventHp?.(id) ?? 0); };
-    const isEnemy = event => !!event && !event._erased && !!event.event?.()?.note?.includes("<enemy>");
+    // 出撃中の仲間の体のEventは、<enemy>が付いていても敵ではない(スリップの対象にしない。ProjectR_ApolloErosArrow と同じ。Phase A15)
+    const isEnemy = event => !!event && !event._erased && !!event.event?.()?.note?.includes("<enemy>") && !roster()?.isPartyEvent?.(event.eventId());
     const eventCenter = event => ({ x: event._realX + 0.5, y: event._realY + 0.5 });
     const destroyEv = f => {
         if (!f || f.gone) return;
@@ -276,10 +277,15 @@
     };
 
     // ---------- 毎フレーム ----------
+    // 根の効果(被ダメージ軽減・移動速度)を外す。根を出た・根が全部消えた・仲間がダウン/出撃から外れた、のどれでも「その瞬間」に外す(Phase A15。以前は短い持続(0.3秒)の自然切れ待ちだった)。
+    const releaseRoots = (key, reason) => {
+        if (status().has(key, ROOTS_ID)) status().remove(key, ROOTS_ID, reason);
+        if (key === "player") modifiers()?.clearMoveSpeedFactor?.(SPEED_ID);
+    };
     const tickMembers = cfg => {
         const list = roster().members({ includeDown: false });
         const keys = new Set(list.map(m => m.key));
-        for (const key of [...members.keys()]) if (!keys.has(key)) members.delete(key);
+        for (const key of [...members.keys()]) if (!keys.has(key)) { members.delete(key); releaseRoots(key, "gone"); }
         for (const m of list) {
             let rec = members.get(m.key);
             if (!rec) { rec = { healAcc: 0, prevHp: m.hp, insideFrames: 0, healed: 0, refunded: 0 }; members.set(m.key, rec); }
@@ -295,7 +301,7 @@
                     rec.healAcc = 0;
                     if (m.hp < m.mhp) { const got = healMember(m, cfg.healAmount); rec.healed += got; totalHealed += got; }
                 }
-            } else { rec.healAcc = 0; if (m.key !== "player" && status().has(m.key, ROOTS_ID)) status().remove(m.key, ROOTS_ID, "left"); } // 仲間は根を出た瞬間に軽減が外れる
+            } else { rec.healAcc = 0; releaseRoots(m.key, "left"); } // 根を出た瞬間に軽減(と主人公の移動速度)が外れる
             const cur = m.key === "player" ? leader()?.hp : roster().allies({ includeDown: true }).find(x => x.key === m.key)?.hp;
             rec.prevHp = Number.isFinite(cur) ? cur : m.hp;
         }
@@ -318,7 +324,7 @@
             const p = $gamePlayer.centerPositionPoint();
             if (Math.hypot(p.x - grow.last.x, p.y - grow.last.y) >= grow.cfg.trailStep - EPSILON) { if (addPatch(grow.cfg, { x: p.x, y: p.y })) grow.last = { x: p.x, y: p.y }; }
         }
-        if (!patches.length) { if (members.size) members.clear(); if (!(grow && grow.framesLeft > 0)) grow = null; return; }
+        if (!patches.length) { for (const key of ["player", ...roster().allies({ includeDown: true }).map(a => a.key)]) releaseRoots(key, "noPatch"); if (members.size) members.clear(); if (!(grow && grow.framesLeft > 0)) grow = null; return; }
         const c = patches[patches.length - 1].cfg;
         tickMembers(c); tickEnemies(c);
         if (c.wall) blockProjectiles(c);

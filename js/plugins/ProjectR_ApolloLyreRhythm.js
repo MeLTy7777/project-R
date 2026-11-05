@@ -183,7 +183,8 @@
     // ---------- 効果 ----------
     const eventCenter = e => ({ x: e._realX + 0.5, y: e._realY + 0.5 });
     const hpOf = id => { const v = modifiers()?.eventHp?.(id); return Number.isFinite(v) ? v : (map()?.getCurrentEventHp?.(id) ?? 0); };
-    const isEnemy = event => !!event && !event._erased && !!event.event?.()?.note?.includes("<enemy>");
+    // 出撃中の仲間の体のEventは、<enemy>が付いていても敵ではない(病の対象にしない。ProjectR_ApolloErosArrow と同じ。Phase A15)
+    const isEnemy = event => !!event && !event._erased && !!event.event?.()?.note?.includes("<enemy>") && !roster()?.isPartyEvent?.(event.eventId());
     const screenRect = () => { const m = map(); const w = (typeof Graphics !== "undefined" ? Graphics.width : 816) / (m.tileWidth?.() || 48), h = (typeof Graphics !== "undefined" ? Graphics.height : 624) / (m.tileHeight?.() || 48); return { x0: m.displayX(), y0: m.displayY(), x1: m.displayX() + w, y1: m.displayY() + h }; };
     const inScreen = (p, r) => p.x >= r.x0 && p.x <= r.x1 && p.y >= r.y0 && p.y <= r.y1;
     const positionOf = m => {
@@ -374,7 +375,8 @@
             updateUi(s);
             if (s.frame > s.cfg.totalFrames + 20) endSession("finished");
         }
-        // リジェネ
+        // リジェネ(出撃から外れた仲間のぶんは捨てる。同じ仲間を出撃し直したときに古いリジェネが続かないように。Phase A15)
+        if (regens.size) { const present = new Set(roster().members({ includeDown: true }).map(m => m.key)); for (const key of [...regens.keys()]) if (!present.has(key)) regens.delete(key); }
         for (const [key, r] of [...regens]) {
             r.acc += r.rate / 60; r.remaining--;
             const whole = Math.floor(r.acc);

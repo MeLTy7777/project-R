@@ -18,6 +18,11 @@
  *   ProjectRTestEnemies.interrupt(eventId)    その敵の溜め中の攻撃を中断する(ProjectREnemyAttack.interrupt)
  *   ProjectRTestEnemies.setAuto(true/false)   自動で攻撃する(プレイヤーが範囲内にいて、クールダウンが明けたとき)。既定は false(確認用に手動)
  *   ProjectRTestEnemies.detach(eventId) / clear() / list()
+ * 【仲間への攻撃(Phase Apollo-A15)】 製品には「敵 → 仲間」のダメージの窓口が無いので、Playtest専用のつなぎを持つ(ProjectR_PartyCombat は変えない)。
+ *   敵の攻撃(遠距離の弾・近接の判定)が、出撃中の仲間(PartyCombat + PartyRoster の linkedActorId を持つEvent)の体に当たったら、固定ダメージ(既定30)を
+ *   ProjectRPartyCombat.damageAlly で与える(ヒュアキントス・月桂冠の軽減は、この窓口の中で、ダウン判定の前に掛かる)。弾は当たった仲間で消える(主人公に届く前に仲間が受ける)。
+ *   ProjectRTestEnemies.attackNow(eventId, { target: "player" | "ally:<actorId>" | 角度(度) })   遠距離の向きを指定する。近接の向きは ProjectREnemyAttack が主人公の方向で決める(仲間を同じ側に置く)。
+ *   ProjectRTestEnemies.setAllyDamage(n) / getAllyHits() / clearAllyHits()   ダメージ量と、仲間に当たった記録。
  * 遠距離の弾 = Mapのテンプレート "ProjectR Test Enemy Bolt"(メモリ上だけ。Map002は変えない)。ダメージは固定(<dmg: 30>。Hendrixの公式の防御の計算つき)。
  */
 (() => {
@@ -53,11 +58,25 @@
         brains.set(e.eventId(), { kind, windupFrames: Math.round(options.windupFrames ?? (kind === "ranged" ? 60 : 40)), cooldownFrames: Math.round(options.cooldownFrames ?? 180), cooldown: 0, auto: options.auto === true });
         return { ok: true, eventId: e.eventId(), kind };
     };
-    const attackNow = eventId => {
+    const centerOf = e => ({ x: e._realX + 0.5, y: e._realY + 0.5 });
+    const degreeToTarget = (e, target) => {
+        if (typeof target === "number" && Number.isFinite(target)) return target;
+        const m = /^ally:(d+)$/.exec(String(target || ""));
+        if (!m) return "player";
+        const ally = root.ProjectRPartyRoster?.allies?.({ includeDown: true })?.find(a => a.actorId === Number(m[1]));
+        const body = ally && ally.eventId != null ? map()?.event(ally.eventId) : null;
+        if (!body || body._erased) return null;
+        const a = centerOf(e), b = centerOf(body);
+        return ((Math.atan2(b.x - a.x, -(b.y - a.y)) * 180 / Math.PI) % 360 + 360) % 360;
+    };
+    const attackNow = (eventId, options = {}) => {
         const brain = brains.get(Number(eventId));
         if (!brain) return fail("notAttached");
+        const source = map()?.event(Number(eventId));
+        const degree = brain.kind === "ranged" && source ? degreeToTarget(source, options?.target) : "player";
+        if (degree === null) return fail("targetMissing");
         const spec = brain.kind === "ranged"
-            ? { eventId: Number(eventId), kind: "ranged", windupFrames: brain.windupFrames, degree: "player", template: BOLT, length: 12 }
+            ? { eventId: Number(eventId), kind: "ranged", windupFrames: brain.windupFrames, degree, template: BOLT, length: 12 }
             : { eventId: Number(eventId), kind: "melee", windupFrames: brain.windupFrames, notetag: MELEE_NOTE, reach: 1, activeFrames: 2 };
         return api().schedule(spec);
     };
@@ -80,17 +99,66 @@
             if (inRange && attackNow(id).ok) brain.cooldown = brain.cooldownFrames;
         }
     };
+    // ---- 仲間への当たり(Playtest専用のつなぎ) ----
+    const ALLY_HIT_RADIUS = 0.55; // ProjectREnemyAttack の主人公への当たり(0.55)と同じ
+    let allyDamage = 30;
+    const tracked = []; // { attackId, kind, projectileId, hitboxId, frames }
+    const allyHits = [];
+    const allyBodies = () => {
+        const list = root.ProjectRPartyRoster?.allies?.() || [], m = map(), out = [];
+        for (const a of list) { const e = a.eventId != null ? m?.event(a.eventId) : null; if (e && !e._erased) out.push({ actorId: a.actorId, key: a.key, center: centerOf(e) }); }
+        return out;
+    };
+    const destroyShot = id => {
+        try {
+            const i = new Game_Interpreter(); i._eventId = id;
+            PluginManager.callCommand(i, "Hendrix_Action_Engine", "DestroyEvent", { target: String(id), destroyNearby: "", permanent: "false" });
+        } catch (_error) { /* 後片付け */ }
+    };
+    const hitAlly = (record, body) => {
+        const result = root.ProjectRPartyCombat?.damageAlly?.(body.actorId, allyDamage);
+        allyHits.push({ attackId: record.attackId, kind: record.kind, actorId: body.actorId, amount: allyDamage, result: result ? { ...result } : null });
+        if (allyHits.length > 60) allyHits.shift();
+    };
+    const trackAllies = () => {
+        if (!tracked.length) return;
+        const m = map(), bodies = allyBodies();
+        for (let i = tracked.length - 1; i >= 0; i--) {
+            const t = tracked[i];
+            const id = t.kind === "ranged" ? t.projectileId : t.hitboxId;
+            const e = id != null ? m.event(id) : null;
+            let done = !e || e._erased || --t.frames <= 0;
+            if (!done && bodies.length) {
+                const c = centerOf(e);
+                const hits = bodies.filter(b => t.kind === "ranged" ? Math.hypot(b.center.x - c.x, b.center.y - c.y) <= ALLY_HIT_RADIUS : Math.abs(b.center.x - c.x) <= 0.7 && Math.abs(b.center.y - c.y) <= 0.7)
+                    .sort((a, b) => Math.hypot(a.center.x - c.x, a.center.y - c.y) - Math.hypot(b.center.x - c.x, b.center.y - c.y));
+                if (hits.length) { hitAlly(t, hits[0]); if (t.kind === "ranged") destroyShot(id); done = true; }
+            }
+            if (done) tracked.splice(i, 1);
+        }
+    };
+    try {
+        api()?.onFire?.(record => {
+            if (!brains.has(record.eventId)) return;
+            if (record.kind === "ranged" && record.projectileId != null) tracked.push({ attackId: record.id, kind: "ranged", projectileId: record.projectileId, frames: 3600 });
+            else if (record.kind === "melee" && record.hitboxId != null) tracked.push({ attackId: record.id, kind: "melee", hitboxId: record.hitboxId, frames: 4 });
+        });
+    } catch (_error) { /* 仲間への当たりが使えないだけ */ }
+
     const _update = Game_Map.prototype.update;
     Game_Map.prototype.update = function(sceneActive) {
         _update.apply(this, arguments);
         if (sceneActive && !this.eventsPaused && brains.size) { try { tick(); } catch (_error) { /* DEV用 */ } }
+        if (sceneActive && !this.eventsPaused && tracked.length) { try { trackAllies(); } catch (_error) { /* DEV用 */ } }
     };
     const _setup = Game_Map.prototype.setup;
-    Game_Map.prototype.setup = function() { brains.clear(); return _setup.apply(this, arguments); };
+    Game_Map.prototype.setup = function() { brains.clear(); tracked.length = 0; return _setup.apply(this, arguments); };
 
     root.ProjectRTestEnemies = Object.freeze({
         BOLT, BOLT_TAG, MELEE_NOTE, attach, attackNow, detach, clear, interrupt, registerBolt,
         setAuto: on => { auto = !!on; return auto; },
+        setAllyDamage: n => { if (Number.isFinite(Number(n)) && Number(n) > 0) allyDamage = Number(n); return allyDamage; },
+        getAllyHits: () => allyHits.map(h => ({ ...h })), clearAllyHits: () => { allyHits.length = 0; },
         list: () => [...brains].map(([id, b]) => ({ eventId: id, kind: b.kind, windupFrames: b.windupFrames, cooldown: b.cooldown }))
     });
 })();

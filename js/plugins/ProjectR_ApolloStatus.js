@@ -207,6 +207,18 @@
         };
     }
 
+    // 出撃の入れ替え・終了で、仲間("ally:<actorId>")の状態をすべて外す(Phase A15)。
+    //   状態は actorId で持つので、出撃から外れた仲間の軽減が残ると、同じ仲間を出撃し直したときに古い x0.1 が掛かってしまう。
+    //   (戦闘終了・マップ移動・ロードでは、これまでどおり台帳ぜんぶを消す)
+    const clearAllies = reason => { for (const key of [...states.keys()]) if (key.indexOf("ally:") === 0) for (const id of [...states.get(key).keys()]) remove(key, id, reason); };
+    if (partyCombat) {
+        for (const name of ["endSession", "startSession"]) {
+            if (typeof partyCombat[name] !== "function") continue;
+            const original = partyCombat[name];
+            partyCombat[name] = function() { clearAllies(name); return original.apply(this, arguments); };
+        }
+    }
+
     const _endBattle = deck.endBattle;
     deck.endBattle = function() { clear("battleEnd"); return _endBattle.apply(this, arguments); };
     if (typeof Game_Map !== "undefined") {

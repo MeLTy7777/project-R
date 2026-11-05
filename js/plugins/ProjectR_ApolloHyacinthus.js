@@ -297,7 +297,8 @@
         for (const w of [...windows]) {
             const cur = hpNow(w);
             if (!cur) { endWindow(w, "memberGone"); continue; }
-            if (cur.hp < w.prevHp - EPSILON) onDamaged(w, w.prevHp - cur.hp, cur);
+            if (cur.hp < w.prevHp - EPSILON || w.hitPending) onDamaged(w, Math.max(0, w.prevHp - cur.hp), cur); // 軽減で0になった被弾(HPが減らない)も「被弾」として花を咲かせる(Phase A15)
+            w.hitPending = false;
             const after = hpNow(w);
             if (after) w.prevHp = after.hp;
             w.remaining -= seconds;
@@ -305,6 +306,20 @@
         }
         tickBlooms(seconds);
     };
+    // 仲間の被弾の通知(Phase A15): 仲間のHPは「軽減後のダメージ」でしか減らないので、x0.1で端数が0になった小さな被弾はHPの差に出ない。
+    //   PartyCombat.damageAlly の窓口で「受付中の仲間に被弾の呼び出しがあった」ことだけを覚え、花は次のtickで咲かせる(ダメージ・ダウンの判定には触れない)。
+    const partyCombat = root.ProjectRPartyCombat;
+    if (partyCombat && typeof partyCombat.damageAlly === "function") {
+        const _damageAlly = partyCombat.damageAlly;
+        partyCombat.damageAlly = function(actorId, amount) {
+            const result = _damageAlly.apply(this, arguments);
+            if (result?.ok === true && Number(amount) > 0) {
+                const w = windows.find(x => x.kind === "ally" && x.actorId === Number.parseInt(actorId, 10));
+                if (w) w.hitPending = true;
+            }
+            return result;
+        };
+    }
     const clearAll = reason => {
         for (const w of [...windows]) endWindow(w, reason);
         for (const b of [...blooms]) removeBloom(b, reason);
