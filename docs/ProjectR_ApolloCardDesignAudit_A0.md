@@ -701,3 +701,10 @@ Lv3の竪琴は「3秒間に選べる音符が合計5回」(5周ではない)。
 - 竪琴の火力・速度の音符は主人公のみ。クレンズは主人公の状態だけ(PartyCombat の仲間は状態を持たない。仲間に異常状態が入るようになったら要確認)。
 - 仲間の体が実際にどんなEvent(HPバー・`<enemy>` の有無)になるか。敵の攻撃が仲間に当たる仕組み(製品の窓口・ダメージ量・防御)。
 - ダウンした仲間の復帰の規則(現状: その戦闘の残りの間ダウンのまま。PartyCombat に復帰APIは無く、回復・軽減が復帰させることはない)。
+
+## Phase A16: ボス戦の縦断スライス(Playtest専用)
+詳細(構成・攻撃表・計測結果・見つかった問題・最初の本番ボスへの提案)は `docs/ProjectR_BossTestSlice.md`。
+- 新規 `ProjectR_CombatTestArenaBoss`(Playtest専用)。ボスの攻撃は A14 の本物の予約(近接 = Hendrixの判定Event・遠距離 = Hendrixの弾Event・公式のUpdateEventHp)。HP・フェーズ・勝利・敗北は既存の BossFramework。混成デッキは A13 の入口(指輪の一時付与・30枚・検証つき)。
+- 検証: 自動 `tests/ProjectR_ApolloA16Boss.test.cjs` 13件、実機 `tools/mz_cdp/apollo_a16_boss_verify.cjs` 11/11、全テスト94ファイル0失敗、実機 A14 8/8・A15 7/7。
+- 主な所見: ボス自身の予兆が無く警告が神託のカード頼み(最大の問題)/ 予兆の線が薄い・敵の弾が味方の矢と同じ絵 / HUDの重なり / 第三形態の歩く速さがプレイヤーより速い / 敗北後の復活・リトライが無い。性能は Game_Map.update 平均1.0ms・最大16ms・Event 約131(基準50)で問題なし。
+- 本番の仲間は0人のまま。DEVのつなぎ(`allies`)は敵の弾を `damageAlly` へ渡すだけで、仲間のAIは動かない。

@@ -22,6 +22,7 @@
  *   敵の攻撃(遠距離の弾・近接の判定)が、出撃中の仲間(PartyCombat + PartyRoster の linkedActorId を持つEvent)の体に当たったら、固定ダメージ(既定30)を
  *   ProjectRPartyCombat.damageAlly で与える(ヒュアキントス・月桂冠の軽減は、この窓口の中で、ダウン判定の前に掛かる)。弾は当たった仲間で消える(主人公に届く前に仲間が受ける)。
  *   ProjectRTestEnemies.attackNow(eventId, { target: "player" | "ally:<actorId>" | 角度(度) })   遠距離の向きを指定する。近接の向きは ProjectREnemyAttack が主人公の方向で決める(仲間を同じ側に置く)。
+ *   ProjectRTestEnemies.watchAllies(eventId, on)   brains を使わず ProjectREnemyAttack で直接攻撃する敵(DEVボス)の攻撃も、仲間への当たりを見る。
  *   ProjectRTestEnemies.setAllyDamage(n) / getAllyHits() / clearAllyHits()   ダメージ量と、仲間に当たった記録。
  * 遠距離の弾 = Mapのテンプレート "ProjectR Test Enemy Bolt"(メモリ上だけ。Map002は変えない)。ダメージは固定(<dmg: 30>。Hendrixの公式の防御の計算つき)。
  */
@@ -103,6 +104,7 @@
     const ALLY_HIT_RADIUS = 0.55; // ProjectREnemyAttack の主人公への当たり(0.55)と同じ
     let allyDamage = 30;
     const tracked = []; // { attackId, kind, projectileId, hitboxId, frames }
+    const watched = new Set(); // brains を使わず ProjectREnemyAttack で直接攻撃する敵(DEVボスなど)の、仲間への当たりも見る
     const allyHits = [];
     const allyBodies = () => {
         const list = root.ProjectRPartyRoster?.allies?.() || [], m = map(), out = [];
@@ -139,7 +141,7 @@
     };
     try {
         api()?.onFire?.(record => {
-            if (!brains.has(record.eventId)) return;
+            if (!brains.has(record.eventId) && !watched.has(record.eventId)) return;
             if (record.kind === "ranged" && record.projectileId != null) tracked.push({ attackId: record.id, kind: "ranged", projectileId: record.projectileId, frames: 3600 });
             else if (record.kind === "melee" && record.hitboxId != null) tracked.push({ attackId: record.id, kind: "melee", hitboxId: record.hitboxId, frames: 4 });
         });
@@ -152,11 +154,12 @@
         if (sceneActive && !this.eventsPaused && tracked.length) { try { trackAllies(); } catch (_error) { /* DEV用 */ } }
     };
     const _setup = Game_Map.prototype.setup;
-    Game_Map.prototype.setup = function() { brains.clear(); tracked.length = 0; return _setup.apply(this, arguments); };
+    Game_Map.prototype.setup = function() { brains.clear(); watched.clear(); tracked.length = 0; return _setup.apply(this, arguments); };
 
     root.ProjectRTestEnemies = Object.freeze({
         BOLT, BOLT_TAG, MELEE_NOTE, attach, attackNow, detach, clear, interrupt, registerBolt,
         setAuto: on => { auto = !!on; return auto; },
+        watchAllies: (eventId, on = true) => { if (on) watched.add(Number(eventId)); else watched.delete(Number(eventId)); return watched.has(Number(eventId)); },
         setAllyDamage: n => { if (Number.isFinite(Number(n)) && Number(n) > 0) allyDamage = Number(n); return allyDamage; },
         getAllyHits: () => allyHits.map(h => ({ ...h })), clearAllyHits: () => { allyHits.length = 0; },
         list: () => [...brains].map(([id, b]) => ({ eventId: id, kind: b.kind, windupFrames: b.windupFrames, cooldown: b.cooldown }))

@@ -91,6 +91,7 @@ var $plugins =
 ,{"name":"ProjectR_CombatTestArenaPsychopomp","status":true,"description":"v1.0.0 DEV専用: サイコポンポスの検証用フィクスチャ(Event IDの違う敵・距離・壁)。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaApollo","status":true,"description":"v1.0.0 DEV専用 Combat Test Arena 追加: 黄金の矢のテスト開始(Playtest限定)。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaEnemies","status":true,"description":"v1.0.0 Playtest専用: 攻撃の予兆の確認用の敵(遠距離1体・近接1体)。","parameters":{}}
+,{"name":"ProjectR_CombatTestArenaBoss","status":true,"description":"v1.0.0 Playtest専用: DEVボス戦(近接+遠距離の本物の予約攻撃・3フェーズ・計測)。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaProduction","status":true,"description":"v1.0.0 DEV専用: Hermes本番デッキ(H2C-A)の検証ヘルパー(新しいゲーム・セーブ往復・旧セーブ再現。Playtest限定)。","parameters":{}}
 ,{"name":"ProjectR_SwordSystem","status":true,"description":"v1.0.0 通常の剣(近接)攻撃。マウス方向のDynamic Hitbox + 当たった敵本人へDatabase武器ダメージ。","parameters":{"ForwardTiles":"1.0","HitboxWidth":"1.5","HitboxDepth":"1.2","LifetimeFrames":"3","CooldownFrames":"18"}}
 ];
