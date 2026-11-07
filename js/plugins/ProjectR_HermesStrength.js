@@ -49,6 +49,15 @@
  *     スキル式から計算済みで、UpdateEventHp の時点では攻撃力を差し替えられません(別の橋渡しが必要)。物理かどうかの判断も推測しません。
  *   ・対象外: 薙ぎ払い・一閃などの固定ダメージ(攻撃力を使わない数値)。
  *
+ * 【SOUL戦闘のカード攻撃(準備ループ専用・追加)】ProjectR_SoulSkills が setSoulCards({ physical:[カードID...] }) で有効にしている間だけ、
+ *   物理ダメージのカード(固定ダメージ = projectRFixed)の攻撃にも蓄えを使います。通常のマップ戦闘・従来のSOULでは何も変わりません(既定は無効)。
+ *   ・倍率は同じ(Lv1 +10% / Lv2,Lv3 +15%・重ね掛けは加算。持続時間は新設しない)。カードの固定ダメージの「基礎値」に1回だけ掛け(CardModifiers の damageMultiplier)、
+ *     属性有効度・クリティカルはその後に掛かる。武器の攻撃力の差し替え(Lv3の防御無視)は固定ダメージには効かない(固定ダメージは防御を使わない)。
+ *   ・物理かどうかの判断: 固定ダメージの damageType("physical"/"magical")があればそれ → 無ければ属性(Databaseの「物理」属性のみ物理、他の属性は魔法)→
+ *     属性が無属性のカードは setSoulCards の一覧(物理のカードID)。一覧に無いカード・継続ダメージ(出血・疫病)・回復・ダメージの無い効果には使わない(蓄えも消費しない)。
+ *   ・1回の使用(beginAction で数える通し番号)が複数回当たる(複数の敵・複数の矢・ビームのティック)ときは、最初に実際にダメージが入ったヒットで蓄えをまとめて1度だけ消費し、
+ *     同じ使用のほかのヒットには同じ倍率を1回ずつ掛ける(倍率が重なって掛かることも、2回消費することもない)。次の使用は新しい蓄えが要る。
+ *
  * 【消費の規則】
  *   ・次の通常武器攻撃が「実際にダメージを与えた」とき、蓄えた全回数をまとめて1度だけ消費する。外れ(回避・無効・0ダメージ)では消費しない。
  *   ・1回の攻撃動作(同じ攻撃動作ID)が複数の敵に当たっても、全員に同じ強化がかかり、消費は1度だけ。別の攻撃動作には残りが無い。
@@ -65,6 +74,7 @@
  * API: ProjectRHermesStrength
  *   getPending()  { stacks, values:[...], multiplier, ignoreDefense }(蓄え中。無ければ null)    getLastResult()  getLastAttack()
  *   combine(values) / effectsForLevel(lv) / cardLevel() / stackingMode()
+ *   setSoulCards(config|null) / beginAction(cardId) / getSoulCards()   SOUL戦闘の準備ループ専用(ProjectR_SoulSkills だけが呼ぶ)。物理ダメージのカードの攻撃にも蓄えを使う。下の【SOUL戦闘のカード攻撃】
  *   clear(reason) -> boolean   蓄え(と確定済みの強化)を捨てる。ProjectR_SoulSkills が準備ループの ATTACK の終了で呼ぶ(通常のマップ戦闘・従来のSOULでは呼ばれず、何も変わらない)。使われなかった蓄えを捨てたら true
  */
 (() => {
@@ -103,6 +113,9 @@
 
     // ---------- 蓄えた力(実行時のみ。保存しない) ----------
     let pending = null; // { values:[p...], ignoreDefense }
+    let soulCards = null;                 // SOUL戦闘のカード攻撃の設定 { physical:Set }。null = 無効(通常戦闘・従来のSOUL)
+    const actionSerial = new Map();       // カードID → 使用の通し番号(beginAction)
+    const cardClaims = new Map();         // "カードID#通し番号" → 確定済みの強化 { multiplier, stacks }
     let claim = null; // 直近の攻撃動作の確定済み強化 { attackId, multiplier, ignoreDefense, stacks }
     let lastResult = null;
     let lastAttack = null;
@@ -110,9 +123,19 @@
 
     const pendingView = () => pending ? { stacks: pending.values.length, values: pending.values.slice(), multiplier: combine(pending.values), ignoreDefense: pending.ignoreDefense } : null;
     const clearAll = reason => {
-        if (pending || claim) lastResult = { ...(lastResult || {}), cleared: reason };
+        if (pending || claim || cardClaims.size) lastResult = { ...(lastResult || {}), cleared: reason };
         pending = null;
         claim = null;
+        cardClaims.clear();
+    };
+    const physicalElementId = () => { try { const i = ($dataSystem.elements || []).findIndex(n => n === "物理"); return i > 0 ? i : 1; } catch (_error) { return 1; } };
+    // 物理ダメージのカードか(SOUL戦闘のカード攻撃)。damageType → 属性 → 一覧、の順。判断できなければ使わない。
+    const isPhysicalCard = context => {
+        if (!soulCards) return false;
+        if (context.damageType === "physical") return true;
+        if (context.damageType) return false;
+        if (context.element > 0) return context.element === physicalElementId();
+        return soulCards.physical.has(String(context.source || ""));
     };
 
     // ---------- ヒットフック ----------
@@ -120,6 +143,15 @@
     // finish: 実際にダメージが入ったときだけ、蓄えを消費して確定する。
     const hook = {
         prepare(context) {
+            if (context.kind === "fixed") {
+                if (!isPhysicalCard(context)) return null;
+                const source = String(context.source || ""), key = `${source}#${actionSerial.get(source) || 0}`;
+                const known = cardClaims.get(key);
+                if (known) return { damageMultiplier: known.multiplier, claimed: known };
+                if (!pending || !pending.values.length) return null;
+                const trial = { card: true, key, source, attackId: key, multiplier: combine(pending.values), ignoreDefense: false, stacks: pending.values.length, values: pending.values.slice() };
+                return { damageMultiplier: trial.multiplier, trial };
+            }
             if (context.kind !== "weapon") return null;
             const attackId = context.attackId !== null && context.attackId !== undefined ? String(context.attackId) : null;
             if (claim && attackId !== null && claim.attackId === attackId) {
@@ -135,6 +167,7 @@
             const landed = outcome.dealt !== null && outcome.dealt !== undefined ? outcome.dealt > 0 : outcome.landed === true;
             if (!landed) return; // 外れ: 蓄えは残る
             if (pending) { pending = null; } // 蓄えを一度にすべて消費(防御無視も一緒に)
+            if (trial.card) { cardClaims.set(trial.key, { multiplier: trial.multiplier, stacks: trial.stacks }); lastAttack = { serial: ++serial, attackId: trial.key, source: trial.source, card: true, eventId: context.eventId, stacks: trial.stacks, multiplier: trial.multiplier, ignoreDefense: false, dealt: outcome.dealt }; return; }
             claim = { attackId: trial.attackId, multiplier: trial.multiplier, ignoreDefense: trial.ignoreDefense, stacks: trial.stacks };
             lastAttack = { serial: ++serial, attackId: trial.attackId, eventId: context.eventId, stacks: trial.stacks, multiplier: trial.multiplier, ignoreDefense: trial.ignoreDefense, dealt: outcome.dealt };
         }
@@ -172,7 +205,7 @@
         if (!pending) pending = { values: [], ignoreDefense: false };
         pending.values.push(plan.effects.attackBonus);
         if (plan.effects.ignoreDefense === true) pending.ignoreDefense = true;
-        claim = null; // 新しい蓄えがあるので、直前の攻撃動作の確定は引き継がない
+        claim = null; // 新しい蓄えがあるので、直前の攻撃動作の確定は引き継がない(カード攻撃の確定は、その使用の番号に結び付いているので、そのまま)
         present();
         lastResult = { ok: true, consumed: true, level: plan.level, instanceId: activation?.instanceId ?? null, pending: pendingView(), mode: mode() };
     };
@@ -218,7 +251,10 @@
         getPending: pendingView,
         getLastResult: () => lastResult ? JSON.parse(JSON.stringify(lastResult)) : null,
         getLastAttack: () => lastAttack ? { ...lastAttack } : null,
-        clear: reason => { const unused = !!pending; clearAll(String(reason || "api")); return unused; },      // 使われなかった蓄えがあれば true(消費済みで残っている確定済みの強化 claim も一緒に捨てるが、数えない)
+        setSoulCards: config => { soulCards = config && Array.isArray(config.physical) ? { physical: new Set(config.physical.map(String)) } : null; actionSerial.clear(); cardClaims.clear(); return !!soulCards; },
+        getSoulCards: () => soulCards ? { physical: [...soulCards.physical] } : null,
+        beginAction: cardId => { if (!soulCards) return 0; const id = String(cardId || ""), n = (actionSerial.get(id) || 0) + 1; actionSerial.set(id, n); return n; },
+        clear: reason => { const unused = !!pending; clearAll(String(reason || "api")); actionSerial.clear(); return unused; },      // 使われなかった蓄えがあれば true(消費済みで残っている確定済みの強化 claim も一緒に捨てるが、数えない)
         combine, effectsForLevel, cardLevel, stackingMode: mode
     });
 })();

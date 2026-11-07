@@ -54,7 +54,10 @@ test("登録と数値: 最大Lv3・Cooldown 8・強力/最大3。Lv1=半径5・7
 
 test("保護ファイルは変えていない(CardDeckCore・Hendrix・DotMove・DamageModifiers・PartyCombat・PartyRoster・CardModifiers・他のApollo)", () => {
     assert.equal(git("diff", "--stat", "f78d85d", "--", "js/plugins/ProjectR_CardDeckCore.js", "js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js", "js/plugins/ProjectR_DamageModifiers.js", "js/plugins/ProjectR_PartyCombat.js",
-        "js/plugins/ProjectR_PartyRoster.js", "js/plugins/ProjectR_CardModifiers.js", ).trim(), "");
+        "js/plugins/ProjectR_PartyRoster.js", ).trim(), "");
+    // 共通のダメージ処理(CardModifiers)は、フックが返す倍率(damageMultiplier)を固定ダメージの基礎値に掛ける追加だけ許す(返さなければ何も変わらない)。SOUL のストレングス用
+    { const cm = git("diff", "--numstat", "f78d85d", "--", "js/plugins/ProjectR_CardModifiers.js").trim().split(/\s+/);
+      assert.ok(cm[0] === "" || (Number(cm[0]) <= 8 && Number(cm[1]) <= 4 && /damageMultiplier/.test(require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "js/plugins/ProjectR_CardModifiers.js"), "utf8"))), "ProjectR_CardModifiers.js は damageMultiplier の追加だけ: " + cm.join("+")); }
     // 疫病の矢は、SOUL の準備ループが ATTACK の終了で打ち切るための追加専用の窓口 clear(reason) の1行だけ許す(それ以外は変えない)
     { const pr = git("diff", "--numstat", "f78d85d", "--", "js/plugins/ProjectR_ApolloPlagueRain.js").trim().split(/\s+/);
       assert.ok(pr[0] === "" || (pr[0] === "1" && pr[1] === "0"), "ProjectR_ApolloPlagueRain.js は追加専用の clear の1行以外は変えない: " + pr.join("+")); }

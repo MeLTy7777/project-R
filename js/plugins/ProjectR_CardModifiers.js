@@ -237,7 +237,7 @@
         return Number.isFinite(value) && value > 0 ? value : 1;
     }, 1);
     const prepareHooks = context => {
-        const out = { flat: 0, forceCritical: false, atkMultiplier: 1, ignoreDefense: false, critPoints: 0, critScale: 1, entries: [] };
+        const out = { flat: 0, forceCritical: false, atkMultiplier: 1, damageMultiplier: 1, ignoreDefense: false, critPoints: 0, critScale: 1, entries: [] };
         for (const [id, hook] of [...hitHooks]) {
             if (typeof hook.prepare !== "function") continue;
             const result = safely(() => hook.prepare(context), null);
@@ -248,6 +248,8 @@
             const atk = Number(result.atkMultiplier);
             if (Number.isFinite(atk) && atk > 0) out.atkMultiplier *= atk;
             if (result.ignoreDefense === true) out.ignoreDefense = true;
+            const dmg = Number(result.damageMultiplier);                                           // 固定ダメージの基礎値への倍率(追加のみ。返さないフックには何も変わらない)
+            if (Number.isFinite(dmg) && dmg > 0) out.damageMultiplier *= dmg;
             // クリティカル発生率の調整(H2B-3A ヴェイル): critChanceBonus = 確率ポイントの加算(+0.5 = +50ポイント) / critChanceScale = 自然な確率への倍率。
             const points = Number(result.critChanceBonus), scale = Number(result.critChanceScale);
             if (Number.isFinite(points) && points !== 0) out.critPoints += points;
@@ -320,7 +322,8 @@
             const kind = fixed ? "fixed" : isWeaponValue(args?.value) ? "weapon" : "expression";
             const context = { eventId: id, kind, value: String(args?.value ?? ""), source: fixed ? String(fixed.source ?? "") : "",
                 attackId: args && args.projectRAttackId !== undefined ? String(args.projectRAttackId) : null,
-                attacker: args && args.projectRAttacker !== undefined ? String(args.projectRAttacker) : "player" };
+                attacker: args && args.projectRAttacker !== undefined ? String(args.projectRAttacker) : "player",
+                element: fixed ? (Number(fixed.element) || 0) : null, damageType: fixed && fixed.damageType ? String(fixed.damageType) : null };   // 固定ダメージの属性・ダメージ種別(読み取り用。フックだけが見る)
             const prepared = hooked ? prepareHooks(context) : { flat: 0, forceCritical: false, atkMultiplier: 1, ignoreDefense: false, critPoints: 0, critScale: 1, entries: [] };
             const adjustsCrit = prepared.critPoints !== 0 || prepared.critScale !== 1;
             let usedChance = null;
@@ -333,6 +336,7 @@
             if (fixed) {
                 baseDamage = Math.max(0, Math.round(Number(fixed.base)));
                 if (!Number.isFinite(baseDamage)) baseDamage = 0;
+                if (prepared.damageMultiplier !== 1) baseDamage = Math.max(0, Math.round(baseDamage * prepared.damageMultiplier));   // フックの倍率(例: SOUL のストレングス)。基礎値に1回だけ掛け、属性・クリティカルはその後
                 const chance = adjustChance(naturalCriticalChance(id) + (Number(fixed.critChanceBonus) || 0), prepared);
                 usedChance = prepared.forceCritical ? 1 : chance;
                 critical = fixed.critical === false ? false : (prepared.forceCritical || Math.random() < chance);

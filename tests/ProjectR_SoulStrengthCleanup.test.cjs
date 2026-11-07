@@ -171,20 +171,14 @@ test("同じ ATTACK の中では、蓄えは次に成功した通常武器の攻
     w.soul.end("t");
 });
 
-test("蓄えは1つだけ: 蓄えがある間の再発動は拒否(buffActive)され、マナを引かず、蓄えも増えない。HUD は足りていてもその枠を使えない扱いにはしない(拒否の理由は発動時に返る)", () => {
+test("重ね掛け可: 蓄えがある間も再発動でき、発動のたびにコストを引き、蓄えは回数分たまる(1つだけの制限は無い)。詳細は ProjectR_SoulStrengthStack.test.cjs", () => {
     const w = strengthW();
     assert.equal(castStrength(w).ok, true);
     const spent = ms(w).spent, spends = ms(w).stats.spends;
-    for (let i = 0; i < 3; i++) {
-        set(w, 10);
-        const r = use(w, "hermes_strength");
-        assert.deepEqual([r.ok, r.reason], [false, "buffActive"]);
-    }
-    assert.equal(ms(w).spent, spent, "拒否ではマナを引かない");
-    assert.equal(ms(w).stats.spends, spends);
-    assert.equal(pending(w).stacks, 1, "蓄えは増えない");
-    assert.equal(plain(S(w).getPending()).values.length, 1);
-    assert.equal(plain(M(w).quote("hermes_strength")).reason, "buffActive");
+    for (let i = 0; i < 3; i++) { set(w, 10); const r = use(w, "hermes_strength"); assert.equal(r.ok, true); }
+    assert.equal(ms(w).stats.spends, spends + 3, "発動のたびに1回ずつ消費");
+    assert.ok(ms(w).spent > spent);
+    assert.equal(pending(w).stacks, 4, "蓄えは回数分たまる");
     w.soul.end("t");
 });
 

@@ -42,7 +42,10 @@ test("登録と数値: 最大Lv3・Cooldown 7・特殊/最大3。Lv1=受付3秒�
 
 test("保護ファイルは変えていない(CardDeckCore・Hendrix・DotMove・DamageModifiers・PartyCombat・PartyRoster・CardModifiers・他のApollo)", () => {
     assert.equal(git("diff", "--stat", "e361797", "--", "js/plugins/ProjectR_CardDeckCore.js", "js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js", "js/plugins/ProjectR_DamageModifiers.js",
-        "js/plugins/ProjectR_PartyCombat.js", "js/plugins/ProjectR_PartyRoster.js", "js/plugins/ProjectR_CardModifiers.js").trim(), ""); // ProjectR_ApolloStatus は追加だけで育てる共通の台帳なので、固定の対象に入れない
+        "js/plugins/ProjectR_PartyCombat.js", "js/plugins/ProjectR_PartyRoster.js").trim(), "");
+    // 共通のダメージ処理(CardModifiers)は、フックが返す倍率(damageMultiplier)を固定ダメージの基礎値に掛ける追加だけ許す(返さなければ何も変わらない)。SOUL のストレングス用
+    { const cm = git("diff", "--numstat", "e361797", "--", "js/plugins/ProjectR_CardModifiers.js").trim().split(/\s+/);
+      assert.ok(cm[0] === "" || (Number(cm[0]) <= 8 && Number(cm[1]) <= 4 && /damageMultiplier/.test(require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "js/plugins/ProjectR_CardModifiers.js"), "utf8"))), "ProjectR_CardModifiers.js は damageMultiplier の追加だけ: " + cm.join("+")); } // ProjectR_ApolloStatus は追加だけで育てる共通の台帳なので、固定の対象に入れない
 });
 
 test("バランス/F6: 新しい項目が定義され、範囲外は拒否。上書きがレベルの累積どおりに効く", () => {

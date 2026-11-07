@@ -74,6 +74,6 @@
     { "file": "soul_l3_verify.cjs", "kind": "verify", "status": "maintained", "input": "cdp+key", "phase": "SOUL-L3", "expectedChecks": 8, "covers": "SOUL戦闘 L2〜L3: 準備画面の実クリックの流れ(攻撃→キャラ選択→10枚から5枚→割り当て→ATTACK)・固定手札(実キー・消費されない・枠ごとの待ち)・次の準備の再シャッフル・薙ぎ払いの溜めの取り消し・後片づけ" },
     { "file": "soul_mana_verify.cjs", "kind": "verify", "status": "maintained", "input": "cdp+key", "phase": "SOUL-L4A", "expectedChecks": 8, "covers": "SOUL戦闘 L4-A マナの土台: PREPAREで0・ATTACK開始で10・毎秒+1(経過フレームと完全一致)・上限10・メッセージ停止/神託の時間停止/防御/準備では回復しない・ATTACK終了で破棄・従来経路では動かない・HUD表示・後始末" },
     { "file": "soul_cost_verify.cjs", "kind": "verify", "status": "maintained", "input": "cdp+key", "phase": "SOUL-L4B", "expectedChecks": 8, "covers": "SOUL戦闘 L4-B マナコスト: 承認済みD8コストの表示(HUD・マナ不足)・絶の再使用で構えが重ならない・神託の延長不可・予約型(黄金の矢)の予約/確定/中止・ストレングスの重ね掛け拒否・DEFENSEの遮断・後片づけ" },
-    { "file": "soul_strength_verify.cjs", "kind": "verify", "status": "maintained", "input": "cdp+key", "phase": "SOUL-L4B", "expectedChecks": 7, "covers": "SOUL戦闘 L4-B ストレングスの後始末: 蓄えは1つだけ(重ね掛け拒否・マナ不引)・ATTACK の終了で捨てる(DEFENSE・PREPARE・次の ATTACK へ持ち越さない)・連続ラウンド・絶/神託の強化も持ち越さない・通常武器の命中で消費・後片づけ" }
+    { "file": "soul_strength_verify.cjs", "kind": "verify", "status": "maintained", "input": "cdp+key", "phase": "SOUL-L4B", "expectedChecks": 8, "covers": "SOUL戦闘 L4-B ストレングス: 重ね掛け可(発動ごとにマナ)・物理カードにも適用・ATTACK の終了で全て捨てる(DEFENSE・PREPARE・次の ATTACK へ持ち越さない)・連続ラウンド・絶/神託の強化も持ち越さない・通常武器の命中で消費・後片づけ" }
   ]
 }

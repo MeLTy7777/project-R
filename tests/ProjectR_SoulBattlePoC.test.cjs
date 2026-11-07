@@ -101,7 +101,8 @@ test("保護対象(Hendrix・DotMove・既存カード・ダメージ式)は変�
     // SOUL戦闘のスキル(ProjectR_SoulSkills)のための、SOUL以外では何もしない小さな受け口だけは許す(各ファイルの変更はその受け口だけ)
     const SEAMS = { "js/plugins/ProjectR_GunSystem.js": /cooldownScale/, "js/plugins/ProjectR_SwordSystem.js": /cooldownScale/, "js/plugins/ProjectR_ApolloLyreRhythm.js": /soulAdapter/, "js/plugins/ProjectR_ApolloErosArrow.js": /projectRAttackId/,
         // ATTACK の終了で飛行中の攻撃・蓄えを打ち切る追加専用の窓口 clear(reason)(SOUL の準備ループだけが呼ぶ。通常戦闘では呼ばれない)
-        "js/plugins/ProjectR_ApolloPlagueRain.js": /clear: reason/, "js/plugins/ProjectR_HermesStrength.js": /clear: reason/ };
+        "js/plugins/ProjectR_ApolloPlagueRain.js": /clear: reason/, "js/plugins/ProjectR_HermesStrength.js": /clear: reason|setSoulCards/,
+        "js/plugins/ProjectR_CardModifiers.js": /damageMultiplier/ };      // CardModifiers: フックが返す倍率を固定ダメージの基礎値に掛ける追加(SOUL のストレングス用)
     const changed = out.stdout.split(/\r?\n/).filter(Boolean).map(line => line.slice(3).trim());
     for (const file of changed) {
         assert.ok(SEAMS[file], file + " は変更されていない(許すのはSOULスキルの受け口だけ)");

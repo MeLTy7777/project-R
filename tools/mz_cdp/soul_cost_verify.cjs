@@ -3,7 +3,7 @@
 //   B2 絶: 実キーで続けて使っても構えの倍率は重ならない(3のまま)・速度の強化は1つ・コストはその都度1回
 //   B3 神託: 停止中の再発動は拒否され、マナも引かず、停止は延長されない・停止中はマナが回復しない
 //   B4 予約型(黄金の矢): 発射の成功でちょうど1回確定(命中するかどうかは関係ない)。命中しても・外れて消えても返金せず追加でも引かない(増えた単位 = 経過フレーム - コスト、で完全一致)。予約は残らない
-//   B5 ストレングス: 蓄えがある間の重ね掛けは拒否(マナを引かない)
+//   B5 ストレングス: 蓄えがある間も重ね掛けできる(発動のたびにコストを引き、蓄えは回数分たまる)
 //   B6 フェーズ: DEFENSE は LOCK(使えず・マナも動かない)・次の ATTACK は10・予約や割引を持ち越さない
 //   B7 後片づけ: SOULを終えると元のマップへ戻り、保存データが変わらない
 // 竪琴の割引は実演奏の判定フレームが粗いCDPでは確かめにくいので、ノードのテスト(実際のリズムの押下)で確認する。
@@ -106,7 +106,7 @@ const SB = "ProjectRSoulSandbox", SO = "ProjectRSoulBattle", ST = "ProjectRSoulS
       JSON.stringify({ hit, miss }));
   });
 
-  await check("B5 ストレングス: 蓄えがある間の重ね掛けは拒否(マナを引かない)", async () => {
+  await check("B5 ストレングス: 重ね掛け可(発動のたびにコストを引く)", async () => {
     await json(`${MN}.devSet(10)`);
     const s0 = (await mana()).spent;
     await key("R");
@@ -114,7 +114,7 @@ const SB = "ProjectRSoulSandbox", SO = "ProjectRSoulBattle", ST = "ProjectRSoulS
     await json(`${MN}.devSet(10)`);
     await key("R");
     const sp2 = (await mana()).spent, st2 = await json("ProjectRHermesStrength.getPending()");
-    rec("B5 ストレングス", sp1 - s0 === 5 && st1 && st1.stacks === 1 && sp2 === sp1 && st2 && st2.stacks === 1, JSON.stringify({ spent: [sp1 - s0, sp2 - s0], stacks: [st1 && st1.stacks, st2 && st2.stacks] }));
+    rec("B5 ストレングス", sp1 - s0 === 5 && st1 && st1.stacks === 1 && sp2 - sp1 === 5 && st2 && st2.stacks === 2, JSON.stringify({ spent: [sp1 - s0, sp2 - s0], stacks: [st1 && st1.stacks, st2 && st2.stacks] }));
   });
 
   await check("B6 フェーズ: DEFENSE は LOCK(使えず・マナも動かない)・次の ATTACK は10・予約や割引を持ち越さない", async () => {

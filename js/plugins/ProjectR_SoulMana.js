@@ -109,8 +109,8 @@
     const heldUnits = () => { let n = 0; for (const h of rt.holds.values()) n += h.units; return n; };
     const availableUnits = () => Math.max(0, rt.units - heldUnits());
 
-    // 重ね掛けを禁じるカード(同じ強化を無制限に積まない): 蓄えがある間は発動できない(何も消費しない)
-    const STACK_GUARDS = Object.freeze({ hermes_strength: () => !!safe(() => root.ProjectRHermesStrength?.getPending?.(), null) });
+    // 重ね掛けを禁じるカード: 今は無し。ストレングスは元のカードの仕様どおり重ね掛け可(発動のたびに承認済みのコストを引く。ATTACK の終了で捨てる)。
+    const STACK_GUARDS = Object.freeze({});
 
     // 使う前の判定(何も変えない)
     const quote = cardId => {

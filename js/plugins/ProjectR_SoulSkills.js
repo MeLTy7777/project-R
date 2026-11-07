@@ -153,7 +153,8 @@
         releasePause("attackEnd");
         safe(() => api("ProjectRApolloLyreRhythm")?.clear?.("soulAttackEnd"));
         // ストレングスの蓄え(準備ループのみ): 使われなかった強化は ATTACK の終了で捨てる(DEFENSE・PREPARE・次の ATTACK へ持ち越さない。新しい持続時間は作らない)
-        if (loopMode() || loopSeen) { const dropped = safe(() => api("ProjectRHermesStrength")?.clear?.("soulAttackEnd:" + reason), false); if (dropped) { rt.stats.strengthDropped = (rt.stats.strengthDropped || 0) + 1; note({ type: "strengthDropped", reason }); } }
+        if (loopMode() || loopSeen) { safe(() => api("ProjectRHermesStrength")?.setSoulCards?.(null));   // カード攻撃への適用も止める(次の ATTACK の開始でまた有効にする)
+            const dropped = safe(() => api("ProjectRHermesStrength")?.clear?.("soulAttackEnd:" + reason), false); if (dropped) { rt.stats.strengthDropped = (rt.stats.strengthDropped || 0) + 1; note({ type: "strengthDropped", reason }); } }
         // 飛行中の矢・ビーム・疫病の地面の円(準備ループのみ): ATTACK の終了で打ち切る。残すと DEFENSE の間もハートへダメージ・状態付与が続く(消費は発射時に確定済みで返金しない)
         if (loopMode() || loopSeen) {
             for (const name of ["ProjectRApolloErosArrow", "ProjectRApolloPlagueRain"]) {
@@ -178,6 +179,9 @@
     // ---------------------------------------------------------------- 時間停止(神託): Hendrix の eventsPaused を使う(ProjectRのすべての更新がこれを見る) ----------------------------------------------------------------
     const takePause = () => { const m = map(); if (!m || rt.ownPause) return false; if (m.eventsPaused) return false; m.eventsPaused = true; rt.ownPause = true; return true; };
     const releasePause = reason => { const m = map(); if (!rt.ownPause) return false; rt.ownPause = false; if (m) m.eventsPaused = false; note({ type: "pauseRelease", reason }); return true; };
+    // ストレングス(準備ループ): 蓄えを使う物理ダメージのカード。ダメージ種別の印がカードに無いので、承認までの暫定の一覧(属性が物理のカード・damageType があるカードはそちらを優先)。
+    //   魔法・状態異常・継続ダメージ(疫病の矢・出血)・回復・ダメージの無い効果は入れない。
+    const STRENGTH_PHYSICAL_CARDS = Object.freeze(["hermes_sweep", "hermes_issen", "apollo_golden_volley", "apollo_golden_arrow", "apollo_eros_arrow", "apollo_gigas_slayer"]);
     const PROJECTILE_TAG = /<projectR(?:Golden|Eros|Gigas|Plague)Arrow>|<projectRGunBullet>|<projectRGoldenVolley>|<projectRNormalSword>|<projectRHermesSword>/;
 
     // ---------------------------------------------------------------- 各カードの発動後の処理 ----------------------------------------------------------------
@@ -384,9 +388,13 @@
         deck.registerActivationHandler?.(type, soulHandler(type, previous));
     }
     const _requestUseCard = deck.requestUseCard;
-    deck.requestUseCard = function() {
+    deck.requestUseCard = function(handIndex) {
         rt.pendingSoul = null;
         if (soulActive()) applyDefs();
+        if (soulActive() && loopMode()) {                                                  // ストレングス: この使用の通し番号(同じ使用の複数ヒットを1回の攻撃として数える)
+            const used = safe(() => deck.getBattleState?.().hand?.[handIndex]?.cardId, null);
+            if (used) safe(() => api("ProjectRHermesStrength")?.beginAction?.(used));
+        }
         let result;
         try { result = _requestUseCard.apply(this, arguments); }
         catch (error) { rt.pendingSoul = null; throw error; }
@@ -403,7 +411,7 @@
     if (api("ProjectRSoulBattle")?.onPhase) api("ProjectRSoulBattle").onPhase(event => {
         if (event && api("ProjectRSoulBattle")?.getState?.().prepare) loopSeen = true;
         if (event && event.to !== "attack") { endAll("phase:" + event.to); }
-        if (event && event.to === "attack") { applyDefs(); registerHook(); rt.eros = {}; if (loopMode()) safe(() => api("ProjectRHermesStrength")?.clear?.("soulAttackStart")); }   // 新しい ATTACK は蓄えなしから(準備ループ)
+        if (event && event.to === "attack") { applyDefs(); registerHook(); rt.eros = {}; if (loopMode()) safe(() => { const S = api("ProjectRHermesStrength"); S?.clear?.("soulAttackStart"); S?.setSoulCards?.({ physical: STRENGTH_PHYSICAL_CARDS }); }); }   // 新しい ATTACK は蓄えなしから(準備ループ)
     });
     if (api("ProjectRSoulBattle")?.onEnd) api("ProjectRSoulBattle").onEnd(() => { endAll("soulEnd"); loopSeen = false; unregisterHook(); restoreDefs(); rt.eros = {}; });
 

@@ -389,15 +389,15 @@ test("ストレングス(SOUL専用)の確認: 蓄えがある間は重ね掛け
     assert.equal(ms(w).spent, cost);
     let p = plain(S.getPending());
     assert.deepEqual([p.stacks, p.ignoreDefense], [1, true], "Lv3: 攻撃力 +15% と防御無視を蓄える");
-    // 重ね掛け拒否
+    // 重ね掛けできる(SOUL 専用の1つだけの制限は無い): 2回目も承認済みのコストを引き、蓄えは2回分
     set(w, 10);
     const again = use(w, "hermes_strength");
-    assert.deepEqual([again.ok, again.reason], [false, "buffActive"]);
-    assert.equal(plain(S.getPending()).stacks, 1);
-    assert.equal(ms(w).spent, cost, "拒否ではマナを引かない");
+    assert.equal(again.ok, true);
+    assert.equal(plain(S.getPending()).stacks, 2);
+    assert.equal(ms(w).spent, cost * 2, "2回目もコストを引く");
     // 持続: 時間では消えない(10秒待っても蓄えたまま = 承認された持続時間は無く、新しい時間を作っていない)
     frames(w, 600);
-    assert.equal(plain(S.getPending()).stacks, 1, "時間で消えない(持続時間の制限なし)");
+    assert.equal(plain(S.getPending()).stacks, 2, "時間で消えない(持続時間の制限なし)");
     // フェーズをまたがない: 使われなかった蓄えは ATTACK の終了で捨てる(DEFENSE・PREPARE・次の ATTACK に持ち越さない。詳細は ProjectR_SoulStrengthCleanup.test.cjs)
     w.soul.skipPhase(); frames(w, 5);
     assert.equal(S.getPending(), null, "ATTACK の終了で捨てる");
@@ -409,7 +409,6 @@ test("ストレングス(SOUL専用)の確認: 蓄えがある間は重ね掛け
     set(w, 10);
     assert.equal(use(w, "hermes_strength").ok, true, "捨てられたので次の ATTACK でまた使える(拒否されない)");
     assert.equal(plain(S.getPending()).stacks, 1);
-    assert.equal(use(w, "hermes_strength").reason, "buffActive", "同じ ATTACK の中では蓄えがある間は重ね掛けできない");
     // 敵ハートにダメージが入る通常武器の攻撃で消費される → また使える
     const h = heartTile(w);
     w.mouse(Math.round(h.x * 48), Math.round(h.y * 48)); frames(w, 2);

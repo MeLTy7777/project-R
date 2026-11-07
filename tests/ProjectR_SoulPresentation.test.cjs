@@ -331,7 +331,7 @@ test("通常のマップ戦闘への影響なし: 変更した共通部品(CutIn
     castKey(w2, "hermes_reed_flute"); castKey(w2, "hermes_zetsu"); frames(w2, 2);
     for (const key of ["soul_flute.ripple", "soul_zetsu.noise"]) assert.equal(vfx(w2).mapping(key).noLibrary, true, key);
     const diff = cp.spawnSync("git", ["diff", "--numstat", "--", "js/plugins/ProjectR_PresentationVfx.js", "js/plugins/ProjectR_CutIn.js"], { cwd: project, encoding: "utf8" }).stdout.trim().split(/\r?\n/);
-    for (const line of diff) { const [add, del] = line.split(/\s+/); assert.ok(Number(add) + Number(del) <= 80, "共通部品の変更は小さい: " + line); }
+    for (const line of diff.filter(Boolean)) { const [add, del] = line.split(/\s+/); assert.ok(Number(add) + Number(del) <= 80, "共通部品の変更は小さい: " + line); }
     quietly(() => w2.sb.stop());
 });
 

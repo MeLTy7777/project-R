@@ -1,8 +1,9 @@
 // SOUL戦闘 L4-B ストレングスの蓄え(ATTACK の終了で捨てる)と、他の一時的な強化の持ち越しなしの実機(Playtest)確認。実キー(Q/W/E/R/T)・CDP。
-//   S1 蓄え: 発動で蓄えは1つ・マナ5。蓄えがある間の再発動は拒否され、マナを引かず、蓄えは増えない
+//   S1 重ね掛け: 蓄えがある間も続けて発動でき、発動のたびにマナ5を引き、蓄えは回数分たまる
 //   S2 ATTACK の終了(skip): 使われなかった蓄えは捨てられ、DEFENSE・PREPARE・次の ATTACK のどこにも無い・次の ATTACK でまた使える(拒否されない)
-//   S3 連続するラウンド: 発動 → 使わず終了 → 捨てる、を3回。毎回マナ5が引かれ、蓄えは常に最大1つ
+//   S3 連続するラウンド: 2回発動 → 使わず終了 → すべて捨てる、を3回。毎回マナ5ずつ(計10)引かれ、前のラウンドから持ち越さない
 //   S4 他の一時的な強化: 絶・神託を使って ATTACK を終えると、効果・時間停止・武器の強化が残らず、次の ATTACK に持ち越さない
+//   S7 物理ダメージのカード(一閃)にも蓄えが使われ、ダメージが増える・非ダメージ(神託)では消費されない・1回の使用で一度だけ消費
 //   S5 通常武器の命中での消費: ハートの隣から通常攻撃を当てると蓄えが一度に消費され、同じ ATTACK でまた使える
 //   S6 後片づけ: SOULを終えると元のマップへ戻り、保存データが変わらない
 // 使い方: MZ_OUT=<出力> node tools/mz_cdp/soul_strength_verify.cjs   (新しいNW.jsセッションで実行する)。入力はCDP(人間の手動プレイの代わりではない)。
@@ -58,7 +59,7 @@ const SB = "ProjectRSoulSandbox", SO = "ProjectRSoulBattle", ST = "ProjectRSoulS
   const ids = armed.ids, quick = armed.quick;
   const setup = active && ids && quick.ok;
 
-  await check("S1 蓄え: 発動で1つ・重ね掛けは拒否(マナを引かない)", async () => {
+  await check("S1 重ね掛け: 蓄えがある間も発動でき、発動のたびにマナを引く", async () => {
     await json(`${MN}.devSet(10)`);
     const s0 = (await mana()).spent;
     await key("Q");
@@ -66,7 +67,7 @@ const SB = "ProjectRSoulSandbox", SO = "ProjectRSoulBattle", ST = "ProjectRSoulS
     await json(`${MN}.devSet(10)`);
     await key("Q");
     const sp2 = (await mana()).spent, p2 = await pend();
-    rec("S1 蓄えと重ね掛け", setup && sp1 - s0 === 5 && p1 && p1.stacks === 1 && sp2 === sp1 && p2 && p2.stacks === 1, JSON.stringify({ setup, spent: [sp1 - s0, sp2 - s0], stacks: [p1 && p1.stacks, p2 && p2.stacks] }));
+    rec("S1 重ね掛け", setup && sp1 - s0 === 5 && p1 && p1.stacks === 1 && sp2 - sp1 === 5 && p2 && p2.stacks === 2, JSON.stringify({ setup, spent: [sp1 - s0, sp2 - s0], stacks: [p1 && p1.stacks, p2 && p2.stacks] }));
   });
 
   await check("S2 ATTACK の終了: 蓄えを捨て、DEFENSE・PREPARE・次の ATTACK に持ち越さない・また使える", async () => {
@@ -80,23 +81,23 @@ const SB = "ProjectRSoulSandbox", SO = "ProjectRSoulBattle", ST = "ProjectRSoulS
     const sp = (await mana()).spent, pAgain = await pend();
     const dropped = await json(`${SK}.getState().stats.strengthDropped || 0`);
     await s.shot("s2_after_exit");
-    rec("S2 ATTACK 終了", pAttack && pAttack.stacks === 1 && d.inDefense.phase === "defense" && d.inDefense.pending === null && d.inPrepare.phase === "prepare" && d.inPrepare.pending === null &&
+    rec("S2 ATTACK 終了", pAttack && pAttack.stacks === 2 && d.inDefense.phase === "defense" && d.inDefense.pending === null && d.inPrepare.phase === "prepare" && d.inPrepare.pending === null &&
       pNext === null && !bonus && sp - s0 === 5 && pAgain && pAgain.stacks === 1 && dropped >= 1,
       JSON.stringify({ attackBefore: pAttack && pAttack.stacks, defense: d.inDefense, prepare: d.inPrepare, nextAttack: pNext, bonus, reCastSpent: sp - s0, reCast: pAgain && pAgain.stacks, strengthDropped: dropped }));
   });
 
-  await check("S3 連続するラウンド: 毎回、発動 → 使わず終了 → 捨てる。蓄えは常に最大1つ", async () => {
+  await check("S3 連続するラウンド: 毎回、2回発動 → 使わず終了 → すべて捨てる", async () => {
     const rounds = [];
     for (let i = 0; i < 3; i++) {
       const d = await toDefenseAndBack();                                      // 直前の蓄えをまず捨てる
       await nextAttack();
       await json(`${MN}.devSet(10)`);
       const s0 = (await mana()).spent, pre = await pend();
-      await key("Q"); await json(`${MN}.devSet(10)`); await key("Q");           // 2回目は拒否される
+      await key("Q"); await json(`${MN}.devSet(10)`); await key("Q");           // 2回目も重ね掛けできる
       const m = await mana(), p = await pend();
       rounds.push({ carried: !!(d.inDefense.pending || d.inPrepare.pending || pre), spent: m.spent - s0, stacks: p && p.stacks, start: null });
     }
-    rec("S3 連続ラウンド", rounds.every(r => !r.carried && r.spent === 5 && r.stacks === 1), JSON.stringify(rounds));
+    rec("S3 連続ラウンド", rounds.every(r => !r.carried && r.spent === 10 && r.stacks === 2), JSON.stringify(rounds));
   });
 
   await check("S4 他の一時的な強化(絶・神託): ATTACK の終了で効果・時間停止・武器の強化が残らない", async () => {
@@ -116,9 +117,9 @@ const SB = "ProjectRSoulSandbox", SO = "ProjectRSoulBattle", ST = "ProjectRSoulS
   });
 
   await check("S5 通常武器の命中での消費: ハートの隣から通常攻撃を当てると蓄えが一度に消費される", async () => {
-    await ev(`${SK}.endAll('s5'); ${HS}.clear('s5'); 'ok'`);
+    await ev(`${HS}.clear('s5'); 'ok'`);
     const h = await json("ProjectRSoulBattlePoC.getState().hitCenter");
-    await ev(`$gamePlayer.locate(Math.round(${h.x}), Math.round(${h.y}) + 2); $gamePlayer.setDirection(8); 'ok'`); await sleep(500);
+    await ev(`$gamePlayer.locate(Math.round(${h.x}), Math.round(${h.y}) + 1); $gamePlayer.setDirection(8); 'ok'`); await sleep(500);
     await json(`${MN}.devSet(10)`);
     await key("Q");
     const p1 = await pend(), hp0 = await json("ProjectRSoulBattlePoC.getState().hp");
@@ -132,6 +133,29 @@ const SB = "ProjectRSoulSandbox", SO = "ProjectRSoulBattle", ST = "ProjectRSoulS
     await s.shot("s5_consumed");
     rec("S5 命中で消費", p1 && p1.stacks === 1 && p2 === null && hp1 < hp0 && sp - s0 === 5 && p3 && p3.stacks === 1,
       JSON.stringify({ before: p1 && p1.stacks, after: p2, hp: [hp0, hp1], lastAttack: last, reCastSpent: sp - s0, reCast: p3 && p3.stacks }));
+  });
+
+  await check("S7 物理ダメージのカード(一閃)にも蓄えが使われる・非ダメージ(神託)では消費されない", async () => {
+    await ev(`${HS}.clear('s7'); 'ok'`);
+    await sleep(3600);                                                            // 神託の停止が残っていれば待つ
+    const h = await json("ProjectRSoulBattlePoC.getState().hitCenter");
+    await ev(`$gamePlayer.locate(Math.round(${h.x}), Math.round(${h.y}) + 1); $gamePlayer.setDirection(8); 'ok'`); await sleep(500);
+    const p = await json(`${ST}.toScreen(${h.x} * 48, ${h.y} * 48 - 24)`); await c.pointer(Math.round(p.x), Math.round(p.y)); await sleep(300);
+    const hp = () => json("ProjectRSoulBattlePoC.getState().hp");
+    await json(`${MN}.devSet(10)`);
+    const a0 = await hp(); await key("T"); await sleep(900); const baseline = a0 - (await hp());            // 蓄えなし
+    await json(`${MN}.devSet(10)`); await key("Q"); await json(`${MN}.devSet(10)`); await key("Q");
+    const stacked = await pend();
+    await json(`${MN}.devSet(10)`); await key("E");                                                      // 神託(非ダメージ): 蓄えは消費されない
+    const afterOracle = await pend();
+    await ev(`${HS}.clear('s7b'); 'ok'`); await sleep(300);
+    await json(`${MN}.devSet(10)`); await key("Q"); await json(`${MN}.devSet(10)`); await key("Q");
+    await json(`${MN}.devSet(10)`);
+    const b0 = await hp(); await key("T"); await sleep(900); const boosted = b0 - (await hp());
+    const left = await pend(), last = await json(`${HS}.getLastAttack()`);
+    await s.shot("s7_card");
+    rec("S7 物理カード", baseline > 0 && boosted > baseline && boosted / baseline <= 1.32 && stacked && stacked.stacks === 2 && afterOracle && afterOracle.stacks === 2 && left === null && last && last.card === true && last.source === "hermes_issen" && last.stacks === 2,
+      JSON.stringify({ baseline, boosted, stacked: stacked && stacked.stacks, afterOracle: afterOracle && afterOracle.stacks, left, last }));
   });
 
   await check("S6 後片づけ: SOULを終えると元のマップへ戻り、保存データが変わらない", async () => {

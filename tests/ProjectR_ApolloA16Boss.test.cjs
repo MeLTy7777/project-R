@@ -270,7 +270,10 @@ test("保護: 既存のダメージ・Cooldown・ドロー・セーブ・カー�
     const cp = require("node:child_process"), path = require("node:path");
     const project = path.join(__dirname, "..");
     const protectedFiles = ["js/plugins/ProjectR_CardDeckCore.js", "js/plugins/ProjectR_EnemyAttack.js", "js/plugins/ProjectR_BossFramework.js", "js/plugins/ProjectR_PartyCombat.js", "js/plugins/ProjectR_PartyRoster.js",
-        "js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js", "js/plugins/ProjectR_DamageModifiers.js", "js/plugins/ProjectR_CardModifiers.js", "js/plugins/ProjectR_CombatSession.js"];
+        "js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js", "js/plugins/ProjectR_DamageModifiers.js", "js/plugins/ProjectR_CombatSession.js"];
     const out = cp.spawnSync("git", ["status", "--porcelain", "--", ...protectedFiles, "data/Skills.json", "data/Map002.json", "js/rmmz_objects.js", "js/rmmz_scenes.js"], { cwd: project, encoding: "utf8" });
     assert.equal(out.stdout.trim(), "", "保護ファイルに差分なし: " + out.stdout);
+    // 共通のダメージ処理(CardModifiers)は、フックが返す倍率(damageMultiplier)を固定ダメージの基礎値に掛ける追加だけ許す(SOUL のストレングス用。返さなければ何も変わらない)
+    { const cm = cp.spawnSync("git", ["diff", "--numstat", "--", "js/plugins/ProjectR_CardModifiers.js"], { cwd: project, encoding: "utf8" }).stdout.trim().split(/\s+/);
+      assert.ok(cm[0] === "" || (Number(cm[0]) <= 8 && Number(cm[1]) <= 4 && /damageMultiplier/.test(require("node:fs").readFileSync(path.join(project, "js/plugins/ProjectR_CardModifiers.js"), "utf8"))), "ProjectR_CardModifiers.js は damageMultiplier の追加だけ: " + cm.join("+")); }
 });

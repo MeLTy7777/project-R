@@ -211,7 +211,7 @@ test("マナ不足は拒否: 何も引かず・カードの効果も起きない
     w.soul.end("t");
 });
 
-test("失敗・拒否では消費しない: 武器が無い絶(noWeapon)・神託の延長(oracleActive)・ストレングスの重ね掛け(buffActive)・未定義コスト。どれもマナもカードも変わらない", () => {
+test("失敗・拒否では消費しない: 武器が無い絶(noWeapon)・神託の延長(oracleActive)・未定義コスト。どれもマナもカードも変わらない", () => {
     const w = startA16(world());
     equip(w, ["hermes_zetsu", "apollo_oracle", "hermes_strength", "hermes_sweep", "hermes_issen"]);
     set(w, 10);
@@ -242,7 +242,7 @@ test("失敗・拒否では消費しない: 武器が無い絶(noWeapon)・神�
     assert.equal(ms(w).spent, spent1, "延長のために消費しない");
     const stopAfter = plain(w.ctx.ProjectRSoulSkills.getEffects()).find(e => e.kind === "oracle");
     assert.equal(stopAfter.serial, stopBefore.serial, "同じ神託のまま(再発動で作り直さない)");
-    // ストレングス: 蓄えがある間は重ね掛けしない
+    // ストレングス: 蓄えがある間も重ね掛けできる(発動のたびにコストを引く。詳細は ProjectR_SoulStrengthStack.test.cjs)
     w.ctx.ProjectRSoulSkills.endAll("test"); for (let i = 0; i < 400 && w.ctx.$gameMap.eventsPaused; i++) frames(w, 1);
     set(w, 10);
     const s0 = ms(w).spent;
@@ -252,9 +252,9 @@ test("失敗・拒否では消費しない: 武器が無い絶(noWeapon)・神�
     set(w, 10);
     const s1 = ms(w).spent;
     r = use(w, "hermes_strength");
-    assert.deepEqual([r.ok, r.reason], [false, "buffActive"]);
-    assert.equal(ms(w).spent, s1);
-    assert.equal(plain(w.ctx.ProjectRHermesStrength.getPending()).stacks, 1, "重ね掛けされていない");
+    assert.equal(r.ok, true, "蓄えがあっても再発動できる");
+    assert.equal(ms(w).spent - s1, M(w).costOf("hermes_strength"), "2回目もコストを引く");
+    assert.equal(plain(w.ctx.ProjectRHermesStrength.getPending()).stacks, 2, "重ね掛けされる");
     w.soul.end("t");
 });
 
