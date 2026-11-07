@@ -109,7 +109,7 @@ test("近接の射程: 調査時は剣カード約1.5マス・通常の剣約2�
     const reach = {};
     for (const dist of [1.5, 2.5]) reach["swordCard" + dist] = up(w, "hermes_sword_attack", dist, { frameCount: 60 }).loss > 0;
     equip(w, SWORD_ID); frames(w, 3);
-    for (const dist of [2, 3]) reach["sword" + dist] = trial(w, { dist, frameCount: 40, fire: () => { aimDegree(w, 0, dist); w.ctx.$gameTemp.reserveCommonEvent(1); return null; } }).loss > 0;
+    for (const dist of [2, 3]) reach["sword" + dist] = trial(w, { dist, frameCount: 40, fire: () => { aimDegree(w, 0, dist); w.attackClick(); return null; } }).loss > 0;
     info("近接の届く範囲", reach);
     assert.deepEqual(reach, { "swordCard1.5": true, "swordCard2.5": true, sword2: true, sword3: true }, "P2-Cの延長で届く");
     const sweep = world("hermes_sweep");
@@ -122,7 +122,7 @@ test("銃: 攻撃ボタン(CE1)で撃った弾が10マス先のハートに当�
     const w = world("hermes_sword_attack");
     equip(w, GUN_ID); frames(w, 3);
     const shoot = (dist, dx, aimDx) => trial(w, { dist, dx, frameCount: 120, fire: () => {
-        const degree = Math.atan2(aimDx, dist) * 180 / Math.PI; aimDegree(w, degree, Math.hypot(aimDx, dist)); w.ctx.$gameTemp.reserveCommonEvent(1); return null; } });
+        const degree = Math.atan2(aimDx, dist) * 180 / Math.PI; aimDegree(w, degree, Math.hypot(aimDx, dist)); w.attackClick(); return null; } });
     const hit = shoot(10, 0, 0), miss = shoot(6, 2, 0);
     info("銃", { hit, miss });
     assert.ok(hit.loss > 0 && hit.calls === 1 && hit.ammoUsed === 1);
@@ -204,7 +204,7 @@ test("補助カード: ハートへダメージを与えず(UpdateEventHp 0回)�
 
 test("移動カード: 絶・高速移動は、SOULの間は発動を受け付けない(P2-Bで遮断。調査時はSOULの移動停止中でもプレイヤーが動いていた)。詳細は ProjectR_SoulBattle.p2b.test.cjs", () => {
     const table = {};
-    for (const card of ["hermes_zetsu", "hermes_swift_movement"]) {
+    for (const card of ["hermes_swift_movement"]) {                                      // 絶は SOUL専用の構え(ProjectR_SoulSkills)として使える。遮断が残るのは高速移動(ProjectR_SoulBattleSkills の新しいテストで絶を確認)
         const w = world(card);
         const r = up(w, card, 5, { frameCount: 120 });
         table[card] = { reason: r.res.reason, moved: r.moved, consumed: r.consumed };
@@ -265,8 +265,8 @@ test("フェーズ移行: DoT(病の矢・居合の出血)は防御ターンの�
     }
 });
 test("フェーズ移行: 絶(瞬間移動)は、攻撃ターンの最後でも受け付けず、防御に入ってもプレイヤーは動かない(調査時は防御中に5マス動いていた。P2-Bで遮断)", () => {
-    const r = castAtFlip("hermes_zetsu", { windup: 12 });
-    info("移行直前の発射 hermes_zetsu", r);
+    const r = castAtFlip("hermes_swift_movement", { windup: 12 });          // 絶は SOUL専用の構えとして使える。移動の遮断が残るのは高速移動
+    info("移行直前の発射 hermes_swift_movement", r);
     assert.equal(r.res.reason, "soulMovementBlocked");
     assert.equal(r.moved, 0, "防御中も動かない");
     assert.equal(r.consumed, 0);

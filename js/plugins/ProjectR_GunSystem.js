@@ -231,6 +231,7 @@
     const state = { cooldown: 0, reloadLeft: 0, reloading: false, reloadMode: null, shots: 0, dryFires: 0, reloads: 0,
         lastShot: null, lastReload: null, displayed: null, kick: 0, kickDegree: 0 };
     let pendingReload = [];
+    let cooldownScale = 1;                                          // 発射間隔の倍率の逆数(既定1)。ProjectR_SoulSkills だけが一時的に変える(SOUL戦闘の絶・神託)
 
     const cancelReload = () => { state.reloading = false; state.reloadLeft = 0; state.reloadMode = null; };
 
@@ -352,7 +353,7 @@
         try {
             syncDisplay();
             if (this.eventsPaused) return;
-            if (state.cooldown > 0) state.cooldown--;
+            if (state.cooldown > 0) state.cooldown = cooldownScale === 1 ? state.cooldown - 1 : Math.max(0, state.cooldown - cooldownScale);   // cooldownScale=2 なら発射間隔が半分(SOULの絶Lv3)
             if (state.reloading) {
                 if (!equippedGun() || !canUseWeapon()) cancelReload();
                 else if (--state.reloadLeft <= 0) finishReload();
@@ -502,6 +503,8 @@
 
     root.ProjectRGunSystem = {
         config, fire, requestReload,
+        setCooldownScale: value => { const n = Number(value); cooldownScale = Number.isFinite(n) && n >= 1 && n <= 10 ? n : 1; return cooldownScale; },
+        getCooldownScale: () => cooldownScale,
         isReloading: () => state.reloading,
         status: () => ({ equipped: !!equippedGun(), ammo: ammo(), capacity: capacity(), reserve: reserve(),
             reloading: state.reloading, cooldown: state.cooldown, shots: state.shots, dryFires: state.dryFires,

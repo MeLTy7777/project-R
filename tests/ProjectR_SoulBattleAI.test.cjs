@@ -75,7 +75,9 @@ test("登録とデータ: AIData は Dodge の後ろに1回だけ。性格5種�
     assert.equal(w.dodge.arm({ boss: "dev_boss" }).ok, true);
     w.dodge.disarm();
     const cues = plain(w.dodge.CUES);
-    for (const key of ["sweep", "issen", "windup", "beamLv3", "erosBeamFragment", "plagueRat"]) assert.equal(cues[key].supported, false, key + " は未対応と明示");
+    for (const key of ["issen", "windup", "beamLv3", "erosBeamFragment", "plagueRat"]) assert.equal(cues[key].supported, false, key + " は未対応と明示");
+    assert.equal(cues.sweep.supported, "partial", "薙ぎ払いは専用ステージの見えている扇だけ観測できる(partial)");
+    assert.match(cues.sweep.note, /専用ステージ/, "対応範囲(専用ステージだけ)を明示");
     assert.equal(plain(w.dodge.getBoss("dev_boss")).frameworkBossId, "dev_boss_soul", "dev_boss はSOULのハートに結び付けるボスを指す");
     for (const key of ["projectile", "volley", "homing", "directionChange"]) assert.equal(cues[key].supported, true, key);
     for (const key of ["swordArea", "swordCardArea", "hermesUltimateArea", "canceledAttack", "bossFramework"]) assert.equal(cues[key].supported, "partial", key);
@@ -96,8 +98,8 @@ test("安全: AI・データのコードは入力・手札・ダメージ・HP�
     assert.deepEqual([...new Set([...data.matchAll(/dodge\.(\w+)\(/g)].map(m => m[1]))].sort(), ["registerBoss", "registerProfile"]);
     const status = cp.execFileSync("git", ["status", "--porcelain"], { cwd: project, encoding: "utf8" }).split(/\r?\n/);
     for (const file of ["js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js", "js/plugins/ProjectR_BossFramework.js", "js/plugins/ProjectR_CombatTestArena.js", "js/plugins/ProjectR_EnemyAttack.js",
-        "js/plugins/ProjectR_SwordSystem.js", "js/plugins/ProjectR_HermesSweep.js", "js/plugins/ProjectR_HermesIssen.js", "js/plugins/ProjectR_HermesUltimate.js", "js/plugins/ProjectR_HermesSwordsmanship.js",
-        "js/plugins/ProjectR_ApolloGoldenArrow.js", "js/plugins/ProjectR_ApolloGoldenVolley.js", "js/plugins/ProjectR_ApolloErosArrow.js", "js/plugins/ProjectR_CardDeckCore.js", "data/Skills.json", "data/Enemies.json", "data/Weapons.json"]) {
+        "js/plugins/ProjectR_HermesSweep.js", "js/plugins/ProjectR_HermesIssen.js", "js/plugins/ProjectR_HermesUltimate.js", "js/plugins/ProjectR_HermesSwordsmanship.js",
+        "js/plugins/ProjectR_ApolloGoldenArrow.js", "js/plugins/ProjectR_ApolloGoldenVolley.js", "js/plugins/ProjectR_CardDeckCore.js", "data/Skills.json", "data/Enemies.json", "data/Weapons.json"]) {
         assert.ok(!status.some(line => line.slice(3) === file), file + " は変更されていない");
     }
 });
@@ -275,7 +277,7 @@ test("近接: 最初の斬撃は反応が0でも避けられず必ず当たる(�
     equip(w, SWORD_ID); frames(w, 3);
     const duel = cfg => {
         const id = startSoul(w, { dist: 5, cfg });
-        const swing = () => { aimDegree(w, 0, 5); w.ctx.$gameTemp.reserveCommonEvent(1); frames(w, 24); };
+        const swing = () => { aimDegree(w, 0, 5); w.attackClick(); frames(w, 24); };
         w.calls.length = 0;
         swing(); const first = { loss: lost(w, id), calls: hits(w, id) };
         const stateAfterFirst = w.dodge.getState();
@@ -308,7 +310,7 @@ test("近接の判定の向きに備える(meleeWary): 被弾の退避が無く�
     const w = world("hermes_sword_attack");
     equip(w, SWORD_ID); frames(w, 3);
     const id = startSoul(w, { dist: 5, cfg: { ...BASE, reactionFrames: 4, hitReaction: false, meleeWary: true, meleeSidestepDistance: 1.8 } });
-    const swing = () => { aimDegree(w, 0, 5); w.ctx.$gameTemp.reserveCommonEvent(1); frames(w, 24); };
+    const swing = () => { aimDegree(w, 0, 5); w.attackClick(); frames(w, 24); };
     w.calls.length = 0;
     swing();
     const first = lost(w, id);

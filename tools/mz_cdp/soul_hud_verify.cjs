@@ -19,7 +19,7 @@ const HAND = ["hermes_issen", "apollo_golden_volley", "apollo_eros_arrow", "herm
   const check = async (id, fn) => { try { await fn(); } catch (e) { rec(id + " (script error)", false, String(e.stack || e.message).slice(0, 700)); } };
   const json = expr => ev(`JSON.stringify(${expr}) || 'null'`).then(JSON.parse);
   const wait = async (cond, ms = 8000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await ev(cond)) return true; await sleep(20); } return false; };
-  const KEYS = ["Q", "E", "X", "C", "V"];
+  const KEYS = ["Q", "W", "E", "R", "T"];
   // 通常HUDの表示物の renderable / visible
   const flags = () => json(`(function() { var sc = SceneManager._scene, sp = sc._spriteset;
     var f = function(o) { return o ? [o.renderable, o.visible] : null; };
@@ -56,7 +56,7 @@ const HAND = ["hermes_issen", "apollo_golden_volley", "apollo_eros_arrow", "herm
   });
 
   await check("H1 開始: 通常HUDが隠れ、専用HUDと暗転が出る。表示値は本物のAPIと一致", async () => {
-    const r = await json(`${SB}.start("a16", { openingHand: ${JSON.stringify(HAND)}, attackSeconds: 600 })`);
+    const r = await json(`${SB}.start("a16", { stage: false, openingHand: ${JSON.stringify(HAND)}, attackSeconds: 600 })`);
     await sleep(1500);
     const f = await flags(), st = await json(`${HUD}.getState()`), vm = await json(`${HUD}.getViewModel()`), dim = await dimInfo(), bf = await json(`${BF}.getHudState()`);
     await s.shot("h1_attack");
@@ -127,12 +127,12 @@ const HAND = ["hermes_issen", "apollo_golden_volley", "apollo_eros_arrow", "herm
   await check("H6 外部終了・stop(): どちらでも通常HUDが元の表示へ戻り、a16は再び開始できる", async () => {
     await sleep(3500);
     await ev("window.__ends.length = 0; 'ok'");
-    const r1 = await json(`${SB}.start("a16", { openingHand: ${JSON.stringify(HAND)}, attackSeconds: 600 })`); await sleep(1500);
+    const r1 = await json(`${SB}.start("a16", { stage: false, openingHand: ${JSON.stringify(HAND)}, attackSeconds: 600 })`); await sleep(1500);
     const hiddenNow = (await flags()).battleHud[0] === false;
     await ev(`${DK}.endCardBattle(); 'ok'`); await sleep(1500);
     const a = await flags(), sa = await json(`${HUD}.getState()`), ends = await json("window.__ends");
     await sleep(3500);
-    const r2 = await json(`${SB}.start("a16", { openingHand: ${JSON.stringify(HAND)}, attackSeconds: 600 })`); await sleep(1500);
+    const r2 = await json(`${SB}.start("a16", { stage: false, openingHand: ${JSON.stringify(HAND)}, attackSeconds: 600 })`); await sleep(1500);
     const hiddenAgain = (await flags()).battleHud[0] === false;
     const stop = await json(`${SB}.stop()`); await sleep(2500);
     const b = await flags(), sb = await json(`${HUD}.getState()`);

@@ -286,12 +286,24 @@
                     const tile = typeof $gameMap !== "undefined" && $gameMap?.tileWidth ? $gameMap.tileWidth() : 48;
                     const half = length / 2 * tile, radians = degree * Math.PI / 180;
                     const scaled = { ...definition, scale: Math.max(1, Math.round(definition.scale * length / 11)) };
-                    result = playSheet(key, scaled, { x: Math.sin(radians) * half, y: -Math.cos(radians) * half }, !!definition.stick, { rotation: degree });
+                    // origin(経路の起点のタイル座標)があれば、経路の中央に置いた錨Event(見えない・拡縮なし)へ置く。公式Show VFXの「結び付けたオフセット」は拡縮で効き方が変わる
+                    // (専用ステージでは約2倍ずれる)ので、ビームの区間と同じく、位置はオフセット無しの錨で決める。origin が無い・錨が作れないときだけ従来どおりプレイヤー基準。
+                    const origin = context.origin, visual = root.ProjectRGodSummonVisual;
+                    if (origin && Number.isFinite(origin.x) && Number.isFinite(origin.y) && typeof visual?.spawnAnchor === "function") {
+                        const anchor = visual.spawnAnchor({ x: origin.x + Math.sin(radians) * length / 2, y: origin.y - Math.cos(radians) * length / 2 }, { cardId: definition.cardId || null });
+                        if (anchor?.ok) {
+                            result = playSheet(key, scaled, { x: 0, y: 0 }, false, { rotation: degree, eventId: anchor.eventId });
+                            if (result.ok) result = { ...result, anchors: [anchor.id] }; else { try { visual.removeAnchor?.(anchor.id); } catch (_error) { /* 表示のみ */ } }
+                        }
+                    }
+                    if (!result) result = playSheet(key, scaled, { x: Math.sin(radians) * half, y: -Math.cos(radians) * half }, !!definition.stick, { rotation: degree });
                 }
             } else if (definition.rotate === "aim") {
                 // 回転はライブラリ再生で上書きできないため、同じ見た目の設定で公式Show VFXを使う。
-                const degree = Number(context.degree);
-                result = playSheet(key, definition, { x: 0, y: 0 }, !!definition.stick, { rotation: Number.isFinite(degree) ? degree : 0 });
+                const degree = Number(context.degree), eventId = Number(context.eventId);
+                const placed = { rotation: Number.isFinite(degree) ? degree : 0 };
+                if (definition.anchor === "event" && Number.isInteger(eventId) && eventId > 0) placed.eventId = eventId;   // 錨Eventの位置で再生(専用ステージの薙ぎ払い)。anchor:"player" の定義は従来どおりプレイヤー
+                result = playSheet(key, definition, { x: 0, y: 0 }, !!definition.stick, placed);
             } else if (definition.anchor === "target") {
                 // 結び付ける先: "player"(既定) または Event ID。範囲の魔法陣・オーラ・手の波紋。ライブラリと同じ設定の公式Show VFXで再生する(拡縮・個別停止のため)。
                 const target = context.eventId === undefined || context.eventId === "player" ? "player" : Number(context.eventId);
@@ -308,7 +320,7 @@
                 }
             } else if (definition.anchor === "event" && !(Number.isInteger(Number(context.eventId)) && Number(context.eventId) > 0)) {
                 result = fail("invalidEvent", key);
-            } else if (definition.library && libraryKnown.get(definition.library) !== false && hasCommand("showAnimationFromLibrary")) {
+            } else if (definition.library && definition.noLibrary !== true && libraryKnown.get(definition.library) !== false && hasCommand("showAnimationFromLibrary")) {   // noLibrary: ライブラリ再生は専用ステージの縮尺・錨Eventの位置に追従しないので、シート再生を使う
                 call("showAnimationFromLibrary", { animationName: definition.library, eventId: definition.anchor === "event" ? String(context.eventId) : "player",
                     loopCount: String(definition.loop || 1), stickMode: String(!!definition.stick) });
                 active.push({ key, note: null, library: definition.library });

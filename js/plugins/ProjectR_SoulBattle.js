@@ -43,6 +43,12 @@
  * @type boolean
  * @default true
  *
+ * @param PrepareLoop
+ * @text 準備ループを使う(PREPARE→ATTACK→DEFENSE→PREPARE)
+ * @desc true なら、開始時と防御の後に「準備」フェーズに入り、選択(攻撃)で攻撃へ進みます。false(既定)は従来の攻撃⇄防御。StartSoulBattleや start({prepare}) の指定が優先されます。
+ * @type boolean
+ * @default false
+ *
  * @command StartSoulBattle
  * @text SOUL戦闘(P1): 開始
  * @desc SOUL戦闘のコントローラを始めます。プレイヤーの移動は止まり、戦闘中はセーブできません。
@@ -58,14 +64,28 @@
  * @text ラウンド数(空=既定。0=無限)
  * @type string
  * @default
+ * @arg prepare
+ * @text 準備ループ(空=プラグインパラメータ)
+ * @type select
+ * @option 既定(プラグインパラメータ)
+ * @value auto
+ * @option 使う
+ * @value true
+ * @option 使わない(従来の攻撃⇄防御)
+ * @value false
+ * @default auto
  * @arg firstPhase
  * @text 最初のフェーズ
  * @type select
+ * @option 既定(準備ループなら準備から、そうでなければ攻撃から)
+ * @value auto
+ * @option 準備から(準備ループのとき)
+ * @value prepare
  * @option 攻撃から
  * @value attack
  * @option 防御から
  * @value defense
- * @default attack
+ * @default auto
  * @arg heart
  * @text 敵ハート(P0のPoC)を出す
  * @type boolean
@@ -111,6 +131,13 @@
  *   js/plugins.js からこのプラグインの1行を消せば完全に無効になります(セーブデータには何も書きません)。
  *
  * 【状態】 idle(待機・戦闘なし) → attack ⇄ defense → cleanup(後始末・一瞬) → idle
+ *   【準備ループ(オプトイン: start({prepare:true}) / パラメータ PrepareLoop)】 prepare → attack → defense → prepare … 開始時と防御の後に prepare に入ります。
+ *   prepare : 時間では終わりません。選択(「攻撃」= beginAttack())か skipPhase() で attack へ進みます(ラウンドは進みません)。
+ *             カード・通常攻撃・スキル・必殺技・ホットバーは DEFENSE と同じ仕組みで遮断します(理由は soulPrepare)。
+ *             戦闘の時計も止めます: SOULのフェーズ時間は数えず、$gameMap.eventsPaused(敵ハートの動き・敵の攻撃・飛んでいる弾・武器)を立て、
+ *             カードのクールダウンの時計(deck.updateCooldown)を進めません。自分が立てた eventsPaused は、準備を出る/終了する/マップ移動のどれでも必ず戻します。
+ *             準備の画面(メニュー)は別プラグイン ProjectR_SoulBattlePrepare が出します。このコントローラは状態と遮断だけを持ちます。
+ *   指定が無ければ従来どおり(攻撃⇄防御)。prepare を使わないときは何も変わりません。
  *   attack  : 既存のカード(Q/E/X/C/V)・剣・銃・必殺技がそのまま使えます。このプラグインは何も変えません。
  *   移動カード: SOULの間(攻撃・防御とも)、定義の category が "movement" のカード(絶・高速移動)は発動を受け付けません
  *             (reason: soulMovementBlocked)。カード・Cooldown・手札・絶の予備動作(予約)のどれも動かさないので、遅れて移動することもありません。
@@ -134,12 +161,13 @@
  *   戦闘の外部終了(endAllなど) / ハートの消滅 / プレイヤーの死亡。どれも同じ後始末を通ります。
  *
  * API: ProjectRSoulBattle
- *   start({ attackSeconds, defenseSeconds, rounds, firstPhase:"attack"|"defense", heart:true|false|{ pattern, rangeX, rangeY, speed, centerX, centerY },
+ *   start({ attackSeconds, defenseSeconds, rounds, prepare:true|false, firstPhase:"prepare"|"attack"|"defense", heart:true|false|{ pattern, rangeX, rangeY, speed, centerX, centerY },
  *           endOnHeartDefeat:true, endOnCardBattleEnd:true })       ※最後の2つは任意(既定は無効)。
  *        endOnHeartDefeat    ハートのHPが0以下(またはEventが撃破で消えた)になったら reason:"victory" で終える。
  *        endOnCardBattleEnd  開始時に動いていたカード戦闘が外から終わったら reason:"cardBattleEnded" で終える。
- *        -> { ok, reason?, state? }       end(reason?) -> boolean       isActive()       getPhase() -> "idle"|"attack"|"defense"|"cleanup"
- *   skipPhase() -> boolean(次のフェーズへ)    setDurations({ attackSeconds, defenseSeconds }) (次のフェーズから有効)
+ *        -> { ok, reason?, state? }       end(reason?) -> boolean       isActive()       getPhase() -> "idle"|"prepare"|"attack"|"defense"|"cleanup"
+ *   beginAttack(reason?) -> boolean(準備で「攻撃」を選ぶ。準備のときだけ true)    isPreparing()
+ *   skipPhase() -> boolean(次のフェーズへ。準備なら攻撃へ)    setDurations({ attackSeconds, defenseSeconds }) (次のフェーズから有効)
  *   onPhase(fn) / onEnd(fn) -> 登録解除関数    fn({ from, to, round, reason }) / fn({ reason })
  *   getState() -> 診断用の状態     getLog()     getBlockedCounts() -> 防御中に遮断した入力の数(診断用)     gates() -> 遮断の取り付け状況
  */
@@ -150,8 +178,9 @@
     const PLUGIN = "ProjectR_SoulBattle";
     const ENGINE = "Hendrix_Action_Engine";
     const SOURCE_ID = "soul_battle";
-    const PHASES = Object.freeze(["attack", "defense"]);
-    const STATES = Object.freeze(["idle", "attack", "defense", "cleanup"]);
+    const PHASES = Object.freeze(["attack", "defense"]);                                  // 時間で進むフェーズ(従来どおり)
+    const LOOP_PHASES = Object.freeze(["prepare", "attack", "defense"]);                  // 準備ループ(prepare:true)の一巡。prepare は時間では進まない
+    const STATES = Object.freeze(["idle", "prepare", "attack", "defense", "cleanup"]);
     const MAX_LOG = 80;
     const params = PluginManager.parameters(PLUGIN);
     const finite = (value, fallback, min, max) => {
@@ -162,14 +191,16 @@
         attackSeconds: finite(params.AttackSeconds, 8, 0.1, 600),
         defenseSeconds: finite(params.DefenseSeconds, 5, 0.1, 600),
         rounds: Math.floor(finite(params.Rounds, 0, 0, 999)),
-        showLabel: params.ShowLabel === undefined || params.ShowLabel === "" ? true : String(params.ShowLabel) === "true"
+        showLabel: params.ShowLabel === undefined || params.ShowLabel === "" ? true : String(params.ShowLabel) === "true",
+        prepareLoop: params.PrepareLoop === undefined || params.PrepareLoop === "" ? false : String(params.PrepareLoop) === "true"      // 既定は従来の攻撃⇄防御
     });
 
     let state = "idle";
     let run = null; // 動作中だけ存在する。セーブしない。
     let durations = { attackSeconds: config.attackSeconds, defenseSeconds: config.defenseSeconds }; // 実行時の既定(setDurationsで変更)
     const blocked = { card: 0, movement: 0, attackEvent: 0, ultimate: 0, hotbar: 0, save: 0 };
-    const gateStatus = { card: false, attackEvent: false, attackInterpreter: false, ultimate: false, ultimateGauge: false, hotbarCommands: false, hotbarSlot: false, saveFlag: false, saveExecute: false, scene: false };
+    const prepareStats = { entered: 0, attackStarts: 0, skips: 0, cooldownFrozen: 0, pauses: 0 };      // 準備ループの診断(prepare:true のときだけ増える)
+    const gateStatus = { card: false, attackEvent: false, attackInterpreter: false, ultimate: false, ultimateGauge: false, hotbarCommands: false, hotbarSlot: false, saveFlag: false, saveExecute: false, scene: false, cooldown: false };
     const log = [];
     const phaseHooks = new Set();
     const endHooks = new Set();
@@ -193,15 +224,17 @@
     const poc = () => root.ProjectRSoulBattlePoC;
     const attackCommonEventId = () => root.ProjectRCombatPresence?.settings?.attackCommonEventId ?? 1;
     const framesFor = seconds => Math.max(1, Math.round(seconds * 60));
-    const defending = () => state === "defense";
-    const soulActive = () => state === "attack" || state === "defense";
+    // 攻撃入力を遮断するフェーズ = DEFENSE と PREPARE(どちらも、カード・通常攻撃・スキル・必殺技を受け付けない)。理由の名前だけが違う。
+    const defending = () => state === "defense" || state === "prepare";
+    const lockReason = () => (state === "prepare" ? "soulPrepare" : "soulDefense");
+    const soulActive = () => state === "attack" || state === "defense" || state === "prepare";
     const MOVEMENT_CATEGORIES = Object.freeze(["movement"]); // SOUL中は発動を受け付けないカードの分類(絶・高速移動)
     let hotbarGate = () => false; // installGates 内で差し替える(ホットバーの画面ができてから prototype を包む)
 
     // ---- 防御中の攻撃入力の遮断 ----
     // どれも「合流点」の手前で止めるだけ。防御中でなければ元の関数をそのまま呼ぶ(攻撃ターンは何も変わらない)。
     // 遮断した入力はカード・Cooldown・弾薬などを消費しない(元の関数に到達しない)。
-    const blockedCard = () => ({ ok: false, reason: "soulDefense", reasons: [{ code: "soulDefense" }] });
+    const blockedCard = () => ({ ok: false, reason: lockReason(), reasons: [{ code: lockReason() }] });
     const blockedMovement = () => ({ ok: false, reason: "soulMovementBlocked", reasons: [{ code: "soulMovementBlocked" }] });
     // 手札のhandIndex番目が移動カード(定義のcategoryが "movement")か。手札や定義が読めないときは false(元の関数に任せる)。
     const isMovementCardAt = handIndex => {
@@ -224,6 +257,16 @@
                 return original.apply(this, arguments);
             };
             gateStatus.card = true;
+        }
+        // 1b) 準備(PREPARE)の間は、カードのクールダウンの時計(約15のプラグインが共有する deck.updateCooldown)を進めない。
+        //     戦闘の時間(クールダウン・各効果の持続・状態異常)を止めるため。ATTACK/DEFENSE と、準備ループを使わないときの動作は変えない。
+        if (deck && typeof deck.updateCooldown === "function") {
+            const original = deck.updateCooldown;
+            deck.updateCooldown = function() {
+                if (state === "prepare") { prepareStats.cooldownFrozen++; return { ok: true, frozen: true, reason: "soulPrepare" }; }
+                return original.apply(this, arguments);
+            };
+            gateStatus.cooldown = true;
         }
         // 2) 剣・銃・素手の攻撃ボタン(Hendrixが予約する攻撃用の共通イベント)。ProjectR_SwordSystem / GunSystem はこの予約の結果で動くので、予約しなければ動かない。
         if (typeof Game_Temp !== "undefined") {
@@ -300,7 +343,7 @@
         if (input && typeof input.getBlockedReason === "function") {
             const reasonOf = input.getBlockedReason;
             input.getBlockedReason = function(event) {
-                if (defending()) { if (event) blocked.ultimate++; return "soulDefense"; }
+                if (defending()) { if (event) blocked.ultimate++; return lockReason(); }
                 return reasonOf.apply(this, arguments);
             };
             gateStatus.ultimate = true;
@@ -341,28 +384,57 @@
                 if (Number(queue[i]) === attackCommonEventId()) { queue.splice(i, 1); removed++; }
             }
         }
-        const canceled = !!root.ProjectRCardBattleInput?.cancelPress?.(undefined, "soulDefense");
+        const canceled = !!root.ProjectRCardBattleInput?.cancelPress?.(undefined, lockReason());
         return { queuedEvents: removed, pressCanceled: canceled };
+    };
+
+    // ---- 準備(PREPARE)の凍結 ----
+    // 準備の間は $gameMap.eventsPaused を立てる(PoCのハートの動き・敵の攻撃・飛んでいる弾・Hendrixの更新・武器など、ProjectR/Hendrixの戦闘の時計が従う共通の印)。
+    // 自分が立てたときだけ、準備を出るとき(次のフェーズ・終了・マップ移動)に必ず戻す。他が先に立てていたら触らない。
+    const holdPreparePause = r => {
+        const m = map();
+        if (m && !m.eventsPaused) { m.eventsPaused = true; r.pausedByPrepare = true; prepareStats.pauses++; }
+    };
+    const releasePreparePause = r => {
+        if (!r.pausedByPrepare) return;
+        r.pausedByPrepare = false;
+        const m = map();
+        if (m) m.eventsPaused = false;
     };
 
     // ---- フェーズ ----
     const secondsOf = phase => (phase === "attack" ? run.attackSeconds : run.defenseSeconds);
     const enterPhase = (phase, reason, from = state) => {
+        releasePreparePause(run);                                // 準備を出る(または別フェーズへ入る)前に、必ず凍結を外す
         state = phase;
         run.phase = phase;
-        run.total = framesFor(secondsOf(phase));
+        run.total = phase === "prepare" ? 0 : framesFor(secondsOf(phase));      // 準備は時間で進まない(残り時間なし)
         run.frames = run.total;
-        const cleared = phase === "defense" ? clearQueuedAttacks() : null;
+        const cleared = phase === "defense" || phase === "prepare" ? clearQueuedAttacks() : null;
+        if (phase === "prepare") prepareStats.entered++;
         note({ type: "phase", from, to: phase, round: roundOf(), reason, cleared });
-        fire(phaseHooks, { from, to: phase, round: roundOf(), reason });
+        fire(phaseHooks, { from, to: phase, round: roundOf(), reason });          // 他のプラグイン(スキルの後始末など)が先に片づく
+        if (run && !run.releasing && state === "prepare" && run.phase === "prepare") holdPreparePause(run);
     };
     const roundOf = () => Math.floor(run.phasesDone / 2) + 1;
     const nextPhase = reason => {
-        if (!run || run.releasing || !PHASES.includes(run.phase)) return false;
+        if (!run || run.releasing) return false;
+        if (run.phase === "prepare") {                           // 準備 → 攻撃。時間では来ない(選択 beginAttack か skipPhase だけ)。ラウンドは進めない
+            enterPhase("attack", reason);
+            return true;
+        }
+        if (!PHASES.includes(run.phase)) return false;
         run.phasesDone++;
         if (run.rounds > 0 && run.phasesDone >= run.rounds * 2) return release(run, "completed");
-        enterPhase(run.phase === "attack" ? "defense" : "attack", reason);
+        // 準備ループ: 防御 → 準備(攻撃 → 防御 は従来どおり)
+        enterPhase(run.phase === "defense" && run.prepare ? "prepare" : run.phase === "attack" ? "defense" : "attack", reason);
         return true;
+    };
+    // 準備で「攻撃」を選んだ。準備のときだけ受け付ける(時間・ラウンド・他のフェーズには影響しない)。
+    const beginAttack = (reason = "choice") => {
+        if (!run || run.releasing || state !== "prepare") return false;
+        prepareStats.attackStarts++;
+        return nextPhase(reason);
     };
 
     // ---- フェーズ表示(動作確認用の小さなSprite) ----
@@ -383,9 +455,10 @@
         run.labelKey = key;
         const bitmap = label.bitmap;
         bitmap.clear();
-        bitmap.fillRect(0, 0, LABEL_W, LABEL_H, run.phase === "attack" ? "rgba(20,110,60,0.75)" : "rgba(150,30,50,0.75)");
+        bitmap.fillRect(0, 0, LABEL_W, LABEL_H, run.phase === "attack" ? "rgba(20,110,60,0.75)" : run.phase === "prepare" ? "rgba(40,80,150,0.75)" : "rgba(150,30,50,0.75)");
         bitmap.fontSize = 20;
-        bitmap.drawText(`${run.phase === "attack" ? "ATTACK" : "DEFENSE (attack locked)"}  ${seconds}s  R${roundOf()}`, 8, 0, LABEL_W - 16, LABEL_H, "left");
+        const text = run.phase === "attack" ? `ATTACK  ${seconds}s  R${roundOf()}` : run.phase === "prepare" ? `PREPARE (choose)  R${roundOf()}` : `DEFENSE (attack locked)  ${seconds}s  R${roundOf()}`;
+        bitmap.drawText(text, 8, 0, LABEL_W - 16, LABEL_H, "left");
     };
     const syncLabel = () => {
         const scene = mapScene();
@@ -424,8 +497,12 @@
         if (!attack.ok) return { ok: false, reason: "invalidAttackSeconds" };
         if (!defense.ok) return { ok: false, reason: "invalidDefenseSeconds" };
         if (!rounds.ok || !Number.isInteger(rounds.value)) return { ok: false, reason: "invalidRounds" };
-        const first = options.firstPhase === undefined || options.firstPhase === "" ? "attack" : String(options.firstPhase);
-        if (!PHASES.includes(first)) return { ok: false, reason: "invalidFirstPhase" };
+        // 準備ループ(PREPARE → ATTACK → DEFENSE → PREPARE)。指定が無ければプラグインパラメータ(既定 false = 従来の攻撃⇄防御)。
+        const prepare = options.prepare === undefined || options.prepare === "" ? config.prepareLoop : options.prepare;
+        if (typeof prepare !== "boolean") return { ok: false, reason: "invalidOption:prepare" };
+        const first = options.firstPhase === undefined || options.firstPhase === "" ? (prepare ? "prepare" : "attack") : String(options.firstPhase);
+        if (first === "prepare" && !prepare) return { ok: false, reason: "prepareDisabled" };
+        if (!LOOP_PHASES.includes(first)) return { ok: false, reason: "invalidFirstPhase" };
         const heart = normalizeHeart(options.heart === undefined ? true : options.heart);
         if (heart && typeof poc()?.start !== "function") return { ok: false, reason: "heartUnavailable" };
         // 任意の終了条件(既定はどちらも無効=従来どおり)。厳密な真偽値だけ受け付ける。
@@ -435,7 +512,7 @@
 
         const r = {
             mapId: map().mapId(), phase: first, frames: 0, total: 0, elapsed: 0, phasesDone: 0, rounds: rounds.value,
-            attackSeconds: attack.value, defenseSeconds: defense.value,
+            attackSeconds: attack.value, defenseSeconds: defense.value, prepare, pausedByPrepare: false,
             ownsSession: false, lockedPlayer: false, heartOwned: false, heartExpected: !!heart, heartEventId: 0,
             label: null, labelKey: "", releasing: false, saveBefore: true,
             endOnHeartDefeat: options.endOnHeartDefeat === true && !!heart, endOnCardBattleEnd: options.endOnCardBattleEnd === true,
@@ -464,7 +541,7 @@
             hotbarGate();
             enterPhase(first, "start", "idle");
             syncLabel();
-            note({ type: "start", mapId: r.mapId, first, attackSeconds: r.attackSeconds, defenseSeconds: r.defenseSeconds, rounds: r.rounds, heart: !!heart, saveBefore: r.saveBefore });
+            note({ type: "start", mapId: r.mapId, first, prepare, attackSeconds: r.attackSeconds, defenseSeconds: r.defenseSeconds, rounds: r.rounds, heart: !!heart, saveBefore: r.saveBefore });
             return { ok: true, state };
         } catch (error) {
             return release(r, "error:" + String(error?.message || error), { failed: true });
@@ -477,6 +554,7 @@
         r.releasing = true;
         state = "cleanup";
         const steps = [
+            () => releasePreparePause(r),                                 // 準備の凍結(eventsPaused)は、どの終了経路でも最初に必ず外す
             () => { if (r.label) { r.label.parent?.removeChild?.(r.label); r.label.bitmap?.destroy?.(); r.label.destroy?.(); r.label = null; } },
             () => { if (r.heartOwned && poc()?.isActive?.()) poc().end("soulBattle:" + reason); r.heartOwned = false; },
             () => { if (r.lockedPlayer) command("ControlPlayerMovement", { allowMovement: "true" }, 0); r.lockedPlayer = false; },
@@ -521,6 +599,7 @@
                     else if (r.heartExpected && !poc()?.isActive?.()) end("heartGone");
                     else if (r.endOnHeartDefeat && heartDefeated(r)) end("victory");                                                                   // HPが0以下になった
                     else if (root.ProjectR?.PlayerDeath?.isDead?.()) end("playerDead");
+                    else if (r.phase === "prepare") { /* 準備は時間で進まない(戦闘の時計は動かさない)。選択か skipPhase で攻撃へ */ }
                     else if (timerRunning(this)) {
                         r.elapsed++;
                         if (--r.frames <= 0) nextPhase("timer");
@@ -540,7 +619,7 @@
         Scene_Map.prototype.update = function() {
             const result = _sceneUpdate.apply(this, arguments);
             // 防御中は、新しく始まった長押しのカードを毎フレーム取り消す(発動は requestUseCard の遮断が止めるが、溜め表示などを残さない)。
-            if (run && defending()) { try { root.ProjectRCardBattleInput?.cancelPress?.(undefined, "soulDefense"); } catch (_error) { /* 表示のみ */ } }
+            if (run && defending()) { try { root.ProjectRCardBattleInput?.cancelPress?.(undefined, lockReason()); } catch (_error) { /* 表示のみ */ } }
             if (run) { try { hotbarGate(); } catch (_error) { /* ホットバーが無くても動く */ } }
             if (run) { try { syncLabel(); } catch (error) { note({ type: "error", message: String(error?.message || error) }); } }
             return result;
@@ -585,7 +664,7 @@
         if (!run) return { active: false, ...base, saveEnabled: saveNow };
         const r = run;
         return {
-            active: true, ...base, phase: r.phase, round: roundOf(), phasesDone: r.phasesDone, rounds: r.rounds, mapId: r.mapId,
+            active: true, ...base, phase: r.phase, prepare: r.prepare, paused: r.pausedByPrepare, prepareStats: { ...prepareStats }, round: roundOf(), phasesDone: r.phasesDone, rounds: r.rounds, mapId: r.mapId,
             framesLeft: r.frames, totalFrames: r.total, secondsLeft: r.frames / 60, elapsedFrames: r.elapsed,
             attackSeconds: r.attackSeconds, defenseSeconds: r.defenseSeconds,
             ownsSession: r.ownsSession, lockedPlayer: r.lockedPlayer, endOnHeartDefeat: r.endOnHeartDefeat, endOnCardBattleEnd: r.endOnCardBattleEnd, hadCardBattle: r.hadCardBattle, heart: { expected: r.heartExpected, owned: r.heartOwned, eventId: r.heartEventId },
@@ -596,7 +675,8 @@
     if (typeof PluginManager !== "undefined" && PluginManager.registerCommand) {
         PluginManager.registerCommand(PLUGIN, "StartSoulBattle", args => {
             const result = start({
-                attackSeconds: args.attackSeconds, defenseSeconds: args.defenseSeconds, rounds: args.rounds, firstPhase: args.firstPhase,
+                attackSeconds: args.attackSeconds, defenseSeconds: args.defenseSeconds, rounds: args.rounds, firstPhase: args.firstPhase === "auto" ? undefined : args.firstPhase,
+                prepare: args.prepare === "true" ? true : args.prepare === "false" ? false : undefined,   // "auto"/空 = プラグインパラメータ
                 heart: args.heart === "false" ? false : { pattern: args.pattern, rangeX: args.rangeX, rangeY: args.rangeY, speed: args.speed }
             });
             if (!result.ok && typeof console !== "undefined") console.warn(`[${PLUGIN}] start failed:`, result.reason);
@@ -605,9 +685,10 @@
     }
 
     root.ProjectRSoulBattle = Object.freeze({
-        STATES, PHASES, SOURCE_ID,
-        start, end, isActive: () => state === "attack" || state === "defense", getPhase: () => state,
-        skipPhase: () => nextPhase("skip"), setDurations,
+        STATES, PHASES, LOOP_PHASES, SOURCE_ID,
+        start, end, isActive: soulActive, getPhase: () => state,
+        isPreparing: () => state === "prepare", beginAttack,
+        skipPhase: () => { if (state === "prepare") prepareStats.skips++; return nextPhase("skip"); }, setDurations,
         onPhase: fn => { phaseHooks.add(fn); return () => phaseHooks.delete(fn); },
         onEnd: fn => { endHooks.add(fn); return () => endHooks.delete(fn); },
         getState, getLog: () => log.map(entry => ({ ...entry })),

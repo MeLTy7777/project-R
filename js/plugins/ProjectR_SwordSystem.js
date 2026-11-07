@@ -78,6 +78,7 @@
     const normalize = degree => ((degree % 360) + 360) % 360;
     const hitboxes = new Map(); // eventId -> { map, event, tag, degree, framesLeft, hitEnemies:Set }
     const state = { cooldown: 0, swings: 0, hits: 0, last: null };
+    let cooldownScale = 1;                                          // 攻撃間隔の倍率の逆数(既定1)。ProjectR_SoulSkills だけが一時的に変える(SOUL戦闘の絶・神託)
     let serial = 0;
 
     const map = () => typeof $gameMap !== "undefined" ? $gameMap : null;
@@ -193,7 +194,7 @@
     Game_Map.prototype.update = function(sceneActive) {
         _update.apply(this, arguments);
         if (!sceneActive || this.eventsPaused) return;
-        if (state.cooldown > 0) state.cooldown--;
+        if (state.cooldown > 0) state.cooldown = cooldownScale === 1 ? state.cooldown - 1 : Math.max(0, state.cooldown - cooldownScale);   // cooldownScale=2 なら攻撃間隔が半分(SOULの絶Lv3)
         for (const [id, record] of [...hitboxes]) {
             if (record.map !== this || this.event(id) !== record.event || record.event._erased) { hitboxes.delete(id); continue; }
             for (const enemy of this.events()) {
@@ -249,6 +250,8 @@
 
     root.ProjectRSwordSystem = {
         config, swing,
+        setCooldownScale: value => { const n = Number(value); cooldownScale = Number.isFinite(n) && n >= 1 && n <= 10 ? n : 1; return cooldownScale; },
+        getCooldownScale: () => cooldownScale,
         getActiveHitboxes: () => [...hitboxes].map(([eventId, r]) => ({ eventId, degree: r.degree, rotation: r.event._rotation, framesLeft: r.framesLeft, hits: r.hitEnemies.size })),
         status: () => ({ ...state, last: state.last && { ...state.last }, active: hitboxes.size, weapon: equippedWeapon()?.name || null })
     };

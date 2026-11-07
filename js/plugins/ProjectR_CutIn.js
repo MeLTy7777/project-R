@@ -36,6 +36,9 @@
  *   神と主人公の目元を出します(向きは横/縦をランダム)。結果を読むだけで、Gauge・Divine HP・神・ダメージ・クールダウンには触れません。
  *   無効な試行(Gauge不足など)では出ません。show({kind:"ultimate", godId}) の直接呼び出しも可能です。
  *
+ * 【持ち主(owner)】show の owner = "ally"(既定)/ "enemy"。通常のマップでは見た目は変わりません(左右はランダムのまま)。SOULの専用ステージ
+ *   (ProjectR_SoulBattleStage)を映している間だけ、味方 = 左上・敵 = 右上の、戦闘エリアの外の置き場へ画面の大きさのまま置きます(味方・敵はそれぞれ同時に1枚)。
+ *
  * 【描画順】Map/背景 → カットイン → 操作キャラクター。カットインはVision(暗幕)層より上に出し、
  *   その上に操作キャラクター本体の複製を重ねます(カットインが主人公を隠さないため)。戦闘HUDはさらに上のWindow層です。
  *   ※複製するのは本体Spriteのみ(銃のDisplay Weaponなど別Spriteは複製しません)。
@@ -72,10 +75,10 @@
             const kind = request?.kind === "ultimate" ? "ultimate" : request?.kind === "card" ? "card" : null;
             const godId = String(request?.godId || "");
             if (!kind || !godId) return { ok: false, reason: "invalidRequest" };
-            const entry = { id: ++serial, kind, godId, cardId: request.cardId ? String(request.cardId) : null, frame: 0, total: FRAMES[kind] };
+            const entry = { id: ++serial, kind, godId, cardId: request.cardId ? String(request.cardId) : null, owner: request.owner === "enemy" ? "enemy" : "ally", frame: 0, total: FRAMES[kind] };
             if (kind === "card") {
                 entry.side = random() < 0.5 ? "left" : "right";
-                active = active.filter(e => e.kind !== "card"); // 連打でも1枚だけ(積み重ねない)
+                active = active.filter(e => e.kind !== "card" || e.owner !== entry.owner); // 連打でも(味方・敵それぞれ)1枚だけ(積み重ねない)
             } else {
                 entry.orientation = random() < 0.5 ? "horizontal" : "vertical";
                 active = active.filter(e => e.kind !== "ultimate");
@@ -153,7 +156,42 @@
             this.views.set(entry.id, view);
             return view;
         }
+        // SOUL戦闘の専用ステージ(ProjectR_SoulBattleStage)を映している間だけ: 画面は拡大縮小したステージ(Spriteset)の中にあるので、カットインを戦闘エリアの外
+        // (味方 = 左上 / 敵 = 右上。置き場はステージが決める)へ、画面の大きさのまま置く。通常のマップ(ステージ以外)は従来どおり。
+        stageRect(entry) {
+            const stage = root.ProjectRSoulStage;
+            if (!stage || !stage.isPresenting?.()) return null;
+            const rects = stage.getCutInRects?.();
+            const rect = rects && (entry.owner === "enemy" ? rects.enemy : rects.ally);
+            // 画面 = この層の座標 x k + (ox, oy)。MZ の Spriteset は毎フレームの更新の最初に自分の拡大縮小・位置を元に戻し、ステージが更新の後で掛け直すので、
+            // この時点の Spriteset の値は読まない。ステージが決めた値(getSpritesetFrame)を使う。
+            const sf = stage.getSpritesetFrame?.();
+            const frame = sf && Number.isFinite(sf.k) && sf.k > 1e-6 ? { ox: sf.ox, oy: sf.oy, kx: sf.k, ky: sf.k } : null;
+            return rect && frame ? { rect, frame } : null;
+        }
+        placeOnStage(entry, view, hit) {
+            const accent = ACCENT[entry.godId] || ACCENT.default, rect = hit.rect, frame = hit.frame;
+            const fit = (sprite, w, h) => { const b = sprite.bitmap; const s = b && b.width > 0 ? Math.min(w / b.width, h / b.height) : 1; sprite.scale.set(s, s); sprite.anchor.set(0.5, 0.5); };
+            const ultimate = entry.kind === "ultimate";
+            const w = Math.round(rect.w), h = Math.round(ultimate ? rect.w * 0.5 : rect.h);
+            if (!view.size || view.size.w !== w || view.size.h !== h) { view.panel.bitmap = makePanel(w, h, accent); view.size = { w, h }; }
+            if (ultimate) {
+                const cw = w - 30, ch = (h - 20) / 2;
+                fit(view.god, cw, ch); fit(view.player, cw, ch);
+                view.god.x = w / 2; view.god.y = h * 0.27; view.player.x = w / 2; view.player.y = h * 0.73;
+            } else { fit(view.god, w - 20, h - 14); view.god.x = w / 2; view.god.y = h / 2; }
+            const t = envelope(entry, ultimate ? 10 : 8, ultimate ? 16 : 12), slide = (1 - t) * 40 * (entry.owner === "enemy" ? 1 : -1);
+            view.container.scale.set(1 / frame.kx, 1 / frame.ky);                                 // 画面座標 → この層の座標(ステージの拡大縮小・位置を打ち消す)
+            view.container.x = (rect.x + slide - frame.ox) / frame.kx; view.container.y = (rect.y - frame.oy) / frame.ky;
+            view.container.alpha = t;
+            view.placed = "stage";
+            updateEyesFallback(view.god);
+            if (view.player) updateEyesFallback(view.player);
+        }
         layout(entry, view) {
+            const placement = this.stageRect(entry);
+            if (placement) { this.placeOnStage(entry, view, placement); return; }
+            if (view.placed === "stage") { view.container.scale.set(1, 1); view.placed = ""; view.size = null; }
             const W = Graphics.width, H = Graphics.height, accent = ACCENT[entry.godId] || ACCENT.default;
             const fit = (sprite, w, h) => {
                 const b = sprite.bitmap;

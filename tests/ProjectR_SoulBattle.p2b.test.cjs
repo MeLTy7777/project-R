@@ -55,6 +55,7 @@ test("カード定義: 移動(category=movement)のカードは絶と高速移�
 test("発動: SOUL中(攻撃・防御とも)の絶・高速移動は受け付けず、プレイヤーは動かず、手札・Cooldown・消費・予約・演出の状態が何も変わらない", () => {
     for (const card of [ZETSU, SWIFT]) {
         for (const phase of ["attack", "defense"]) {
+            if (card === ZETSU && phase === "attack") continue;                                  // 絶のATTACKは SOUL専用の構え(ProjectR_SoulSkills。ProjectR_SoulSkills.test で確認)
             const w = world(card);
             w.ctx.ProjectRHermesZetsu.setWindupFrames(12);
             beginSoul(w, { heart: false, firstPhase: phase });
@@ -62,7 +63,7 @@ test("発動: SOUL中(攻撃・防御とも)の絶・高速移動は受け付け
             w.calls.length = 0;
             const result = cast(w, card, 0, 5);
             assert.equal(result.ok, false);
-            assert.equal(result.reason, phase === "defense" ? "soulDefense" : "soulMovementBlocked", `${card}/${phase}`);
+            assert.equal(result.reason, phase === "defense" ? "soulDefense" : card === ZETSU ? "noWeapon" : "soulMovementBlocked", `${card}/${phase}`);   // 絶は SOUL専用の構えとして使える(通常武器が無いので非消費の失敗)。高速移動は遮断のまま
             assert.deepEqual(deckState(w), before, `${card}/${phase} 手札・Cooldownなど戦闘の状態は不変`);
             frames(w, 60);
             assert.equal(dist(pos(w), at), 0, `${card}/${phase} プレイヤーは動かない`);
@@ -76,7 +77,8 @@ test("発動: SOUL中(攻撃・防御とも)の絶・高速移動は受け付け
 });
 
 test("実際のキー入力(Q)でも同じ: 攻撃ターンの絶・高速移動は押しても何も起きない。遮断した数は movement に数える", () => {
-    for (const card of [ZETSU, SWIFT]) {
+    // 絶は SOUL専用の構えとして使える(ProjectR_SoulSkills)。キーで遮断されるのは高速移動
+    for (const card of [SWIFT]) {
         const w = world(card);
         w.ctx.ProjectRHermesZetsu.setWindupFrames(12);
         beginSoul(w, { heart: false });
@@ -102,8 +104,8 @@ test("待ち行列: SOUL開始の直前に押した絶(待ち行列に入って�
     beginSoul(w, { heart: false });        // 次のフレームの処理の前にSOULが始まる
     frames(w, 1);
     w.keyUp("KeyQ", 81); frames(w, 60);
-    assert.equal(plain(w.ctx.ProjectRCardBattleInput.getLastResult()).reason, "soulMovementBlocked");
-    assert.deepEqual(deckState(w).hand, before.hand, "消費されない");
+    // 絶は SOUL専用の構えとして使える(ProjectR_SoulSkills): 待ち行列の要求は開始後に「構え」として1回だけ消費される。瞬間移動はしない
+    assert.equal(plain(w.ctx.ProjectRCardBattleInput.getLastResult()).reason, "success");
     assert.equal(dist(pos(w), at), 0, "遅れて移動しない");
     assert.equal(zetsuPending(w), false);
     w.soul.end("test");
@@ -134,7 +136,8 @@ test("遅延実行: 絶の予備動作(予約)が走っている間はSOULを始
 });
 
 test("フェーズ境界: 攻撃ターンの最後に絶・高速移動を押しても、防御に入ってからも次の攻撃ターンでもプレイヤーは動かない。カードも消費されない", () => {
-    for (const card of [ZETSU, SWIFT]) {
+    // 絶は SOUL専用の構え(ProjectR_SoulSkills)。移動の遮断が残る高速移動で確認する
+    for (const card of [SWIFT]) {
         const w = world(card);
         w.ctx.ProjectRHermesZetsu.setWindupFrames(12);
         const c = center(w);
@@ -167,7 +170,7 @@ test("発動済みは残す: 移動カードを遮断していても、直前に
     const results = {};
     for (const card of ["apollo_golden_volley", "apollo_plague_attack", "apollo_eros_arrow"]) { results[card] = cast(w, card); w.frames(1); }
     assert.notEqual(w.soul.getPhase(), "defense", "まだ攻撃ターン内で発射した");
-    for (const card of [ZETSU, SWIFT]) assert.equal(cast(w, card).reason, "soulMovementBlocked", card + " 攻撃ターン内でも遮断");
+    for (const card of [SWIFT]) assert.equal(cast(w, card).reason, "soulMovementBlocked", card + " 攻撃ターン内でも遮断");
     frames(w, 3);
     assert.equal(w.soul.getPhase(), "defense", "防御に入った");
     const atFlip = HP - barHp(w, id);
@@ -179,7 +182,7 @@ test("発動済みは残す: 移動カードを遮断していても、直前に
     assert.equal(before.filter(x => !now.includes(x)).length, 3, "発射した3枚だけが消費され、絶・高速移動は手札に残る");
     assert.equal(dist(pos(w), at), 0, "プレイヤーは動かない");
     assert.equal(w.soul.getBlockedCounts().card, 0, "発動済みの予約は防御で遮断されない");
-    assert.ok(w.soul.getBlockedCounts().movement >= 2);
+    assert.ok(w.soul.getBlockedCounts().movement >= 1);        // 高速移動(絶は SOUL専用の構え)
     w.soul.end("test");
     noErrors(w);
 });
@@ -197,6 +200,7 @@ test("通常戦闘の復元: SOULの前も、終了後(攻撃・防御のどち�
         const baseline = use(w);
         assert.ok(baseline.moved >= 2 && baseline.consumed === 1, `${card} SOULの前 ` + JSON.stringify(baseline));
         for (const phase of ["attack", "defense"]) {
+            if (card === ZETSU && phase === "attack") continue;                              // 絶のATTACKは SOUL専用の構え(ProjectR_SoulSkills)。ここでは通常の移動の復元だけを見る
             const w2 = world(card);
             beginSoul(w2, { heart: false, firstPhase: phase });
             frames(w2, 5);

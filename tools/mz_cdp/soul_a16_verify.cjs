@@ -17,7 +17,7 @@ const HAND = ["hermes_issen", "apollo_golden_volley", "apollo_eros_arrow", "herm
   const check = async (id, fn) => { try { await fn(); } catch (e) { rec(id + " (script error)", false, String(e.stack || e.message).slice(0, 700)); } };
   const json = expr => ev(`JSON.stringify(${expr}) || 'null'`).then(JSON.parse);
   const wait = async (cond, ms = 8000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await ev(cond)) return true; await sleep(20); } return false; };
-  const KEYS = ["Q", "E", "X", "C", "V"];
+  const KEYS = ["Q", "W", "E", "R", "T"];
   const snap = () => json(`({ deck: $gameSystem._projectRCardDeckData, inv: $gameSystem._projectRCardInventory, dirty: ${AT}.isDirty(), cardBattle: ${DK}.isCardBattleActive(), sources: ProjectRCombatSession.sources(),
     weapon: $gameParty.leader().equips()[0] ? $gameParty.leader().equips()[0].id : 0, save: $gameSystem.isSaveEnabled(), soul: ${SO}.getPhase(), bf: (${BF}.getState() || {}).bossId || null,
     enemies: $gameMap.events().filter(function(e) { return e && !e.isSpawnEvent && (e.event().note || '').indexOf('<enemy>') >= 0; }).map(function(e) { return [e.eventId(), e._realX, e._realY]; }) })`);
@@ -41,7 +41,7 @@ const HAND = ["hermes_issen", "apollo_golden_volley", "apollo_eros_arrow", "herm
   const fKeys = await ev("typeof ProjectRSoulSandbox.start + '/' + typeof ProjectRSoulSandbox.status + '/' + typeof ProjectRSoulSandbox.stop");
 
   await check("S0 開始: 指輪の一時付与・混成30枚デッキ(検証つき)・指定の手札・ハートがボス。簡単コマンドが揃っている", async () => {
-    const r = await json(`${SB}.start("a16", { openingHand: ${JSON.stringify(HAND)}, attackSeconds: 600 })`);
+    const r = await json(`${SB}.start("a16", { stage: false, openingHand: ${JSON.stringify(HAND)}, attackSeconds: 600 })`);
     startOk = r; await sleep(1200);
     const info = await json(`${AT}.deckInfo()`), st = await json(`${BF}.getState()`), status = await json(`${SB}.status()`), h = await hand(), snapNow = await snap();
     await s.shot("s0_start");
@@ -70,9 +70,9 @@ const HAND = ["hermes_issen", "apollo_golden_volley", "apollo_eros_arrow", "herm
     const phase = await ev(`${SO}.getPhase()`), h0 = await hand();
     await c.keyDown("Q"); await sleep(70); await c.keyUp("Q"); await sleep(300);
     await c.keyDown("E"); await sleep(70); await c.keyUp("E"); await sleep(300);
-    const h1 = await hand(), blocked = await json(`${SO}.getBlockedCounts()`);
+    const h1 = await hand(), blocked = await json(`${SO}.getBlockedCounts()`), input = await json("ProjectRSoulInput.getStats()");   // DEFENSE中のカードキーは、SOULの入力(ProjectR_SoulBattleInput)が捨てる
     await ev(`${SO}.skipPhase(); 'ok'`); await sleep(300);
-    rec("S2 defense", phase === "defense" && JSON.stringify(h0) === JSON.stringify(h1) && blocked.card >= 1, JSON.stringify({ phase, h0, h1, blocked }));
+    rec("S2 defense", phase === "defense" && JSON.stringify(h0) === JSON.stringify(h1) && input.swallowedDefense >= 2, JSON.stringify({ phase, h0, h1, blocked, swallowed: input.swallowedDefense }));
   });
 
   await check("S3 フェーズ: 公式のUpdateEventHpでHPを減らすと BossFramework と回避AIのフェーズが進む", async () => {
@@ -99,7 +99,7 @@ const HAND = ["hermes_issen", "apollo_golden_volley", "apollo_eros_arrow", "herm
   await check("S5 外部終了: a16を再開 → カード戦闘を外から終了すると、SOULが1回だけ終わり全て元に戻る", async () => {
     await sleep(3500);
     await ev("window.__ends.length = 0; 'ok'");
-    const r = await json(`${SB}.start("a16", { openingHand: ${JSON.stringify(HAND)}, attackSeconds: 600 })`);
+    const r = await json(`${SB}.start("a16", { stage: false, openingHand: ${JSON.stringify(HAND)}, attackSeconds: 600 })`);
     await sleep(1200);
     const ok0 = r.ok;
     await ev(`${DK}.endCardBattle(); 'ok'`); await sleep(1500);
@@ -111,7 +111,7 @@ const HAND = ["hermes_issen", "apollo_golden_volley", "apollo_eros_arrow", "herm
   await check("S6 stop(): 途中終了でも全て元に戻り、二重のstop()も安全", async () => {
     await sleep(3500);
     await ev("window.__ends.length = 0; 'ok'");
-    const r = await json(`${SB}.start("a16", { openingHand: ${JSON.stringify(HAND)}, weapon: "sword", attackSeconds: 600 })`);
+    const r = await json(`${SB}.start("a16", { stage: false, openingHand: ${JSON.stringify(HAND)}, weapon: "sword", attackSeconds: 600 })`);
     await sleep(1200);
     const mid = await snap();
     const stop1 = await json(`${SB}.stop()`); await sleep(2000);

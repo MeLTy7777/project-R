@@ -77,7 +77,7 @@ test("近接5マス(melee5): 最初の一撃は避けられず当たり(ダメ�
     quietly(() => w.sb.start("melee5")); frames(w, 5);
     const id = heartId(w);
     attachHpBars(w, [id], HP);
-    const swing = () => { aimDegree(w, 0, 5); w.ctx.$gameTemp.reserveCommonEvent(1); frames(w, 24); };
+    const swing = () => { aimDegree(w, 0, 5); w.attackClick(); frames(w, 24); };
     swing();
     const first = HP - barHp(w, id);
     assert.equal(first, 100, "最初の一撃は当たる");

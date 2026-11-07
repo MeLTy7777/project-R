@@ -18,7 +18,7 @@ const project = path.join(__dirname, "..");
 const PLUGIN_FILE = "js/plugins/ProjectR_SoulBattle.js";
 const ARROW = "apollo_golden_arrow";
 // ホットバーの画面(Spriteset_SkillUI)はこのハーネスでは作られないので、スロットのprototypeの遮断(hotbarSlot)だけは未取り付けのまま。
-const GATES_NO_HOTBAR_UI = { card: true, attackEvent: true, attackInterpreter: true, ultimate: true, ultimateGauge: true, hotbarCommands: true, hotbarSlot: false, saveFlag: true, saveExecute: true, scene: true };
+const GATES_NO_HOTBAR_UI = { card: true, attackEvent: true, attackInterpreter: true, ultimate: true, ultimateGauge: true, hotbarCommands: true, hotbarSlot: false, saveFlag: true, saveExecute: true, scene: true, cooldown: true };
 const NO_BLOCKS = { card: 0, movement: 0, attackEvent: 0, ultimate: 0, hotbar: 0, save: 0 };
 let passed = 0;
 function test(name, body) { body(); console.log(`ok ${++passed} - ${name}`); }
@@ -123,8 +123,8 @@ test("安全: ダメージ・HP・保存値・ファイル・セーブの書き�
     assert.doesNotMatch(code, /fs\.|require\(/, "ファイルを扱わない");
     const status = cp.execFileSync("git", ["status", "--porcelain"], { cwd: project, encoding: "utf8" }).split(/\r?\n/);
     const protectedFiles = ["js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js", "js/plugins/ProjectR_CardDeckCore.js", "js/plugins/ProjectR_CardBattleInput.js",
-        "js/plugins/ProjectR_CombatSession.js", "js/plugins/ProjectR_CombatPresence.js", "js/plugins/ProjectR_DamageModifiers.js", "js/plugins/ProjectR_GunSystem.js",
-        "js/plugins/ProjectR_SwordSystem.js", "js/plugins/ProjectR_UltimateActivation.js", "js/plugins/ProjectR_ApolloGoldenArrow.js", "js/rmmz_scenes.js", "js/rmmz_objects.js",
+        "js/plugins/ProjectR_CombatSession.js", "js/plugins/ProjectR_CombatPresence.js", "js/plugins/ProjectR_DamageModifiers.js",
+        "js/plugins/ProjectR_UltimateActivation.js", "js/plugins/ProjectR_ApolloGoldenArrow.js", "js/rmmz_scenes.js", "js/rmmz_objects.js",
         "data/Skills.json", "data/Weapons.json", "data/Map002.json", "data/Map004.json"];
     for (const file of protectedFiles) assert.ok(!status.some(line => line.slice(3) === file), file + " は変更されていない");
 });
@@ -134,7 +134,8 @@ test("状態: idle → attack → defense → attack…。時間はフレーム(
     const w = soulWorld();
     const events = [];
     const off = w.soul.onPhase(e => events.push(plain(e)));
-    assert.deepEqual(plain(w.soul.STATES), ["idle", "attack", "defense", "cleanup"]);
+    assert.deepEqual(plain(w.soul.STATES), ["idle", "prepare", "attack", "defense", "cleanup"]);   // L0: prepare を追加(準備ループはオプトイン。PHASES は従来どおり attack/defense)
+    assert.deepEqual(plain(w.soul.PHASES), ["attack", "defense"]);
     begin(w, { attackSeconds: 1, defenseSeconds: 0.5, heart: false });
     assert.deepEqual(events, [{ from: "idle", to: "attack", round: 1, reason: "start" }]);
     let s = w.soul.getState();
@@ -240,14 +241,14 @@ test("攻撃ターン: 剣と銃(攻撃ボタン=共通イベント1)も既存�
     equip(w, SWORD_ID); w.frames(3);
     begin(w, { heart: false });
     const swings = w.ctx.ProjectRSwordSystem.status().swings;
-    w.ctx.$gameTemp.reserveCommonEvent(1); frames(w, 6);
+    w.attackClick(); frames(w, 6);
     assert.equal(w.ctx.ProjectRSwordSystem.status().swings, swings + 1, "剣が振れる");
     w.soul.end("test");
     w = soulWorld();
     equip(w, GUN_ID); w.frames(3);
     begin(w, { heart: false });
     const shots = w.ctx.ProjectRGunSystem.status().shots;
-    w.ctx.$gameTemp.reserveCommonEvent(1); frames(w, 6);
+    w.attackClick(); frames(w, 6);
     assert.equal(w.ctx.ProjectRGunSystem.status().shots, shots + 1, "銃が撃てる");
     w.soul.end("test");
     noErrors(w);
@@ -264,16 +265,16 @@ test("防御ターン: カード(API・Qキー)を遮断し、手札・Cooldown�
     const api = plain(deckApi(w).requestUseCard(0));
     assert.deepEqual([api.ok, api.reason], [false, "soulDefense"]);
     assert.deepEqual(api.reasons, [{ code: "soulDefense" }]);
-    // 実際のキー入力(押す→離す)も同じ。CardBattleInputは受け付けて、requestUseCardで遮断される。
+    // 実際のキー入力(押す→離す)も同じ。SOULの入力(ProjectR_SoulBattleInput)が、DEFENSE中のカードキー(Q/W/E/R/T)をCardBattleInputへ渡さないので、カードの要求自体が起きない。
     w.tap("KeyQ", 81); frames(w, 3);
-    const last = plain(w.ctx.ProjectRCardBattleInput.getLastResult());
-    assert.deepEqual([last.ok, last.reason], [false, "soulDefense"]);
+    assert.equal(w.ctx.ProjectRCardBattleInput.getLastResult(), null, "カードの要求は起きない");
+    assert.ok(w.ctx.ProjectRSoulInput.getStats().swallowedDefense >= 1, "DEFENSE中の押下は捨てた");
     assert.deepEqual(handIds(w), hand, "手札は減らない");
     assert.deepEqual(plain(deckApi(w).getBattleState().cooldownPile), pile, "Cooldownに入らない");
     assert.equal(calls(w, "UpdateEventHp").length, 0, "ダメージの呼び出しなし");
     assert.equal(calls(w, "SpawnEvent").length, 0, "弾・矢のEventも生成されない");
     assert.equal(barHp(w, id), HP, "ハートは無傷");
-    assert.ok(w.soul.getBlockedCounts().card >= 2);
+    assert.ok(w.soul.getBlockedCounts().card >= 1);   // APIの要求1回(キーの押下はSOULの入力が捨てるので数えない)
     // 攻撃ターンへ戻ると、同じ操作がまた通る
     w.soul.skipPhase();
     assert.equal(w.soul.getPhase(), "attack");
@@ -290,7 +291,7 @@ test("防御ターン: 剣・銃(攻撃ボタン)・素手の攻撃を遮断し�
     equip(w, SWORD_ID); w.frames(3);
     begin(w, { heart: false, firstPhase: "defense" });
     const swings = w.ctx.ProjectRSwordSystem.status().swings;
-    w.ctx.$gameTemp.reserveCommonEvent(1); frames(w, 6);
+    w.attackClick(); frames(w, 6);
     assert.equal(w.ctx.ProjectRSwordSystem.status().swings, swings, "剣は振れない");
     assert.equal(w.ctx.$gameTemp._commonEventQueue.length, 0, "旧CE1も予約されない");
     w.soul.end("test");
@@ -298,20 +299,20 @@ test("防御ターン: 剣・銃(攻撃ボタン)・素手の攻撃を遮断し�
     equip(w, GUN_ID); w.frames(3);
     begin(w, { heart: false, firstPhase: "defense" });
     const before = plain(w.ctx.ProjectRGunSystem.status());
-    w.ctx.$gameTemp.reserveCommonEvent(1); frames(w, 6);
+    w.attackClick(); frames(w, 6);
     w.tap("KeyJ", 74); frames(w, 4);
     const after = plain(w.ctx.ProjectRGunSystem.status());
     assert.equal(after.shots, before.shots, "銃は撃てない");
     assert.equal(after.ammo, before.ammo, "弾薬は減らない");
     assert.ok(w.soul.getBlockedCounts().attackEvent >= 1);
     w.soul.skipPhase();
-    w.ctx.$gameTemp.reserveCommonEvent(1); frames(w, 6);
+    w.attackClick(); frames(w, 6);
     assert.equal(w.ctx.ProjectRGunSystem.status().shots, before.shots + 1, "攻撃ターンに戻れば撃てる");
     w.soul.end("test");
     w = soulWorld();
     w.ctx.$gameParty.leader().forceChangeEquip(0, null); w.frames(3);
     begin(w, { heart: false, firstPhase: "defense" });
-    w.ctx.$gameTemp.reserveCommonEvent(1);
+    w.attackClick();
     assert.equal(w.ctx.$gameTemp._commonEventQueue.length, 0, "素手の攻撃(共通イベント1)も予約されない");
     w.soul.end("test");
     noErrors(w);

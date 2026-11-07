@@ -61,7 +61,7 @@ function trial(w, options, fire, count) {
     w.soul.end("trial"); frames(w, 25);
     return r;
 }
-const swordFire = (w, degree = 0, tiles = 5) => () => { aimDegree(w, degree, tiles); w.ctx.$gameTemp.reserveCommonEvent(1); };
+const swordFire = (w, degree = 0, tiles = 5) => () => { aimDegree(w, degree, tiles); w.attackClick(); };
 const cardFire = (w, card, degree = 0, tiles = 5) => () => { assert.ok(handIds(w).includes(card), card + " が手札にある(同じカードは5枚まで。足りなければ世界を作り直す)"); aimDegree(w, degree, tiles); const r = fireCard(w, card); assert.equal(r.ok, true, JSON.stringify(r)); };
 const ultFire = (w, degree = 0, tiles = 5) => () => {
     w.ctx.ProjectRUltimateGauge.addUltimateGauge(1000, "melee"); aimDegree(w, degree, tiles);
@@ -83,16 +83,19 @@ test("登録と安全: 1回だけ・有効・依存の後ろ。許可リスト�
     }
     const w = world(SWORD_CARD);
     assert.equal(w.failures.length, 0);
-    assert.deepEqual(plain(w.melee.gates()), { spawn: true, sweep: true, origin: true });
+    assert.deepEqual(plain(w.melee.gates()), { spawn: true, sweep: true, origin: true, sweepDelay: true });
     assert.equal(w.melee.isActive(), false);
     assert.deepEqual(plain(w.melee.getStats()), { extended: 0, sweepShifted: 0, passed: {}, scoped: false });
     // 許可リストのタグは、実際のスキルのTAG定数と同じ
     const tagOf = file => /const TAG = "([^"]+)"/.exec(read(file))[1];
     assert.deepEqual([...w.melee.TAGS].sort(), ["ProjectR_SwordSystem", "ProjectR_HermesSwordsmanship", "ProjectR_HermesUltimate"].map(n => tagOf(`js/plugins/${n}.js`)).sort());
     const code = read(PLUGIN_FILE).split("*/").slice(1).join("*/");
-    assert.doesNotMatch(code, /UpdateEventHp|getCurrentEventHp|setHp|\.gainHp|saveGame|StorageManager|_saveEnabled|HermesIssen|hermes_issen/, "ダメージ・HP・保存・一閃を扱わない");
+    assert.doesNotMatch(code, /getCurrentEventHp|setHp|\.gainHp|saveGame|StorageManager|_saveEnabled|HermesIssen/, "HP・保存を扱わない(一閃は専用ステージの間だけカーソル起点にする。元の一閃の処理 HermesIssen は触らない)");
+    // ダメージの命令(UpdateEventHp)は、薙ぎ払いの発動の間だけ預けて遅らせる配管としてだけ触る。自分でダメージの式・数値を作らない(ProjectR_HermesSweep が作った引数をそのまま使う)
+    assert.ok((code.match(/UpdateEventHp/g) || []).length <= 2, "UpdateEventHp は遅延の配管(キー1か所)だけ");
+    assert.doesNotMatch(code, /value:\s*[`"']-|projectRFixed:\s*\{\s*base|criticalChanceBonus\s*:/, "ダメージの数値・式を自分で作らない");
     const status = cp.execFileSync("git", ["status", "--porcelain"], { cwd: project, encoding: "utf8" }).split(/\r?\n/);
-    for (const file of ["js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js", "js/plugins/ProjectR_SwordSystem.js", "js/plugins/ProjectR_HermesSwordsmanship.js",
+    for (const file of ["js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js", "js/plugins/ProjectR_HermesSwordsmanship.js",
         "js/plugins/ProjectR_HermesUltimate.js", "js/plugins/ProjectR_HermesSweep.js", "js/plugins/ProjectR_HermesIssen.js", "js/plugins/ProjectR_CardDeckCore.js", "js/plugins/ProjectR_GodSummonManager.js", "js/plugins/ProjectR_CardBattleInput.js", "js/plugins/ProjectR_UltimateActivation.js", "js/plugins/ProjectR_UltimateGauge.js"]) {
         assert.ok(!status.some(line => line.slice(3) === file), file + " は変更されていない");
     }
@@ -329,7 +332,7 @@ test("一閃は元のまま(アダプタは触らない)。移動カードの遮
     assert.ok(r.loss > 0 && r.calls >= 1 && r.moved === 0);
     assert.equal(r.extended, 0, "一閃は延ばさない");
     assert.deepEqual(plain(issen.melee.getStats()).sweepShifted, before.sweepShifted);
-    const zetsu = world("hermes_zetsu");
+    const zetsu = world("hermes_swift_movement");               // 絶は SOUL専用の構え。遮断が残るのは高速移動
     startSoul(zetsu, { dist: 5 });
     aimDegree(zetsu, 0, 5);
     assert.equal(plain(deckApi(zetsu).requestUseCard(0)).reason, "soulMovementBlocked");
@@ -383,7 +386,7 @@ test("フェーズ境界(剣): 攻撃ターンの最後に振った剣は、防�
     assert.equal(hits, 1);
     assert.equal(HP - barHp(w, id), base.loss);
     const swings = w.ctx.ProjectRSwordSystem.status().swings, extended = w.melee.getStats().extended;
-    w.ctx.$gameTemp.reserveCommonEvent(1); frames(w, 10);
+    w.attackClick(); frames(w, 10);
     assert.equal(w.ctx.ProjectRSwordSystem.status().swings, swings, "防御中は振れない");
     assert.equal(w.melee.getStats().extended, extended);
     w.soul.end("t");

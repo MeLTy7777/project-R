@@ -65,6 +65,7 @@
  * API: ProjectRHermesStrength
  *   getPending()  { stacks, values:[...], multiplier, ignoreDefense }(蓄え中。無ければ null)    getLastResult()  getLastAttack()
  *   combine(values) / effectsForLevel(lv) / cardLevel() / stackingMode()
+ *   clear(reason) -> boolean   蓄え(と確定済みの強化)を捨てる。ProjectR_SoulSkills が準備ループの ATTACK の終了で呼ぶ(通常のマップ戦闘・従来のSOULでは呼ばれず、何も変わらない)。使われなかった蓄えを捨てたら true
  */
 (() => {
     "use strict";
@@ -217,6 +218,7 @@
         getPending: pendingView,
         getLastResult: () => lastResult ? JSON.parse(JSON.stringify(lastResult)) : null,
         getLastAttack: () => lastAttack ? { ...lastAttack } : null,
+        clear: reason => { const unused = !!pending; clearAll(String(reason || "api")); return unused; },      // 使われなかった蓄えがあれば true(消費済みで残っている確定済みの強化 claim も一緒に捨てるが、数えない)
         combine, effectsForLevel, cardLevel, stackingMode: mode
     });
 })();

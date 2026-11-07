@@ -133,7 +133,7 @@ function test(name, body) { body(); console.log(`ok ${++passed} - ${name}`); }
 test("既存ProjectR_BattleHUDを再利用: 登録は1つのまま、新しいHUD pluginは追加しない", () => {
     const entries = productionConfig.$plugins.filter(p => p.name === "ProjectR_BattleHUD" && p.status);
     assert.equal(entries.length, 1);
-    assert.equal(productionConfig.$plugins.filter(p => /hud/i.test(p.name) && p.name !== "ProjectR_MenuHUD" && p.name !== "ProjectR_CombatExtrasHUD").length, 1);
+    assert.equal(productionConfig.$plugins.filter(p => /hud/i.test(p.name) && p.name !== "ProjectR_MenuHUD" && p.name !== "ProjectR_CombatExtrasHUD" && p.name !== "ProjectR_SoulBattleHUD").length, 1);   // SoulBattleHUD は SOUL戦闘(専用ステージ)だけの別HUD(通常のBattleHUDは変えない)
     // 全仕様パスで追加した ProjectR_CombatExtrasHUD は別HUDではなく、このBattleHUD(Manager)の子として
     // ボス/仲間の表示を足すだけの付属プラグイン(BattleHUDの表示条件・登録は変えない)。
     assert.match(fs.readFileSync(path.join(__dirname, "..", "js/plugins/ProjectR_CombatExtrasHUD.js"), "utf8"), /@base ProjectR_BattleHUD/);

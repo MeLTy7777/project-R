@@ -57,8 +57,12 @@ test("登録と数値: 最大Lv3・Cooldown 4・特殊/最大2・instant。Lv1=3
 
 test("保護ファイルは変えていない(CardDeckCore・Hendrix・DotMove・DamageModifiers・PartyCombat・PartyRoster・CardModifiers・CardBattleInput・Gun/Sword・他のApollo)", () => {
     assert.equal(git("diff", "--stat", "a130221", "--", "js/plugins/ProjectR_CardDeckCore.js", "js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js", "js/plugins/ProjectR_DamageModifiers.js", "js/plugins/ProjectR_PartyCombat.js",
-        "js/plugins/ProjectR_PartyRoster.js", "js/plugins/ProjectR_CardModifiers.js", "js/plugins/ProjectR_CardBattleInput.js", "js/plugins/ProjectR_GunSystem.js", "js/plugins/ProjectR_SwordSystem.js", "js/plugins/ProjectR_CombatPresence.js",
-        "js/plugins/ProjectR_ApolloLyreCalm.js", "js/plugins/ProjectR_ApolloPlagueRain.js").trim(), "");
+        "js/plugins/ProjectR_PartyRoster.js", "js/plugins/ProjectR_CardModifiers.js", "js/plugins/ProjectR_CardBattleInput.js", "js/plugins/ProjectR_CombatPresence.js",             // Gun/Sword は SOUL戦闘用の攻撃間隔の倍率(既定1)の受け口だけ追加(ProjectR_SoulBattlePoC.test.cjs が範囲を確認)
+        
+        "js/plugins/ProjectR_ApolloLyreCalm.js", ).trim(), "");
+    // 疫病の矢は、SOUL の準備ループが ATTACK の終了で打ち切るための追加専用の窓口 clear(reason) の1行だけ許す(それ以外は変えない)
+    { const pr = git("diff", "--numstat", "f78d85d", "--", "js/plugins/ProjectR_ApolloPlagueRain.js").trim().split(/\s+/);
+      assert.ok(pr[0] === "" || (pr[0] === "1" && pr[1] === "0"), "ProjectR_ApolloPlagueRain.js は追加専用の clear の1行以外は変えない: " + pr.join("+")); }
 });
 
 test("バランス/F6: 新しい項目が定義され、範囲外は拒否。上書きが累積どおりに効く", () => {

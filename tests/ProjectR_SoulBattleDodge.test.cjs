@@ -85,7 +85,7 @@ test("登録と安全: 1回だけ・有効・依存の後ろ。観測する弾�
     assert.doesNotMatch(code, /UpdateEventHp|setHp|\.gainHp|saveGame|StorageManager|_saveEnabled|\$gameSystem/, "ダメージ・HP・セーブ・セーブ対象は扱わない");
     const status = cp.execFileSync("git", ["status", "--porcelain"], { cwd: project, encoding: "utf8" }).split(/\r?\n/);
     for (const file of ["js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js", "js/plugins/ProjectR_CombatTestArena.js", "js/plugins/ProjectR_ApolloGoldenArrow.js",
-        "js/plugins/ProjectR_GunSystem.js", "js/plugins/ProjectR_SwordSystem.js", "js/plugins/ProjectR_CardDeckCore.js", "data/Skills.json", "data/Enemies.json"]) {
+        "js/plugins/ProjectR_CardDeckCore.js", "data/Skills.json", "data/Enemies.json"]) {
         assert.ok(!status.some(line => line.slice(3) === file), file + " は変更されていない");
     }
     assert.equal(w.failures.length, 0);
@@ -274,7 +274,7 @@ test("衝突の同期: 避けている間も毎フレーム、Game_Eventの判�
 test("近接の斬撃は避けられず(出た瞬間に当たる)、ダメージ・命中回数は回避AIが無いときと同じ。P2-Cの延長もそのまま働く", () => {
     const w = world();
     equip(w, SWORD_ID); frames(w, 3);
-    const swing = id => { aimDegree(w, 0, 5); w.calls.length = 0; w.ctx.$gameTemp.reserveCommonEvent(1); frames(w, 40); return { loss: lost(w, id), calls: hits(w, id) }; };
+    const swing = id => { aimDegree(w, 0, 5); w.calls.length = 0; w.attackClick(); frames(w, 40); return { loss: lost(w, id), calls: hits(w, id) }; };
     let id = startSoul(w, { dist: 5 });
     const without = swing(id);
     w.soul.end("t"); frames(w, 30);

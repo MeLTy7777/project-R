@@ -51,7 +51,7 @@ function arenaWorld(options = {}) {
 }
 function a16(options = {}, worldOptions = {}) {
     const w = arenaWorld(worldOptions);
-    const r = quietly(() => plain(w.sb.start("a16", { openingHand: HAND, ...options })));
+    const r = quietly(() => plain(w.sb.start("a16", { stage: false, openingHand: HAND, ...options })));
     assert.equal(r.ok, true, JSON.stringify(r));
     w.heart = r.heartEventId;
     prepareDisplay(w);
@@ -89,7 +89,7 @@ test("登録と範囲: SOULの後・BattleHUD/CombatExtrasHUD/Sandboxの後に1�
     assert.doesNotMatch(code, /UpdateEventHp|\.setHp\(|gainHp|saveGame|StorageManager|\$gameSystem\.\w+\s*=[^=]|\$gameSystem\._\w+\s*=[^=]|\$gameVariables\.setValue|\$gameSwitches\.setValue/, "ゲーム状態・セーブを書かない(通常HUDの visible も触らないことは下の挙動テストで確認)");
     assert.doesNotMatch(code, /requestUseCard|startCardBattle|endCardBattle|registerBoss|\.start\(|\.end\(|skipPhase|moveHeartTo/, "戦闘の制御を呼ばない");
     const status = cp.execFileSync("git", ["status", "--porcelain"], { cwd: project, encoding: "utf8" }).split(/\r?\n/);
-    for (const file of ["js/plugins/ProjectR_BattleHUD.js", "js/plugins/ProjectR_CombatExtrasHUD.js", "js/plugins/ProjectR_SoulBattle.js", "js/plugins/ProjectR_SoulBattleSandbox.js", "js/plugins/ProjectR_SoulBattleDodge.js",
+    for (const file of ["js/plugins/ProjectR_BattleHUD.js", "js/plugins/ProjectR_CombatExtrasHUD.js",
         "js/plugins/ProjectR_BossFramework.js", "js/plugins/ProjectR_CardDeckCore.js", "js/plugins/Hendrix_Hotbar_Creator.js", "js/plugins/Hendrix_Action_Engine.js", "data/Skills.json", "data/Weapons.json", "data/Enemies.json"]) {
         assert.ok(!status.some(line => line.slice(3) === file), file + " は変更されていない");
     }
@@ -140,6 +140,9 @@ test("開始: 通常HUD(BattleHUD・メニューボタン・Hendrix HUD・敵HP�
 });
 
 // ---------------------------------------------------------------- ビューモデル(既存APIの読み取り) ----------------------------------------------------------------
+// カード管理ワークブック(_ProjectR_DesignSources/ProjectR_CardManagement_Template(3)(4).xlsx 「カード一覧」のカード名)。HUDが英字のIDから作った名前(GOLDEN VOLLEY など)を出さないことを確かめる
+const WORKBOOK_NAMES = { hermes_issen: "一閃", hermes_psychopomp: "サイコポンポス", hermes_veil: "ヴェイル", hermes_strength: "ストレングス", hermes_sweep: "薙ぎ払い", hermes_reed_flute: "葦笛", hermes_zetsu: "絶",
+    apollo_golden_volley: "黄金の矢", apollo_eros_arrow: "エロスの矢", apollo_lyre_rhythm: "竪琴", apollo_laurel_wreath: "月桂冠", apollo_hyacinthus: "ヒュアキントス", apollo_gigas_slayer: "ギガース殺し", apollo_oracle: "神託", apollo_plague_rain: "疫病の矢" };
 test("表示する値は実行中のAPIそのもの: ボス名/HP/フェーズ=BossFramework、フェーズ/残り時間=SOUL、プレイヤーHP=先頭アクター、手札=本物のデッキ(名前・Level・Cooldown)", () => {
     const w = a16();
     const m = model(w);
@@ -149,18 +152,153 @@ test("表示する値は実行中のAPIそのもの: ボス名/HP/フェーズ=B
     assert.ok(Math.abs(m.secondsLeft - st.secondsLeft) < 0.2 && m.round === st.round);
     assert.deepEqual([m.player.name, m.player.hp, m.player.maxHp], [leader.name(), leader.hp, leader.mhp]);
     assert.deepEqual(m.hand.map(s => s.cardId), HAND, "手札は5枚・本物の順番");
-    assert.deepEqual(m.hand.map(s => s.key), ["Q", "E", "X", "C", "V"]);
+    assert.deepEqual(m.hand.map(s => s.key), ["Q", "W", "E", "R", "T"], "SOULのカード枠のキー");
     const defs = w.deck.definitions;
     for (const slot of m.hand) {
         assert.equal(slot.level, w.deck.getPersistentData().cardOwnership[slot.cardId].level, slot.cardId + " のLevel");
         assert.equal(slot.cooldownSeconds, defs.card(slot.cardId).cooldownSeconds, slot.cardId + " のCooldown");
-        assert.equal(slot.name, w.ctx.ProjectRBattleHUD.getCardPresentation(slot.cardId).name, slot.cardId + " の名前はBattleHUDと同じ");
+        const shown = w.ctx.ProjectRBattleHUD.getCardPresentation(slot.cardId).name;
+        assert.equal(slot.name, /[^\u0000-\u007f]/.test(shown) ? shown : WORKBOOK_NAMES[slot.cardId], slot.cardId + " の名前: BattleHUDが日本語の名前を持てばそれ、なければワークブックのカード名");
         assert.equal(slot.state, "ready", slot.cardId);
     }
     assert.equal(m.hand[0].cooldownSeconds, 7, "一閃のCooldown(7秒)");
     const state = plain(w.deck.getBattleState());
     assert.deepEqual(m.counts, { draw: state.drawPile.length, discard: state.discardPile.length, cooldown: state.cooldownPile.length });
     assert.equal(m.cardBattle, true);
+});
+
+test("カード名のラベル: 15枚すべて、ワークブックのカード名(日本語)で出る。英字のIDから作った名前にならない。キーの表示は Q/W/E/R/T", () => {
+    const groups = [["hermes_issen", "hermes_psychopomp", "hermes_veil", "hermes_strength", "hermes_sweep"], ["hermes_reed_flute", "hermes_zetsu", "apollo_golden_volley", "apollo_eros_arrow", "apollo_lyre_rhythm"],
+        ["apollo_laurel_wreath", "apollo_hyacinthus", "apollo_gigas_slayer", "apollo_oracle", "apollo_plague_rain"]];
+    const seen = [];
+    for (const group of groups) {
+        const w = a16({ openingHand: group });
+        const m = model(w);
+        assert.deepEqual(m.hand.map(slot => slot.cardId), group, "手札: " + JSON.stringify(m.hand.map(x => x.cardId)));
+        assert.deepEqual(m.hand.map(slot => slot.key), ["Q", "W", "E", "R", "T"]);
+        for (const slot of m.hand) { assert.equal(slot.name, WORKBOOK_NAMES[slot.cardId], slot.cardId); assert.doesNotMatch(slot.name, /^[\u0000-\u007f]+$/, slot.cardId + " は日本語の名前"); seen.push(slot.cardId); }
+        quietly(() => w.sb.stop());
+    }
+    assert.equal(new Set(seen).size, 15, "15枚すべて");
+    assert.deepEqual(plain(a16 && Object.keys(WORKBOOK_NAMES)).sort(), plain(JSON.parse(fs.readFileSync(path.join(project, "data/ProjectR_CardBalance.json"), "utf8")).cards && Object.keys(JSON.parse(fs.readFileSync(path.join(project, "data/ProjectR_CardBalance.json"), "utf8")).cards)).sort(), "ワークブックの15枚 = バランス表の15枚");
+    for (const id of Object.keys(WORKBOOK_NAMES)) assert.equal(JSON.parse(fs.readFileSync(path.join(project, "data/ProjectR_CardBalance.json"), "utf8")).cards[id].name, WORKBOOK_NAMES[id], id + " のバランス表の名前 = ワークブック");
+});
+
+test("敵のHPバーとHPの数値・ボス名のパネルは表示しない(承認済み・仕様 BT-065 / ボスの絵を大きく出す): ボスの表示はフェーズ(形態)の小さなチップだけ。HPが変わっても描き直さない。プレイヤーHP・フェーズ・残り時間・日本語のカード名は表示する。値そのものは読める", () => {
+    const code = fs.readFileSync(path.join(project, "js/plugins/ProjectR_SoulBattleHUD.js"), "utf8");
+    const block = code.slice(code.indexOf("// ボスのフェーズ(形態)だけ"), code.indexOf("// マナ(準備ループの SOUL のときだけ"));      // フェーズのチップの描画だけ(次のマナ・プレイヤーのパネルは含めない)
+    assert.ok(block.length > 100, "ボスのフェーズの描画部分を取り出せた");
+    assert.doesNotMatch(block, /bar\(|hpBoss|boss\.hp|maxHp|boss\.ratio|boss\.name/, "フェーズのチップはHPバー・HPの数値・ボス名を描かない");
+    const w = a16();
+    frames(w, 4);
+    const hud = w.sc()._projectRSoulHud, m0 = model(w);
+    assert.equal(w.ctx.ProjectRSoulBattleHUD.PANELS.boss, undefined, "ボス名のパネルは無い");
+    assert.equal(hud.panels.boss, undefined, "ボス名のパネルのSpriteも無い");
+    assert.ok(hud.panels.phase, "フェーズのチップ");
+    // dev_boss は3形態: フェーズのチップは出る。名前・HPは署名に無い
+    hurt(w, w.heart, 400); frames(w, 8);
+    const before = hud.panels.phase._sig;
+    assert.ok(before && /第二形態/.test(before) && !/dev_boss|SOUL/.test(before), "チップはフェーズだけ(ボス名なし): " + before);
+    assert.equal(hud.panels.phase.visible, true);
+    assert.doesNotMatch(before, /\b[5-9]\d\d\b/, "署名にもHPを含めない(HPで描き直さない)");
+    hurt(w, w.heart, 100); frames(w, 8);
+    assert.equal(hud.panels.phase._sig, before, "HPが減ってもチップは変わらない(HPを表示していない)");
+    const m1 = model(w);
+    assert.ok(m1.boss.hp < m0.boss.hp, "HPの値そのものは読める(表示しないだけ): " + [m0.boss.hp, m1.boss.hp]);
+    assert.equal(m1.boss.name, m0.boss.name, "名前の値も読める(表示しないだけ)");
+    assert.match(hud.panels.player._sig, /\d/, "プレイヤーHPのパネルはHPを含む");
+    assert.equal(m1.phase, "attack"); assert.ok(m1.secondsLeft > 0, "フェーズ・残り時間は表示");
+    assert.deepEqual(m1.hand.map(slot => slot.name), ["一閃", "黄金の矢", "エロスの矢", "薙ぎ払い", "ギガース殺し"], "カード名は日本語のまま(英字のIDの小さな名前も出さない)");
+    assert.doesNotMatch(code.slice(code.indexOf("// 手札5枚"), code.indexOf("// 山札など")), /humanize\(slot/, "英字のID名をカードに添えない");
+    quietly(() => w.sb.stop());
+});
+
+// ---------------------------------------------------------------- 山札の動き(引く・使う・Cooldownが終わる・シャッフル)を見えるようにする ----------------------------------------------------------------
+const deckState = w => plain(w.deck.getBattleState());
+const useRaw = (w, index = 0) => { const card = deckState(w).hand[index]; assert.ok(card, "手札がある"); return plain(w.deck.useBattleCard(card.instanceId)); };   // 山札の規則そのもの(消費 → Cooldown → 引く)だけ。発動はしない
+
+test("山札の動きが見える: 使う → 手札から消えてクールダウンへ(その山が光る)、山札から1枚引く(引いたカードに NEW)、少ししたら元へ戻る。山札の規則・数はHUDが変えない", () => {
+    const w = a16({ attackSeconds: 600 });
+    frames(w, 8);
+    const idle = model(w);
+    assert.equal(idle.deck.last, "", "何も起きていなければ、動きの表示は空");
+    assert.deepEqual(idle.deck.flash, { draw: false, cooldown: false, discard: false });
+    assert.equal(idle.deck.shuffle, false);
+    const base = JSON.stringify(deckState(w));
+    frames(w, 30);
+    assert.equal(JSON.stringify(deckState(w)), base, "見ているだけでは山札は動かない(HUDは読むだけ)");
+    const used = deckState(w).hand[0].cardId;
+    const before = deckState(w);
+    useRaw(w, 0); frames(w, 6);
+    const m = model(w), st = deckState(w);
+    assert.equal(st.drawPile.length, before.drawPile.length - 1, "山札から1枚引いた");
+    assert.equal(st.cooldownPile.length, before.cooldownPile.length + 1, "使ったカードはクールダウンへ");
+    assert.deepEqual(m.counts, { draw: st.drawPile.length, discard: st.discardPile.length, cooldown: st.cooldownPile.length }, "数は本物の山札そのまま");
+    assert.equal(m.deck.flash.cooldown, true, "クールダウンの山が光る");
+    assert.equal(m.deck.flash.draw, true, "山札も光る(引いた)");
+    assert.match(m.deck.last, /^(使用|引いた): /, "いちばん新しい動きが文字で出る: " + m.deck.last);
+    const fresh = m.hand.map(slot => slot.fresh);
+    assert.deepEqual(fresh, [false, false, false, false, true], "引いたカード(いちばん右の枠)だけが NEW");
+    const hud = w.sc()._projectRSoulHud;
+    assert.match(hud.panels.counts._sig, /"cooldown":true/, "山札のパネルの署名に光の状態が入る(描き直される)");
+    assert.match(hud.cardPanels[4]._sig, /true\]$/, "NEWのカード枠の署名に入る(描き直される)");
+    // 少ししたら元へ戻る(ずっと光らない)
+    frames(w, 130);
+    const later = model(w);
+    assert.deepEqual(later.deck.flash, { draw: false, cooldown: false, discard: false }, "光は消える");
+    assert.equal(later.hand.every(slot => !slot.fresh), true, "NEWも消える");
+    // Cooldownが終わると捨て札へ(その山が光る)
+    w.deck.updateCooldown(100); frames(w, 6);
+    const back = model(w), st2 = deckState(w);
+    assert.equal(st2.cooldownPile.length, 0);
+    assert.equal(st2.discardPile.length, 1, "終わったカードは捨て札へ");
+    assert.equal(back.deck.flash.discard, true, "捨て札の山が光る");
+    assert.match(back.deck.last, /^回復: 1枚 → 捨て札/, back.deck.last);
+    quietly(() => w.sb.stop());
+});
+
+test("シャッフルが見える: 山札が空のときに引くと、捨て札を混ぜて山札に戻す。そのときだけ SHUFFLE を出す(枚数つき)。普通に引いただけでは出さない", () => {
+    const w = a16({ attackSeconds: 600 });
+    frames(w, 8);
+    // 山札(25枚)を引き切る
+    for (let i = 0; i < 25; i++) useRaw(w, 0);
+    frames(w, 6);
+    assert.equal(deckState(w).drawPile.length, 0, "山札は空");
+    assert.equal(model(w).deck.shuffle, false, "普通に引いただけではシャッフルは出ない");
+    assert.equal(deckState(w).discardPile.length, 0);
+    frames(w, 130);
+    w.deck.updateCooldown(100); frames(w, 6);                          // Cooldownが終わる → 捨て札へ
+    const discard = deckState(w).discardPile.length;
+    assert.ok(discard >= 20, "捨て札がたまった: " + discard);
+    frames(w, 130);
+    useRaw(w, 0); frames(w, 6);                                        // 山札が空 → 捨て札を混ぜて山札へ → 1枚引く
+    const after = deckState(w), m = model(w);
+    assert.equal(after.discardPile.length, 0, "捨て札は山札へ戻った");
+    assert.equal(after.drawPile.length, discard - 1, "混ぜた山札から1枚引いた");
+    assert.equal(m.deck.shuffle, true, "SHUFFLE が出る");
+    assert.equal(m.deck.shuffleCount, discard, "混ぜた枚数");
+    assert.equal(m.deck.last, `シャッフル: 捨て札${discard}枚 → 山札`);
+    assert.match(w.sc()._projectRSoulHud.panels.counts._sig, /"shuffle":true/, "山札のパネルにSHUFFLEの印");
+    frames(w, 130);
+    assert.equal(model(w).deck.shuffle, false, "しばらくしたら消える");
+    quietly(() => w.sb.stop());
+});
+
+test("山札の表示はSOUL戦闘の間だけ・片づけで消える: SOULを終えれば記録を捨てる。次のSOUL戦闘で古い動きが出ない。山札の表示コードは山札を書き換えない", () => {
+    const code = fs.readFileSync(path.join(project, "js/plugins/ProjectR_SoulBattleHUD.js"), "utf8");
+    const block = code.slice(code.indexOf("const observeDeck"), code.indexOf("const watchView"));
+    assert.ok(block.length > 200);
+    assert.doesNotMatch(block, /requestUseCard|useBattleCard|updateCooldown|startBattle|startCardBattle|endBattle|setDeck|drawOne|\.push\(\{ *instance/, "山札の表示は読むだけ(山札・Cooldownを動かす呼び出しを持たない)");
+    const w = a16({ attackSeconds: 600 });
+    frames(w, 8);
+    useRaw(w, 0); frames(w, 6);
+    assert.notEqual(model(w).deck.last, "");
+    quietly(() => w.sb.stop()); frames(w, 6);
+    assert.equal(w.hud.isActive(), false);
+    const w2 = a16({ attackSeconds: 600 });
+    frames(w2, 8);
+    assert.equal(model(w2).deck.last, "", "次の戦闘では前の動きが残っていない");
+    quietly(() => w2.sb.stop());
 });
 
 test("値は並行して持たない: ハートのHP・プレイヤーHP・時間・手札が変われば、次の更新でビューモデルも変わる(HUD側にキャッシュした値を持たない)", () => {
@@ -187,7 +325,8 @@ test("カード枠の表示状態: 攻撃中=ready、移動カード(絶)=moveLo
     const w = a16({ openingHand: ["hermes_zetsu", "hermes_issen", "hermes_issen", "hermes_sweep", "apollo_golden_volley"] });
     frames(w, 6);
     let m = model(w);
-    assert.equal(m.hand[0].state, "moveLock");
+    assert.equal(m.hand[0].state, "ready", "絶は SOUL専用の構えとして使えるので ready(移動の遮断が残る高速移動は moveLock)");
+    assert.equal(m.hand[0].cooldownSeconds, 6, "SOUL中の絶のCooldown(6秒)");
     assert.deepEqual(m.hand.slice(1).map(s => s.state), ["ready", "ready", "ready", "ready"]);
     const cast = plain(w.deck.requestUseCard(1)); assert.equal(cast.ok, true, JSON.stringify(cast)); frames(w, 15);
     m = model(w);
@@ -314,7 +453,7 @@ test("繰り返しの開始: 開始・終了を3回繰り返しても、隠す�
 test("名前の衝突なし: 専用レイヤー/パネルの独自メソッドは、PIXI・MZ の Sprite/Container の既存メソッドを上書きしない(update だけは意図して空にする)", () => {
     const w = a16();
     const layer = w.sc()._projectRSoulHud;
-    const panel = layer.panels.boss;
+    const panel = layer.panels.phase;
     const PIXI_NAMES = ["render", "renderAdvanced", "renderCanvas", "renderWebGL", "_render", "updateTransform", "calculateBounds", "getBounds", "getLocalBounds", "containsPoint", "destroy", "setParent", "addChild", "addChildAt",
         "removeChild", "removeChildAt", "setTransform", "toGlobal", "toLocal", "displayObjectUpdateTransform", "_calculateBounds", "onTextureUpdate", "updateFrame", "_refresh", "_refreshFrame", "setFrame", "move", "setHue", "setBlendColor", "setColorTone", "isOnScreen"];
     for (const object of [layer, panel, layer.corners[0]]) {
@@ -386,7 +525,7 @@ test("無いオプションプラグイン・表示物があっても安全: Bat
     const savedHud = ctx.ProjectRBattleHUD; ctx.ProjectRBattleHUD = undefined;
     frames(w, 6);
     let m = model(w);
-    assert.equal(m.hand[0].name, "ISSEN", "BattleHUDが無ければカードIDから作った名前");
+    assert.equal(m.hand[0].name, "一閃", "BattleHUDが無ければワークブックのカード名(それも無ければカードIDから作った名前)");
     ctx.ProjectRBattleHUD = savedHud;
     // BossFramework のHUD状態が読めない → SOULのハートのHPだけ
     const savedGet = w.bf.getHudState; w.bf.getHudState = () => null;
@@ -462,17 +601,17 @@ test("パネルは本物のプレイヤー/ハートに重なると薄くなる(
     const layer = w.sc()._projectRSoulHud, ctx = w.ctx;
     const sx = layer._lastScaleX, sy = layer._lastScaleY;
     const savedX = ctx.$gamePlayer.screenX, savedY = ctx.$gamePlayer.screenY;
-    ctx.$gamePlayer.screenX = () => 960 * sx; ctx.$gamePlayer.screenY = () => (50 + 24) * sy;   // ボスパネルの真ん中
+    ctx.$gamePlayer.screenX = () => 498 * sx; ctx.$gamePlayer.screenY = () => (37 + 24) * sy;   // フェーズのチップの真ん中
     const evs = w.ctx.$gameMap.event(w.heart);
     const sxh = evs.screenX, syh = evs.screenY;
     evs.screenX = () => 100 * sx; evs.screenY = () => (500 + 24) * sy;                           // 画面の左・中央(どのパネルとも重ならない)
     frames(w, 40);
-    assert.ok(layer.panels.boss.alpha < 0.5 && layer.panels.boss.alpha >= 0.44, "重なったパネルは薄い(最低0.45) " + layer.panels.boss.alpha);
+    assert.ok(layer.panels.phase.alpha < 0.5 && layer.panels.phase.alpha >= 0.44, "重なったパネルは薄い(最低0.45) " + layer.panels.phase.alpha);
     assert.equal(layer.panels.player.alpha, 1, "重ならないパネルは濃いまま");
     ctx.$gamePlayer.screenX = savedX; ctx.$gamePlayer.screenY = savedY; evs.screenX = sxh; evs.screenY = syh;
     ctx.$gamePlayer.screenX = () => 960 * sx; ctx.$gamePlayer.screenY = () => 540 * sy;
     frames(w, 60);
-    assert.equal(layer.panels.boss.alpha, 1, "離れれば元の濃さ");
+    assert.equal(layer.panels.phase.alpha, 1, "離れれば元の濃さ");
     ctx.$gamePlayer.screenX = savedX; ctx.$gamePlayer.screenY = savedY;
 });
 
@@ -498,7 +637,7 @@ test("戦闘の中身はHUDの有無で変わらない: 同じカードを同じ
 test("I2の流れ: 勝利でSOULが1回だけ終わり、デッキ・指輪・所持・ダミー・武器が全て元に戻り、専用HUDも片づく。a16は再び開始できる", () => {
     const w = arenaWorld();
     const before = JSON.stringify({ deck: w.ctx.$gameSystem._projectRCardDeckData ?? null, inv: w.ctx.$gameSystem._projectRCardInventory ?? null, dirty: w.ctx.ProjectRApolloTest.isDirty() });
-    const r = quietly(() => plain(w.sb.start("a16", { openingHand: HAND })));
+    const r = quietly(() => plain(w.sb.start("a16", { stage: false, openingHand: HAND })));
     assert.equal(r.ok, true);
     w.heart = r.heartEventId; prepareDisplay(w);
     frames(w, 6);

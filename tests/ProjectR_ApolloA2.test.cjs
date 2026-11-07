@@ -55,7 +55,8 @@ test("予約ID: ユーザー確定の8個が設計ID 8〜15に対応し、一意
     // リポジトリの本番コードでの出現: 予約IDはCardCatalogにだけ現れる(他のpluginが勝手に使っていない)
     const plugins = fs.readdirSync(path.join(root, "js/plugins")).filter(f => f.endsWith(".js"));
     for (const id of RESERVED) {
-        const users = plugins.filter(f => fs.readFileSync(path.join(root, "js/plugins", f), "utf8").includes(id));
+        // ProjectR_SoulBattleStage(SOUL専用ステージ)は、神の置き場から出す遠距離カードの一覧(GOD_PROJECTILE_CARDS)として名前を参照するだけ(実装・登録はしない)。ProjectR_SoulMana(SOUL専用のマナ)は、承認済みD8コスト表(カードID→コスト)として名前を参照するだけ
+        const users = plugins.filter(f => f !== "ProjectR_SoulBattleStage.js" && f !== "ProjectR_SoulSkills.js" && f !== "ProjectR_SoulMana.js" && fs.readFileSync(path.join(root, "js/plugins", f), "utf8").includes(id));
         // 黄金の矢(apollo_golden_volley)はPhase A4で実装済み。実装・演出の登録・DEVの入口にも現れる。残りの7枚は引き続きCardCatalogにだけ。
         if (id === "apollo_golden_volley") assert.deepEqual(users.sort(), ["ProjectR_ApolloGoldenVolley.js", "ProjectR_CardCatalog.js", "ProjectR_CharacterPresentation.js", "ProjectR_CombatTestArenaApollo.js", "ProjectR_CutIn.js", "ProjectR_GodSummonVisual.js"], id);
         else if (id === "apollo_eros_arrow") assert.deepEqual(users.sort(), ["ProjectR_ApolloErosArrow.js", "ProjectR_CardCatalog.js", "ProjectR_CombatTestArenaApollo.js", "ProjectR_CutIn.js", "ProjectR_GodSummonVisual.js"], id); // A6Aで実装済み

@@ -230,7 +230,7 @@
             ? gauge.trackDamage(enemyId, { attackId, source: "damage:apollo_eros_arrow" }, apply) : apply();
     };
     const dealFixed = (eventId, base, attackId, cfg) => trackDamage(eventId, attackId, () => command("UpdateEventHp", {
-        eventId: String(eventId), value: `-${base}`, exceedMaxHealth: "false",
+        eventId: String(eventId), value: `-${base}`, exceedMaxHealth: "false", projectRAttackId: String(attackId),   // 命中フック(ProjectR_CardModifiers)へ矢/ビームの区別を渡す(SOULの回復)
         projectRFixed: { base, flat: 0, source: CARD, element: cfg.element, weaknessMultiplier: cfg.weaknessMultiplier }
     }));
     const hpOf = id => { const v = modifiers()?.eventHp?.(id); return Number.isFinite(v) ? v : (map()?.getCurrentEventHp?.(id) ?? 0); };
@@ -859,6 +859,7 @@
         emitSchedule, directionDegrees,
         visualArrowCount: visualCount,
         geometry: Object.freeze({ distanceToPolygon, footprint, centroid, visualReal }),
+        clear: reason => { const had = !!(pendingSeq || sequences.size); clearAll(String(reason || "api")); return had; },   // 追加のみ: ProjectR_SoulSkills が準備ループの ATTACK の終了で呼ぶ(通常戦闘では呼ばれない)
         isPending: () => !!pendingSeq,
         getPending: () => pendingSeq ? { serial: pendingSeq.serial, instanceId: pendingSeq.instanceId, emitted: pendingSeq.next, arrows: liveArrows(pendingSeq).length } : null,
         getSequences: () => [...sequences.values()].map(s => ({ serial: s.serial, committed: s.committed, level: s.level, beam: beamSummary(s), emitted: s.next, slot: s.slot, slots: s.slots, count: s.count, tick: s.tick, arrows: liveArrows(s).length, hits: s.hits.length })),

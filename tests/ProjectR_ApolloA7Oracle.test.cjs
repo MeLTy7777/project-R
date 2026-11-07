@@ -50,7 +50,10 @@ test("登録と数値: 最大Lv3・Cooldown 3・強力/最大3・instant。Lv1=�
 test("保護ファイルは変えていない(CardDeckCore・Hendrix・DotMove・DamageModifiers・CardModifiers・PartyCombat・他のApollo)", () => {
     assert.equal(git("diff", "--stat", "bf7cbd4", "--", "js/plugins/ProjectR_CardDeckCore.js", "js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js", "js/plugins/ProjectR_DamageModifiers.js", "js/plugins/ProjectR_CardModifiers.js",
         "js/plugins/ProjectR_PartyCombat.js", "js/plugins/ProjectR_PartyRoster.js",
-        "js/plugins/ProjectR_ApolloPlagueRain.js").trim(), "");
+        ).trim(), "");
+    // 疫病の矢は、SOUL の準備ループが ATTACK の終了で打ち切るための追加専用の窓口 clear(reason) の1行だけ許す(それ以外は変えない)
+    { const pr = git("diff", "--numstat", "f78d85d", "--", "js/plugins/ProjectR_ApolloPlagueRain.js").trim().split(/\s+/);
+      assert.ok(pr[0] === "" || (pr[0] === "1" && pr[1] === "0"), "ProjectR_ApolloPlagueRain.js は追加専用の clear の1行以外は変えない: " + pr.join("+")); }
 });
 
 test("バランス/F6: 新しい項目が定義され、範囲外は拒否。上書きが累積どおりに効く", () => {

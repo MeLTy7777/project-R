@@ -500,6 +500,7 @@
 
     root.ProjectRApolloPlagueRain = Object.freeze({
         CARD, implementedMaxLevel: IMPLEMENTED_MAX_LEVEL, cardLevel, config,
+        clear: reason => { const had = !!(pending || shots.size); clearAll(String(reason || "api")); return had; },   // 追加のみ: ProjectR_SoulSkills が準備ループの ATTACK の終了で呼ぶ(通常戦闘では呼ばれない)
         isPending: () => !!pending,
         getPending: () => pending ? { serial: pending.serial, instanceId: pending.instanceId, level: pending.level, arrows: pending.arrows.filter(a => !a.landed).length } : null,
         getShots: () => [...shots.values()].map(s => ({ serial: s.serial, level: s.level, committed: s.committed, age: s.age, arrows: s.arrows.length, flying: s.arrows.filter(a => !a.landed).length, circles: s.circles.length, rats: s.rats.length, landings: s.landings.length })),

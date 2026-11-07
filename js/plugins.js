@@ -100,5 +100,13 @@ var $plugins =
 ,{"name":"ProjectR_SoulBattleDodge","status":true,"description":"v0.1.0 ProjectR SOUL戦闘 P3-A 基本の回避AI(オプトイン)。敵ハートが飛んでくる矢・弾を見てから避ける。","parameters":{"ReactionFrames":"8","MoveSpeed":"9","DodgeDistance":"1.8","CooldownFrames":"40","RecoveryFrames":"24","ReturnSpeed":"2.5","BoundsHalfX":"4","BoundsHalfY":"2.5","HorizonFrames":"90","Margin":"0.3"}}
 ,{"name":"ProjectR_SoulBattleAIData","status":true,"description":"v0.1.0 ProjectR SOUL戦闘 P3-B 回避AIのデータ。性格5種とDEVボスの数値表(ロジックなし)。","parameters":{}}
 ,{"name":"ProjectR_SoulBattleSandbox","status":true,"description":"v0.1.0 DEV専用(Playtest限定) SOUL戦闘の手動テスト用サンドボックス。F8の1コマンドでアリーナ・カード・SOUL戦闘・回避AIを用意する。","parameters":{}}
+,{"name":"ProjectR_SoulBattleStage","status":true,"description":"v0.1.0 ProjectR SOUL戦闘 I4-A 専用ステージ(マップ6)。厳密な16:9の戦闘エリア・マウス座標変換・プレイヤー非表示・防御ターンのハート操作。戦闘の中身は変えない。","parameters":{}}
+,{"name":"ProjectR_SoulBattleInput","status":true,"description":"v0.1.0 ProjectR SOUL戦闘 入力。ATTACKのカード枠=Q/W/E/R/T・通常攻撃=左クリック(戦闘エリア内)・銃は自動リロード。SOUL戦闘の間だけ。","parameters":{}}
+,{"name":"ProjectR_SoulSkills","status":true,"description":"v0.1.0 ProjectR SOUL戦闘のスキル(承認済み9枚)。SOUL戦闘の間・ATTACKだけ。絶・サイコポンポス・葦笛・エロスの矢・神託・竪琴・ヴェイル・月桂冠・ヒュアキントス。","parameters":{}}
 ,{"name":"ProjectR_SoulBattleHUD","status":true,"description":"v0.1.0 ProjectR SOUL戦闘 I3 専用バトルHUD。SOUL戦闘の間だけ通常HUDを隠し、ボス/プレイヤーHP・フェーズ・残り時間・手札5枚を専用表示に切り替える(表示のみ)。","parameters":{}}
+,{"name":"ProjectR_SoulPhaseCleanup","status":true,"description":"v0.1.0 ProjectR SOUL戦闘 L0後始末。準備ループのフェーズの境目で、前のフェーズの飛び道具・一時的な攻撃判定を片づける。","parameters":{}}
+,{"name":"ProjectR_SoulLoopData","status":true,"description":"v0.1.0 ProjectR SOUL戦闘 L1 キャラ→デッキのデータ窓口(読み取り専用)。出撃できるキャラと既存の所持カード・保存デッキを結び付けて返すだけ。","parameters":{}}
+,{"name":"ProjectR_SoulLoopHand","status":true,"description":"v0.1.0 ProjectR SOUL戦闘 L3 準備の手札(10枚ドロー・5枚選択・Q/W/E/R/T割り当て・固定手札)。準備ループのときだけ。","parameters":{}}
+,{"name":"ProjectR_SoulMana","status":true,"description":"v0.1.0 ProjectR SOUL戦闘 L4-A マナ(資源の土台だけ)。準備ループのATTACK中だけ毎秒+1(上限10)。ATTACK開始で10・終了で破棄。コスト・消費は未実装。","parameters":{}}
+,{"name":"ProjectR_SoulBattlePrepare","status":true,"description":"v0.2.0 ProjectR SOUL戦闘 L2 準備(PREPARE)画面。攻撃→キャラ選択→10枚から5枚→Q/W/E/R/T割り当て→ATTACK。アイテムは未実装。表示と選択だけ。","parameters":{}}
 ];

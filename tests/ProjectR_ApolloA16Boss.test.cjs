@@ -270,7 +270,7 @@ test("保護: 既存のダメージ・Cooldown・ドロー・セーブ・カー�
     const cp = require("node:child_process"), path = require("node:path");
     const project = path.join(__dirname, "..");
     const protectedFiles = ["js/plugins/ProjectR_CardDeckCore.js", "js/plugins/ProjectR_EnemyAttack.js", "js/plugins/ProjectR_BossFramework.js", "js/plugins/ProjectR_PartyCombat.js", "js/plugins/ProjectR_PartyRoster.js",
-        "js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js", "js/plugins/ProjectR_DamageModifiers.js", "js/plugins/ProjectR_CardModifiers.js", "js/plugins/ProjectR_GunSystem.js", "js/plugins/ProjectR_SwordSystem.js", "js/plugins/ProjectR_CombatSession.js"];
+        "js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js", "js/plugins/ProjectR_DamageModifiers.js", "js/plugins/ProjectR_CardModifiers.js", "js/plugins/ProjectR_CombatSession.js"];
     const out = cp.spawnSync("git", ["status", "--porcelain", "--", ...protectedFiles, "data/Skills.json", "data/Map002.json", "js/rmmz_objects.js", "js/rmmz_scenes.js"], { cwd: project, encoding: "utf8" });
     assert.equal(out.stdout.trim(), "", "保護ファイルに差分なし: " + out.stdout);
 });

@@ -104,7 +104,10 @@
  *             「直前なら避けられる」程度に見積もります(遠くからは避けられない)。気づいていない弾(反応の遅れの途中)は考慮しません。
  *   近接      出ている判定(通常の剣・剣カード・Hermes奥義)の向きを観測し、meleeWary のプロファイルは次の斬撃に備えて
  *             判定の向きに直角へ動きます。出た瞬間に当たるので、その斬撃自体は避けられません。被弾後に退く(hitReaction)こともできます。
- *   未対応    薙ぎ払い・一閃は判定のEventを作らず、予備動作もありません。プレイヤーの攻撃に予備動作はありません(CUES で明示)。
+ *   薙ぎ払い  専用ステージ(ProjectR_SoulBattleStage)の薙ぎ払いだけ、画面に「扇のVFX」が出てから判定まで数フレームあります(ProjectR_SoulBattleMelee)。
+ *             AIは、見えている扇(起点・向き・広がり・半径。ProjectRSoulBattleMelee.getVisibleSweep())だけを観測します。判定の時刻・ダメージ・当たるかは見えません。
+ *             扇が見えてから反応の遅れ(reactionFrames)が過ぎると、扇の外へ出られる候補があれば出ます(扇の中のままなら動きません)。扇が見え始める前には何も分かりません。
+ *   未対応    通常のマップの薙ぎ払い・一閃は判定のEventを作らず、予備動作もありません。プレイヤーの攻撃に予備動作はありません(CUES で明示)。
  *             Lv3のビーム(判定のEventなし)・エロスのビーム片・疫病のネズミ(Eventはあるが観測対象外)も未対応です(CUES と UNSUPPORTED_TAGS)。
  *             被弾の事後にしか反応できません。
  *   性格      プロファイル(反応・速さ・距離・クールダウン・硬直・回避の頻度・リスク許容・攻撃性・好む向き ほか)を registerProfile() で登録し、
@@ -147,7 +150,7 @@
         swordArea: { supported: "partial", note: "通常の剣の出ている判定を観測できるが、寿命が数フレームで、その斬撃は避けられない(次の斬撃に備える横移動だけ)" },
         swordCardArea: { supported: "partial", note: "剣カードも同じ" },
         hermesUltimateArea: { supported: "partial", note: "奥義の斬撃は順に出る。出た後の判定しか観測できず、避けられない" },
-        sweep: { supported: false, note: "判定のEventを作らず、予備動作も無い。観測できる手がかりが無い(被弾の事後に反応するだけ)" },
+        sweep: { supported: "partial", note: "専用ステージの薙ぎ払いだけ: 画面に見えている扇(起点・向き・広がり・半径)を観測し、判定までの数フレームで扇の外へ出られれば避ける。判定の時刻・当たるかは見えない。通常のマップは手がかりが無い(被弾の事後に反応するだけ)" },
         issen: { supported: false, note: "同上。継続ダメージの出血は自分のHPの減りとして事後にしか分からない" },
         windup: { supported: false, note: "プレイヤーの攻撃に予備動作は存在しない(絶の予備動作は移動カードでSOUL中は使えない)。AIに予知は与えない" },
         beamLv3: { supported: false, note: "Lv3の太いビーム(矢の同時発射の長押し・ギガース殺し)は判定のEventを作らない一括判定で、観測できる手がかりが無い。被弾の事後に退くだけ" },
@@ -186,6 +189,7 @@
         feintSusceptibility: 0, feintHesitationFrames: 0, feintMemoryFrames: 180, baitRecoveryFrames: 0, cancelGapTiles: 2.5, redirectDegrees: 20
     });
     const LIMITS = Object.freeze(Object.fromEntries(Object.entries(SPEC).filter(([, s]) => s.t === "int" || s.t === "num").map(([k, s]) => [k, [s.min, s.max]])));
+    const SWEEP_ID_BASE = 1000000;      // 見えている扇の脅威ID(Eventのidと区別する。数値のまま並べ替えに使える)
     const MIN_THREAT_SPEED = 0.05;      // タイル/frame。これより遅いものは「飛んでくる攻撃」として扱わない
     const MAX_TRACKED = 48;             // 同時に追跡する弾・判定の上限(実行時間の安全装置)
     const MAX_LOG = 100;
@@ -194,7 +198,7 @@
     let pending = null;                 // arm済み・まだハートに適用していない {config, base, boss}
     let ai = null;                      // 動作中の状態(実行時のみ。セーブしない)
     const log = [];
-    const totals = { arms: 0, resets: 0 };
+    const totals = { arms: 0, resets: 0, prepareFrozen: 0 };
     const profiles = new Map();
     const bosses = new Map();
     const note = entry => { log.push({ frame: ai ? ai.frame : null, ...entry }); if (log.length > MAX_LOG) log.shift(); };
@@ -324,6 +328,11 @@
             threat.geo = { area: true };
             return threat.geo;
         }
+        if (threat.kind === "sweep") {                                  // 見えている扇: 起点・向き(0=上・時計回り)・広がり・半径。nx,ny = 起点からハートへの向き(逃げる向きの好みに使う)
+            const v = threat.vis, rx = ai.pos.x - v.apex.x, ry = ai.pos.y - v.apex.y, length = Math.hypot(rx, ry) || 1;
+            threat.geo = { sweep: true, ax: v.apex.x, ay: v.apex.y, radius: v.radius, aim: v.aim, half: v.arc / 2, nx: rx / length, ny: ry / length };
+            return threat.geo;
+        }
         if (threat.seen < 2 || speed < MIN_THREAT_SPEED) { threat.geo = null; return null; }
         const ux = threat.vel.x / speed, uy = threat.vel.y / speed, nx = -uy, ny = ux;
         threat.geo = { speed, ux, uy, nx, ny, tLat: extent(threat.polygon, threat.pos, nx, ny), tAlong: extent(threat.polygon, threat.pos, ux, uy) };
@@ -349,6 +358,17 @@
         const dist = Math.hypot(dest.x - from.x, dest.y - from.y);
         const at = fraction => ({ x: from.x + (dest.x - from.x) * fraction, y: from.y + (dest.y - from.y) * fraction });
         const margin = cfg.margin * (1 - cfg.riskTolerance);
+        if (geo.sweep) {
+            // 見えている扇(半径 radius・向き aim から左右 half 度)に、ハートが dest にいるとき触れるか。判定の時刻は見えないので、「いつでも判定が来うる」として扱う(いまの位置も含めて見る)
+            const radiusH = Math.max(...heartRel.map(v => Math.hypot(v.x, v.y)));
+            const dx = dest.x - geo.ax, dy = dest.y - geo.ay, distance = Math.hypot(dx, dy);
+            if (distance > geo.radius + radiusH + margin) return { danger: 0, timeToHit: Infinity };
+            if (distance <= radiusH + margin) return { danger: 1, timeToHit: 0 };                    // 起点のすぐそば: どの向きでも扇に触れる
+            const bearing = Math.atan2(dx, -dy) * 180 / Math.PI;                                      // 0=上・時計回り(タイル座標は y が下向き)
+            let diff = Math.abs(((bearing - geo.aim) % 360 + 540) % 360 - 180);
+            const slack = Math.asin(Math.min(1, (radiusH + margin) / distance)) * 180 / Math.PI;       // ハートの大きさぶんの角度の余裕
+            return { danger: diff <= geo.half + slack ? 1 : 0, timeToHit: 0 };
+        }
         if (geo.area) {
             // 出ている近接の判定: 1frame先の位置で重なるか(寿命が短く、出た後には避けにくい)
             const life = Math.max(0, cfg.meleeAssumedLifetime - (threat.seen - 1));
@@ -453,9 +473,19 @@
             target: null, cooldownLeft: 0, recoveryLeft: 0, threats: new Map(), lastDodge: null, lastHp: heart.hp, maxHp: heart.hp, eventId: heart.id, freqAcc: 0,
             recentDodges: [], pendingMove: null, feintUntil: -1, selected: null, lastReason: null, lastEval: null, player: null, hpDropFrame: -1, cues: [],
             stats: { noticed: 0, dodges: 0, hitsTaken: 0, passed: 0, skippedCooldown: 0, skippedRecovery: 0, skippedFrequency: 0, noRoom: 0, noImprovement: 0,
-                cancels: 0, redirects: 0, baited: 0, meleeCues: 0, hitReactions: 0, sidesteps: 0, exhaustions: 0, staggers: 0, trackDropped: 0, threatsDropped: 0, evaluations: 0, maxEvalCost: 0 } };
+                cancels: 0, redirects: 0, baited: 0, meleeCues: 0, sweepCues: 0, hitReactions: 0, sidesteps: 0, exhaustions: 0, staggers: 0, trackDropped: 0, threatsDropped: 0, evaluations: 0, maxEvalCost: 0 } };
+    };
+    // 一時的な修飾(ProjectR_SoulSkills: 葦笛=停止 / ヴェイル・月桂冠=反応の遅れ・移動速度の低下)。id ごとに置換。AIが終われば(reset)すべて消える。
+    //   frozen = 回避AIの判断と移動を止める(ハートは動かない) / reactionDelay = 攻撃の予兆に気づいてから動き出すまでのフレームを足す / speedScale = 回避・ホームへ戻る速さの倍率
+    //   観測できる情報の範囲・評価・必中化はしない(遅れ・遅さだけ)。
+    const modifiers = new Map();
+    const modifierEffect = () => {
+        let frozen = false, delay = 0, scale = 1;
+        for (const m of modifiers.values()) { if (m.frozen) frozen = true; delay += m.reactionDelay || 0; if (Number.isFinite(m.speedScale) && m.speedScale > 0) scale *= m.speedScale; }
+        return { frozen, delay, scale };
     };
     const reset = reason => {
+        modifiers.clear();
         if (ai) { note({ type: "reset", reason }); totals.resets++; }
         ai = null; pending = null;
     };
@@ -545,6 +575,19 @@
             threat.seen++;
             seen.add(id);
         }
+        const visible = root.ProjectRSoulBattleMelee?.getVisibleSweep?.();                    // 画面に見えている薙ぎ払いの扇(起点・向き・広がり・半径だけ)
+        if (visible && Number.isFinite(visible.apex?.x) && Number.isFinite(visible.apex?.y) && Number.isFinite(visible.aim) && visible.radius > 0 && visible.arc > 0) {
+            const id = SWEEP_ID_BASE + Number(visible.id);
+            let threat = ai.threats.get(id);
+            if (!threat) {
+                threat = { id, event: null, tag: "<visibleSweep>", kind: "sweep", first: ai.frame, pos: { ...visible.apex }, vel: { x: 0, y: 0 }, seen: 0, polygon: null, decided: false, homing: false, turnRate: 0, heading: null, geo: null, vis: visible };
+                ai.threats.set(id, threat);
+                ai.stats.sweepCues++;
+                ai.cues.push({ type: "sweep", frame: ai.frame, threatId: id });
+                note({ type: "sweepCue", aim: visible.aim, radius: visible.radius });
+            }
+            threat.vis = visible; threat.seen++; seen.add(id);
+        }
         for (const [id, threat] of [...ai.threats]) {
             if (seen.has(id)) continue;
             onThreatGone(threat, heart);
@@ -571,7 +614,7 @@
         const cfg = ai.config;
         const jitter = cfg.reactionJitter > 0 ? (threat.id * 7 + 3) % (cfg.reactionJitter + 1) : 0;       // 決定的(乱数なし)
         const hesitation = threat.first <= ai.feintUntil ? Math.round(cfg.feintHesitationFrames * cfg.feintSusceptibility) : 0;
-        return cfg.reactionFrames + jitter + hesitation;
+        return cfg.reactionFrames + jitter + hesitation + modifierEffect().delay;
     };
     const enter = (state, frames = 0) => { ai.state = state; ai.stateFrames = 0; if (state === "recovering" || state === "exhausted" || state === "staggered") ai.recoveryLeft = frames; };
     const moveToward = (target, perFrame) => {
@@ -651,6 +694,8 @@
         if (!soul()?.isActive?.()) { if (ai) reset("soulInactive"); return; }
         const heart = heartNow();
         if (!heart) { if (ai) reset("heartGone"); return; }
+        // 準備(PREPARE): 回避AIの時計(クールダウン・硬直・移動)は進めない。ハートはその場に留まり、見えている脅威の記録だけ捨てる。ATTACK/DEFENSE は従来どおり。
+        if (soul().getPhase() === "prepare") { if (ai) { ai.threats.clear(); ai.selected = null; totals.prepareFrozen++; } return; }
         if (!ai) {
             if (!pending) return;
             ai = create(pending.config, pending.boss, pending.base); pending = null;
@@ -682,7 +727,13 @@
         const attacking = soul().getPhase() === "attack";
         if (attacking) observe(heart); else { ai.threats.clear(); ai.selected = null; }
         ai.stateFrames++;
-        const perFrame = ai.config.moveSpeed / 60;
+        const mod = modifierEffect();
+        if (mod.frozen) {                                                                // 停止: 判断も移動もしない(その場に留まる)。時間・観測の記録だけ進む
+            const frozenMove = poc().moveHeartTo(ai.pos.x, ai.pos.y);
+            if (!frozenMove?.ok) note({ type: "moveFailed", reason: frozenMove?.reason });
+            return;
+        }
+        const perFrame = ai.config.moveSpeed * mod.scale / 60;
 
         if (ai.state === "dodging") {
             if (moveToward(ai.target, perFrame)) afterDodge();
@@ -698,10 +749,10 @@
         // 戻る先で当たりそうな脅威が無いときだけ、ゆっくりホームへ戻る(通り過ぎた矢は気にしない)
         if (ai.state === "idle" && ai.config.returnSpeed > 0 && !ai.pendingMove && (ai.pos.x !== ai.home.x || ai.pos.y !== ai.home.y)) {
             const saved = ai.pos;
-            moveToward(ai.home, ai.config.returnSpeed / 60);
+            moveToward(ai.home, ai.config.returnSpeed * mod.scale / 60);
             const next = ai.pos;
             ai.pos = saved;
-            const rows = [...ai.threats.values()].filter(t => t.kind === "projectile" && prepareThreat(t)).map(t => ({ threat: t }));
+            const rows = [...ai.threats.values()].filter(t => (t.kind === "projectile" || t.kind === "sweep") && prepareThreat(t)).map(t => ({ threat: t }));
             if (evalAt(rows, ai.heartRel, next, next, perFrame, ai.config) === 0) ai.pos = next;
         }
         const applied = poc().moveHeartTo(ai.pos.x, ai.pos.y);
@@ -714,7 +765,7 @@
         const aware = [];
         for (const t of ai.threats.values()) {
             if (ai.frame - t.first < reactionFor(t)) continue;
-            if (t.kind === "projectile") { if (prepareThreat(t)) aware.push(t); }
+            if (t.kind === "projectile" || t.kind === "sweep") { if (prepareThreat(t)) aware.push(t); }
         }
         if (aware.length) {
             const { kept, dropped } = selectThreats(aware, ai.heartRel, ai.pos, perFrame, cfg);
@@ -744,7 +795,7 @@
                     if (!best || best.c.stay || best.danger >= stayDanger) {
                         if (!trigger.threat.skipped) { trigger.threat.skipped = true; if (best && !best.c.stay) ai.stats.noImprovement++; else ai.stats.noRoom++; }
                     } else {
-                        const reason = dangerous.length > 1 ? `multi(${dangerous.length})` : trigger.threat.homing ? "homing" : "projectile";
+                        const reason = dangerous.length > 1 ? `multi(${dangerous.length})` : trigger.threat.homing ? "homing" : trigger.threat.kind === "sweep" ? "sweep" : "projectile";
                         const lateral = (best.c.x - ai.pos.x) * lead.nx + (best.c.y - ai.pos.y) * lead.ny;
                         ai.lastReason = reason;
                         beginDodge(best.c, { reason, threat: trigger.threat, timeToHit: trigger.timeToHit, side: lateral >= 0 ? 1 : -1, danger: best.danger, dangerBefore: stayDanger, candidates });
@@ -840,6 +891,10 @@
 
     root.ProjectRSoulBattleDodge = Object.freeze({
         THREAT_TAGS, HOMING_TAGS, MELEE_TAGS, UNSUPPORTED_TAGS, CUES, defaults, LIMITS, arm, disarm, simulate,
+        setModifier: (id, mods) => { const key = String(id ?? ""); if (!key || !mods || typeof mods !== "object") return false; modifiers.set(key, { frozen: !!mods.frozen, reactionDelay: Math.max(0, Math.floor(Number(mods.reactionDelay) || 0)), speedScale: Number.isFinite(Number(mods.speedScale)) && Number(mods.speedScale) > 0 ? Number(mods.speedScale) : 1 }); return true; },
+        clearModifier: id => modifiers.delete(String(id ?? "")),
+        clearModifiers: () => { const had = modifiers.size > 0; modifiers.clear(); return had; },
+        getModifiers: () => ({ ...modifierEffect(), ids: [...modifiers.keys()] }),
         registerProfile, registerBoss, getProfile: id => profiles.get(id) || null, getBoss: id => bosses.get(id) || null,
         listProfiles: () => [...profiles.keys()], listBosses: () => [...bosses.keys()],
         setProfile: id => switchTo("profile", id), setBoss: id => switchTo("boss", id),

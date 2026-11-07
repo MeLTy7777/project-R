@@ -193,10 +193,16 @@
         if (e && !e._erased) return eventCenter(e);
         return Number.isFinite(m.x) && Number.isFinite(m.y) ? { x: m.x, y: m.y } : null;
     };
+    // SOUL戦闘用のアダプタ(ProjectR_SoulSkills)。SOULの間だけ { active(), enemies(), boost(wide), speed(n, k, cfg), vfx() } で、敵(=敵ハート)・「全部同じ音符」の強化・速度の音符・演出の位置を置き換える。無ければ従来どおり。
+    let adapter = null;
+    const soulAdapter = () => { try { return adapter && adapter.active() ? adapter : null; } catch (_error) { return null; } };
     const targetsFor = (cfg, wide) => {
-        const origin = $gamePlayer.centerPositionPoint(), rect = wide ? screenRect() : null;
-        const near = p => !!p && (wide ? inScreen(p, rect) : Math.hypot(p.x - origin.x, p.y - origin.y) <= cfg.radius + EPSILON);
-        return { members: roster().members().filter(m => m.hp > 0 && near(positionOf(m))), enemies: map().events().filter(e => isEnemy(e) && hpOf(e.eventId()) > 0 && near(eventCenter(e))) };
+        const A = soulAdapter();
+        const origin = $gamePlayer.centerPositionPoint(), rect = wide && !A ? screenRect() : null;
+        const near = p => !!p && (wide && !A ? inScreen(p, rect) : Math.hypot(p.x - origin.x, p.y - origin.y) <= cfg.radius + EPSILON);
+        const members = roster().members().filter(m => m.hp > 0 && near(positionOf(m)));
+        if (A) return { members, enemies: (A.enemies() || []).filter(e => isEnemy(e) && hpOf(e.eventId()) > 0) };       // SOUL: 敵 = 敵ハート(距離は問わない)。「画面全体」は使わない
+        return { members, enemies: map().events().filter(e => isEnemy(e) && hpOf(e.eventId()) > 0 && near(eventCenter(e))) };
     };
     const healMember = (m, amount) => {
         if (!(amount > 0)) return 0;
@@ -219,26 +225,29 @@
         return removed;
     };
     const applyEffect = (s, kind, wide) => {
+        const A = soulAdapter();
         const cfg = s.cfg, who = targetsFor(cfg, wide), info = { kind, wide, members: who.members.map(m => m.key), enemies: who.enemies.map(e => e.eventId()) };
         stacks[kind]++;
         const n = stacks[kind];
+        const k = A ? A.boost(wide) : 1;                                      // SOUL: 「全部同じ音符」で効果量 x1.5(通常は1)
         if (kind === "attack") {
-            for (const m of who.members) { if (m.key === "player") { status().apply("player", ATTACK_ID, { seconds: cfg.buffSeconds, attackRate: 1 + cfg.attackBonus * n, source: CARD }); info.attackRate = 1 + cfg.attackBonus * n; } }
+            for (const m of who.members) { if (m.key === "player") { status().apply("player", ATTACK_ID, { seconds: cfg.buffSeconds, attackRate: 1 + cfg.attackBonus * n * k, source: CARD }); info.attackRate = 1 + cfg.attackBonus * n * k; } }
             buffs.attack = { stacks: n, remaining: cfg.buffSeconds };
         } else if (kind === "speed") {
-            if (who.members.some(m => m.key === "player")) { modifiers()?.setMoveSpeedFactor?.(SPEED_ID, 1 + cfg.speedBonus * n, cfg.buffSeconds); info.speed = 1 + cfg.speedBonus * n; }
+            if (A) { if (who.members.some(m => m.key === "player")) info.speed = A.speed(n, k, cfg); }      // SOUL: 速度 → カードのCooldown短縮
+            else if (who.members.some(m => m.key === "player")) { modifiers()?.setMoveSpeedFactor?.(SPEED_ID, 1 + cfg.speedBonus * n, cfg.buffSeconds); info.speed = 1 + cfg.speedBonus * n; }
             buffs.speed = { stacks: n, remaining: cfg.buffSeconds };
         } else if (kind === "heal") {
             info.healed = 0;
             for (const m of who.members) {
-                info.healed += healMember(m, cfg.healInstant);
-                const rate = cfg.healRegen / cfg.healRegenSeconds * n; // 秒間(重なりごとに加算)
+                info.healed += healMember(m, cfg.healInstant * k);
+                const rate = cfg.healRegen / cfg.healRegenSeconds * n * k; // 秒間(重なりごとに加算)
                 regens.set(m.key, { rate, remaining: cfg.healRegenSeconds * 60, acc: 0, healed: regens.get(m.key)?.healed ?? 0 });
             }
         } else if (kind === "plague") {
             for (const e of who.enemies) {
                 const key = status().targetKeyOfEvent(e.eventId());
-                const r = status().apply(key, PLAGUE_ID, { seconds: cfg.plagueSeconds, damageTaken: 1 + cfg.plagueTaken * n, weakness: 1 + cfg.plagueWeak * n, attackRate: Math.max(0.1, 1 - cfg.plagueAttack * n), source: CARD });
+                const r = status().apply(key, PLAGUE_ID, { seconds: cfg.plagueSeconds, damageTaken: 1 + cfg.plagueTaken * n * k, weakness: 1 + cfg.plagueWeak * n * k, attackRate: Math.max(0.1, 1 - cfg.plagueAttack * n * k), source: CARD });
                 if (r.ok) plagueTargets.add(key);
             }
             info.plagueStacks = n;
@@ -277,8 +286,9 @@
         playSe("NoteSoundEffect", "Chime2", 80, PITCH[n.kind]);
         try { root.ProjectRCharacterPresentation?.request?.("ArmSweep", { source: "card", detail: CARD }); } catch (_error) { /* 表示のみ */ }
         if (s.waves.length < 6) {
-            const gold = pvPlay("apollo_lyre.wave.gold", { radiusTiles: wide ? 8 : s.cfg.radius });
-            const colored = pvPlay("apollo_lyre.wave." + n.kind, { radiusTiles: wide ? 10 : s.cfg.radius * 0.8 });
+            const A = soulAdapter(), at = A && A.vfx ? A.vfx() : null, w = wide && !A;       // SOUL: 攻撃の起点(カーソル位置)に出す。「画面全体」は使わない
+            const gold = pvPlay("apollo_lyre.wave.gold", { radiusTiles: w ? 8 : s.cfg.radius, ...(at || {}) });
+            const colored = pvPlay("apollo_lyre.wave." + n.kind, { radiusTiles: w ? 10 : s.cfg.radius * 0.8, ...(at || {}) });
             for (const r of [gold, colored]) if (r?.note) s.waves.push({ note: r.note, frames: 60 });
         }
         if (s.ui) s.ui.flash(n.index, n.kind);
@@ -409,6 +419,8 @@
 
     root.ProjectRApolloLyreRhythm = Object.freeze({
         CARD, KINDS, implementedMaxLevel: IMPLEMENTED_MAX_LEVEL, cardLevel, config, press, abnormalState, cleanse,
+        setAdapter: a => { adapter = a && typeof a === "object" ? a : null; return !!adapter; },
+        clear: reason => { clearAll(String(reason || "api")); },
         getSession: () => session ? { serial: session.serial, level: session.level, frame: session.frame, presses: session.presses, notes: session.notes.length, rounds: session.cfg.rounds, maxPresses: session.cfg.maxPresses, cleansed: session.cleansed } : null,
         getNotes: () => session ? session.notes.map(n => ({ index: n.index, kind: n.kind, arrive: n.arrive, state: n.state, pressedAt: n.pressedAt })) : [],
         getResults: () => session ? session.results.map(r => ({ ...r })) : (lastResult?.results || []).map(r => ({ ...r })),

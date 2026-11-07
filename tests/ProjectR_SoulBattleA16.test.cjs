@@ -42,7 +42,7 @@ const snapshot = w => JSON.stringify({
     ammo: w.ctx.$gameParty.numItems(w.ctx.$dataItems[31]), movement: w.run("playerMovementDisabled"), save: w.ctx.$gameSystem.isSaveEnabled(),
     definitions: [...w.deck.definitions.cards.entries()].map(([id, def]) => [id, def.maxCopies, def.cooldownSeconds, def.maxLevel])
 });
-const start = (w, options) => quietly(() => plain(w.sb.start("a16", options)));
+const start = (w, options) => quietly(() => plain(w.sb.start("a16", { stage: false, ...options })));      // このテストは従来のアリーナ(専用ステージは ProjectR_SoulBattleStage.test.cjs)
 const heartId = w => w.soul.getState().heart.eventId;
 const hurt = (w, id, amount) => w.ctx.PluginManager.callCommand(Object.assign(new w.ctx.Game_Interpreter(), { _eventId: 0 }), "Hendrix_Action_Engine", "UpdateEventHp",
     { eventId: String(id), value: `-${amount}`, exceedMaxHealth: "false" });
@@ -91,7 +91,8 @@ test("登録とデータ: Sandbox は ApolloTest / BossFramework の後ろ。dev
 test("未対応の手がかり(CUES): Lv3のビーム・エロスのビーム片・疫病のネズミは「未対応」と明記され、AIの観測対象に入っていない。成功扱いにしない", () => {
     const w = arenaWorld();
     const cues = plain(w.dodge.CUES);
-    for (const key of ["beamLv3", "erosBeamFragment", "plagueRat", "sweep", "issen", "windup"]) assert.equal(cues[key].supported, false, key);
+    for (const key of ["beamLv3", "erosBeamFragment", "plagueRat", "issen", "windup"]) assert.equal(cues[key].supported, false, key);
+    assert.equal(cues.sweep.supported, "partial", "薙ぎ払いは専用ステージの見えている扇だけ観測(partial)");
     assert.deepEqual([...w.dodge.UNSUPPORTED_TAGS].sort(), ["<projectRErosBeam>", "<projectRPlagueRat>"]);
     for (const tag of w.dodge.UNSUPPORTED_TAGS) {
         assert.ok(!w.dodge.THREAT_TAGS.includes(tag) && !w.dodge.MELEE_TAGS.includes(tag) && !w.dodge.HOMING_TAGS.includes(tag), tag + " は観測しない");
@@ -217,18 +218,24 @@ test("競合の拒否: A16のボス戦・別のボス戦・別のSOUL・P0のハ
 });
 
 // ---------------------------------------------------------------- 30枚デッキ・手札・消費・標的 ----------------------------------------------------------------
-test("手札5枚と消費: 絶(移動カード)は消費なしで拒否、ほかは1枚ずつ消費。防御ターンは全て拒否。指輪の移動は戦闘中は拒否。カード定義・コピー上限・Cooldownは変わらない", () => {
+test("手札5枚と消費: 絶(SOUL専用の構え)・ほかは1枚ずつ消費、移動はしない。防御ターンは全て拒否。指輪の移動は戦闘中は拒否。カード定義・コピー上限・Cooldownは変わらない", () => {
     const w = a16World({ openingHand: ["hermes_zetsu", "hermes_issen", "apollo_eros_arrow", "hermes_sweep", "apollo_golden_volley"] });
     const hand = handIds(w);
     assert.deepEqual(hand, ["hermes_zetsu", "hermes_issen", "apollo_eros_arrow", "hermes_sweep", "apollo_golden_volley"]);
     const definitions = JSON.stringify([...w.deck.definitions.cards.entries()]);
     const pile0 = stateOfPile(w);
+    const playerAt = () => JSON.stringify([w.ctx.$gamePlayer._realX, w.ctx.$gamePlayer._realY]);
+    const at0 = playerAt();
     const zetsu = cast(w, "hermes_zetsu");
-    assert.equal(zetsu.reason, "soulMovementBlocked");
-    assert.deepEqual([stateOfPile(w), handIds(w)], [pile0, hand], "移動カードは消費もCooldownも動かさない");
+    // 絶は SOUL専用の構え(ProjectR_SoulSkills)として使える: この世界は通常武器あり → 必ず成功して1枚消費(移動はしない)。
+    // 以前の『soulMovementBlocked で拒否』が戻れば、ここで失敗する。
+    assert.equal(zetsu.ok, true, JSON.stringify([zetsu.reason, zetsu.detail]));
+    assert.equal(stateOfPile(w), pile0 + 1, "絶は1枚消費");
+    assert.equal(playerAt(), at0, "絶は移動しない");
+    const used = 1;
     const issen = cast(w, "hermes_issen");
     assert.equal(issen.ok, true, JSON.stringify(issen));
-    assert.equal(stateOfPile(w), pile0 + 1, "Issenは1枚消費");
+    assert.equal(stateOfPile(w), pile0 + used + 1, "Issenは1枚消費");
     frames(w, 60);
     // 防御ターン: 全て拒否・消費なし
     w.soul.skipPhase();
@@ -264,12 +271,13 @@ test("防御ターンの入力遮断は a16 でも維持される: 奥義・ホ�
     const w = a16World();
     w.soul.skipPhase();
     const before = plain(w.soul.getBlockedCounts());
-    w.ctx.$gameTemp.reserveCommonEvent(1); frames(w, 3);
+    w.attackClick(); frames(w, 3);                                       // 左クリックの攻撃(新しい入力)
+    w.ctx.$gameTemp.reserveCommonEvent(1); frames(w, 3);                 // 攻撃ボタン(Hendrixのコモンイベント1)も従来どおり遮断される
     const hand = handIds(w);
     plain(w.deck.requestUseCard(0));
     assert.equal(plain(w.deck.getBattleState()).hand.map(h => h.cardId).join(), hand.join());
     const after = plain(w.soul.getBlockedCounts());
-    assert.ok(after.card > before.card && after.attackEvent > before.attackEvent);
+    assert.ok(after.card > before.card && after.attackEvent >= before.attackEvent + 2, JSON.stringify([before, after]));
     assert.equal(w.ctx.ProjectRCardBattleInput.getBlockedReason({ code: "KeyU" }), "soulDefense");
     quietly(() => w.sb.stop());
 });

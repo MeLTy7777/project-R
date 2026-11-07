@@ -184,6 +184,8 @@ function buildWorld({ playtest = true } = {}) {
     // 物理キーの押下 → 2フレーム → 離す → 2フレーム
     world.tap = (code, keyCode) => { world.keyDown(code, keyCode); world.frames(2); world.keyUp(code, keyCode); world.frames(2); };
     world.mouse = (x, y) => { ctx.TouchInput._x = x; ctx.TouchInput._y = y; };
+    // 通常攻撃ボタン(Hendrixの攻撃 = 共通イベント1)の予約を、「左クリックされたフレーム」として行う。SOUL戦闘中は ProjectR_SoulBattleInput が、左クリック以外(J・ゲームパッド)の予約を通さないため。
+    world.attackClick = () => { const state = ctx.TouchInput._currentState, was = state.triggered; state.triggered = true; try { return ctx.$gameTemp.reserveCommonEvent(1); } finally { state.triggered = was; } };
     world.placePlayer = (x, y) => {
         const player = ctx.$gamePlayer;
         player.locate(x, y);
