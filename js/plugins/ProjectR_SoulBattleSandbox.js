@@ -45,6 +45,9 @@
  *   a16                             A16統合(I2): 本物の混成30枚デッキ(指輪2つ・全カード所持は一時付与)の手札5枚 + SOULのハートをBossFrameworkのボスにする。
  *                                   ハートが唯一の標的(アリーナのダミー・A16のイベント3の体は遠くへ)。ハートのHPが0で勝利して全部元に戻る。
  *                                   ProjectRSoulSandbox.start("a16")  /  start("a16", { level: 1〜3, deck: "mixed"|"apollo"|"hermes", openingHand: ["カードID", ...最大5] })
+ *                                   ボスの弾幕(ProjectRSoulEnemyBullets)は自動で有効: DEFENSE のたびにボスのフェーズに合う弾幕が出る(F8 のコマンドは要りません)。bossAttacks:false で出さない(テスト用)。
+ *                                   秒数: prepare:true(準備ループ)は ATTACK 8秒 / DEFENSE 6秒(DEV の暫定値。SoulBattle の準備ループ用の既定)。prepare なし(従来)は 20 / 4 秒。
+ *                                   start("a16", { attackSeconds, defenseSeconds }) の明示指定は常に優先(例: 開発確認で 600 / 30)。
  *                                   A16のボス戦(ProjectRBossTest)・別のボス戦・別のSOUL戦闘が動いていると、何も変えずに断ります。先に stop() / ProjectRBossTest.end()。
  *
  * 操作: Q 黄金の弓矢 / W 病の矢(継続ダメージ) / E 剣カード / 左クリック 通常攻撃(戦闘エリアの中) / マウスで狙う。R(高速移動)はSOUL中は使えません。
@@ -273,6 +276,7 @@
         const step = (label, fn) => { try { const done = fn(); if (done) steps.push(label); } catch (error) { steps.push(label + "で例外: " + (error?.message || error)); a.errors = (a.errors || 0) + 1; } };
         step("終了通知を解除", () => { a.unsub?.(); a.unsub = null; return false; });
         step("デコイ矢を消去", () => clearDecoys() > 0);
+        step("ボスの弾幕の自動開始を解除", () => { if (!a.bossAttacks) return false; root.ProjectRSoulEnemyBullets?.disable?.(); return true; });
         step("SOUL戦闘を終了", () => { if (soul().isActive()) { soul().end("sandbox:" + reason); return true; } return false; });
         step("回避AIを解除", () => dodge().disarm());
         step("ボス(BossFramework)を終了", () => { const bf = bossFramework(); if (bf?.isActive?.() && bf.getState?.()?.bossId === a.bossId) { bf.end("sandbox"); return true; } return false; });
@@ -293,6 +297,7 @@
         const opening = options.openingHand;
         if (opening !== undefined && (!Array.isArray(opening) || opening.length > 5 || !opening.every(id => typeof id === "string"))) return fail("invalidOpeningHand", { hint: "カードIDの配列(最大5)" });
         if (options.weapon !== undefined && !["sword", "gun", "keep"].includes(options.weapon)) return fail("invalidWeapon", { hint: '"sword" / "gun" / "keep"' });
+        if (options.bossAttacks !== undefined && typeof options.bossAttacks !== "boolean") return fail("invalidBossAttacks", { hint: "true(既定: DEFENSE にボスの弾幕が出る) / false(出さない)" });
         if (options.stage !== undefined && typeof options.stage !== "boolean") return fail("invalidStage", { hint: "true(専用ステージ・既定) / false(アリーナ)" });
         const look = options.enemyImage;
         if (look !== undefined && !(look && typeof look.name === "string" && look.name && (look.folder === undefined || ["enemies", "sv_enemies"].includes(look.folder)))) return fail("invalidEnemyImage", { hint: '{ name: "Highking", folder: "enemies" | "sv_enemies" }' });
@@ -346,7 +351,7 @@
             // 専用ステージでは、敵ハートは戦闘エリアの上寄り(ステージの配置)。アリーナ(stage:false)では従来どおり、プレイヤーの distance マス北。
             const home = record.stage ? stage().layout().heartHome : null;
             const distance = home ? +Math.hypot(home.x - center.x, home.y - center.y).toFixed(1) : (Number.isFinite(options.distance) ? options.distance : SCENARIOS.a16.distance);
-            const started = soul().start({ attackSeconds: options.attackSeconds ?? SCENARIOS.a16.attackSeconds, defenseSeconds: options.defenseSeconds ?? BATTLE.defenseSeconds,
+            const started = soul().start({ attackSeconds: options.attackSeconds ?? (options.prepare === true ? undefined : SCENARIOS.a16.attackSeconds), defenseSeconds: options.defenseSeconds ?? (options.prepare === true ? undefined : BATTLE.defenseSeconds),
                 heart: home ? { centerX: home.x, centerY: home.y, ...SCENARIOS.a16.heart } : { centerX: center.x, centerY: center.y - distance, ...SCENARIOS.a16.heart }, endOnHeartDefeat: true, endOnCardBattleEnd: true,
                 prepare: options.prepare === true });      // 準備ループ(PREPARE→ATTACK→DEFENSE→PREPARE)は options.prepare:true のときだけ(既定は従来どおり)
             if (!started.ok) abort("soulStartFailed", started.reason);
@@ -358,6 +363,7 @@
             if (!registered.ok) abort("bossRegisterFailed", registered.reason);
             const bossStarted = bf.start(record.bossId, {});
             if (!bossStarted.ok) abort("bossStartFailed", { reason: bossStarted.reason, reasons: bossStarted.reasons });
+            if (options.bossAttacks !== false) { const eb = root.ProjectRSoulEnemyBullets; const enabled = eb && typeof eb.enableBoss === "function" ? eb.enableBoss({}) : null; record.bossAttacks = !!(enabled && enabled.ok); }      // DEFENSE のたびに、ボスのフェーズに合う弾幕が始まる(F8 のコマンドは要らない)
             record.unsub = soul().onEnd(payload => {
                 const reason = payload?.reason || "soulEnd";
                 const result = finishA16(reason);
@@ -366,7 +372,7 @@
             runtime.scenario = "a16";
             runtime.hp0 = hp;
             runtime.startedAt = Graphics.frameCount || 0;
-            const result = { ok: true, scenario: "a16", label: SCENARIOS.a16.label, level, deck: deckKind, hand, deckSize: at.deckInfo().size, distance, heartEventId: heartId, bossId: record.bossId, maxHp };
+            const result = { ok: true, scenario: "a16", label: SCENARIOS.a16.label, level, deck: deckKind, hand, deckSize: at.deckInfo().size, distance, heartEventId: heartId, bossId: record.bossId, maxHp, bossAttacks: record.bossAttacks === true };
             runtime.lastResult = result;
             say("[SoulSandbox] 準備完了: A16統合 (" + deckKind + "デッキ30枚・Lv" + level + ")。ハートはあなたの" + distance + "マス北で、唯一の標的です。",
                 "  手札(左からQ/W/E/R/T): " + hand.join(" / "),
@@ -405,7 +411,7 @@
             const armed = dodge().arm({ ...scenario.dodge, ...(options.dodge || {}) });
             if (!armed.ok) return fail("dodgeArmFailed", { hint: armed.reason });
         }
-        const started = soul().start({ attackSeconds: options.attackSeconds ?? scenario.attackSeconds ?? BATTLE.attackSeconds, defenseSeconds: options.defenseSeconds ?? BATTLE.defenseSeconds,
+        const started = soul().start({ attackSeconds: options.attackSeconds ?? (options.prepare === true ? undefined : scenario.attackSeconds ?? BATTLE.attackSeconds), defenseSeconds: options.defenseSeconds ?? (options.prepare === true ? undefined : BATTLE.defenseSeconds),
             heart: { centerX: center.x, centerY: center.y - distance, ...scenario.heart }, prepare: options.prepare === true });
         if (!started.ok) { dodge().disarm(); return fail("soulStartFailed", { hint: started.reason }); }
         runtime.scenario = name;

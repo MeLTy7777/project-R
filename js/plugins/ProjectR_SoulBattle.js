@@ -49,6 +49,22 @@
  * @type boolean
  * @default false
  *
+ * @param PrepareAttackSeconds
+ * @text 準備ループの攻撃ターンの長さ(秒・DEV仮)
+ * @desc 準備ループ(prepare:true)で攻撃ターンの長さを指定しなかったときの既定(DEV の暫定値)。従来の攻撃⇄防御(prepare:false)には効きません。start() / StartSoulBattle の指定と setDurations が優先されます。
+ * @type number
+ * @decimals 1
+ * @min 0.1
+ * @default 8
+ *
+ * @param PrepareDefenseSeconds
+ * @text 準備ループの防御ターンの長さ(秒・DEV仮)
+ * @desc 準備ループ(prepare:true)で防御ターンの長さを指定しなかったときの既定(DEV の暫定値)。従来の攻撃⇄防御(prepare:false)には効きません。敵の弾幕(ProjectR_SoulEnemyBullets)が最後まで飛べる長さ。
+ * @type number
+ * @decimals 1
+ * @min 0.1
+ * @default 6
+ *
  * @command StartSoulBattle
  * @text SOUL戦闘(P1): 開始
  * @desc SOUL戦闘のコントローラを始めます。プレイヤーの移動は止まり、戦闘中はセーブできません。
@@ -168,6 +184,9 @@
  *        -> { ok, reason?, state? }       end(reason?) -> boolean       isActive()       getPhase() -> "idle"|"prepare"|"attack"|"defense"|"cleanup"
  *   beginAttack(reason?) -> boolean(準備で「攻撃」を選ぶ。準備のときだけ true)    isPreparing()
  *   skipPhase() -> boolean(次のフェーズへ。準備なら攻撃へ)    setDurations({ attackSeconds, defenseSeconds }) (次のフェーズから有効)
+ *   getDefaults() -> { legacy:{ attackSeconds, defenseSeconds }, prepare:{ attackSeconds, defenseSeconds }, explicit:{ attack, defense } }   秒数を指定しなかったときの既定(診断用)
+ *   【秒数の既定】従来の攻撃⇄防御(prepare:false)は 8 / 5 秒(プラグインパラメータ)。準備ループ(prepare:true)は 8 / 6 秒(DEV の暫定値。PrepareAttackSeconds / PrepareDefenseSeconds)。
+ *     start({ attackSeconds, defenseSeconds }) の明示指定と、setDurations で設定した値は、どちらの場合も優先されます。
  *   onPhase(fn) / onEnd(fn) -> 登録解除関数    fn({ from, to, round, reason }) / fn({ reason })
  *   getState() -> 診断用の状態     getLog()     getBlockedCounts() -> 防御中に遮断した入力の数(診断用)     gates() -> 遮断の取り付け状況
  */
@@ -192,12 +211,15 @@
         defenseSeconds: finite(params.DefenseSeconds, 5, 0.1, 600),
         rounds: Math.floor(finite(params.Rounds, 0, 0, 999)),
         showLabel: params.ShowLabel === undefined || params.ShowLabel === "" ? true : String(params.ShowLabel) === "true",
-        prepareLoop: params.PrepareLoop === undefined || params.PrepareLoop === "" ? false : String(params.PrepareLoop) === "true"      // 既定は従来の攻撃⇄防御
+        prepareLoop: params.PrepareLoop === undefined || params.PrepareLoop === "" ? false : String(params.PrepareLoop) === "true",      // 既定は従来の攻撃⇄防御
+        prepareAttackSeconds: finite(params.PrepareAttackSeconds, 8, 0.1, 600),         // 準備ループ(prepare:true)で秒数を指定しなかったときの既定(DEV の暫定値。従来の攻撃⇄防御には効かない)
+        prepareDefenseSeconds: finite(params.PrepareDefenseSeconds, 6, 0.1, 600)
     });
 
     let state = "idle";
     let run = null; // 動作中だけ存在する。セーブしない。
     let durations = { attackSeconds: config.attackSeconds, defenseSeconds: config.defenseSeconds }; // 実行時の既定(setDurationsで変更)
+    const explicitDurations = { attack: false, defense: false };      // setDurations で明示された秒数は、準備ループの既定より優先する
     const blocked = { card: 0, movement: 0, attackEvent: 0, ultimate: 0, hotbar: 0, save: 0 };
     const prepareStats = { entered: 0, attackStarts: 0, skips: 0, cooldownFrozen: 0, pauses: 0 };      // 準備ループの診断(prepare:true のときだけ増える)
     const gateStatus = { card: false, attackEvent: false, attackInterpreter: false, ultimate: false, ultimateGauge: false, hotbarCommands: false, hotbarSlot: false, saveFlag: false, saveExecute: false, scene: false, cooldown: false };
@@ -491,8 +513,10 @@
         if (poc()?.isActive?.()) return { ok: false, reason: "pocActive" };
         // 絶の予備動作(予約済みの瞬間移動)は外から取り消せない。始める前なら待つしかないので、予備動作が終わるまで開始しない。
         if (root.ProjectRHermesZetsu?.isTeleportPending?.()) return { ok: false, reason: "movementPending" };
-        const attack = strict(options.attackSeconds, durations.attackSeconds, 0.1, 600);
-        const defense = strict(options.defenseSeconds, durations.defenseSeconds, 0.1, 600);
+        // 秒数の既定: 従来の攻撃⇄防御は durations(8 / 5)。準備ループ(prepare:true)は準備ループ用の既定(DEV の暫定 8 / 6)。start() の指定と setDurations が優先。
+        const prepareWanted = options.prepare === undefined || options.prepare === "" ? config.prepareLoop : options.prepare;
+        const attack = strict(options.attackSeconds, prepareWanted === true && !explicitDurations.attack ? config.prepareAttackSeconds : durations.attackSeconds, 0.1, 600);
+        const defense = strict(options.defenseSeconds, prepareWanted === true && !explicitDurations.defense ? config.prepareDefenseSeconds : durations.defenseSeconds, 0.1, 600);
         const rounds = strict(options.rounds, config.rounds, 0, 999);
         if (!attack.ok) return { ok: false, reason: "invalidAttackSeconds" };
         if (!defense.ok) return { ok: false, reason: "invalidDefenseSeconds" };
@@ -654,8 +678,8 @@
         const attack = strict(options.attackSeconds, undefined, 0.1, 600);
         const defense = strict(options.defenseSeconds, undefined, 0.1, 600);
         if (!attack.ok || !defense.ok) return { ok: false, reason: "invalidDuration" };
-        if (attack.value !== undefined) { durations.attackSeconds = attack.value; if (run) run.attackSeconds = attack.value; }
-        if (defense.value !== undefined) { durations.defenseSeconds = defense.value; if (run) run.defenseSeconds = defense.value; }
+        if (attack.value !== undefined) { durations.attackSeconds = attack.value; explicitDurations.attack = true; if (run) run.attackSeconds = attack.value; }
+        if (defense.value !== undefined) { durations.defenseSeconds = defense.value; explicitDurations.defense = true; if (run) run.defenseSeconds = defense.value; }
         return { ok: true, attackSeconds: durations.attackSeconds, defenseSeconds: durations.defenseSeconds };
     };
     const getState = () => {
@@ -687,6 +711,7 @@
     root.ProjectRSoulBattle = Object.freeze({
         STATES, PHASES, LOOP_PHASES, SOURCE_ID,
         start, end, isActive: soulActive, getPhase: () => state,
+        getDefaults: () => ({ legacy: { attackSeconds: durations.attackSeconds, defenseSeconds: durations.defenseSeconds }, prepare: { attackSeconds: explicitDurations.attack ? durations.attackSeconds : config.prepareAttackSeconds, defenseSeconds: explicitDurations.defense ? durations.defenseSeconds : config.prepareDefenseSeconds }, explicit: { attack: explicitDurations.attack, defense: explicitDurations.defense } }),
         isPreparing: () => state === "prepare", beginAttack,
         skipPhase: () => { if (state === "prepare") prepareStats.skips++; return nextPhase("skip"); }, setDurations,
         onPhase: fn => { phaseHooks.add(fn); return () => phaseHooks.delete(fn); },

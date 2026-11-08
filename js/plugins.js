@@ -108,5 +108,6 @@ var $plugins =
 ,{"name":"ProjectR_SoulLoopData","status":true,"description":"v0.1.0 ProjectR SOUL戦闘 L1 キャラ→デッキのデータ窓口(読み取り専用)。出撃できるキャラと既存の所持カード・保存デッキを結び付けて返すだけ。","parameters":{}}
 ,{"name":"ProjectR_SoulLoopHand","status":true,"description":"v0.1.0 ProjectR SOUL戦闘 L3 準備の手札(10枚ドロー・5枚選択・Q/W/E/R/T割り当て・固定手札)。準備ループのときだけ。","parameters":{}}
 ,{"name":"ProjectR_SoulMana","status":true,"description":"v0.1.0 ProjectR SOUL戦闘 L4-A マナ(資源の土台だけ)。準備ループのATTACK中だけ毎秒+1(上限10)。ATTACK開始で10・終了で破棄。コスト・消費は未実装。","parameters":{}}
+,{"name":"ProjectR_SoulEnemyBullets","status":true,"description":"v0.4.0 ProjectR SOUL戦闘 I4-B1〜B4 敵の弾。DEFENSE の間だけ、戦闘エリア(厳密な16:9)の中で敵の弾を出す・動かす・描く・片づける。B2: ハートとの当たり判定と主人公HPへのダメージ(DEV設定値)。B3: 狙い撃ち・扇・放射波の3種(DEV試作)と、ボスのフェーズに合わせた選択。B4: ボスの弾幕を DEFENSE の長さに合わせて配分(波・発の間隔だけを広げる)。","parameters":{}}
 ,{"name":"ProjectR_SoulBattlePrepare","status":true,"description":"v0.2.0 ProjectR SOUL戦闘 L2 準備(PREPARE)画面。攻撃→キャラ選択→10枚から5枚→Q/W/E/R/T割り当て→ATTACK。アイテムは未実装。表示と選択だけ。","parameters":{}}
 ];

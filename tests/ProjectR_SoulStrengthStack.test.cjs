@@ -137,7 +137,9 @@ const aimHeart = w => { const h = heartPos(w); w.mouse(Math.round(h.x * 48), Mat
 const heartHp = w => plain(w.ctx.ProjectRSoulBattlePoC.getState()).hp;
 const castStrength = w => { set(w, 10); return use(w, "hermes_strength"); };
 const pending = w => plain(S(w).getPending());
-const strengthW = (opts = {}) => { const w = startA16(world(), { extra: { weapon: "sword", ...opts } }); equip(w, ["hermes_strength", "hermes_sweep", "hermes_issen", "apollo_golden_volley", "hermes_reed_flute"]); return w; };
+const APPROVED = ["hermes_sweep", "hermes_issen", "apollo_golden_volley", "apollo_eros_arrow", "apollo_gigas_slayer"];       // テスト用の仮の承認(本番の一覧 SOUL_PHYSICAL_ATTACKS は未承認のため空)
+function approve(w, list = APPROVED) { return S(w).setSoulCards({ physical: list }); }
+const strengthW = (opts = {}) => { const w = startA16(world(), { extra: { weapon: "sword", ...opts } }); equip(w, ["hermes_strength", "hermes_sweep", "hermes_issen", "apollo_golden_volley", "hermes_reed_flute"]); if (!opts.unapproved) approve(w); return w; };
 const dropped = w => plain(w.ctx.ProjectRSoulSkills.getState().stats).strengthDropped || 0;
 
 // ---- tests ----
@@ -150,9 +152,10 @@ const fixedHit = (w, source, base, extra = {}) => {          // カードの固�
 const stacksOf = w => (plain(S(w).getPending()) || {}).stacks || 0;
 const lastSerial = w => (plain(S(w).getLastAttack()) || {}).serial || 0;
 const level = (w, l) => D(w).setCardLevel("hermes_strength", l);
-const cardDamage = (cardId, stacks, { near = false, frames: n = 150, lv = 2 } = {}) => {
+const cardDamage = (cardId, stacks, { near = false, frames: n = 150, lv = 2, list = APPROVED } = {}) => {
     const w = startA16(world(), { extra: { weapon: "sword", attackSeconds: 120 } });
     equip(w, ["hermes_strength", cardId, "hermes_zetsu", "hermes_veil", "hermes_reed_flute"]);
+    if (list) approve(w, list);
     level(w, lv);
     for (let i = 0; i < stacks; i++) assert.equal(castStrength(w).ok, true);
     if (near) { const h = heartPos(w); w.ctx.$gamePlayer.locate(Math.round(h.x), Math.round(h.y) + 2); w.ctx.$gamePlayer.setDirection(8); frames(w, 2); }
@@ -277,6 +280,7 @@ test("魔法・状態異常・非ダメージのカードには使わない: 疫
     const run = withStrength => {
         const w = startA16(world(), { extra: { weapon: "sword", attackSeconds: 120 } });
         equip(w, ["hermes_strength", "apollo_plague_rain", "hermes_reed_flute", "hermes_veil", "hermes_zetsu"]);
+        approve(w);                                                       // 仮の承認一覧(疫病の矢は入れない)
         level(w, 2);
         if (withStrength) assert.equal(castStrength(w).ok, true);
         aimHeart(w);
@@ -369,7 +373,8 @@ test("ATTACK の終了で蓄え・使用の確定・カード攻撃への適用�
             assert.equal(w.soul.getPhase(), "prepare");
             assert.equal(S(w).getPending(), null, name + ": PREPARE にも無い");
             w.soul.beginAttack(); frames(w, 2);
-            assert.equal(plain(S(w).getSoulCards()).physical.includes("hermes_sweep"), true, "次の ATTACK でまた有効");
+            assert.deepEqual(plain(S(w).getSoulCards()).physical, [], "次の ATTACK でカード攻撃の仕組みはまた有効(本番の承認一覧は空)");
+            approve(w);
             S(w).beginAction("hermes_sweep");
             assert.equal(fixedHit(w, "hermes_sweep", 100), 100, name + ": 次の ATTACK に持ち越さない");
         }
@@ -396,6 +401,7 @@ test("連続するラウンド: 毎ラウンド、重ね掛け → 物理カー�
         assert.equal(w.soul.getPhase(), "prepare");
         assert.equal(S(w).getPending(), null);
         w.soul.beginAttack(); frames(w, 3);
+        approve(w);
         S(w).beginAction("hermes_sweep");
         assert.equal(fixedHit(w, "hermes_sweep", 100), 100, `ラウンド${round + 1}の ATTACK: 持ち越さない`);
         assert.equal(w.soul.getPhase(), "attack");
@@ -429,6 +435,37 @@ test("ダメージ処理の共通部分の追加は不活性・ストレング�
     assert.equal(s.stackingMode(), "additive");
     assert.ok(Math.abs(s.combine([0.15, 0.15, 0.15]) - 1.45) < 1e-9);
     assert.ok(Math.abs(s.combine([0.1, 0.15]) - 1.25) < 1e-9);
+});
+
+test("分類の方針: 仕様にカード攻撃の物理/魔法の分類は無い。承認された一覧が空(本番の既定)の間は、カード攻撃にストレングスは掛からず、蓄えも消費されない(通常の剣・銃だけ)", () => {
+    const w = strengthW({ attackSeconds: 120, unapproved: true });
+    level(w, 2);
+    assert.equal(plain(S(w).getSoulCards()).physical.length, 0, "本番の承認一覧は空");
+    assert.equal(castStrength(w).ok, true);
+    for (const id of ["hermes_sweep", "hermes_issen", "apollo_golden_volley", "apollo_eros_arrow", "apollo_gigas_slayer", "apollo_plague_rain", "apollo_golden_arrow"]) {
+        S(w).beginAction(id);
+        assert.equal(fixedHit(w, id, 100), 100, id + ": 未承認の攻撃には掛からない");
+    }
+    assert.equal(stacksOf(w), 1, "蓄えは消費されない");
+    aimHeart(w); const hp0 = w.ctx.ProjectRCardModifiers.eventHp(w.heart); w.attackClick(); frames(w, 40);
+    assert.ok(w.ctx.ProjectRCardModifiers.eventHp(w.heart) < hp0, `通常の攻撃がダメージを与えた ${hp0} -> ${w.ctx.ProjectRCardModifiers.eventHp(w.heart)}`);
+    assert.equal(stacksOf(w), 0, "通常の剣の攻撃では消費される");
+    w.soul.end("t");
+});
+
+test("攻撃ごとの分類: カードID#攻撃種別で承認すると、その種別だけに掛かる(エロスの矢の矢 = eros と Lv3 のビーム = erosb を分けられる)", () => {
+    const w = strengthW({ attackSeconds: 120, unapproved: true });
+    level(w, 2);
+    approve(w, ["apollo_eros_arrow#eros"]);
+    assert.equal(castStrength(w).ok, true);
+    S(w).beginAction("apollo_eros_arrow");
+    const beam = (extra = {}) => { const before = w.ctx.ProjectRCardModifiers.eventHp(w.heart); w.ctx.PluginManager.callCommand(Object.assign(new w.ctx.Game_Interpreter(), { _eventId: 1 }), "Hendrix_Action_Engine", "UpdateEventHp", { eventId: String(w.heart), value: "-100", exceedMaxHealth: "false", projectRAttackId: extra.id, projectRFixed: { base: 100, flat: 0, source: "apollo_eros_arrow", element: 0, weaknessMultiplier: 1, critical: false } }); return before - w.ctx.ProjectRCardModifiers.eventHp(w.heart); };
+    assert.equal(beam({ id: "erosb:1:3" }), 100, "ビームは未承認");
+    assert.equal(stacksOf(w), 1);
+    assert.equal(beam({ id: "eros:1:0" }), 115, "矢は承認");
+    assert.equal(beam({ id: "eros:1:1" }), 115, "同じ使用の次の矢にも同じ倍率(消費は1度)");
+    assert.equal(stacksOf(w), 0);
+    w.soul.end("t");
 });
 
 console.log(`\n${passed} tests passed`);

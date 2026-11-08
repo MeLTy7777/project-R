@@ -3,7 +3,7 @@
 //   S2 ATTACK の終了(skip): 使われなかった蓄えは捨てられ、DEFENSE・PREPARE・次の ATTACK のどこにも無い・次の ATTACK でまた使える(拒否されない)
 //   S3 連続するラウンド: 2回発動 → 使わず終了 → すべて捨てる、を3回。毎回マナ5ずつ(計10)引かれ、前のラウンドから持ち越さない
 //   S4 他の一時的な強化: 絶・神託を使って ATTACK を終えると、効果・時間停止・武器の強化が残らず、次の ATTACK に持ち越さない
-//   S7 物理ダメージのカード(一閃)にも蓄えが使われ、ダメージが増える・非ダメージ(神託)では消費されない・1回の使用で一度だけ消費
+//   S7 カード攻撃: 未承認(本番の既定)の一閃には掛からず蓄えも残る・承認された場合は掛かり1回で消費・非ダメージ(神託)では消費されない
 //   S5 通常武器の命中での消費: ハートの隣から通常攻撃を当てると蓄えが一度に消費され、同じ ATTACK でまた使える
 //   S6 後片づけ: SOULを終えると元のマップへ戻り、保存データが変わらない
 // 使い方: MZ_OUT=<出力> node tools/mz_cdp/soul_strength_verify.cjs   (新しいNW.jsセッションで実行する)。入力はCDP(人間の手動プレイの代わりではない)。
@@ -150,12 +150,18 @@ const SB = "ProjectRSoulSandbox", SO = "ProjectRSoulBattle", ST = "ProjectRSoulS
     const afterOracle = await pend();
     await ev(`${HS}.clear('s7b'); 'ok'`); await sleep(300);
     await json(`${MN}.devSet(10)`); await key("Q"); await json(`${MN}.devSet(10)`); await key("Q");
+    // 本番の承認一覧は空(仕様にカード攻撃の物理/魔法の分類が無い)→ 一閃には掛からず、蓄えも消費されない
+    await json(`${MN}.devSet(10)`);
+    const u0 = await hp(); await key("T"); await sleep(900); const unapproved = u0 - (await hp());
+    const keptUnapproved = await pend();
+    // 承認された場合の挙動(Playtest の確認用に一覧を直接注入): 一閃に掛かり、1回の使用で一度だけ消費される
+    await ev(`${HS}.setSoulCards({ physical: ['hermes_issen'] }); 'ok'`);
     await json(`${MN}.devSet(10)`);
     const b0 = await hp(); await key("T"); await sleep(900); const boosted = b0 - (await hp());
     const left = await pend(), last = await json(`${HS}.getLastAttack()`);
     await s.shot("s7_card");
-    rec("S7 物理カード", baseline > 0 && boosted > baseline && boosted / baseline <= 1.32 && stacked && stacked.stacks === 2 && afterOracle && afterOracle.stacks === 2 && left === null && last && last.card === true && last.source === "hermes_issen" && last.stacks === 2,
-      JSON.stringify({ baseline, boosted, stacked: stacked && stacked.stacks, afterOracle: afterOracle && afterOracle.stacks, left, last }));
+    rec("S7 物理カード", baseline > 0 && unapproved === baseline && keptUnapproved && keptUnapproved.stacks === 2 && boosted > baseline && boosted / baseline <= 1.32 && stacked && stacked.stacks === 2 && afterOracle && afterOracle.stacks === 2 && left === null && last && last.card === true && last.source === "hermes_issen" && last.stacks === 2,
+      JSON.stringify({ baseline, unapproved, keptUnapproved: keptUnapproved && keptUnapproved.stacks, boosted, stacked: stacked && stacked.stacks, afterOracle: afterOracle && afterOracle.stacks, left, last }));
   });
 
   await check("S6 後片づけ: SOULを終えると元のマップへ戻り、保存データが変わらない", async () => {

@@ -33,7 +33,8 @@
  *
  * API: ProjectRSoulPhaseCleanup
  *   TAGS(player) / registerTag(tag, owner) -> boolean(owner は "player" | "enemy" のどちらか必須) / getTags(owner?)
- *   sweepNow(reason, { owners:["player","enemy"] }) -> { destroyed, ids, cancelledSweeps }
+ *   sweepNow(reason, { owners:["player","enemy"] }) -> { destroyed, ids, cancelledSweeps, cleaned }
+ *   registerCleaner(name, fn(reason, owner) -> 消した数, owner)   Event ではないもの(例: ProjectR_SoulEnemyBullets の敵の弾)の片づけを持ち主ごとに登録。sweepNow の owners に含まれるときだけ呼ぶ
  *   isLoopActive() / getStats() / getLog()
  */
 (() => {
@@ -48,6 +49,7 @@
         "<projectRNormalSword>", "<projectRHermesSword>", "<projectRHermesUltimate>"
     ]);
     const extra = { player: [], enemy: [] };                         // 登録された印(持ち主ごと)
+    const cleaners = { player: new Map(), enemy: new Map() };        // Event 以外の片づけ(持ち主ごと)
     const log = [];
     const stats = { sweeps: 0, destroyed: 0, cancelledSweeps: 0, errors: 0, ended: 0 };
     let loopSeen = false;                                            // 準備ループの戦闘が動いたか(終了時の片づけの要否)
@@ -98,9 +100,13 @@
             }
         }
         purgeHistory(ids);
-        stats.sweeps++; stats.destroyed += ids.length; stats.cancelledSweeps += cancelledSweeps;
-        note({ type: "sweep", reason, owners, destroyed: ids.length, cancelledSweeps });
-        return { destroyed: ids.length, ids, cancelledSweeps };
+        let cleaned = 0;
+        for (const owner of owners) for (const [name, fn] of cleaners[owner]) {
+            try { cleaned += Number(fn(reason, owner)) || 0; } catch (error) { stats.errors++; note({ type: "cleanerError", name, message: String(error?.message || error) }); }
+        }
+        stats.sweeps++; stats.destroyed += ids.length; stats.cancelledSweeps += cancelledSweeps; stats.cleaned = (stats.cleaned || 0) + cleaned;
+        note({ type: "sweep", reason, owners, destroyed: ids.length, cancelledSweeps, cleaned });
+        return { destroyed: ids.length, ids, cancelledSweeps, cleaned };
     };
 
     const loopActive = () => { try { return !!soul()?.getState?.()?.prepare; } catch (_error) { return false; } };
@@ -124,6 +130,10 @@
             const t = String(tag || "");
             if ((owner !== "player" && owner !== "enemy") || !/^<projectR[A-Za-z0-9_]+>$/.test(t) || allTags().includes(t)) return false;
             extra[owner].push(t); return true;
+        },
+        registerCleaner: (name, fn, owner) => {
+            if ((owner !== "player" && owner !== "enemy") || typeof fn !== "function" || !String(name || "")) return false;
+            cleaners[owner].set(String(name), fn); return true;
         },
         getTags: owner => (owner === "player" || owner === "enemy" ? tagsOf(owner) : allTags()),
         sweepNow,

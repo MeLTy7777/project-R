@@ -66,7 +66,7 @@ const paused = w => !!w.ctx.$gameMap.eventsPaused;
 const stageState = w => plain(w.stage.getState());
 // 専用ステージで a16 を準備ループで始める(開始 → 移動 → 到着 → 準備メニューが出るまで)
 function a16Prepare(w, options = {}) {
-    const r = quietly(() => plain(w.sb.start("a16", { openingHand: HAND, prepare: true, ...options })));
+    const r = quietly(() => plain(w.sb.start("a16", { openingHand: HAND, prepare: true, attackSeconds: 20, defenseSeconds: 4, bossAttacks: false, ...options })));
     assert.deepEqual([r.ok, r.pending, r.stage], [true, true, true], JSON.stringify(r));
     arrive(w);
     frames(w, 8);
@@ -93,7 +93,7 @@ const itemsSnapshot = w => JSON.stringify({ items: w.ctx.$gameParty._items, gold
 // ================================================================ マナ(L4-A: 資源の土台だけ) ================================================================
 const CASTS = ["hermes_sweep", "hermes_issen", "apollo_golden_volley", "apollo_eros_arrow", "apollo_gigas_slayer"];
 function startA16(w, { prepare, hand = CASTS } = {}) {
-    const r = quietly(() => plain(w.sb.start("a16", { openingHand: hand, prepare })));
+    const r = quietly(() => plain(w.sb.start("a16", { openingHand: hand, prepare, attackSeconds: 20, defenseSeconds: 4, bossAttacks: false })));
     assert.deepEqual([r.ok, r.pending, r.stage], [true, true, true], JSON.stringify(r));
     arrive(w); frames(w, 8);
     assert.equal(stageState(w).state, "active");

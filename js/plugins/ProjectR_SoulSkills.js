@@ -179,9 +179,10 @@
     // ---------------------------------------------------------------- 時間停止(神託): Hendrix の eventsPaused を使う(ProjectRのすべての更新がこれを見る) ----------------------------------------------------------------
     const takePause = () => { const m = map(); if (!m || rt.ownPause) return false; if (m.eventsPaused) return false; m.eventsPaused = true; rt.ownPause = true; return true; };
     const releasePause = reason => { const m = map(); if (!rt.ownPause) return false; rt.ownPause = false; if (m) m.eventsPaused = false; note({ type: "pauseRelease", reason }); return true; };
-    // ストレングス(準備ループ): 蓄えを使う物理ダメージのカード。ダメージ種別の印がカードに無いので、承認までの暫定の一覧(属性が物理のカード・damageType があるカードはそちらを優先)。
-    //   魔法・状態異常・継続ダメージ(疫病の矢・出血)・回復・ダメージの無い効果は入れない。
-    const STRENGTH_PHYSICAL_CARDS = Object.freeze(["hermes_sweep", "hermes_issen", "apollo_golden_volley", "apollo_golden_arrow", "apollo_eros_arrow", "apollo_gigas_slayer"]);
+    // ストレングス(準備ループ)が蓄えを使うカード攻撃の一覧。仕様(ワークブック・カード文書)にカード攻撃の物理/魔法の分類は無く(ストレングスの仕様は「次の剣・銃の命中で消費」)、
+    //   ここへ入れるのは「ユーザーが物理と承認した攻撃」だけ。要素は "カードID"(そのカードの全ダメージ)か "カードID#種別"(攻撃IDの先頭の種別だけ。例: エロスの矢の矢 = "apollo_eros_arrow#eros" / ビーム = "...#erosb")。
+    //   現在は未承認のため空(カード攻撃には掛からず、通常の剣・銃の攻撃だけに使われる)。固定ダメージ自身の damageType / 物理属性の宣言があれば、この一覧に関係なくそちらが優先される。
+    const SOUL_PHYSICAL_ATTACKS = Object.freeze([]);
     const PROJECTILE_TAG = /<projectR(?:Golden|Eros|Gigas|Plague)Arrow>|<projectRGunBullet>|<projectRGoldenVolley>|<projectRNormalSword>|<projectRHermesSword>/;
 
     // ---------------------------------------------------------------- 各カードの発動後の処理 ----------------------------------------------------------------
@@ -411,7 +412,7 @@
     if (api("ProjectRSoulBattle")?.onPhase) api("ProjectRSoulBattle").onPhase(event => {
         if (event && api("ProjectRSoulBattle")?.getState?.().prepare) loopSeen = true;
         if (event && event.to !== "attack") { endAll("phase:" + event.to); }
-        if (event && event.to === "attack") { applyDefs(); registerHook(); rt.eros = {}; if (loopMode()) safe(() => { const S = api("ProjectRHermesStrength"); S?.clear?.("soulAttackStart"); S?.setSoulCards?.({ physical: STRENGTH_PHYSICAL_CARDS }); }); }   // 新しい ATTACK は蓄えなしから(準備ループ)
+        if (event && event.to === "attack") { applyDefs(); registerHook(); rt.eros = {}; if (loopMode()) safe(() => { const S = api("ProjectRHermesStrength"); S?.clear?.("soulAttackStart"); S?.setSoulCards?.({ physical: SOUL_PHYSICAL_ATTACKS }); }); }   // 新しい ATTACK は蓄えなしから(準備ループ)
     });
     if (api("ProjectRSoulBattle")?.onEnd) api("ProjectRSoulBattle").onEnd(() => { endAll("soulEnd"); loopSeen = false; unregisterHook(); restoreDefs(); rt.eros = {}; });
 

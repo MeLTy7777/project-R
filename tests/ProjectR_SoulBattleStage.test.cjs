@@ -79,7 +79,7 @@ const snapshot = w => JSON.stringify({ deck: w.ctx.$gameSystem._projectRCardDeck
 const hurt = (w, id, amount) => w.ctx.PluginManager.callCommand(Object.assign(new w.ctx.Game_Interpreter(), { _eventId: 0 }), "Hendrix_Action_Engine", "UpdateEventHp", { eventId: String(id), value: `-${amount}`, exceedMaxHealth: "false" });
 // a16を専用ステージで始める: 開始 → 移動の予約 → 到着 → 準備の実行
 function a16(w, options = {}) {
-    const r = quietly(() => plain(w.sb.start("a16", { openingHand: HAND, ...options })));
+    const r = quietly(() => plain(w.sb.start("a16", { openingHand: HAND, bossAttacks: false, ...options })));
     assert.deepEqual([r.ok, r.pending, r.stage], [true, true, true], JSON.stringify(r));
     assert.equal(stageState(w).state, "entering");
     arrive(w);

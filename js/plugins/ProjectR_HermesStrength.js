@@ -54,7 +54,8 @@
  *   ・倍率は同じ(Lv1 +10% / Lv2,Lv3 +15%・重ね掛けは加算。持続時間は新設しない)。カードの固定ダメージの「基礎値」に1回だけ掛け(CardModifiers の damageMultiplier)、
  *     属性有効度・クリティカルはその後に掛かる。武器の攻撃力の差し替え(Lv3の防御無視)は固定ダメージには効かない(固定ダメージは防御を使わない)。
  *   ・物理かどうかの判断: 固定ダメージの damageType("physical"/"magical")があればそれ → 無ければ属性(Databaseの「物理」属性のみ物理、他の属性は魔法)→
- *     属性が無属性のカードは setSoulCards の一覧(物理のカードID)。一覧に無いカード・継続ダメージ(出血・疫病)・回復・ダメージの無い効果には使わない(蓄えも消費しない)。
+ *     属性が無属性のカードは setSoulCards の一覧(ユーザーが物理と承認した攻撃だけ。"カードID" または "カードID#攻撃種別")。一覧に無い攻撃・継続ダメージ(出血・疫病)・回復・ダメージの無い効果には使わない(蓄えも消費しない)。
+ *     仕様にカード攻撃の物理/魔法の分類は無いため、一覧は未承認の間は空(カード攻撃には掛からない)。
  *   ・1回の使用(beginAction で数える通し番号)が複数回当たる(複数の敵・複数の矢・ビームのティック)ときは、最初に実際にダメージが入ったヒットで蓄えをまとめて1度だけ消費し、
  *     同じ使用のほかのヒットには同じ倍率を1回ずつ掛ける(倍率が重なって掛かることも、2回消費することもない)。次の使用は新しい蓄えが要る。
  *
@@ -135,7 +136,8 @@
         if (context.damageType === "physical") return true;
         if (context.damageType) return false;
         if (context.element > 0) return context.element === physicalElementId();
-        return soulCards.physical.has(String(context.source || ""));
+        const source = String(context.source || ""), kind = String(context.attackId || "").split(":")[0];   // 承認された一覧: カードID 全体、または カードID#攻撃種別(攻撃IDの先頭)
+        return soulCards.physical.has(source) || (!!kind && soulCards.physical.has(`${source}#${kind}`));
     };
 
     // ---------- ヒットフック ----------
