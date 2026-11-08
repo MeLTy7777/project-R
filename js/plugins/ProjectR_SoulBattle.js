@@ -187,7 +187,10 @@
  *   getDefaults() -> { legacy:{ attackSeconds, defenseSeconds }, prepare:{ attackSeconds, defenseSeconds }, explicit:{ attack, defense } }   秒数を指定しなかったときの既定(診断用)
  *   【秒数の既定】従来の攻撃⇄防御(prepare:false)は 8 / 5 秒(プラグインパラメータ)。準備ループ(prepare:true)は 8 / 6 秒(DEV の暫定値。PrepareAttackSeconds / PrepareDefenseSeconds)。
  *     start({ attackSeconds, defenseSeconds }) の明示指定と、setDurations で設定した値は、どちらの場合も優先されます。
- *   onPhase(fn) / onEnd(fn) -> 登録解除関数    fn({ from, to, round, reason }) / fn({ reason })
+ *   onPhase(fn) / onEnd(fn) -> 登録解除関数    fn({ from, to, round, reason }) / fn({ reason, rounds })
+ *        勝敗(D13): reason "victory" = 敵ハートのHP0(勝利)/ "playerDead" = 主人公のHP0(敗北)/ それ以外(中断・マップ移動・ハート消滅・ラウンド完了など)は勝敗なし。
+ *        終了の判定は毎フレームの先頭で、勝利の確認を敗北より先に行うので、同じフレームの同時 KO は勝利。終了処理は二重に通らないので、結果は1回だけ。
+ *        (勝敗を結果の番号にする処理は ProjectR_SoulEncounter が行う。このペイロードの形は従来のまま。)
  *   getState() -> 診断用の状態     getLog()     getBlockedCounts() -> 防御中に遮断した入力の数(診断用)     gates() -> 遮断の取り付け状況
  */
 
@@ -622,7 +625,7 @@
                     else if (r.endOnHeartDefeat && r.heartExpected && !poc()?.isActive?.()) end("victory");                                             // 撃破でハートのEventが消えた
                     else if (r.heartExpected && !poc()?.isActive?.()) end("heartGone");
                     else if (r.endOnHeartDefeat && heartDefeated(r)) end("victory");                                                                   // HPが0以下になった
-                    else if (root.ProjectR?.PlayerDeath?.isDead?.()) end("playerDead");
+                    else if (root.ProjectR?.PlayerDeath?.isDead?.()) end("playerDead");                                                                 // 敗北。上の victory の確認が先なので、同じフレームの同時 KO は勝利(D13)
                     else if (r.phase === "prepare") { /* 準備は時間で進まない(戦闘の時計は動かさない)。選択か skipPhase で攻撃へ */ }
                     else if (timerRunning(this)) {
                         r.elapsed++;

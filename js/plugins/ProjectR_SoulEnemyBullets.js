@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc v0.4.0 ProjectR SOUL戦闘 I4-B1〜B4 敵の弾。DEFENSE の間だけ、戦闘エリア(厳密な16:9)の中で敵の弾を出す・動かす・描く・片づける。B2: ハートとの当たり判定と主人公HPへのダメージ(DEV設定値)。B3: 狙い撃ち・扇・放射波の3種(DEV試作)と、ボスのフェーズに合わせた選択。B4: ボスの弾幕を DEFENSE の長さに合わせて配分(波・発の間隔だけを広げる)。
+ * @plugindesc v0.5.0 ProjectR SOUL戦闘 I4-B1〜B4/D13 敵の弾。DEFENSE の間だけ、戦闘エリア(厳密な16:9)の中で敵の弾を出す・動かす・描く・片づける。B2: ハートとの当たり判定と主人公HPへのダメージ(DEV設定値)。B3: 狙い撃ち・扇・放射波の3種(DEV試作)と、ボスのフェーズに合わせた選択。B4: ボスの弾幕を DEFENSE の長さに合わせて配分(波・発の間隔だけを広げる)。
  * @author ProjectR
  * @base ProjectR_SoulBattle
  * @base ProjectR_SoulBattleStage
@@ -19,7 +19,10 @@
  *   ハートの当たり円 = 見た目の半径(幅の 0.014)× hitRadiusScale(DEV既定 0.5)。弾の当たり円 = 弾の半径 × bulletHitScale(DEV既定 1)。装飾の絵の大きさではなく、この円だけが判定です。
  *   当たった弾は即座に消え(その弾は二度と当たらない)、ダメージは既存のプレイヤーHPの窓口(Hendrix の UpdatePlayerHp。ProjectR_DamageModifiers の被ダメージ倍率が掛かる)で主人公(先頭アクター)に1回入ります。
  *   同じフレームに複数の弾が当たれば、弾ごとに別々のダメージです。ダメージの値(damage)・当たり円・HPの下限(floorHp = 1)は **DEV 設定**で、仕様に承認された本番値はありません(setConfig で変えられます)。
- *   HP は floorHp(既定 1)より下がらないので、戦闘不能・敗北・ゲームオーバーは起きません(D13 が承認されるまで敗北の経路は作りません)。
+ *   HP の下限 floorHp: **本番の既定は 0**(HP は 0 まで減り、主人公の HP0 = 敗北。勝敗は ProjectR_SoulBattle / ProjectR_SoulEncounter が決める)。
+ *   DEV の Sandbox(ProjectRSoulSandbox の a16)だけは floorHp = 1 を指定して従来どおり敗北しない(終われば元に戻す)。floorHp が正のとき、HP はその値より下がらず、
+ *   被ダメージ倍率が大きくて削れない端数が残ることがある(従来どおり)。下限 0 では HP0 になった弾より後の弾(同じフレームの複数弾)は「死亡済み」(dealt 0・reason "dead")として数え、
+ *   弾ごとにダメージを与える規則(上限なし・無敵なし・1つの弾は1回だけ)は変わりません。
  *   見た目: 当たった位置に赤い輪が広がって消え、効果音(標準のアクターのダメージ音)が鳴ります。HP は SOUL のHUDが毎フレーム読むので、そのまま減って見えます。
  *   既定では何も出しません(enable() を呼ぶまで無効)。通常のマップ戦闘・従来のSOUL・PREPARE・ATTACK・カード・マナには触れません。
  *
@@ -69,7 +72,7 @@
 (() => {
     "use strict";
     const root = typeof window !== "undefined" ? window : globalThis;
-    const VERSION = "0.4.0";
+    const VERSION = "0.5.0";
     const ASPECT = 9 / 16;                                              // 戦闘エリアの高さ(幅 = 1)
     const BULLET_R = 0.011;                                             // 弾の半径(幅に対する割合。画面で 約 8.6px @ 784px 幅)
     // B4(DEV の暫定値・未承認): ボスの弾幕を DEFENSE の長さに合わせて配分する。最後の弾が戦闘エリアを出たあとの『安全な余白』と、配分に使う長さの上限(フレーム)
@@ -100,13 +103,13 @@
 
     const rt = {
         enabled: null,                                       // { pattern, ...options } / null = 無効
-        cfg: { collision: true, damage: 25, hitRadiusScale: 0.5, bulletHitScale: 1, floorHp: 1, feedback: true },
+        cfg: { collision: true, damage: 25, hitRadiusScale: 0.5, bulletHitScale: 1, floorHp: 0, feedback: true },      // floorHp 0 = 本番(HP は 0 まで減る。D13 の敗北)。DEV の Sandbox だけが 1 を指定する
         hits: [], fx: [],
         bullets: [], telegraphs: [], runner: null, serial: 0, startPending: false, startWait: 0,
         defenseSerial: 0, autoStartedFor: -1,                // DEFENSE ごとの通し番号 / 自動で弾幕を始めた DEFENSE(1回の DEFENSE で自動に始めるのは1つだけ)
         plans: new Map([["default", DEFAULT_PLAN]]), rotation: { key: "", n: 0 }, lastPick: null, bossHook: null, bossPhaseEvents: [],
         layer: null, parentTilemap: null, bulletBitmap: null, lineBitmap: null, ringBitmap: null,
-        stats: { hits: 0, hpLost: 0, hitsAtFloor: 0, bossPhaseChanges: 0, duplicateSkipped: 0, picks: 0, patterns: 0, spawned: 0, removedBounds: 0, cleared: 0, clearReasons: {}, ticks: 0, pausedTicks: 0, rejected: 0, cutIns: 0, spriteErrors: 0, maxLive: 0 }
+        stats: { hits: 0, hpLost: 0, hitsAtFloor: 0, hitsAfterDeath: 0, bossPhaseChanges: 0, duplicateSkipped: 0, picks: 0, patterns: 0, spawned: 0, removedBounds: 0, cleared: 0, clearReasons: {}, ticks: 0, pausedTicks: 0, rejected: 0, cutIns: 0, spriteErrors: 0, maxLive: 0 }
     };
     const log = [];
     const note = entry => { log.push(entry); if (log.length > 80) log.shift(); };
@@ -376,17 +379,20 @@
     const applyDamage = () => {
         const actor = leader();
         if (!actor) return { dealt: 0, reason: "noActor", before: 0, after: 0 };
-        const before = actor.hp, floor = Math.max(0, Math.floor(num(rt.cfg.floorHp, 1)));
-        let amount = Math.max(0, num(rt.cfg.damage, 0));
+        const before = actor.hp, floor = Math.max(0, Math.floor(num(rt.cfg.floorHp, 0))), requested = Math.max(0, num(rt.cfg.damage, 0));
+        if (floor === 0 && (before <= 0 || safe(() => actor.isDead(), false))) return { dealt: 0, requested, before, after: actor.hp, reason: "dead" };      // すでに倒れている(同じフレームの後続の弾): 弾は数えるが、減らすHPは無い
+        let amount = requested;
         const room = Math.max(0, before - floor);
-        const factor = Math.max(1e-6, num(safe(() => api("ProjectRDamageModifiers")?.factorFor?.("player", "damageTaken")?.factor, 1), 1));
-        amount = Math.min(amount, Math.floor(room / factor));
+        if (floor > 0) {                                                       // DEV の下限: 倍率が掛かっても下限を割らないよう、先に抑える
+            const factor = Math.max(1e-6, num(safe(() => api("ProjectRDamageModifiers")?.factorFor?.("player", "damageTaken")?.factor, 1), 1));
+            amount = Math.min(amount, Math.floor(room / factor));
+        }
         if (amount >= 1) {
             const interpreter = new Game_Interpreter(); interpreter._eventId = 0;
             PluginManager.callCommand(interpreter, "Hendrix_Action_Engine", "UpdatePlayerHp", { target: "player", value: "-" + amount });
         }
-        if (actor.hp < floor) actor.setHp(floor);                          // 被ダメージ倍率などで下回ったときの最後の安全弁(戦闘不能にしない)
-        return { dealt: before - actor.hp, requested: Math.max(0, num(rt.cfg.damage, 0)), before, after: actor.hp, reason: amount >= 1 ? "ok" : (rt.cfg.damage > 0 && room <= 0 ? "atFloor" : "zeroDamage") };
+        if (floor > 0 && actor.hp < floor) actor.setHp(floor);             // DEV の下限: 被ダメージ倍率などで下回ったときの最後の安全弁(戦闘不能にしない)
+        return { dealt: before - actor.hp, requested, before, after: actor.hp, reason: amount >= 1 ? "ok" : (requested > 0 && room <= 0 ? "atFloor" : "zeroDamage") };
     };
     const addFeedback = (r, nx, ny) => {
         if (!rt.cfg.feedback) return;
@@ -416,7 +422,7 @@
             if (segDist(b.px, b.py, b.x, b.y, heart.x, heart.y) > reach) continue;
             removeBullet(b, "hit");                                            // この弾は二度と当たらない(重複ダメージなし。別の弾は別々に当たる)
             const res = applyDamage();
-            rt.stats.hits++; rt.stats.hpLost += res.dealt; if (res.reason === "atFloor") rt.stats.hitsAtFloor++;
+            rt.stats.hits++; rt.stats.hpLost += res.dealt; if (res.reason === "atFloor") rt.stats.hitsAtFloor++; if (res.reason === "dead") rt.stats.hitsAfterDeath++;
             const frame = rt.runner ? rt.runner.age : rt.stats.ticks;
             rt.hits.push({ bulletId: b.id, frame, x: b.x, y: b.y, dealt: res.dealt, before: res.before, after: res.after, reason: res.reason }); if (rt.hits.length > 60) rt.hits.shift();
             addFeedback(r, heart.x, heart.y);

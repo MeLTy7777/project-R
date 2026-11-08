@@ -277,6 +277,7 @@
         step("終了通知を解除", () => { a.unsub?.(); a.unsub = null; return false; });
         step("デコイ矢を消去", () => clearDecoys() > 0);
         step("ボスの弾幕の自動開始を解除", () => { if (!a.bossAttacks) return false; root.ProjectRSoulEnemyBullets?.disable?.(); return true; });
+        step("敵の弾のHP下限を本番の既定へ", () => { if (a.floorBefore === undefined) return false; root.ProjectRSoulEnemyBullets?.setConfig?.({ floorHp: a.floorBefore }); return true; });
         step("SOUL戦闘を終了", () => { if (soul().isActive()) { soul().end("sandbox:" + reason); return true; } return false; });
         step("回避AIを解除", () => dodge().disarm());
         step("ボス(BossFramework)を終了", () => { const bf = bossFramework(); if (bf?.isActive?.() && bf.getState?.()?.bossId === a.bossId) { bf.end("sandbox"); return true; } return false; });
@@ -363,6 +364,7 @@
             if (!registered.ok) abort("bossRegisterFailed", registered.reason);
             const bossStarted = bf.start(record.bossId, {});
             if (!bossStarted.ok) abort("bossStartFailed", { reason: bossStarted.reason, reasons: bossStarted.reasons });
+            { const eb = root.ProjectRSoulEnemyBullets; if (eb?.setConfig) { record.floorBefore = eb.getConfig().floorHp; eb.setConfig({ floorHp: 1 }); } }      // DEV: 従来どおり HP は 1 で止まる(敗北しない)。本番(ProjectR_SoulEncounter)は下限なし
             if (options.bossAttacks !== false) { const eb = root.ProjectRSoulEnemyBullets; const enabled = eb && typeof eb.enableBoss === "function" ? eb.enableBoss({}) : null; record.bossAttacks = !!(enabled && enabled.ok); }      // DEFENSE のたびに、ボスのフェーズに合う弾幕が始まる(F8 のコマンドは要らない)
             record.unsub = soul().onEnd(payload => {
                 const reason = payload?.reason || "soulEnd";
