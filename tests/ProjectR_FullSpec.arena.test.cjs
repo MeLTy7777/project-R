@@ -54,7 +54,10 @@ test("Map004: DEV端末が追加され、全てPlaytest専用プラグインコ�
     // 既存の23個の端末は同じ
     assert.equal(events.filter(e => e.id <= 23).length, 23);
     // 本番マップ(Map001-003)からアリーナ関連の呼び出しがない
-    for (const f of ["Map001", "Map002", "Map003"]) assert.ok(!read(`data/${f}.json`).includes(FILE));
+    for (const f of ["Map001", "Map002", "Map003"]) {
+        if (f === "Map003" && !require("node:fs").existsSync(require("node:path").join(__dirname, "..", `data/${f}.json`))) continue;                    // Map003 は別の作業の未コミットのマップ。無い環境(クリーンなチェックアウト)では、ある本番マップだけを確認する
+        assert.ok(!read(`data/${f}.json`).includes(FILE));
+    }
 });
 
 test("DEVボス戦: 本番と同じBossFramework.start(デッキ検証つき)で始まり、ボスHUD・フェーズ・仲間が動く。保存デッキは終了後に戻る", () => {

@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 const cp = require("node:child_process");
-const read = file => fs.readFileSync(path.join(__dirname, "..", file), "utf8");
+const read = file => fs.readFileSync(path.join(__dirname, "..", file), "utf8").replace(/\r\n/g, "\n");                                  // 改行は LF に正規化する(Windows の git は autocrlf で CRLF にチェックアウトする。内容の判定は変えない)
 const plain = value => JSON.parse(JSON.stringify(value));
 const CARD = "hermes_sword_attack", PLUGIN = "ProjectR_HermesSwordsmanship";
 const source = read("tests/ProjectR_ApolloGoldenArrow.test.cjs");

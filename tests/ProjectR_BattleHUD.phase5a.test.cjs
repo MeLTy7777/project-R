@@ -8,7 +8,7 @@ const cp = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
-const read = file => fs.readFileSync(path.join(__dirname, "..", file), "utf8");
+const read = file => fs.readFileSync(path.join(__dirname, "..", file), "utf8").replace(/\r\n/g, "\n");                                  // 改行は LF に正規化する(Windows の git は autocrlf で CRLF にチェックアウトする。内容の判定は変えない)
 const plain = value => JSON.parse(JSON.stringify(value));
 function fixtureLoader(file) {
     const text = read(file), f = { require, __dirname, console };
