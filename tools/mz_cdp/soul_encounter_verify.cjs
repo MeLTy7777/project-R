@@ -7,7 +7,7 @@
 //   E6 敗北メニューの操作: キャンセルでは何も起きない。「セーブから再開」→ 標準のロード画面 → キャンセルで敗北メニューへ戻る(マップへは戻らない)。セーブが無いと選べない
 //   E7 読み込み: ロード画面から実際に読み込むと、保存禁止が解けてマップへ(読み込み先のセーブは書き換えない: 保存の書き込みを止めて確認)
 //   E8 タイトルへ: 敗北メニューから「タイトルへ戻る」でタイトルへ。保存禁止のまま(ニューゲームで解ける)
-// 入力はCDP(人間の手動プレイの代わりではない)。ボスは DEV 用に登録(本番のボスデータは別)。デッキは DEV の ProjectRApolloTest が一時的に与える。
+// 入力はCDP(人間の手動プレイの代わりではない)。ボスは試験用に登録(HP 1000・弾幕の表は DEV の表と同じ内容。本番のボスデータは別)。デッキは DEV の ProjectRApolloTest が一時的に与える。
 // 使い方: MZ_OUT=<出力> node tools/mz_cdp/soul_encounter_verify.cjs   (新しいNW.jsセッションで実行する)
 const fs = require("fs");
 const { session } = require("./lib.cjs");
@@ -43,7 +43,7 @@ const VAR = 20, BOSS = "cdp_boss";
   const origin = await json(`({ map: $gameMap.mapId(), x: $gamePlayer.x, y: $gamePlayer.y })`);
   // 有効なデッキ(DEV の ProjectRApolloTest が一時的に与える。最後に reset で戻す)とボスの登録
   const deck = await json(`(function() { var at = ProjectRApolloTest; at.grantRing('apollo'); at.grantRing('hermes'); at.unlock(3, ['apollo', 'hermes']); var d = at.buildMixedDeck(); return { ok: d.ok, valid: d.valid }; })()`);
-  const reg = await json(`${EN}.registerBoss({ bossId: '${BOSS}', name: 'CDP BOSS', phases: [{ id: 'phase2', label: '第二形態', hpRatio: 0.66 }, { id: 'phase3', label: '第三形態', hpRatio: 0.33 }] })`);
+  const reg = await json(`${EN}.registerBoss({ bossId: '${BOSS}', name: 'CDP BOSS', hp: 1000, phases: [{ id: 'phase2', label: '第二形態', hpRatio: 0.66 }, { id: 'phase3', label: '第三形態', hpRatio: 0.33 }], bulletPlan: [{ rotation: [{ pattern: 'dev_aimed', options: {} }] }, { rotation: [{ pattern: 'dev_fan', options: {} }] }, { rotation: [{ pattern: 'dev_radial', options: {} }] }] })`);
   // 実際の保存を絶対に書かない保険(読み込みの確認で使う)。保護セーブは読むだけ
   await ev("window.__writes = 0; var __so = StorageManager.saveObject; StorageManager.saveObject = function() { window.__writes++; return Promise.reject(new Error('blocked by test')); }; 'ok'");
   const savedBefore = await ev("JSON.stringify([$gameSystem._projectRCardDeckData, $gameSystem._projectRCardInventory, $gameParty._items, $gameParty._gold])");
@@ -167,7 +167,7 @@ const VAR = 20, BOSS = "cdp_boss";
 
   await check("E8 タイトルへ", async () => {
     // もう一度敗北 → 「タイトルへ戻る」。読み込み後の世界で、デッキを用意して続ける
-    const dk = await json(`(function() { var at = ProjectRApolloTest; at.grantRing('apollo'); at.grantRing('hermes'); at.unlock(3, ['apollo', 'hermes']); var d = at.buildMixedDeck(); ${EN}.registerBoss({ bossId: '${BOSS}', name: 'CDP BOSS', phases: [] }); return { ok: d.ok && d.valid }; })()`);
+    const dk = await json(`(function() { var at = ProjectRApolloTest; at.grantRing('apollo'); at.grantRing('hermes'); at.unlock(3, ['apollo', 'hermes']); var d = at.buildMixedDeck(); ${EN}.registerBoss({ bossId: '${BOSS}', name: 'CDP BOSS', hp: 1000, phases: [], bulletPlan: [{ rotation: [{ pattern: 'dev_aimed', options: {} }] }] }); return { ok: d.ok && d.valid }; })()`);
     await ev("$gameParty.leader().setHp(40); 'ok'");
     const r = await json(`${EN}.start({ bossId: '${BOSS}', resultVariableId: ${VAR} })`);
     let ok = r.ok;

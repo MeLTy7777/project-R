@@ -177,8 +177,9 @@
  *   戦闘の外部終了(endAllなど) / ハートの消滅 / プレイヤーの死亡。どれも同じ後始末を通ります。
  *
  * API: ProjectRSoulBattle
- *   start({ attackSeconds, defenseSeconds, rounds, prepare:true|false, firstPhase:"prepare"|"attack"|"defense", heart:true|false|{ pattern, rangeX, rangeY, speed, centerX, centerY },
+ *   start({ attackSeconds, defenseSeconds, rounds, prepare:true|false, firstPhase:"prepare"|"attack"|"defense", heart:true|false|{ pattern, rangeX, rangeY, speed, centerX, centerY, hp? },
  *           endOnHeartDefeat:true, endOnCardBattleEnd:true })       ※最後の2つは任意(既定は無効)。
+ *           ※ heart.hp(1以上の整数。I6-B)は敵ハートのHPを指定する(本番のボス定義用)。省略時は従来どおり ProjectR_SoulBattlePoC の HeartEnemyName の敵のHP。
  *        endOnHeartDefeat    ハートのHPが0以下(またはEventが撃破で消えた)になったら reason:"victory" で終える。
  *        endOnCardBattleEnd  開始時に動いていたカード戦闘が外から終わったら reason:"cardBattleEnded" で終える。
  *        -> { ok, reason?, state? }       end(reason?) -> boolean       isActive()       getPhase() -> "idle"|"prepare"|"attack"|"defense"|"cleanup"
@@ -503,7 +504,8 @@
         if (heart === false || heart === "false") return null;
         const options = heart && typeof heart === "object" ? heart : {};
         return {
-            centerX: options.centerX, centerY: options.centerY, pattern: options.pattern, rangeX: options.rangeX, rangeY: options.rangeY, speed: options.speed
+            centerX: options.centerX, centerY: options.centerY, pattern: options.pattern, rangeX: options.rangeX, rangeY: options.rangeY, speed: options.speed,
+            ...(options.hp !== undefined ? { hp: options.hp } : {})                       // I6-B: 本番のボス定義のHP(敵ハートの生成に渡すだけ。SoulBattle は HP を扱わない)
         };
     };
     const start = (options = {}) => {

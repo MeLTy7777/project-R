@@ -91,7 +91,8 @@
  *   セーブしません(セーブデータに何も書きません)。ハートの敵Eventは非恒久で、ロード後は SaveLoadGuard が取り除きます。
  *
  * API: ProjectRSoulBattlePoC
- *   start({ centerX, centerY, pattern:"static"|"patrol"|"circle", rangeX, rangeY, speed, lockPlayer, combatSession }) -> { ok, reason?, eventId? }
+ *   start({ centerX, centerY, pattern:"static"|"patrol"|"circle", rangeX, rangeY, speed, lockPlayer, combatSession, hp? }) -> { ok, reason?, eventId? }
+ *        ※ hp(1以上の整数)を指定すると、敵ハートのHPをその値にします(本番のボス定義用。I6-B)。省略すると従来どおり HeartEnemyName の敵のHP。不正な値は reason: "invalidHp"。
  *        ※ P1のコントローラ(ProjectR_SoulBattle)の動作中は単独では開始できません(reason: "soulBattleActive")。
  *   end(reason?) -> boolean       isActive()
  *   setMotion({ pattern, rangeX, rangeY, speed, centerX, centerY })       pauseMotion(flag)       moveHeartTo(x, y)   (x,y = 判定の中心・タイル)
@@ -135,7 +136,8 @@
     const movementLocked = () => (typeof playerMovementDisabled !== "undefined" ? !!playerMovementDisabled : false);
 
     // ---- 雛形(実行時のメモリ上だけ。Map002のデータは書き換えない) ----
-    const addTemplate = () => {
+    // hp: 指定があれば(I6-B。本番のボス定義のHP)その整数を <hp: n> に使う。無ければ従来どおり DB の敵名(HeartEnemyName)。
+    const addTemplate = hp => {
         const events = $dataTemplateMap.events;
         const base = events.find(event => event && event.pages && event.pages[0]);
         if (!base) return null;
@@ -154,7 +156,7 @@
         data.x = 0;
         data.y = 0;
         data.pages = [page];
-        data.note = [HEART_TAG, "<enemy>", `<hp: ${config.enemyName}>`, `<hitbox: ${config.hitbox}, ${config.hitbox}>`, "<hideHP>"].join("\n");
+        data.note = [HEART_TAG, "<enemy>", `<hp: ${hp ? String(hp) : config.enemyName}>`, `<hitbox: ${config.hitbox}, ${config.hitbox}>`, "<hideHP>"].join("\n");
         delete data.meta;
         events[id] = data;
         if (typeof DataManager !== "undefined" && DataManager.extractMetadata) DataManager.extractMetadata(data);
@@ -274,9 +276,16 @@
         const s = { mapId: map().mapId(), frame: 0, distance: 0, paused: false, releasing: false, lockedPlayer: false, ownsSession: false,
             templateId: 0, templateData: null, event: null, eventId: 0, hpStorageId: null, sprite: null, offset: { x: 0.5, y: 0.5 } };
         if (!normalize(options, s)) return { ok: false, reason: "invalidPattern" };
+        // I6-B: 本番のボス定義のHP(正の整数)。指定が無ければ従来どおり(HeartEnemyName の敵のHP)。不正な値は黙って従来の敵に置き換えず、断る。
+        s.hp = 0;
+        if (options.hp !== undefined && options.hp !== null && options.hp !== "") {
+            const hp = Number(options.hp);
+            if (!Number.isInteger(hp) || hp < 1 || hp > 99999999) return { ok: false, reason: "invalidHp" };
+            s.hp = hp;
+        }
         s.distance = startDistance(s);
         try {
-            const template = addTemplate();
+            const template = addTemplate(s.hp);
             if (!template) return release(s, "templateMissing", { failed: true });
             s.templateId = template.id;
             s.templateData = template.data;
@@ -406,7 +415,7 @@
         return {
             active: true, eventId: s.eventId, mapId: s.mapId, pattern: s.pattern, rangeX: s.rangeX, rangeY: s.rangeY, speed: s.speed, paused: s.paused, frame: s.frame,
             center: { ...s.center }, position: { x: s.event._realX, y: s.event._realY }, hitCenter: c, polygonCenter: polygon,
-            hp: map().getCurrentEventHp(s.eventId), hpStorageId: s.hpStorageId, lockedPlayer: s.lockedPlayer, ownsSession: s.ownsSession, templateId: s.templateId,
+            hp: map().getCurrentEventHp(s.eventId), hpSource: s.hp ? "option" : "enemyName", hpStorageId: s.hpStorageId, lockedPlayer: s.lockedPlayer, ownsSession: s.ownsSession, templateId: s.templateId,
             sprite: s.sprite ? { x: s.sprite.x, y: s.sprite.y, visible: s.sprite.visible, attached: !!s.sprite.parent } : null
         };
     };
