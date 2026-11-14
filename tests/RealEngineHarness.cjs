@@ -119,6 +119,8 @@ function buildWorld({ playtest = true } = {}) {
         try { run(read(`js/plugins/${plugin.name}.js`), plugin.name + ".js"); loaded.push(plugin.name); }
         catch (error) { failures.push({ plugin: plugin.name, error: String(error.stack).split("\n").slice(0, 3).join(" | ") }); }
     }
+    // フィールド戦闘(ProjectR_FieldCombat)への移行後も、従来のSOUL・カード戦闘のテストが動くように、この世界ではSOUL戦闘を許可し、探索マップでも戦闘・武器を使えるようにする(本番の既定は SoulMode=off / 戦闘はエンカウンター中だけ)。
+    if (ctx.ProjectRFieldCombat) { ctx.ProjectRFieldCombat.setSoulMode("on"); ctx.ProjectRFieldCombat.setDevAllowOutsideEncounter(true); }
     const data = name => parse(read(`data/${name}.json`));
     for (const [variable, file] of [["$dataSystem", "System"], ["$dataStates", "States"], ["$dataEnemies", "Enemies"], ["$dataActors", "Actors"],
         ["$dataClasses", "Classes"], ["$dataSkills", "Skills"], ["$dataItems", "Items"], ["$dataWeapons", "Weapons"], ["$dataArmors", "Armors"],

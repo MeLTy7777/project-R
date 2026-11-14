@@ -7,8 +7,11 @@ const fs = require("fs");
 const OUT = process.env.MZ_OUT || "mz_out";
 require("fs").mkdirSync(OUT, { recursive: true });
 
-async function session() {
+async function session(opts = {}) {
   const c = await connect(); const ev = c.evalJs;
+  // フィールド戦闘(ProjectR_FieldCombat)への移行後も、従来のSOUL・カード戦闘の検証が動くように、起動したら SOUL を許可し、探索マップでも戦闘・武器を使えるようにする(DEV)(ページ側のタイマー。
+  //   FieldCombat が読み込まれたら1回だけ実行して止まる)。フィールド戦闘そのものを確かめるスクリプトは session({ field: true }) でこの準備を省く。
+  if (!opts.field) await ev("(function() { if (window.__fcLegacy) return 1; window.__fcLegacy = setInterval(function() { if (window.ProjectRFieldCombat) { ProjectRFieldCombat.setSoulMode('on'); ProjectRFieldCombat.setDevAllowOutsideEncounter(true); clearInterval(window.__fcLegacy); } }, 20); return 1; })()");
   const place = async (x, y) => { await ev(`$gamePlayer.locate(${x}, ${y}); $gamePlayer._realX = ${x}; $gamePlayer._realY = ${y}; $gamePlayer.center(${x}, ${y}); 'ok'`); await sleep(350); };
   const foot = () => ev("({ x: $gamePlayer.screenX(), y: $gamePlayer.screenY() })");
   const aim = async (dx, dy) => { await ev("$gamePlayer.center($gamePlayer._realX, $gamePlayer._realY)"); await sleep(120); const f = await foot(); return c.pointer(f.x + dx * 48, f.y + dy * 48); };

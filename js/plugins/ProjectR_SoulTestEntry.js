@@ -97,6 +97,9 @@
         if (!config.enabled) return { ok: false, reason: "disabled" };
         if (typeof $gamePlayer === "undefined" || !$gamePlayer || typeof $gameMap === "undefined" || !$gameMap) return { ok: false, reason: "noGame" };
         if (!sceneIsMap()) return { ok: false, reason: "notMapScene" };
+        // フィールド戦闘への移行(ProjectR_FieldCombat): SOUL戦闘が止められている間は、テストマップへ入らない(元の場所へ戻るのは常に許す)。
+        const fieldCombat = root.ProjectRFieldCombat;
+        if (fieldCombat && typeof fieldCombat.isSoulAllowed === "function" && fieldCombat.isSoulAllowed() === false && $gameMap.mapId() !== config.mapId) return { ok: false, reason: "soulDisabled" };
         if (SceneManager.isSceneChanging() || $gamePlayer.isTransferring()) return { ok: false, reason: "transferring" };
         if (typeof $gameMessage !== "undefined" && $gameMessage && $gameMessage.isBusy()) return { ok: false, reason: "messageBusy" };
         if ($gameMap.isEventRunning && $gameMap.isEventRunning()) return { ok: false, reason: "eventRunning" };

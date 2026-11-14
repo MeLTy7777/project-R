@@ -459,6 +459,8 @@
         return { ok: false, reason, ...(extra || {}) };
     };
     const start = (options = {}) => {
+        // フィールド戦闘への移行(ProjectR_FieldCombat): 通常のプレイではSOUL戦闘を始めない。コード・セーブデータは消さない。変数・状態は何も変えずに断る。
+        if (root.ProjectRFieldCombat && typeof root.ProjectRFieldCombat.isSoulAllowed === "function" && root.ProjectRFieldCombat.isSoulAllowed() === false) { note({ type: "rejected", reason: "soulDisabled" }); return { ok: false, reason: "soulDisabled" }; }
         const o = options && typeof options === "object" ? options : {};
         rt.pendingVarId = 0;
         const varId = o.resultVariableId === undefined || o.resultVariableId === null || o.resultVariableId === "" || Number(o.resultVariableId) === 0 ? defaultVariable : Number(o.resultVariableId);

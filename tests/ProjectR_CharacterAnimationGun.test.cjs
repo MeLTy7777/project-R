@@ -899,6 +899,9 @@ test("構え/ダウンは基本姿勢の専用シート: 構えでGunAim、行�
 
 test("神(常駐)の位置: 召喚アンカーに従い、プレイヤーが動いても同じ相対位置を保つ(生成直後に真上へ重ならない)", () => {
     const w = dev3hArena(); const { ctx } = w;
+    // この試験は、GodSummonVisual が置く常駐の神の初期の位置(左上に固定)と、高さへの追従を確かめる。背後への再配置(ProjectR_FieldGodCompanion)は切る
+    // (背後の配置は tests/ProjectR_FieldGodCompanion.test.cjs と tools/mz_cdp/field_god_verify.cjs・field_facing_verify.cjs で確認する)
+    if (ctx.ProjectRFieldGodCompanion) ctx.ProjectRFieldGodCompanion.setConfig({ enabled: false });
     w.frames(4);
     const visuals = plain(ctx.ProjectRGodSummonVisual.getVisuals()).filter(v => v.kind === "persistent");
     assert.equal(visuals.length, 1, "常駐の神が生成されている");
