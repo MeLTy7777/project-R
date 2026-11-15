@@ -66,6 +66,18 @@
  * @max 360
  * @default 140
  *
+ * @param EnemyPathfinding
+ * @text 敵の経路探索(通れない所をよけて追う)
+ * @desc true: 見えている敵が、まっすぐ進めないとき(柱・家具・閉じた扉の枠・味方の敵など)だけ、通れる経路を探して回り込む。まっすぐ進めるときは従来どおり。見失うと経路を捨てて止まる。false: 従来のまっすぐの追跡だけ。
+ * @type boolean
+ * @default true
+ *
+ * @param ChokeSoftCollision
+ * @text 出入口でのソフト衝突(はさまれて動けないとき)
+ * @desc true: 扉口などの通路で、敵にはさまれて進めないとき(24フレーム)だけ、行く手の敵をプレイヤーが通り抜けられるようにする(壁・扉・柱は変わらない。離れると戻す)。false: 従来の衝突だけ。
+ * @type boolean
+ * @default true
+ *
  * @param SpecialCooldown
  * @text Q 特殊アビリティ(一閃)のCooldown(秒)
  * @desc 0以下ならカードの既定(7秒)。
@@ -230,7 +242,7 @@
  *            「エンカウンターを終える」(ボス戦・撤退など)/「中断する」でも同じ。敗北(HPが0)は、自動では戻らず、既存の死亡・ロードの扱いのまま
  *            (戦闘は片づく・結果=敗北・エンカウンター中はセーブできない)。ロード・ニューゲームで、すべて初期状態へ戻る。
  *   戦闘マップの条件: マップのメモに <fieldBattleMap>(RequireBattleMapTag)。敵にするイベントのメモ(または有効なページの注釈)に <fieldEnemy> と書く。
- *     <fieldEnemy: windup=36, cooldown=120, reach=1.2, aggro=10, chase=1>  (すべて省略可。数値の単位は「フィールド戦闘: 敵の行動をつける」と同じ)
+ *     <fieldEnemy: windup=36, cooldown=120, reach=1.2, aggro=10, chase=1, path=1>  (すべて省略可。数値の単位は「フィールド戦闘: 敵の行動をつける」と同じ)
  *     sight=視界の距離(tile) / fov=視野角(度)。省略すると、プラグインパラメータ(EnemySightTiles / EnemyFovDegrees)。
  *     敵のイベントには、Hendrix の敵の印(<hp: 敵名> と <enemy>)も必要です(武器・奥義が当たるように)。
  *
@@ -253,6 +265,15 @@
  *   そろっている間だけ、プレイヤーを追い、攻撃する。開いた扉は視線を通す。見失った瞬間に、追うのをやめて、その場で待つ(プレイヤーの位置を覚えない・探さない)。
  *   見えるようになれば、また見つけて追う。視線の判定は ProjectR_CombatOcclusion(hasLineOfSight、mode:"vision")で、プレイヤーの霧(FogOfWar)とは無関係。攻撃・ダメージ・HP・戦闘のルールは変えない。
  *   API: getEnemyPerception(eventId) / getPerception() / setPerception({ enabled, sightTiles, fovDegrees })(DEV。保存しない)
+ *
+ * 【敵の経路探索】 追うかどうかは、上の視界がすべて決める。そのうえで、見えている敵が「まっすぐ進めない」ときだけ、通れない所(壁・柱・家具・閉じた扉・味方の敵)をよける。
+ *   ・まっすぐ進める間は、従来どおり(DotMove の dotMoveToPlayer)。通れない所があるときだけ、タイルの格子の A*(8方向。角をまたぐ斜めは禁止)で経路を求め、
+ *     まっすぐ行ける最も遠い曲がり角を結んだ折れ線の上を、DotMove の通常の移動(衝突判定)で進む。
+ *   ・経路の目標は、見えている間の「いまの」プレイヤーのマスだけ。見失った瞬間に経路を捨てて止まる(最後に見た位置へ向かわない・探さない)。見えるようになれば、また探す。
+ *   ・限界: 視界の判定は変えないので、壁(Region 255)や閉じた扉の向こうへ回り込む追跡はしない(視線が切れた瞬間に止まる)。見えている間に、柱などをよける回り込みだけを行う。
+ *   ・探索は敵ごとに 12 フレーム以上あけ、全体で 1 フレーム 3 回まで。範囲はプレイヤーまわり(+8マス)・最大 1500 ノード。エンカウンター中・体が 1 マス以下・ループしないマスだけ。
+ *   ・敵のメモ <fieldEnemy: path=0> で、その敵だけ従来のまっすぐの追跡にできる。
+ *   API: getEnemyNav(eventId) / findNavPath(from, to, { avoidEnemies, allowPartial }) / getNavStats() / resetNavStats() / setPathfinding(on)・isPathfinding()(DEV。保存しない)
  *
  * 【敵】 ProjectREnemyAttack(予約 → 溜め → 実行)を使う。attachEnemy(eventId) で、生きている敵のEventに「近づいて、溜めて、近接攻撃する」行動を
  *   つける(メモリ上だけ)。溜めの間、予兆(攻撃の範囲)が赤く画面に出る。Eventに元からある並列ページの攻撃は止める(二重にならないように)。
@@ -291,6 +312,7 @@
         devAllowOutside: String(params.DevAllowOutsideEncounter ?? "false") === "true",
         consumableItemId: Math.round(num(params.ConsumableItemId, 0, 0)),
         perception: String(params.EnemyPerception ?? "true") !== "false",
+        softCollision: String(params.ChokeSoftCollision ?? "true") !== "false",
         sightTiles: Math.max(1, num(params.EnemySightTiles, 10, 0.1)),
         fovDegrees: Math.min(360, Math.max(10, num(params.EnemyFovDegrees, 140, 0)))
     };
@@ -318,7 +340,7 @@
         active: false, engaged: false, frame: 0, serial: 0,
         cooldowns: { special: 0, mobility: 0, ultimate: 0, consumable: 0 },
         pending: [], captured: new Set(), lastResult: null, log: [], diag: { keyDowns: 0, accepted: 0, passed: 0, lastCode: null, lastDecision: null, lastReason: null },
-        enemies: new Map(), flash: { slot: null, until: 0, ok: true }, generation: 0, lastPos: null, touchAssists: 0
+        enemies: new Map(), flash: { slot: null, until: 0, ok: true }, generation: 0, lastPos: null, touchAssists: 0, soft: new Map(), softLast: null, softBlocked: 0
     };
     const note = entry => { rt.log.push({ frame: rt.frame, ...entry }); if (rt.log.length > 120) rt.log.shift(); };
 
@@ -405,7 +427,7 @@
         safe(() => combatSession().end(SOURCE, reason));
         safe(() => { if (deck().isCardBattleActive?.()) deck().endCardBattle(); });
         for (const id of [...rt.enemies.keys()]) safe(() => enemyAttack()?.interrupt?.(id, "fieldEnd"));
-        rt.captured.clear();
+        rt.captured.clear(); clearSoft();
         note({ type: "end", reason });
         return true;
     };
@@ -543,12 +565,13 @@
         rt.enemies.set(e.eventId(), {
             eventId: e.eventId(), state: "chase", cooldown: 0, attackId: null,
             windupFrames: Math.round(num(o.windupFrames, 36, 1)), cooldownFrames: Math.round(num(o.cooldownFrames, 120, 0)),
-            reach: num(o.reach, 1.2, 0.5), notetag: String(o.notetag || "<projectRFieldMelee><dmg: ゴブリン>"), chase: o.chase !== false,
+            reach: num(o.reach, 1.2, 0.5), notetag: String(o.notetag || "<projectRFieldMelee><dmg: ゴブリン>"), chase: o.chase !== false, pathfinding: o.pathfinding !== false,
             attacks: 0, aggroTiles: num(o.aggroTiles, 10, 1),
             // 視界(敵ごとに変えられる): sight / aggro(旧名)→ 距離。fov → 視野角。省略は、プラグインパラメータ
             sightTiles: Math.max(1, num(o.sightTiles, num(o.aggroTiles, cfg.sightTiles, 0.1), 0.1)), fovDegrees: Math.min(360, Math.max(10, num(o.fovDegrees, cfg.fovDegrees, 0))),
             customSight: o.sightTiles !== undefined || o.aggroTiles !== undefined, customFov: o.fovDegrees !== undefined,
-            aware: false, sees: false, seeReason: null, acquired: 0, losses: 0
+            aware: false, sees: false, seeReason: null, acquired: 0, losses: 0,
+            home: { x: Math.floor(Number(e._realX) + 0.5), y: Math.floor(Number(e._realY) + 0.5) }
         });
         e._interpreter = null;                                                                    // 元からある並列ページの攻撃は止める(二重に攻撃しない)
         note({ type: "attach", eventId: e.eventId() });
@@ -561,7 +584,9 @@
         if (!e || e._erased || e._projectRFieldSettled) return false;
         e._projectRFieldSettled = true;
         safe(() => { if (typeof e.setThrough === "function") e.setThrough(true); else e._through = true; });
+        safe(() => { e._through = true; if (e._setThroughReserve != null) e._setThroughReserve = undefined; });       // DotMove の setThrough は、動いている間は「移動が終わってから」に予約する。倒れた敵は待たずに、いますぐ通れるようにする(予約も消す)
         safe(() => { if (typeof e.setPriorityType === "function") e.setPriorityType(0); });
+        navState.ctx = null; softRelease(e.eventId());                                           // 経路探索の地図の写し(通れないイベント)を捨てる
         note({ type: "enemyDown", eventId: e.eventId() });
         return true;
     };
@@ -599,11 +624,378 @@
         return { enabled: cfg.perception, sightTiles: cfg.sightTiles, fovDegrees: cfg.fovDegrees };
     };
     const resetPerception = () => { cfg.perception = perceptionDefaults.perception; return setPerception({ sightTiles: perceptionDefaults.sightTiles, fovDegrees: perceptionDefaults.fovDegrees }); };
-    const detachEnemy = eventId => { const had = rt.enemies.delete(Number(eventId)); if (had) safe(() => enemyAttack()?.interrupt?.(Number(eventId), "detach")); return had; };
+    const detachEnemy = eventId => { const had = rt.enemies.delete(Number(eventId)); softRelease(Number(eventId)); if (had) safe(() => enemyAttack()?.interrupt?.(Number(eventId), "detach")); return had; };
+    // ------------------------------------------------------------------ 敵の経路探索(Stage 4: 通れない所をよけて追う) ----------------------------------------------------------------
+    // 「追うかどうか」は、上の視界の判定がすべてを決める(見えている間だけ)。ここは「どう動くか」だけ。
+    //   1. まっすぐ進める(体の大きさの四角が、通れるマスだけを通って、プレイヤーまで行ける)間は、従来どおり dotMoveToPlayer(動きは変わらない)。
+    //   2. まっすぐ進めない(柱・家具・閉じた扉・味方の敵などの通れない所がある)ときだけ、タイルの格子で A*(8方向。角をまたぐ斜めは禁止)の経路を求め、
+    //      「まっすぐ行ける最も遠い曲がり角」だけを結んだ折れ線にして、その上を DotMove の移動(dotMoveByDeg = 通常の衝突判定)で進む。
+    //   3. 経路の目標は、見えている間の「いまの」プレイヤーのマスだけ。見失った瞬間に経路を捨てて止まる(最後に見た位置へ向かわない・探さない)。
+    //      視界(距離・視野角・壁・閉じた扉)の判定には、いっさい手を入れない。壁の向こうへ回り込む追跡は、見失えば止まるのでしない(仕様の限界)。
+    //   計算量: 探索は敵ごとに 12 フレーム以上あけ、全体で 1 フレーム 3 回まで。探索は、プレイヤーを中心にした範囲(+8マス)・最大 1500 ノードに限る。
+    //   使うのは、エンカウンター中(rt.active)・敵の視界が有効・ループしないマス・体が 1 マス以下の敵だけ。それ以外は従来のまっすぐの追跡。
+    const NAV = Object.freeze({ EPS: 0.02, SAMPLE: 0.25, DIRECT_FRAMES: 4, REPLAN_FRAMES: 12, CHECK_FRAMES: 10, STUCK_FRAMES: 24, AVOID_FRAMES: 60, RETRY_FRAMES: 30, MAX_SEARCHES: 3, MAX_NODES: 1500, MARGIN: 8, LOOKAHEAD: 40, CELL_FRAMES: 120, CTX_FRAMES: 4 });
+    const navNew = () => ({ mode: "idle", path: null, pi: 0, segFrom: null, partial: false, goal: null, plannedAt: -1e9, nextDirect: 0, direct: false, noDirectUntil: 0, avoidUntil: 0, retryAt: 0, nextCheck: 0, lastPos: null, stuck: 0, stuckCount: 0, plans: 0, noPaths: 0, nodes: 0, lost: 0 });
+    const navStats = { searches: 0, found: 0, noPath: 0, limited: 0, expanded: 0, searchMs: 0, maxSearchMs: 0, sweeps: 0, directFrames: 0, pathFrames: 0, waitFrames: 0, stuck: 0, budgetSkips: 0, legacyFrames: 0, lostSight: 0, frames: 0, navMs: 0, maxFrameMs: 0, maxFrameSearches: 0, errors: 0, partial: 0, why: {}, yields: 0, yieldFrames: 0, yieldBlocked: 0, softPass: 0, softEnd: 0 };
+    const navState = { enabled: String(params.EnemyPathfinding ?? "true") !== "false", frameSearches: 0, frameMs: 0, ctx: null, grid: null, solid: null, buf: null, lastError: null };
+    const navDefault = navState.enabled;
+    const nowMs = () => (typeof performance !== "undefined" && performance && typeof performance.now === "function" ? performance.now() : Date.now());
+    const DIRBIT = { 2: 1, 4: 2, 6: 4, 8: 8 };
+    const bodySize = e => ({ w: Number(safe(() => e.width(), 1)) || 1, h: Number(safe(() => e.height(), 1)) || 1 });
+    const navUsable = (e, b) => {
+        if (!navState.enabled || b.pathfinding === false || !cfg.perception || !rt.active) return false;
+        const m = map();
+        if (!m || typeof m.isPassable !== "function" || typeof m.width !== "function" || typeof m.height !== "function" || typeof m.events !== "function") return false;
+        if (typeof e.dotMoveByDeg !== "function" || typeof e.centerRealX !== "function" || typeof e.centerRealY !== "function") return false;
+        if (safe(() => m.isLoopHorizontal() || m.isLoopVertical(), false)) return false;
+        const s = bodySize(e);
+        return s.w <= 1 + NAV.EPS && s.h <= 1 + NAV.EPS;
+    };
+    // そのフレームの地図の写し: 通れる向き(タイルの属性。一定時間キャッシュ)と、通れない(動かない)イベントのマス(毎フレーム作り直す。扉の開閉に追いつく)
+    const navContext = () => {
+        const m = map();
+        if (navState.ctx && navState.ctx.m === m && rt.frame >= navState.ctx.frame && rt.frame - navState.ctx.frame < NAV.CTX_FRAMES) return navState.ctx;      // 通れないイベントの写しは 4 フレームごとに作り直す(扉が閉じれば視線が切れて止まるので、数フレームの遅れは影響しない)
+        const W = m.width(), H = m.height(), data = typeof $dataMap !== "undefined" ? $dataMap : null, id = safe(() => m.mapId(), 0);
+        let g = navState.grid;
+        if (!g || g.m !== m || g.data !== data || g.id !== id || g.W !== W || g.H !== H || rt.frame < g.at || rt.frame - g.at >= NAV.CELL_FRAMES) g = navState.grid = { m, data, id, W, H, at: rt.frame, dirs: new Int8Array(W * H).fill(-1) };
+        if (!navState.solid || navState.solid.length !== W * H) navState.solid = new Uint8Array(W * H); else navState.solid.fill(0);
+        const solid = navState.solid;
+        for (const ev of m.events()) {
+            if (!ev || ev._erased || rt.enemies.has(ev.eventId())) continue;                    // 動く敵(味方)は、地図の一部にしない(必要なときだけ、よける相手として足す)
+            if (safe(() => ev.isThrough(), true) || !safe(() => ev.isNormalPriority(), false) || ev._pageIndex < 0) continue;
+            const s = bodySize(ev), x0 = Math.floor(ev._realX + NAV.EPS), x1 = Math.floor(ev._realX + s.w - NAV.EPS), y0 = Math.floor(ev._realY + NAV.EPS), y1 = Math.floor(ev._realY + s.h - NAV.EPS);
+            for (let y = Math.max(0, y0); y <= Math.min(H - 1, y1); y++) for (let x = Math.max(0, x0); x <= Math.min(W - 1, x1); x++) solid[y * W + x] = 1;
+        }
+        return (navState.ctx = { frame: rt.frame, m, W, H, g, solid });
+    };
+    const navDirs = (ctx, x, y) => {
+        const i = y * ctx.W + x; let v = ctx.g.dirs[i];
+        if (v < 0) { const m = ctx.m; v = (m.isPassable(x, y, 2) ? 1 : 0) | (m.isPassable(x, y, 4) ? 2 : 0) | (m.isPassable(x, y, 6) ? 4 : 0) | (m.isPassable(x, y, 8) ? 8 : 0); ctx.g.dirs[i] = v; }
+        return v;
+    };
+    // 0 = 通れない / 1 = 一部の向きだけ通れる / 2 = どの向きにも通れる。extra = 追加でよけるマス(味方の敵)
+    const navCell = (ctx, x, y, extra) => {
+        if (x < 0 || y < 0 || x >= ctx.W || y >= ctx.H) return 0;
+        const i = y * ctx.W + x;
+        if (ctx.solid[i] || (extra && extra.has(i))) return 0;
+        const v = navDirs(ctx, x, y);
+        return v === 15 ? 2 : v === 0 ? 0 : 1;
+    };
+    const navEdge = (ctx, x, y, nx, ny, d, rev) => (navDirs(ctx, x, y) & DIRBIT[d]) !== 0 && (navDirs(ctx, nx, ny) & DIRBIT[rev]) !== 0;
+    const navBodyOpen = (ctx, rx, ry, bw, bh, extra) => {
+        const x0 = Math.floor(rx + NAV.EPS), x1 = Math.floor(rx + bw - NAV.EPS), y0 = Math.floor(ry + NAV.EPS), y1 = Math.floor(ry + bh - NAV.EPS);
+        for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (navCell(ctx, x, y, extra) !== 2) return false;
+        return true;
+    };
+    // 体(左上の座標 a → b)を、一定の間隔で動かし、どの位置でも体が「どの向きにも通れるマス」だけに乗っているか
+    const navSweep = (ctx, ax, ay, bx, by, bw, bh, extra) => {
+        navStats.sweeps++;
+        const dx = bx - ax, dy = by - ay, n = Math.max(1, Math.ceil(Math.hypot(dx, dy) / NAV.SAMPLE));
+        for (let k = 0; k <= n; k++) if (!navBodyOpen(ctx, ax + dx * k / n, ay + dy * k / n, bw, bh, extra)) return false;
+        return true;
+    };
+    const ensureBuf = n => {
+        let b = navState.buf;
+        if (!b || b.g.length < n) b = navState.buf = { g: new Float32Array(n), parent: new Int32Array(n), seen: new Int32Array(n), closed: new Int32Array(n), gen: 0 };
+        return b;
+    };
+    // 8方向 A*(範囲 = 敵とプレイヤーを含む四角 + MARGIN)。斜めは、となりの2マスと斜め先のマスがすべて通れるときだけ。
+    //   戻り値 = { tiles: [{x,y}...](始点から), partial } / null。目標へ届かない(囲まれている・ノード上限)ときは、いちばん近づけたマスまでの経路(partial: true)。1歩も近づけなければ null
+    const navFind = (ctx, sx, sy, gx, gy, extra) => {
+        const W = ctx.W, H = ctx.H;
+        const x0 = Math.max(0, Math.min(sx, gx) - NAV.MARGIN), x1 = Math.min(W - 1, Math.max(sx, gx) + NAV.MARGIN), y0 = Math.max(0, Math.min(sy, gy) - NAV.MARGIN), y1 = Math.min(H - 1, Math.max(sy, gy) + NAV.MARGIN);
+        const bw = x1 - x0 + 1, area = bw * (y1 - y0 + 1), buf = ensureBuf(area), gen = ++buf.gen;
+        const ix = (x, y) => (y - y0) * bw + (x - x0), inside = (x, y) => x >= x0 && x <= x1 && y >= y0 && y <= y1;
+        const heur = (x, y) => { const dx = Math.abs(x - gx), dy = Math.abs(y - gy); return dx + dy - 0.5857864 * Math.min(dx, dy); };
+        const hf = [], hi = [];                                                                 // 二分ヒープ(f 値・マスの番号)。更新は「追加して古いものを読み飛ばす」
+        const push = (f, i) => { let k = hf.length; hf.push(f); hi.push(i); while (k > 0) { const q = (k - 1) >> 1; if (hf[q] <= f) break; hf[k] = hf[q]; hi[k] = hi[q]; k = q; } hf[k] = f; hi[k] = i; };
+        const pop = () => {
+            const top = hi[0], lf = hf.pop(), li = hi.pop(), n = hf.length;
+            if (n > 0) { let k = 0; for (;;) { let c = 2 * k + 1; if (c >= n) break; if (c + 1 < n && hf[c + 1] < hf[c]) c++; if (hf[c] >= lf) break; hf[k] = hf[c]; hi[k] = hi[c]; k = c; } hf[k] = lf; hi[k] = li; }
+            return top;
+        };
+        const s = ix(sx, sy), goalIndex = ix(gx, gy);
+        buf.g[s] = 0; buf.parent[s] = -1; buf.seen[s] = gen; push(heur(sx, sy), s);
+        const enter = (x, y) => (x === gx && y === gy) || navCell(ctx, x, y, extra) !== 0;      // 目標(プレイヤーのいるマス)は、必ず入れる
+        const step = (x, y, dx, dy) => {                                                       // (x,y) から上下左右へ 1 マス進めるか
+            const nx = x + dx, ny = y + dy; if (!inside(nx, ny) || !enter(nx, ny)) return false;
+            return dx ? navEdge(ctx, x, y, nx, ny, dx > 0 ? 6 : 4, dx > 0 ? 4 : 6) : navEdge(ctx, x, y, nx, ny, dy > 0 ? 2 : 8, dy > 0 ? 8 : 2);
+        };
+        let expanded = 0, found = false, limited = false, best = s, bestH = heur(sx, sy);
+        const relax = (x, y, nx, ny, cost, from) => {
+            const j = ix(nx, ny); if (buf.closed[j] === gen) return;
+            const ng = buf.g[from] + cost;
+            if (buf.seen[j] !== gen || ng < buf.g[j]) { buf.seen[j] = gen; buf.g[j] = ng; buf.parent[j] = from; push(ng + heur(nx, ny), j); }
+        };
+        while (hf.length) {
+            const cur = pop();
+            if (buf.closed[cur] === gen) continue;
+            buf.closed[cur] = gen;
+            if (cur === goalIndex) { found = true; break; }
+            if (++expanded > NAV.MAX_NODES) { limited = true; break; }
+            const x = x0 + cur % bw, y = y0 + Math.floor(cur / bw);
+            { const h = heur(x, y); if (h < bestH - 1e-9) { bestH = h; best = cur; } }
+            const sN = step(x, y, 0, -1), sE = step(x, y, 1, 0), sS = step(x, y, 0, 1), sW = step(x, y, -1, 0);
+            if (sN) relax(x, y, x, y - 1, 1, cur); if (sE) relax(x, y, x + 1, y, 1, cur); if (sS) relax(x, y, x, y + 1, 1, cur); if (sW) relax(x, y, x - 1, y, 1, cur);
+            for (const [dx, dy] of [[1, -1], [1, 1], [-1, 1], [-1, -1]]) {
+                const ox = dx > 0 ? sE : sW, oy = dy > 0 ? sS : sN;                              // 角をまたぐ斜め禁止: となりの2マスへ進めること
+                if (!ox || !oy) continue;
+                if (step(x + dx, y, 0, dy) && step(x, y + dy, dx, 0)) relax(x, y, x + dx, y + dy, 1.4142136, cur);
+            }
+        }
+        navStats.expanded += expanded;
+        if (limited) navStats.limited++;
+        if (!found && best === s) return null;
+        const out = [];
+        for (let k = found ? goalIndex : best; k >= 0; k = buf.parent[k]) { out.push({ x: x0 + k % bw, y: y0 + Math.floor(k / bw) }); if (k === s) break; }
+        return { tiles: out.reverse(), partial: !found };
+    };
+    // 折れ線にする: いまの位置から「まっすぐ行ける最も遠い」経路のマスの中心を、次の曲がり角にする(経路が折れる所だけが残る)
+    const navSmooth = (ctx, e, tiles, bw, bh, extra) => {
+        const k = tiles.length - 1, out = [], center = t => ({ x: t.x + 0.5, y: t.y + 0.5 });
+        let fx = e._realX, fy = e._realY, idx = 0, firstTry = true;
+        while (idx < k) {
+            let pick = -1;
+            for (let j = Math.min(k, idx + NAV.LOOKAHEAD); j > idx; j--) {
+                const c = center(tiles[j]);
+                if (navSweep(ctx, fx, fy, c.x - bw / 2, c.y - bh / 2, bw, bh, extra)) { pick = j; break; }
+            }
+            if (pick < 0) {
+                if (firstTry && idx === 0) { const c = center(tiles[0]); out.push(c); fx = c.x - bw / 2; fy = c.y - bh / 2; firstTry = false; continue; }   // 体が端に寄っているときは、まず自分のマスの中心へ
+                pick = idx + 1;
+            }
+            firstTry = false;
+            const c = center(tiles[pick]); out.push(c); fx = c.x - bw / 2; fy = c.y - bh / 2; idx = pick;
+        }
+        if (!out.length) out.push(center(tiles[k]));
+        return out;
+    };
+    const allyCells = (ctx, selfId) => {
+        const set = new Set();
+        for (const [id] of rt.enemies) {
+            if (id === selfId) continue;
+            const o = map()?.event(id); if (!o || !enemyAlive(o) || safe(() => o.isThrough(), false)) continue;
+            const s = bodySize(o);
+            for (let y = Math.floor(o._realY + NAV.EPS); y <= Math.floor(o._realY + s.h - NAV.EPS); y++) for (let x = Math.floor(o._realX + NAV.EPS); x <= Math.floor(o._realX + s.w - NAV.EPS); x++) if (x >= 0 && y >= 0 && x < ctx.W && y < ctx.H) set.add(y * ctx.W + x);
+        }
+        return set;
+    };
+    const navPlan = (e, b, nv, p, ctx, avoid) => {
+        const s = bodySize(e), cx = e.centerRealX(), cy = e.centerRealY();
+        const sx = Math.min(ctx.W - 1, Math.max(0, Math.floor(cx))), sy = Math.min(ctx.H - 1, Math.max(0, Math.floor(cy)));
+        const gx = Math.min(ctx.W - 1, Math.max(0, Math.floor(p.x))), gy = Math.min(ctx.H - 1, Math.max(0, Math.floor(p.y)));
+        const extra = avoid ? allyCells(ctx, b.eventId) : null;
+        const t0 = nowMs();
+        const found = navFind(ctx, sx, sy, gx, gy, extra), tiles = found ? found.tiles : null;
+        const path = tiles ? navSmooth(ctx, e, tiles, s.w, s.h, extra) : null;
+        const ms = nowMs() - t0;
+        navStats.searches++; navStats.searchMs += ms; navStats.maxSearchMs = Math.max(navStats.maxSearchMs, ms); navState.frameSearches++; navState.frameMs += ms;
+        nv.plannedAt = rt.frame; nv.goal = { x: gx, y: gy }; nv.plans++;
+        if (!path) { navStats.noPath++; nv.noPaths++; nv.path = null; nv.pi = 0; nv.nodes = 0; nv.retryAt = rt.frame + NAV.RETRY_FRAMES; return false; }
+        navStats.found++; if (found.partial) navStats.partial++; nv.path = path; nv.pi = 0; nv.segFrom = null; nv.nodes = tiles.length; nv.partial = found.partial;
+        return true;
+    };
+    // 次の数個の曲がり角のマスが、まだ通れるか(扉が閉じる・イベントが動いた)。通れなければ探し直す
+    const navPathValid = (ctx, nv, extra) => {
+        for (let i = nv.pi; i < Math.min(nv.path.length, nv.pi + 3); i++) {
+            const x = Math.floor(nv.path[i].x), y = Math.floor(nv.path[i].y);
+            if (nv.goal && x === nv.goal.x && y === nv.goal.y) continue;                        // 目標(プレイヤーのいるマス)は調べない(イベントの上に立っていても、探し直しを繰り返さない)
+            if (navCell(ctx, x, y, extra) === 0) return false;
+        }
+        return true;
+    };
+    const navIdle = (b, mode = "idle") => { const nv = b.nav; if (!nv) return; nv.mode = mode; nv.path = null; nv.pi = 0; nv.segFrom = null; nv.lastPos = null; nv.stuck = 0; nv.direct = false; nv.nextDirect = 0; };
+    const navLose = b => { const nv = b.nav; if (!nv || nv.mode === "yield" || (nv.mode === "idle" && !nv.path)) return; navIdle(b); nv.lost++; navStats.lostSight++; };
+    const legacyChase = e => safe(() => e.dotMoveToPlayer?.());
+    // 折れ線の「いまの区間」(前の曲がり角 → 次の曲がり角)の線に沿って進む。線から横にずれているぶんは、1 歩の中で少しずつ(最大 0.7 歩分)戻し、有限の歩数で線の上に乗る
+    //   (曲がり角で、1 マス幅の通路の壁へ体をこすらない。「線の先を狙う」方式は、線へ近づき続けるだけで、ぴったり乗らない)。戻り値 = DotMove の角度 / 区間の終わりなら null
+    const navStepDeg = (e, nv) => {
+        const cx = e.centerRealX(), cy = e.centerRealY(), dpf = Number(safe(() => e.distancePerFrame(), 0.07)) || 0.07, tol = Math.max(dpf * 0.75, 0.05);
+        while (nv.pi < nv.path.length && Math.hypot(nv.path[nv.pi].x - cx, nv.path[nv.pi].y - cy) <= tol) { nv.segFrom = nv.path[nv.pi]; nv.pi++; }
+        if (nv.pi >= nv.path.length) return null;
+        const to = nv.path[nv.pi], from = nv.segFrom || { x: cx, y: cy }, sx = to.x - from.x, sy = to.y - from.y, len = Math.hypot(sx, sy);
+        let vx = to.x - cx, vy = to.y - cy;                                                     // 既定: 次の曲がり角へまっすぐ
+        if (len > 1e-6) {
+            const tx = sx / len, ty = sy / len, remain = len - ((cx - from.x) * tx + (cy - from.y) * ty), lat = (cx - from.x) * -ty + (cy - from.y) * tx;
+            if (remain > 1e-4) {
+                const l = Math.max(-0.7 * dpf, Math.min(0.7 * dpf, -lat)), f = Math.min(remain, Math.sqrt(Math.max(0, dpf * dpf - l * l)));
+                vx = tx * f - ty * l; vy = ty * f + tx * l;
+            }
+        }
+        return ((Math.atan2(vy, vx) * 180 / Math.PI + 90) % 360 + 360) % 360;                  // DotMove の角度: 0 = 上・時計回り
+    };
+    const navMove = (e, nv, deg) => {
+        nv.lastPos = { x: e._realX, y: e._realY };
+        e.dotMoveByDeg(deg);
+    };
+    // プレイヤーを追う 1 フレーム(見えていて、追う条件がそろっているときだけ呼ばれる)
+    const chaseStep = (e, b, p) => {
+        if (!navUsable(e, b)) { navStats.legacyFrames++; legacyChase(e); return; }
+        const t = rt.frame, nv = b.nav || (b.nav = navNew()), t0 = nowMs();
+        if (nv.mode === "yield") navIdle(b);                                                     // 道を空けている途中で、また見えた: 空ける動きは捨てて、追う
+        const ctx = navContext(), s = bodySize(e);
+        if (nv.lastPos) {                                                                       // 前のフレームに進もうとしたのに、進めたか(壁・味方・角で止まっていないか)
+            const dpf = Number(safe(() => e.distancePerFrame(), 0.07)) || 0.07;
+            nv.stuck = Math.hypot(e._realX - nv.lastPos.x, e._realY - nv.lastPos.y) < dpf * 0.3 ? nv.stuck + 1 : 0;
+        }
+        if (nv.stuck >= NAV.STUCK_FRAMES) {                                                     // 止まり続けたら、しばらく味方の敵もよける経路にする(まっすぐは試さない)
+            nv.stuck = 0; nv.stuckCount++; navStats.stuck++; nv.avoidUntil = t + NAV.AVOID_FRAMES; nv.noDirectUntil = t + NAV.AVOID_FRAMES; nv.path = null; nv.direct = false; nv.retryAt = 0;
+        }
+        const avoid = t < nv.avoidUntil;
+        if (t < nv.noDirectUntil) nv.direct = false;
+        else if (t >= nv.nextDirect) { nv.nextDirect = t + NAV.DIRECT_FRAMES; nv.direct = navSweep(ctx, e._realX, e._realY, p.x - s.w / 2, p.y - s.h / 2, s.w, s.h, null); }
+        if (nv.direct) {                                                                        // まっすぐ行ける: 従来どおり
+            if (nv.mode !== "direct") { nv.mode = "direct"; nv.path = null; nv.pi = 0; }
+            navStats.directFrames++; nv.lastPos = { x: e._realX, y: e._realY }; legacyChase(e);
+        } else {
+            nv.mode = "path";
+            const extra = avoid ? allyCells(ctx, b.eventId) : null, gx = Math.floor(p.x), gy = Math.floor(p.y);
+            let need = !nv.path || nv.pi >= nv.path.length, why = nv.plans ? "again" : "first";
+            if (!need && (nv.goal.x !== gx || nv.goal.y !== gy) && t - nv.plannedAt >= NAV.REPLAN_FRAMES) { need = true; why = "moved"; }      // プレイヤーが別のマスへ動いた
+            if (!need && t >= nv.nextCheck) { nv.nextCheck = t + NAV.CHECK_FRAMES; if (!navPathValid(ctx, nv, extra)) { need = true; why = "invalid"; } }
+            let ok = !need;
+            if (need && t >= nv.retryAt) {
+                if (navState.frameSearches >= NAV.MAX_SEARCHES) { navStats.budgetSkips++; ok = !!nv.path && nv.pi < nv.path.length; }         // このフレームの探索の予算切れ: 古い経路で進む(なければ待つ)
+                else { navStats.why[why] = (navStats.why[why] || 0) + 1; ok = navPlan(e, b, nv, p, ctx, avoid); }
+            } else if (need) ok = false;
+            if (ok) {
+                const deg = navStepDeg(e, nv);
+                if (deg !== null) { navStats.pathFrames++; navMove(e, nv, deg); }
+                else { navStats.waitFrames++; nv.lastPos = null; nv.path = null; if (nv.partial) nv.retryAt = t + NAV.RETRY_FRAMES; }      // 経路の終わり: 目標に着いた(探し直しは次のフレーム)/ 近づけるところまで来た(30フレーム待ってから探し直す)
+            } else { navStats.waitFrames++; nv.lastPos = null; nv.stuck = 0; }                  // 経路がない/予算切れ: 壁に押しつけず、その場で待つ
+        }
+        const ms = nowMs() - t0; navStats.navMs += ms; navState.frameMs += ms;
+    };
+    // 経路探索で想定外のエラーが出ても、敵が固まらないように、従来のまっすぐの追跡へ戻す(エラーは数えて残す)
+    const chaseStepSafe = (e, b, p) => {
+        try { chaseStep(e, b, p); } catch (error) { navStats.errors++; navState.lastError = String(error && error.message || error); navIdle(b); legacyChase(e); }
+    };
+    const getEnemyNav = eventId => {
+        const b = rt.enemies.get(Number(eventId)); if (!b) return null;
+        const nv = b.nav || navNew();
+        return { eventId: b.eventId, mode: nv.mode, direct: nv.direct, pathLength: nv.path ? nv.path.length : 0, remaining: nv.path ? Math.max(0, nv.path.length - nv.pi) : 0, waypoints: nv.path ? nv.path.slice(nv.pi, nv.pi + 40).map(w => ({ x: w.x, y: w.y })) : [],
+            goal: nv.goal ? { ...nv.goal } : null, plannedAt: nv.plannedAt, plans: nv.plans, noPaths: nv.noPaths, nodes: nv.nodes, partial: nv.partial, yieldWhy: nv.yieldWhy || null, yieldWait: nv.yieldWait || 0, frame: rt.frame, stuckCount: nv.stuckCount, lost: nv.lost, avoiding: rt.frame < nv.avoidUntil, usable: !!map()?.event(b.eventId) && navUsable(map().event(b.eventId), b) };
+    };
+    // DEV・検証用: 経路だけを求める(動かさない)。from / to はマスの座標。戻り値 = マスの並び / null
+    const findNavPath = (from, to, options = {}) => {
+        if (!map() || typeof map().isPassable !== "function" || !from || !to) return null;
+        const ctx = navContext(), clamp = (v, hi) => Math.min(hi - 1, Math.max(0, Math.floor(Number(v) || 0)));
+        const extra = options.avoidEnemies ? allyCells(ctx, Number(options.selfId) || -1) : null;
+        const r = navFind(ctx, clamp(from.x, ctx.W), clamp(from.y, ctx.H), clamp(to.x, ctx.W), clamp(to.y, ctx.H), extra);
+        return r && (!r.partial || options.allowPartial) ? r.tiles : null;
+    };
+    const invalidateNavCache = () => { navState.grid = null; navState.ctx = null; return true; };                  // 実行中にタイルを書き換えたとき(通常は不要。DEV・検証用)
+    const setPathfinding = on => { navState.enabled = !!on; if (!on) for (const b of rt.enemies.values()) navIdle(b); return navState.enabled; };
+    const resetNavStats = () => { for (const k of Object.keys(navStats)) navStats[k] = k === "why" ? {} : 0; };
+    // ------------------------------------------------------------------ 出入口の渋滞(Stage 4b) ----------------------------------------------------------------
+    // 原因: (1) 視界の仕様で、見失った敵はその場で止まる。扉口に縦に並んだ敵が、プレイヤーが扉の正面の線を外れた瞬間に全員そのまま固まり、扉口をふさぎ続ける。
+    //       (2) 扉口で前後を敵にはさまれると、DotMove の通常の衝突(敵は通れない物)で、プレイヤーが動けなくなる(攻撃以外に抜ける道がない)。
+    //   対策: (1) 出入口(通路のマス = 通れる上下か左右の 2 方向だけ)に立って見失っている敵は、いちばん近い「出入口でないマス」へ道を空ける(追跡ではない。プレイヤーの位置は使わない。
+    //            候補が同じ近さなら、元の持ち場に近い側。味方・通れない物のあるマスは使わない)。出たあとは 30 フレーム動かない(行ったり来たりしない)。
+    //         (2) 出入口(プレイヤーか敵が通路のマス)で、進もうとして 24 フレーム進めないとき、または 2 体以上に囲まれて進めないとき、行く手の敵だけを、Hendrix の
+    //            「プレイヤーが通り抜けるイベント」(_playerPassThroughEvents)へ入れる。壁・扉・柱は変わらない(イベントの当たり判定だけ)。攻撃の当たり判定・敵の通れる/通れないは変えない。
+    //            離れる(体が重ならなくなる)と戻す。戦闘が終わる・敵が倒れる・外れると、必ず戻す(セーブに残さない)。
+    const SOFT = Object.freeze({ BLOCK_FRAMES: 24, MIN_FRAMES: 20, MAX_FRAMES: 600, TOUCH: 1.15, YIELD_DEPTH: 5, YIELD_WAIT: 30, YIELD_INSET: 0.3 });
+    const DIRVEC = { 1: [-1, 1], 2: [0, 1], 3: [1, 1], 4: [-1, 0], 6: [1, 0], 7: [-1, -1], 8: [0, -1], 9: [1, -1] };
+    const navReady = () => { const m = map(); return !!m && typeof m.isPassable === "function" && typeof m.width === "function" && typeof m.height === "function" && typeof m.events === "function" && !safe(() => m.isLoopHorizontal() || m.isLoopVertical(), false); };
+    // 通路のマス: 通れる上下左右のとなりが、ちょうど 2 つで、向かい合っている(扉口・1マス幅の通路)
+    const isChokeTile = (ctx, x, y) => {
+        if (navCell(ctx, x, y, null) === 0) return false;
+        const open = (dx, dy) => { const nx = x + dx, ny = y + dy; return navCell(ctx, nx, ny, null) !== 0 && navEdge(ctx, x, y, nx, ny, dx ? (dx > 0 ? 6 : 4) : (dy > 0 ? 2 : 8), dx ? (dx > 0 ? 4 : 6) : (dy > 0 ? 8 : 2)); };
+        const n = open(0, -1), so = open(0, 1), w = open(-1, 0), ea = open(1, 0);
+        return (n + so + w + ea) === 2 && ((n && so) || (w && ea));
+    };
+    const bodyTiles = (e, s, inset = NAV.EPS) => { const out = []; for (let y = Math.floor(e._realY + inset); y <= Math.floor(e._realY + s.h - inset); y++) for (let x = Math.floor(e._realX + inset); x <= Math.floor(e._realX + s.w - inset); x++) out.push([x, y]); return out; };
+    const softList = () => { const sys = typeof $gameSystem !== "undefined" ? $gameSystem : null; if (!sys) return null; if (!Array.isArray(sys._playerPassThroughEvents)) sys._playerPassThroughEvents = []; return sys._playerPassThroughEvents; };
+    function softRelease(id) {
+        const rec = rt.soft.get(id); if (!rec) return false;
+        rt.soft.delete(id);
+        if (rec.added) { const l = softList(); const i = l ? l.indexOf(id) : -1; if (i >= 0) l.splice(i, 1); }
+        navStats.softEnd++; return true;
+    }
+    function clearSoft() { for (const id of [...rt.soft.keys()]) softRelease(id); rt.softBlocked = 0; rt.softLast = null; }
+    const softAdd = (id, why) => {
+        const l = softList(); if (!l || rt.soft.has(id)) return false;
+        const added = !l.includes(id); if (added) l.push(id);
+        rt.soft.set(id, { at: rt.frame, added, why }); navStats.softPass++; note({ type: "softPass", eventId: id, why });
+        return true;
+    };
+    const softTick = () => {
+        const p = typeof $gamePlayer !== "undefined" ? $gamePlayer : null;
+        if (!p) return;
+        const x = p._realX, y = p._realY, last = rt.softLast; rt.softLast = { x, y };
+        for (const [id, rec] of [...rt.soft]) {                                                 // 戻す: 敵がいない・倒れた・体が重ならなくなった(最短 20 フレーム)・長すぎる(600 フレーム)
+            const e = map()?.event(id);
+            if (!e || !rt.enemies.has(id) || !enemyAlive(e)) { softRelease(id); continue; }
+            const age = rt.frame - rec.at, s = bodySize(e);
+            if (age >= SOFT.MAX_FRAMES || (age >= SOFT.MIN_FRAMES && !(Math.abs(e._realX - x) < 0.98 * (s.w + 1) / 2 && Math.abs(e._realY - y) < 0.98 * (s.h + 1) / 2))) softRelease(id);
+        }
+        if (!cfg.softCollision || !navReady() || typeof Input === "undefined") return;
+        const dir = Input.dir8 || Input.dir4 || 0;
+        if (!dir || !last || Math.hypot(x - last.x, y - last.y) > 0.004 || !safe(() => p.canMove(), false) || safe(() => $gameMap.isEventRunning(), true)) { rt.softBlocked = 0; return; }
+        if (++rt.softBlocked < SOFT.BLOCK_FRAMES) return;
+        const v = DIRVEC[dir]; if (!v) return;
+        const pc = playerCenter(), ps = bodySize(p), hits = []; let near = 0;
+        for (const [id] of rt.enemies) {
+            const e = map()?.event(id); if (!e || !enemyAlive(e) || safe(() => e.isThrough(), false) || rt.soft.has(id)) continue;
+            const c = center(e), dx = c.x - pc.x, dy = c.y - pc.y, s = bodySize(e), lim = [(ps.w + s.w) / 2, (ps.h + s.h) / 2];
+            if (Math.hypot(dx, dy) <= SOFT.TOUCH) near++;
+            if (dx * v[0] + dy * v[1] <= 0) continue;                                           // 押している向きにいる敵だけ
+            if (Math.abs(dx - v[0] * 0.3) < lim[0] - 1e-6 && Math.abs(dy - v[1] * 0.3) < lim[1] - 1e-6) hits.push({ id, tile: [Math.floor(c.x), Math.floor(c.y)] });
+        }
+        if (!hits.length) return;
+        const ctx = navContext(), ahead = [Math.floor(pc.x + v[0] * 0.8), Math.floor(pc.y + v[1] * 0.8)];
+        if (navCell(ctx, ahead[0], ahead[1], null) === 0 && !hits.some(h => h.tile[0] === ahead[0] && h.tile[1] === ahead[1])) return;   // 壁・扉・柱で止まっている(敵のせいではない)
+        const choke = isChokeTile(ctx, Math.floor(pc.x), Math.floor(pc.y)) || hits.some(h => isChokeTile(ctx, h.tile[0], h.tile[1]));
+        if (!choke && near < 2) return;                                                         // 広い所で、1体に当たっているだけなら、従来どおり(横へ回れる)
+        for (const h of hits) softAdd(h.id, choke ? "choke" : "surrounded");
+        rt.softBlocked = 0;
+    };
+    // 出入口に立って見失っている敵の、道を空ける動き
+    const yieldStep = (e, b) => {
+        const nv0 = b.nav || (b.nav = navNew());
+        if (!navUsable(e, b)) { nv0.yieldWhy = "unusable"; return; }
+        const t = rt.frame, nv = nv0, ctx = navContext(), s = bodySize(e);
+        if (nv.mode === "yield") {
+            const extra = allyCells(ctx, b.eventId);
+            // 味方がいる・通れなくなった(扉が閉じた等)マスが出たら、道を空けるのをやめる
+            const mine = Math.floor(e.centerRealY()) * ctx.W + Math.floor(e.centerRealX());       // 自分のいるマスは、体が重なっている味方がいても調べない
+            if (!nv.path || t - nv.yieldAt > 240 || nv.path.slice(nv.pi).some(w => { const k = Math.floor(w.y) * ctx.W + Math.floor(w.x); return k !== mine && (extra.has(k) || navCell(ctx, Math.floor(w.x), Math.floor(w.y), null) === 0); })) { navIdle(b); nv.yieldWait = t + SOFT.YIELD_WAIT; return; }
+            if (nv.lastPos && Math.hypot(e._realX - nv.lastPos.x, e._realY - nv.lastPos.y) < 0.002) nv.yieldStill++; else nv.yieldStill = 0;
+            if (nv.yieldStill >= 20) { (nv.yieldBad || (nv.yieldBad = new Set())).add(nv.yieldTarget); navIdle(b); nv.yieldWait = t + 5; navStats.yieldBlocked++; return; }       // 20 フレーム進めない(壁・味方で): その出口は避けて、別の出口を探す
+            const deg = navStepDeg(e, nv);
+            if (deg === null) { navIdle(b); nv.yieldWait = t + SOFT.YIELD_WAIT; if (nv.yieldBad) nv.yieldBad.clear(); return; }
+            nv.lastPos = { x: e._realX, y: e._realY }; e.dotMoveByDeg(deg); navStats.yieldFrames++;
+            return;
+        }
+        if (t < (nv.yieldWait || 0)) { if (!String(nv.yieldWhy).startsWith("noExit")) nv.yieldWhy = "wait"; return; }
+        if (!bodyTiles(e, s, SOFT.YIELD_INSET).some(([x, y]) => isChokeTile(ctx, x, y))) { nv.yieldWhy = "notChoke"; if (nv.mode !== "idle") navIdle(b); return; }
+        const extra = allyCells(ctx, b.eventId), cx = Math.floor(e.centerRealX()), cy = Math.floor(e.centerRealY()), home = b.home || { x: cx, y: cy };
+        const key = (x, y) => y * ctx.W + x, parent = new Map([[key(cx, cy), null]]), depth = new Map([[key(cx, cy), 0]]), queue = [[cx, cy]];
+        let best = null;
+        while (queue.length) {
+            const [x, y] = queue.shift(), d = depth.get(key(x, y));
+            if (d > 0 && !isChokeTile(ctx, x, y) && !extra.has(key(x, y)) && !(nv.yieldBad && nv.yieldBad.has(key(x, y)))) { const score = Math.hypot(x - home.x, y - home.y); if (!best || d < best.d || (d === best.d && score < best.score)) best = { x, y, d, score }; }
+            if (best && d >= best.d) continue;
+            if (d >= SOFT.YIELD_DEPTH) continue;
+            for (const [dx, dy, dd, rv] of [[0, -1, 8, 2], [1, 0, 6, 4], [0, 1, 2, 8], [-1, 0, 4, 6]]) {
+                const nx = x + dx, ny = y + dy, k = key(nx, ny);
+                if (depth.has(k) || navCell(ctx, nx, ny, extra) === 0 || !navEdge(ctx, x, y, nx, ny, dd, rv)) continue;
+                depth.set(k, d + 1); parent.set(k, [x, y]); queue.push([nx, ny]);
+            }
+        }
+        if (!best) { nv.yieldWhy = "noExit:" + depth.size + ":" + cx + "," + cy; nv.yieldWait = t + SOFT.YIELD_WAIT * 2; return; }                          // 出られる所がない: その場で待つ(押しつけない)
+        const tiles = []; for (let c = [best.x, best.y]; c; c = parent.get(key(c[0], c[1]))) tiles.push(c);
+        tiles.reverse();
+        nv.mode = "yield"; nv.path = tiles.slice(1).map(([x, y]) => ({ x: x + 0.5, y: y + 0.5 })); nv.yieldTarget = key(best.x, best.y); nv.yieldStill = 0; nv.pi = 0; nv.segFrom = null; nv.yieldAt = t; nv.direct = false; nv.stuck = 0; nv.yieldWhy = "started"; navStats.yields++;
+        note({ type: "yield", eventId: b.eventId, to: [best.x, best.y] });
+    };
+    const yieldStepSafe = (e, b) => { try { yieldStep(e, b); } catch (error) { navStats.errors++; navState.lastError = String(error && error.message || error); navIdle(b); } };
     const updateEnemies = () => {
         const api = enemyAttack();
         if (!api || !rt.enemies.size) return;
         const p = playerCenter();
+        navState.frameSearches = 0; navState.frameMs = 0;
         for (const [id, b] of [...rt.enemies]) {
             const e = map()?.event(id);
             if (!e || !enemyAlive(e)) { settleDeadEnemy(e); rt.enemies.delete(id); safe(() => api.interrupt(id, "enemyGone")); continue; }
@@ -617,9 +1009,10 @@
                 b.seeReason = playerDead() ? "playerDead" : r.reason;
                 if (sees && !b.aware) { b.aware = true; b.acquired++; note({ type: "acquire", eventId: id }); }
                 else if (!sees && b.aware) { b.aware = false; b.losses++; note({ type: "lose", eventId: id, reason: b.seeReason }); }
-                if (sees && b.state !== "windup") safe(() => e.setDirection(directionOfBearing(bearingDegree(c, p))));      // 見つけたら、プレイヤーの方を向く
+                if (sees && b.state !== "windup" && (dist <= b.reach || !(b.nav && b.nav.mode === "path"))) safe(() => e.setDirection(directionOfBearing(bearingDegree(c, p))));      // 見つけたら、プレイヤーの方を向く(経路を進んでいる間は進む向き。攻撃の範囲に入ったら、プレイヤーの方)
             } else if (b.aware) { b.aware = false; }
             b.sees = sees;
+            if (!sees) navLose(b);                                                                  // 見失った瞬間に経路を捨てる(最後に見た位置を覚えない)
             if (b.state === "windup") {
                 const outcome = b.attackId != null ? safe(() => api.getOutcome(b.attackId), null) : null;
                 const pendingRecord = b.attackId != null ? safe(() => api.get(b.attackId), null) : null;
@@ -630,11 +1023,14 @@
             }
             if (!playerDead() && sees && dist <= b.reach && b.cooldown <= 0) {
                 const r = api.schedule({ eventId: id, kind: "melee", windupFrames: b.windupFrames, notetag: b.notetag, reach: Math.max(1, b.reach) });
-                if (r && r.ok) { b.state = "windup"; b.attackId = r.id; }
+                if (r && r.ok) { b.state = "windup"; b.attackId = r.id; navIdle(b); }
                 continue;
             }
-            if (b.chase && sees && !playerDead() && dist > b.reach * 0.8 && dist <= (cfg.perception ? b.sightTiles : b.aggroTiles)) safe(() => e.dotMoveToPlayer?.());
+            if (b.chase && sees && !playerDead() && dist > b.reach * 0.8 && dist <= (cfg.perception ? b.sightTiles : b.aggroTiles)) chaseStepSafe(e, b, p);
+            else if (!sees && cfg.perception && b.state !== "windup") yieldStepSafe(e, b);              // 見失って出入口に立っている敵は、道を空ける(追わない・プレイヤーの位置を使わない)
+            else if (b.nav && b.nav.mode !== "idle") navIdle(b);                                    // 追わない間は、経路を持たない
         }
+        if (navState.frameMs > 0 || navState.frameSearches > 0) { navStats.frames++; navStats.maxFrameMs = Math.max(navStats.maxFrameMs, navState.frameMs); navStats.maxFrameSearches = Math.max(navStats.maxFrameSearches, navState.frameSearches); }
     };
 
     // ------------------------------------------------------------------ 戦闘中の接触イベント ----------------------------------------------------------------
@@ -736,7 +1132,7 @@
             const kv = /^(\w+)=(.+)$/.exec(part.trim()); if (!kv) continue;
             const key = kv[1].toLowerCase(), v = kv[2];
             if (key === "windup") o.windupFrames = Number(v); else if (key === "cooldown") o.cooldownFrames = Number(v); else if (key === "reach") o.reach = Number(v);
-            else if (key === "aggro") o.aggroTiles = Number(v); else if (key === "sight") o.sightTiles = Number(v); else if (key === "fov") o.fovDegrees = Number(v); else if (key === "chase") o.chase = !(v === "0" || v.toLowerCase() === "false");
+            else if (key === "aggro") o.aggroTiles = Number(v); else if (key === "sight") o.sightTiles = Number(v); else if (key === "fov") o.fovDegrees = Number(v); else if (key === "chase") o.chase = !(v === "0" || v.toLowerCase() === "false"); else if (key === "path") o.pathfinding = !(v === "0" || v.toLowerCase() === "false");
         }
         return o;
     };
@@ -946,7 +1342,7 @@
             const dt = 1 / FPS;
             for (const slot of Object.keys(rt.cooldowns)) if (rt.cooldowns[slot] > 0) rt.cooldowns[slot] = Math.max(0, rt.cooldowns[slot] - dt);
             safe(() => deck().updateCooldown(dt));                                                // 一閃の分割ダメージなどの時計(カード戦闘の時計)
-            touchAssist();
+            touchAssist(); softTick();
             for (const slot of requests) { if (!rt.active || generation !== rt.generation) break; useAbility(slot, "keyboard"); }
             refreshLayer(this);
         };
@@ -1065,6 +1461,7 @@
         getLastResult: () => (rt.lastResult ? JSON.parse(JSON.stringify(rt.lastResult)) : null),
         getLog: () => rt.log.map(e => ({ ...e })),
         attachEnemy, detachEnemy, listEnemies: () => [...rt.enemies.keys()],
+        getEnemyNav, findNavPath, invalidateNavCache, getSoftPass: () => [...rt.soft.keys()], setSoftCollision: on => { cfg.softCollision = !!on; if (!on) clearSoft(); return cfg.softCollision; }, setPathfinding, isPathfinding: () => navState.enabled, resetPathfinding: () => setPathfinding(navDefault), getNavStats: () => ({ ...navStats, why: { ...navStats.why }, lastError: navState.lastError }), resetNavStats,
         getEnemyPerception, getPerception: () => ({ enabled: cfg.perception, sightTiles: cfg.sightTiles, fovDegrees: cfg.fovDegrees }), setPerception, resetPerception,
         getVisibleEnemies: () => [...rt.enemies.keys()].filter(id => eventVisible(map()?.event(id))),
         setDevAllowOutsideEncounter: on => { cfg.devAllowOutside = !!on; return cfg.devAllowOutside; },

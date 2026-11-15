@@ -933,3 +933,431 @@ test("倒された敵は、攻撃の予約も止まる(戸口で倒れた敵が�
     assert.equal(second._through, false, "2回目の敵は新しいイベント(通り抜け不可・生きている)");
     assert.equal(plain(fc.getEncounterState()).state, "fighting");
 });
+
+// ====================================================================== Stage 4: 敵の経路探索 ======================================================================
+// 地図の文字: '.' 通れる / '#' 通れない(視界は遮らない: 柱・家具・低い壁) / 'R' 通れない + 視界を遮る(Region 255 の壁)。
+// DotMove の代わりに、体 1x1 を格子と他のイベントへ当てる簡易の移動(x と y を別々に動かす=壁に沿って滑る)を使う。
+function navWorld(game, rows) {
+    const H = rows.length, W = rows[0].length, m = game.$gameMap;
+    const cell = (x, y) => (x < 0 || y < 0 || x >= W || y >= H ? "#" : rows[y][x]);
+    m.width = () => W; m.height = () => H; m.isLoopHorizontal = () => false; m.isLoopVertical = () => false;
+    m.isPassable = (x, y) => cell(x, y) === ".";
+    game.visionBlock = false; game.navCalls = 0;
+    const doors = [];
+    game.ProjectR = game.ProjectR || {};
+    game.ProjectR.CombatOcclusion = {
+        hasLineOfSight(from, to) {
+            if (game.visionBlock) return false;
+            const n = Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) / 0.05) || 1;
+            for (let i = 0; i <= n; i++) {
+                const x = from.x + (to.x - from.x) * i / n, y = from.y + (to.y - from.y) * i / n;
+                if (cell(Math.floor(x), Math.floor(y)) === "R") return false;
+                for (const d of doors) if (!d.open && Math.floor(x) === d._realX && Math.floor(y) === d._realY) return false;
+            }
+            return true;
+        }
+    };
+    const body = (e, x, y) => {                                        // 体 (x, y)-(x+1, y+1) が、通れない所・通れない他のイベントに重なるか
+        for (let cy = Math.floor(y + 1e-6); cy <= Math.floor(y + 1 - 1e-6); cy++) for (let cx = Math.floor(x + 1e-6); cx <= Math.floor(x + 1 - 1e-6); cx++) if (cell(cx, cy) !== ".") return true;
+        for (const o of m.events()) { if (o === e || o._erased || o.isThrough()) continue; if (Math.abs(o._realX - x) < 1 - 1e-6 && Math.abs(o._realY - y) < 1 - 1e-6) return true; }
+        return false;
+    };
+    const dress = e => {
+        Object.assign(e, { _pageIndex: 0, _direction: 2, width: () => 1, height: () => 1, centerRealX() { return this._realX + 0.5; }, centerRealY() { return this._realY + 0.5; }, distancePerFrame: () => 0.07,
+            isThrough() { return !!this._through; }, isNormalPriority: () => true, direction() { return this._direction; }, setDirection(d) { this._direction = d; }, calls: 0 });
+        e.dotMoveByDeg = function(deg) {
+            this.calls++; game.navCalls++;
+            const r = deg * Math.PI / 180, dx = Math.sin(r) * 0.07, dy = -Math.cos(r) * 0.07;
+            if (!body(this, this._realX + dx, this._realY)) this._realX += dx;
+            if (!body(this, this._realX, this._realY + dy)) this._realY += dy;
+        };
+        e.dotMoveToPlayer = function() { const p = game.$gamePlayer; this.dotMoveByDeg(Math.atan2(p._realY - this._realY, p._realX - this._realX) * 180 / Math.PI + 90); };
+        return e;
+    };
+    game.addNavEnemy = (id, x, y, note = "") => dress(game.addEnemy(id, x, y, 100, note));
+    game.addDoor = (id, x, y, open = false) => {                       // 閉じている間は通れず視線を遮る。開くと through
+        const d = dress(game.addEnemy(id, x, y, 100, ""));
+        d.open = open; Object.defineProperty(d, "_through", { get: () => d.open, set() {} }); d.dotMoveByDeg = () => {}; d.dotMoveToPlayer = () => {};
+        doors.push(d); return d;
+    };
+    game.setPlayer = (x, y) => { const p = game.$gamePlayer; p._realX = x; p._realY = y; p.x = Math.floor(x); p.y = Math.floor(y); };
+    game.dist = e => Math.hypot(game.$gamePlayer._realX - e._realX, game.$gamePlayer._realY - e._realY);
+    return { W, H, cell };
+}
+const NAV_SIGHT = { sightTiles: 20, fovDegrees: 360 };
+
+test("経路探索: 見えているのにまっすぐ進めない(視界を遮らない柱の向こう)とき、柱をよけて追いつき、攻撃する。従来(経路探索なし)は柱の前で止まり続ける", () => {
+    const rows = ["............", "............", "....##......", "....##......", "............", "............"];
+    const run = enabled => {
+        const game = loadGame(); const fc = game.ProjectRFieldCombat; navWorld(game, rows);
+        const e = game.addNavEnemy(3, 4.5, 0);                                  // 柱(4..5, 2..3)のちょうど北。プレイヤーは柱の南
+        game.setPlayer(4.5, 4.5); fc.begin(); fc.attachEnemy(3, NAV_SIGHT); fc.setPathfinding(enabled);
+        const modes = new Set();
+        for (let i = 0; i < 700 && game.attackLog.length === 0; i++) { game.frame(1); modes.add(plain(fc.getEnemyNav(3)).mode); }
+        return { game, fc, e, modes };
+    };
+    const on = run(true);
+    assert.ok(on.game.attackLog.length >= 1, "柱をよけて近づき、攻撃を予約する");
+    assert.ok(on.modes.has("path") && on.modes.has("direct"), "まっすぐ進めないときは経路、進めるときはまっすぐ: " + [...on.modes]);
+    assert.ok(on.game.dist(on.e) <= 1.2 + 1e-6);
+    const off = run(false);
+    assert.equal(off.game.attackLog.length, 0, "従来のまっすぐの追跡は、柱に押しつけたまま届かない");
+    assert.ok(off.game.dist(off.e) > 2, "柱の前で止まっている: " + off.game.dist(off.e));
+    assert.equal(plain(off.fc.getEnemyNav(3)).mode, "idle", "切ると経路は使わない");
+    assert.equal(off.fc.getNavStats().searches, 0);
+});
+
+test("経路探索: 曲がりくねった細い通路(壁の角)でも、壁に引っかからずにプレイヤーまで進む。斜めの角またぎ・通れない所の通過はしない", () => {
+    const rows = ["#######", "#.....#", "#####.#", "#.....#", "#.#####", "#.....#", "#######"];
+    const game = loadGame(); const fc = game.ProjectRFieldCombat; const w = navWorld(game, rows);
+    const e = game.addNavEnemy(3, 1, 1); game.setPlayer(1, 5);
+    fc.begin(); fc.attachEnemy(3, NAV_SIGHT);
+    const path = plain(fc.findNavPath({ x: 1, y: 1 }, { x: 1, y: 5 }));
+    assert.ok(path && path[0].x === 1 && path[0].y === 1 && path.at(-1).x === 1 && path.at(-1).y === 5, JSON.stringify(path));
+    assert.equal(path.length, 13, "1幅の通路をたどる最短(東→南→西→南→東の 13 マス)");
+    path.forEach((t, i) => { assert.equal(w.cell(t.x, t.y), ".", "通れるマスだけを通る"); if (i) { const a = path[i - 1]; assert.ok(Math.abs(a.x - t.x) + Math.abs(a.y - t.y) === 1, "細い通路では斜めに進まない(角をまたがない)"); } });
+    for (let i = 0; i < 1500 && game.attackLog.length === 0; i++) { game.frame(1); assert.equal(w.cell(Math.floor(e._realX + 0.5), Math.floor(e._realY + 0.5)), ".", "壁の中へ入らない"); }
+    assert.ok(game.attackLog.length >= 1, "プレイヤーに届いて攻撃する: dist=" + game.dist(e).toFixed(2) + " " + JSON.stringify(plain(fc.getEnemyNav(3))).slice(0, 200));
+    assert.equal(fc.getNavStats().stuck, 0, "止まり続けない(壁に引っかからない)");
+    assert.equal(fc.getNavStats().errors, 0, String(fc.getNavStats().lastError));
+});
+
+test("経路探索: 開けた場所の斜めの経路は、角をまたがない(となりの2マスが通れるときだけ斜め)。折れ線は、まっすぐ行ける最も遠い角だけを結ぶ", () => {
+    const rows = ["..........", "..........", "....####..", "....####..", "..........", ".........."];
+    const game = loadGame(); const fc = game.ProjectRFieldCombat; const w = navWorld(game, rows);
+    const e = game.addNavEnemy(3, 1, 0); game.setPlayer(8.5, 5);
+    fc.begin(); fc.attachEnemy(3, NAV_SIGHT); game.frame(2);
+    const nav = plain(fc.getEnemyNav(3));
+    assert.equal(nav.mode, "path");
+    assert.ok(nav.waypoints.length <= 4, "折れ線は少ない(角だけ): " + JSON.stringify(nav.waypoints));
+    const path = plain(fc.findNavPath({ x: 1, y: 0 }, { x: 8, y: 5 }));
+    path.forEach((t, i) => { assert.equal(w.cell(t.x, t.y), "."); if (i) { const a = path[i - 1]; if (a.x !== t.x && a.y !== t.y) { assert.equal(w.cell(a.x, t.y), "."); assert.equal(w.cell(t.x, a.y), "."); } } });
+    assert.ok(path.length <= 10, "遠回りしない: " + path.length);
+    assert.equal(fc.findNavPath({ x: 99, y: 99 }, { x: 8, y: 5 }) !== undefined, true, "範囲の外は端へ丸める(例外を出さない)");
+});
+
+test("経路探索: 経路がない(囲まれている)ときは、いちばん近づけるマスまで行って待つ。壁に押しつけず、探し直しは 30 フレームあける(毎フレーム探さない)", () => {
+    const rows = ["........", ".######.", ".#....#.", ".#....#.", ".######.", "........"];
+    const game = loadGame(); const fc = game.ProjectRFieldCombat; navWorld(game, rows);
+    const e = game.addNavEnemy(3, 0, 0); game.setPlayer(3, 2);
+    fc.begin(); fc.attachEnemy(3, NAV_SIGHT);
+    assert.equal(fc.findNavPath({ x: 0, y: 0 }, { x: 3, y: 2 }), null, "囲まれた所へは、届く経路がない");
+    const part = plain(fc.findNavPath({ x: 0, y: 0 }, { x: 3, y: 2 }, { allowPartial: true }));
+    assert.deepEqual([part.at(-1).x, part.at(-1).y], [3, 0], "(許せば)いちばん近づけるマスまで: " + JSON.stringify(part));
+    game.frame(200);
+    const s1 = fc.getNavStats(), nav = plain(fc.getEnemyNav(3));
+    assert.ok(Math.abs(e._realX - 3) < 0.3 && e._realY < 0.3, "近づける所(3,0)まで行って待つ: " + e._realX.toFixed(2) + "," + e._realY.toFixed(2));
+    assert.equal(nav.mode, "path"); assert.equal(nav.pathLength, 0, "着いたあとは経路を持たない");
+    const at = { x: e._realX, y: e._realY }; game.frame(120);
+    assert.ok(Math.hypot(e._realX - at.x, e._realY - at.y) < 0.01, "待っている間は動かない(壁に押しつけて動き続けない)");
+    const s2 = fc.getNavStats();
+    assert.ok(s2.searches - s1.searches <= 5, "待っている間の探し直しは約30フレームごと(120フレームで 5 回以内): " + (s2.searches - s1.searches));
+    assert.ok(s2.searches <= 14, "探索の回数が増え続けない: " + s2.searches);
+    assert.equal(s2.errors, 0, String(s2.lastError));
+});
+
+test("経路探索: 見失った瞬間に経路を捨てて止まる。隠れている間にプレイヤーがどこへ動いても動かず、最後に見た位置へも向かわない。見えれば探し直す", () => {
+    const rows = ["............", "............", "....##......", "....##......", "............", "............"];
+    const game = loadGame(); const fc = game.ProjectRFieldCombat; navWorld(game, rows);
+    const e = game.addNavEnemy(3, 4.5, 0); game.setPlayer(4.5, 4.5);
+    fc.begin(); fc.attachEnemy(3, NAV_SIGHT);
+    game.frame(25);
+    let nav = plain(fc.getEnemyNav(3)); assert.equal(nav.mode, "path"); assert.ok(nav.pathLength > 0, "柱をよける経路を持つ: " + JSON.stringify(nav).slice(0, 160));
+    const plans = nav.plans;
+    game.visionBlock = true; game.frame(1);                                  // 視線が切れた
+    const stop = { x: e._realX, y: e._realY }, calls = e.calls;
+    nav = plain(fc.getEnemyNav(3)); assert.equal(nav.mode, "idle"); assert.equal(nav.pathLength, 0, "経路を捨てる");
+    for (const p of [[10, 5], [0, 5], [10, 0], [1, 1], [4.5, 4.5]]) { game.setPlayer(p[0], p[1]); game.frame(30); }
+    assert.equal(e._realX, stop.x); assert.equal(e._realY, stop.y); assert.equal(e.calls, calls, "隠れている間は、動かす命令を1回も出さない(最後に見た位置を追わない)");
+    assert.equal(plain(fc.getEnemyNav(3)).pathLength, 0);
+    game.setPlayer(4.5, 4.5); game.visionBlock = false; game.frame(5);       // また見えた
+    nav = plain(fc.getEnemyNav(3)); assert.ok(nav.mode === "path" || nav.mode === "direct"); assert.ok(e.calls > calls, "見えれば、また追う");
+    game.frame(30); assert.ok(plain(fc.getEnemyNav(3)).plans > plans, "見えるようになったので、いまのプレイヤーの位置へ探し直した");
+    assert.equal(fc.getNavStats().lostSight, 1);
+    assert.equal(plain(fc.getEnemyPerception(3)).losses, 1, "視界の判定は従来どおり(失った回数 1)");
+});
+
+test("経路探索: 閉じた扉は壁(通れない・視線を遮る)。見えない間は動かず、開けると見えて、戸口を通ってプレイヤーへ届く", () => {
+    const rows = ["RRRR.RRRR", "RRRR.RRRR", "RRRR.RRRR", "RRRR.RRRR", "RRRR.RRRR"];     // 縦の通路(幅 1)。扉は (4,1)
+    const game = loadGame(); const fc = game.ProjectRFieldCombat; navWorld(game, rows);
+    const door = game.addDoor(9, 4, 1, false);
+    const e = game.addNavEnemy(3, 4, 0); game.setPlayer(4, 4);
+    fc.begin(); fc.attachEnemy(3, NAV_SIGHT); game.frame(2);
+    assert.equal(plain(fc.getEnemyPerception(3)).canSeeNow, false, "閉じた扉の向こうは見えない");
+    const stop = { x: e._realX, y: e._realY }; game.frame(60);
+    assert.equal(e._realX, stop.x); assert.equal(e._realY, stop.y); assert.equal(e.calls, 0); assert.equal(plain(fc.getEnemyNav(3)).mode, "idle", "扉が閉じている間は、追わない・経路もない");
+    door.open = true; game.frame(2);
+    assert.equal(plain(fc.getEnemyPerception(3)).canSeeNow, true, "開けば見える");
+    for (let i = 0; i < 400 && game.attackLog.length === 0; i++) game.frame(1);
+    assert.ok(game.attackLog.length >= 1, "開いた扉を通って追いつく: dist=" + game.dist(e).toFixed(2));
+    assert.ok(e._realY > 1.5, "戸口(4,1)を通り抜けた");
+    // 閉じると、その場で止まる
+    const g2 = loadGame(); const fc2 = g2.ProjectRFieldCombat; navWorld(g2, rows); const d2 = g2.addDoor(9, 4, 1, true);
+    const e2 = g2.addNavEnemy(3, 4, 0); g2.setPlayer(4, 4); fc2.begin(); fc2.attachEnemy(3, NAV_SIGHT); g2.frame(20);
+    assert.ok(e2.calls > 0 && e2._realY > 0.5, "開いていれば進む");
+    d2.open = false; g2.frame(1); const at = e2._realY, calls = e2.calls; g2.frame(30);
+    assert.equal(e2._realY, at); assert.equal(e2.calls, calls, "扉を閉じると、すぐ止まる");
+});
+
+test("経路探索: 探索は敵ごとに 12 フレーム以上あけ、全体で 1 フレーム 3 回まで。プレイヤーが動き続けても探索回数が増え続けない。敵が多くても全員が進む", () => {
+    const rows = Array.from({ length: 14 }, (_, y) => (y === 6 || y === 7 ? "..####....####.." : "................"));
+    const game = loadGame(); const fc = game.ProjectRFieldCombat; navWorld(game, rows);
+    const enemies = [];
+    for (let i = 0; i < 12; i++) enemies.push(game.addNavEnemy(10 + i, 1 + (i % 6) * 2, i < 6 ? 0 : 1 + (i % 2)));
+    game.setPlayer(7.5, 12); fc.begin();
+    for (const e of enemies) fc.attachEnemy(e.eventId(), { ...NAV_SIGHT, reach: 0.6 });
+    fc.resetNavStats(); const frames = 240;
+    for (let i = 0; i < frames; i++) { if (i % 5 === 0) game.setPlayer(6 + (Math.sin(i / 20) * 3), 12 - (i % 3) * 0.2); game.frame(1); }
+    const s = fc.getNavStats();
+    assert.ok(s.maxFrameSearches <= 3, "1フレームの探索は 3 回まで: " + s.maxFrameSearches);
+    assert.ok(s.searches <= enemies.length * (frames / 12 + 3), "探索回数は敵ごとに 12 フレームに 1 回まで: " + s.searches);
+    assert.ok(enemies.every(e => e.calls > 0), "全員が動く");
+    assert.equal(s.errors, 0, String(s.lastError));
+    assert.ok(s.searchMs / Math.max(1, s.searches) < 2, "探索 1 回の平均 < 2ms: " + (s.searchMs / Math.max(1, s.searches)).toFixed(3));
+});
+
+test("経路探索: 味方の敵が通路をふさいで止まったら、しばらくよける経路にして回り込む。幅1の通路でふさがれたままなら、押しつけずに待つ。敵同士は重ならない", () => {
+    // 幅 2 の通路: 止まっている味方(chase=0)の前でふさがれたら、となりの列へ回り込む
+    const rows2 = ["##########", "#........#", "#........#", "##########"];
+    const g = loadGame(); const fc = g.ProjectRFieldCombat; navWorld(g, rows2);
+    const still = g.addNavEnemy(3, 4, 1), mover = g.addNavEnemy(4, 1, 1); g.setPlayer(7.5, 1);
+    fc.begin(); fc.attachEnemy(3, { ...NAV_SIGHT, chase: false, reach: 0.6 }); fc.attachEnemy(4, { ...NAV_SIGHT, reach: 0.6 });
+    for (let i = 0; i < 700 && g.attackLog.length === 0; i++) { g.frame(1); assert.ok(Math.abs(still._realX - mover._realX) >= 1 - 1e-6 || Math.abs(still._realY - mover._realY) >= 1 - 1e-6, "敵同士が重ならない"); }
+    assert.ok(plain(fc.getEnemyNav(4)).stuckCount >= 1, "ふさがれて止まったことを検出した");
+    assert.ok(g.attackLog.some(a => a.eventId === 4), "味方をよけて回り込み、プレイヤーに届く: dist=" + g.dist(mover).toFixed(2));
+    assert.ok(g.dist(mover) < 1.2 + 1e-6);
+    // 幅 1 の通路: よける道がない → 待つ(押しつけ続けない・探索を増やし続けない)
+    const rows1 = ["##########", "#........#", "##########"];
+    const h = loadGame(); const hc = h.ProjectRFieldCombat; navWorld(h, rows1);
+    const wall = h.addNavEnemy(3, 4, 1), blocked = h.addNavEnemy(4, 1, 1); h.setPlayer(7.5, 1);
+    hc.begin(); hc.attachEnemy(3, { ...NAV_SIGHT, chase: false, reach: 0.6 }); hc.attachEnemy(4, { ...NAV_SIGHT, reach: 0.6 });
+    h.frame(300);
+    const nav = plain(hc.getEnemyNav(4)), s = hc.getNavStats();
+    assert.ok(blocked._realX <= 3 + 1e-6, "味方の手前で待つ");
+    assert.ok(nav.stuckCount >= 1 && nav.stuckCount <= 8, "止まり検出の回数が増え続けない: " + nav.stuckCount);
+    assert.ok(s.searches <= 10, "待っている間も探索を繰り返さない: " + s.searches);
+    assert.equal(s.errors, 0, String(s.lastError));
+});
+
+test("経路探索: 攻撃の溜め・Cooldown・攻撃の予約は従来どおり(溜め中は動かない・経路を持たない)。chase=0 は動かず、path=0 は従来のまっすぐ", () => {
+    const rows = ["............", "............", "....##......", "....##......", "............"];
+    const game = loadGame(); const fc = game.ProjectRFieldCombat; navWorld(game, rows);
+    const e = game.addNavEnemy(3, 4.5, 0); game.setPlayer(4.5, 4.5);
+    fc.begin(); fc.attachEnemy(3, { ...NAV_SIGHT, windupFrames: 30, cooldownFrames: 50 });
+    for (let i = 0; i < 600 && game.attackLog.length === 0; i++) game.frame(1);
+    assert.equal(game.attackLog.length, 1); assert.equal(game.attackLog[0].windupFrames, 30);
+    const at = { x: e._realX, y: e._realY }, calls = e.calls; game.frame(20);
+    assert.equal(e.calls, calls, "溜めの間は動かない"); assert.deepEqual([e._realX, e._realY], [at.x, at.y]);
+    assert.equal(plain(fc.getEnemyNav(3)).pathLength, 0, "溜めの間は経路を持たない");
+    const g2 = loadGame(); const fc2 = g2.ProjectRFieldCombat; navWorld(g2, rows);
+    const still = g2.addNavEnemy(5, 4.5, 0), straight = g2.addNavEnemy(6, 4.5, 1); g2.setPlayer(4.5, 4.5);
+    fc2.begin(); fc2.attachEnemy(5, { ...NAV_SIGHT, chase: false }); fc2.attachEnemy(6, { ...NAV_SIGHT, pathfinding: false });
+    g2.frame(60);
+    assert.equal(still.calls, 0, "chase=0 は動かない");
+    assert.equal(plain(fc2.getEnemyNav(6)).mode, "idle"); assert.equal(fc2.getNavStats().searches, 0, "path=0 は経路を探さない");
+    assert.ok(straight.calls > 0, "path=0 でも従来のまっすぐは追う");
+    const src = read("js/plugins/ProjectR_FieldCombat.js");
+    assert.match(src, /key === "path"\) o\.pathfinding = !\(v === "0"/, "<fieldEnemy: path=0> を読む");
+});
+
+test("経路探索: 使うのは、エンカウンター中・敵の視界が有効・ループしないマス・体が 1 マス以下の敵だけ。それ以外は従来のまっすぐの追跡(dotMoveToPlayer)", () => {
+    const rows = ["............", "............", "....##......", "....##......", "............"];
+    const setup = tweak => {
+        const game = loadGame(); const fc = game.ProjectRFieldCombat; navWorld(game, rows);
+        const e = game.addNavEnemy(3, 4.5, 0); game.setPlayer(4.5, 4.5); tweak(game, e, fc);
+        fc.begin(); fc.attachEnemy(3, NAV_SIGHT); game.frame(30);
+        return { game, e, fc, nav: plain(fc.getEnemyNav(3)), stats: fc.getNavStats() };
+    };
+    const base = setup(() => {}); assert.ok(base.stats.searches >= 1 && base.nav.usable === true, "基準: 柱の前では探索する");
+    const noPerception = setup((g, e, fc) => fc.setPerception({ enabled: false })); assert.equal(noPerception.stats.searches, 0, "視界が無効(従来): 経路探索は使わない"); assert.ok(noPerception.stats.legacyFrames > 0);
+    const loop = setup(g => { g.$gameMap.isLoopHorizontal = () => true; }); assert.equal(loop.stats.searches, 0, "ループマップは使わない");
+    const big = setup((g, e) => { e.width = () => 1.5; }); assert.equal(big.stats.searches, 0, "体が 1 マスより大きい敵は使わない");
+    const plain1 = setup((g, e) => { delete e.dotMoveByDeg; }); assert.equal(plain1.stats.searches, 0, "DotMove のない(部品)の敵は従来のまま");
+    const game = loadGame(); navWorld(game, rows); game.addNavEnemy(3, 4.5, 0); game.setPlayer(4.5, 4.5);
+    game.ProjectRFieldCombat.attachEnemy(3, NAV_SIGHT);                           // begin() の前: エンカウンター(戦闘)中ではない
+    game.frame(30); assert.equal(game.ProjectRFieldCombat.getNavStats().searches, 0, "戦闘が始まっていなければ使わない");
+    const off = setup((g, e, fc) => fc.setPathfinding(false)); assert.equal(off.stats.searches, 0, "setPathfinding(false) は従来のまっすぐ");
+});
+
+test("経路探索: ソースの規則 — 見失ったら経路を捨てる・最後に見た位置を保持しない・視界(perceive)と CombatOcclusion には手を入れない・DotMove の本体を書き換えない", () => {
+    const src = read("js/plugins/ProjectR_FieldCombat.js");
+    const nav = src.slice(src.indexOf("敵の経路探索(Stage 4"), src.indexOf("const updateEnemies"));
+    assert.ok(nav.length > 3000);
+    assert.doesNotMatch(nav, /lastKnown|lastSeen|lastPlayer|memory|remember/i, "最後に見た位置を覚えない");
+    assert.match(src, /b\.sees = sees;\s*\n\s*if \(!sees\) navLose\(b\);/, "見失った(sees=false)フレームに、必ず経路を捨てる");
+    assert.match(src, /chaseStepSafe\(e, b, p\)/); assert.match(src, /if \(b\.chase && sees && !playerDead\(\) && dist > b\.reach \* 0\.8 && dist <= \(cfg\.perception \? b\.sightTiles : b\.aggroTiles\)\)/, "追う条件は従来のまま");
+    assert.match(src.slice(src.indexOf("const perceive = "), src.indexOf("const getEnemyPerception")), /o\.hasLineOfSight\(c, p, \{ mode: "vision", ignoreEventIds: \[e\.eventId\(\)\] \}\)/, "視界の判定は従来のまま");
+    assert.doesNotMatch(nav, /Game_Character\.prototype|Game_Event\.prototype|DotMoveSystem\./, "DotMove・Game_* を書き換えない");
+    assert.doesNotMatch(nav, /\.locate\(|\.setPosition\(|\.setPositionPoint\(/, "位置を直接書き換えない(DotMove の移動だけ)");
+    assert.match(src, /@param EnemyPathfinding[\s\S]*?@default true/);
+    assert.ok(read("docs/ProjectR_FieldCombat.md").includes("経路探索"), "docs に経路探索の節がある");
+});
+
+test("DEV のデータ(Stage 4): Map008 の南の部屋に、通れないが視線を遮らない柱(2x2)がある。扉・出現位置・撤退の NPC への道・敵の配置は変わらない", () => {
+    const m8 = JSON.parse(read("data/Map008.json")), tiles = JSON.parse(read("data/Tilesets.json")), flags = tiles[m8.tilesetId].flags;
+    const w = m8.width, h = m8.height, at = (x, y, z) => m8.data[(z * h + y) * w + x], region = (x, y) => at(x, y, 5);
+    const blocked = (x, y) => { for (let z = 3; z >= 0; z--) { const f = flags[at(x, y, z)] || 0; if (f & 0x10) continue; return (f & 0x0f) === 0x0f; } return false; };
+    const pillar = [[11, 9], [12, 9], [11, 10], [12, 10]];
+    for (const [x, y] of pillar) { assert.equal(blocked(x, y), true, "柱は通れない " + x + "," + y); assert.equal(region(x, y), 0, "柱は視線を遮らない(Region 0)"); assert.equal(at(x, y, 0), at(3, 7, 0), "既存の壁のタイルを使う"); }
+    // 通れないマスは、外周・壁(y=7)・柱だけ(それ以外の床は通れる)
+    const wall = new Set(pillar.map(p => p.join(",")));
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const ring = x === 0 || y === 0 || x === w - 1 || y === h - 1, row7 = y === 7 && x !== 8; assert.equal(blocked(x, y), ring || row7 || wall.has(x + "," + y), x + "," + y); }
+    // 出現位置(8,9)から、撤退の NPC(8,11)の前(8,10)・扉の前(8,8)へ行ける。柱の東側(13,10)へは、南の列(y=11)か北の列(y=8)を回って行ける
+    const open = (x, y) => x > 0 && y > 0 && x < w - 1 && y < h - 1 && !blocked(x, y);
+    const reach = (sx, sy) => { const seen = new Set([sx + "," + sy]), q = [[sx, sy]]; while (q.length) { const [x, y] = q.shift(); for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const nx = x + dx, ny = y + dy, k = nx + "," + ny; if (open(nx, ny) && !seen.has(k)) { seen.add(k); q.push([nx, ny]); } } } return seen; };
+    const south = reach(8, 9);
+    for (const k of ["8,10", "8,11", "8,8", "8,7", "13,10", "13,9", "10,11", "10,8"]) assert.ok(south.has(k), "到達できる " + k);
+    const door = m8.events.find(e => e && e.name === "DEV 扉(視界)"), retreat = m8.events.find(e => e && e.name === "DEV 撤退(中断)");
+    assert.deepEqual([door.x, door.y, retreat.x, retreat.y], [8, 7, 8, 11]);
+    for (const e of m8.events.filter(e => e && /<fieldEnemy/i.test(e.note))) assert.ok(e.y < 7, e.name + " は壁の北");
+    for (const e of m8.events.filter(Boolean)) assert.ok(!wall.has(e.x + "," + e.y), e.name + " は柱の上にいない");
+});
+
+// ====================================================================== Stage 4b: 出入口の渋滞 ======================================================================
+// 扉口(4,4)で南北の部屋がつながる地図。'R' は壁(視線を遮る)。プレイヤーの移動(Hendrix の _playerPassThroughEvents を見る)を、簡易に再現する。
+const GAP_ROWS = ["RRRRRRRRR", "R.......R", "R.......R", "R.......R", "RRRR.RRRR", "R.......R", "R.......R", "R.......R", "RRRRRRRRR"];
+function playerSim(game, w) {
+    const p = game.$gamePlayer, m = game.$gameMap;
+    p.width = () => 1; p.height = () => 1;
+    const passList = () => (game.$gameSystem._playerPassThroughEvents || []);
+    const blocked = (x, y) => {
+        for (let cy = Math.floor(y + 1e-6); cy <= Math.floor(y + 1 - 1e-6); cy++) for (let cx = Math.floor(x + 1e-6); cx <= Math.floor(x + 1 - 1e-6); cx++) if (w.cell(cx, cy) !== ".") return true;
+        for (const o of m.events()) { if (o._erased || o.isThrough() || passList().includes(o.eventId())) continue; if (Math.abs(o._realX - x) < 1 - 1e-6 && Math.abs(o._realY - y) < 1 - 1e-6) return true; }
+        return false;
+    };
+    // 1フレーム: 押している向き(dx, dy)へ動こうとして、動けた分だけ動く(x と y を別々に)。その後に 1 フレーム進める
+    game.press = (dx, dy, dir4, frames) => {
+        for (let i = 0; i < frames; i++) {
+            game.Input.dir4 = dir4; const nx = p._realX + dx * 0.07, ny = p._realY + dy * 0.07;
+            if (!blocked(nx, p._realY)) p._realX = nx; if (!blocked(p._realX, ny)) p._realY = ny;
+            p.x = Math.floor(p._realX + 0.5); p.y = Math.floor(p._realY + 0.5);
+            game.frame(1);
+        }
+        game.Input.dir4 = 0;
+    };
+    game.passList = passList;
+}
+
+test("渋滞(1): 倒した敵は、動いている最中でも、すぐ(次のフレームまでに)通り抜けられる。DotMove の「移動が終わってから」の予約を待たない・経路探索の写しも捨てる", () => {
+    const game = loadGame(); const fc = game.ProjectRFieldCombat; const w = navWorld(game, GAP_ROWS);
+    const dead = game.addNavEnemy(1, 4, 5), other = game.addNavEnemy(2, 4, 2);
+    // DotMove と同じ: 動いている間の setThrough は、予約だけして、すぐには変えない
+    dead.setThrough = function(v) { this._setThroughReserve = v; }; dead._moving = true; dead.setPriorityType = function(v) { this._priorityType = v; };
+    game.setPlayer(4, 7); fc.begin(); fc.attachEnemy(1, { ...NAV_SIGHT, chase: false }); fc.attachEnemy(2, { ...NAV_SIGHT, chase: false });
+    game.frame(3); assert.equal(dead.isThrough(), false);
+    game.setEnemyHp(1, 0); game.frame(1);
+    assert.equal(dead._through, true, "予約を待たずに、すぐ通り抜け可能");
+    assert.equal(dead._setThroughReserve, undefined, "予約も消す");
+    assert.equal(dead._priorityType, 0);
+    assert.deepEqual(plain(fc.listEnemies()), [2], "敵の一覧から外れる");
+    // 倒れた敵のいたマス(4,5)を、通れる経路として使える
+    assert.ok(fc.findNavPath({ x: 4, y: 2 }, { x: 4, y: 7 }), "扉口の先の倒れた敵は、経路をふさがない");
+    // 倒れた敵を通り抜けて、プレイヤーが扉口から南へ行ける
+    playerSim(game, w); game.setPlayer(4, 3.0); game.press(0, 1, 2, 80);
+    assert.ok(game.$gamePlayer._realY > 6, "死体の上を通れる: y=" + game.$gamePlayer._realY.toFixed(2));
+});
+
+test("渋滞(2): 見失って扉口に立っている敵は、道を空ける(追わない・プレイヤーの位置を使わない)。扉口に並んでも、全員が固まったまま扉口をふさぎ続けない・重ならない", () => {
+    const run = (px, py) => {
+        const game = loadGame(); const fc = game.ProjectRFieldCombat; navWorld(game, GAP_ROWS);
+        const es = [game.addNavEnemy(1, 4, 4), game.addNavEnemy(2, 4, 3), game.addNavEnemy(3, 4, 2)];      // 扉口に 1 体・その北に 2 体(縦に並ぶ)
+        game.setPlayer(px, py); fc.begin(); for (const e of es) fc.attachEnemy(e.eventId(), { ...NAV_SIGHT, windupFrames: 36, cooldownFrames: 90 });
+        game.visionBlock = true;                                                      // プレイヤーが扉の正面の線を外れた(全員、見失う)
+        let minGap = 9; const moves = [];
+        for (let i = 0; i < 240; i++) { game.frame(1); for (let a = 0; a < 3; a++) for (let b = a + 1; b < 3; b++) minGap = Math.min(minGap, Math.max(Math.abs(es[a]._realX - es[b]._realX), Math.abs(es[a]._realY - es[b]._realY))); }
+        return { game, fc, es, minGap, final: es.map(e => [+e._realX.toFixed(2), +e._realY.toFixed(2)]), st: fc.getNavStats() };
+    };
+    const a = run(1, 6), b = run(7, 7), c = run(7, 1);
+    for (const r of [a, b, c]) {
+        assert.ok(r.st.yields >= 1, "扉口の敵が道を空けた");
+        assert.ok(r.es.every(e => !(Math.floor(e._realY + 0.5) === 4 && Math.floor(e._realX + 0.5) === 4)), "扉口(4,4)に誰も立っていない: " + JSON.stringify(r.final));
+        assert.ok(r.minGap >= 0.98, "敵同士が重ならない(間隔 " + r.minGap.toFixed(2) + ")");
+        assert.equal(r.st.errors, 0, String(r.st.lastError));
+    }
+    // プレイヤーの位置は使わない: 見失っている間の動きは、プレイヤーがどこにいても同じ
+    assert.deepEqual(a.final, b.final); assert.deepEqual(a.final, c.final);
+    // 見失っているので、追ってはいない(経路はない)
+    assert.ok(a.es.every(e => plain(a.fc.getEnemyNav(e.eventId())).pathLength === 0));
+    // 見えれば、追う(従来どおり)
+    a.game.visionBlock = false; const before = a.es.map(e => e.calls); a.game.frame(30);
+    assert.ok(a.es.some((e, i) => e.calls > before[i]), "見えるようになれば、また追う");
+});
+
+test("渋滞(3): 扉口で前後を敵にはさまれて進めないとき(24フレーム)だけ、行く手の敵をプレイヤーが通り抜けられる。離れると戻す。壁・扉は通れないまま。終わり・倒れる・外れるで必ず戻す", () => {
+    const game = loadGame(); const fc = game.ProjectRFieldCombat; const w = navWorld(game, GAP_ROWS); playerSim(game, w);
+    const north = game.addNavEnemy(1, 4, 3), south = game.addNavEnemy(2, 4, 5);
+    game.$gameSystem._playerPassThroughEvents = [77];                              // もとからある別のイベント(戻すときに残す)
+    game.setPlayer(4, 4); fc.begin();
+    for (const id of [1, 2]) fc.attachEnemy(id, { ...NAV_SIGHT, windupFrames: 3000, cooldownFrames: 3000 });
+    game.frame(3);
+    game.press(0, 1, 2, 20); assert.ok(Math.abs(game.$gamePlayer._realY - 4) < 0.01, "20 フレームでは、まだ通り抜けない(従来どおり、はさまれて動けない)"); assert.deepEqual(plain(fc.getSoftPass()), []);
+    game.press(0, 1, 2, 12);
+    assert.deepEqual(plain(fc.getSoftPass()), [2], "24 フレーム進めなかったので、押している向き(南)の敵だけ"); assert.ok(game.passList().includes(2) && game.passList().includes(77));
+    assert.ok(!game.passList().includes(1), "北の敵は対象ではない");
+    game.press(0, 1, 2, 60);
+    assert.ok(game.$gamePlayer._realY > 5.9, "南の敵を通り抜けて、扉口の外へ出た: y=" + game.$gamePlayer._realY.toFixed(2));
+    game.frame(25);
+    assert.deepEqual(plain(fc.getSoftPass()), [], "体が重ならなくなったら戻す"); assert.deepEqual(game.passList(), [77], "もとからあるイベントは残す");
+    // 壁は通れない(通り抜けは敵だけ)
+    const y = game.$gamePlayer._realY; game.press(1, 0, 6, 200); assert.ok(game.$gamePlayer._realX < 8.01, "壁は通れない"); game.press(0, 1, 2, 5);
+    // 終わると、必ず戻す
+    game.setPlayer(4, 4); north._realY = 3; south._realY = 5; game.press(0, 1, 2, 40);
+    assert.ok(fc.getSoftPass().length >= 1, "もう一度、はさまれた");
+    fc.end(); assert.deepEqual(plain(fc.getSoftPass()), []); assert.deepEqual(game.passList(), [77], "戦闘が終わると戻す(セーブに残さない)");
+    // 倒れたら戻す
+    fc.begin(); fc.attachEnemy(1, { ...NAV_SIGHT, windupFrames: 3000 }); fc.attachEnemy(2, { ...NAV_SIGHT, windupFrames: 3000 }); game.setPlayer(4, 4); north._realY = 3; south._realY = 5; game.frame(3); game.press(0, 1, 2, 40);
+    assert.deepEqual(plain(fc.getSoftPass()), [2]); game.setEnemyHp(2, 0); game.frame(2);
+    assert.deepEqual(plain(fc.getSoftPass()), [], "倒れたら戻す"); assert.ok(!game.passList().includes(2));
+    fc.end();
+});
+
+test("渋滞(3b): 広い所で1体に当たっているだけ・壁で止まっているだけ・ChokeSoftCollision=false・DEV でない通常の移動では、通り抜けを使わない", () => {
+    const OPEN = ["RRRRRRRRR", "R.......R", "R.......R", "R.......R", "R.......R", "R.......R", "RRRRRRRRR"];
+    const g1 = loadGame(); const f1 = g1.ProjectRFieldCombat; const w1 = navWorld(g1, OPEN); playerSim(g1, w1);
+    g1.addNavEnemy(1, 4, 3); g1.setPlayer(4, 1.9); f1.begin(); f1.attachEnemy(1, { ...NAV_SIGHT, windupFrames: 3000, cooldownFrames: 3000 }); g1.frame(3);
+    g1.press(0, 1, 2, 60); assert.deepEqual(plain(f1.getSoftPass()), [], "広い所で 1 体に当たっているだけ: 使わない");
+    // 壁で止まっている(敵のせいではない)
+    const g2 = loadGame(); const f2 = g2.ProjectRFieldCombat; const w2 = navWorld(g2, GAP_ROWS); playerSim(g2, w2);
+    g2.addNavEnemy(1, 4, 6); g2.setPlayer(1, 1); f2.begin(); f2.attachEnemy(1, { ...NAV_SIGHT, windupFrames: 3000, cooldownFrames: 3000 }); g2.frame(3);
+    g2.press(-1, 0, 4, 60); assert.deepEqual(plain(f2.getSoftPass()), [], "壁で止まっているだけ: 使わない");
+    // 切る
+    const g3 = loadGame(); const f3 = g3.ProjectRFieldCombat; const w3 = navWorld(g3, GAP_ROWS); playerSim(g3, w3);
+    g3.addNavEnemy(1, 4, 3); g3.addNavEnemy(2, 4, 5); g3.setPlayer(4, 4); f3.begin();
+    for (const id of [1, 2]) f3.attachEnemy(id, { ...NAV_SIGHT, windupFrames: 3000, cooldownFrames: 3000 });
+    f3.setSoftCollision(false); g3.frame(3); g3.press(0, 1, 2, 80);
+    assert.deepEqual(plain(f3.getSoftPass()), []); assert.ok(Math.abs(g3.$gamePlayer._realY - 4) < 0.01, "切ると、従来どおり動けない");
+    assert.equal(f3.setSoftCollision(true), true);
+    // ソース: Hendrix の既存の仕組みだけを使い、DotMove・Game_Player を書き換えない・攻撃の当たり判定(_through)は触らない
+    const src = read("js/plugins/ProjectR_FieldCombat.js"); const part = src.slice(src.indexOf("出入口の渋滞(Stage 4b)"), src.indexOf("    const updateEnemies = () => {"));
+    assert.match(part, /_playerPassThroughEvents/); assert.doesNotMatch(part, /Game_Player\.prototype|Game_Event\.prototype|Game_CharacterBase\.prototype|DotMoveSystem\./);
+    assert.doesNotMatch(part, /\._through\s*=/, "ソフト衝突は、敵の _through(攻撃の当たり判定にも関わる)を変えない");
+});
+
+test("渋滞(4): 2〜3体が扉口へ押し寄せても、重ならず・全員がやがて(攻撃できる所へ)出てくる・倒しても勝利の判定は変わらない。繰り返しても状態が残らない", () => {
+    const game = loadGame({ dev: false }); const fc = game.ProjectRFieldCombat; const w = navWorld(game, GAP_ROWS);
+    const es = [game.addNavEnemy(1, 4, 3), game.addNavEnemy(2, 4, 2), game.addNavEnemy(3, 4, 1)];
+    game.setPlayer(4, 6.5); fc.begin(); for (const e of es) fc.attachEnemy(e.eventId(), { ...NAV_SIGHT, reach: 0.8, windupFrames: 20, cooldownFrames: 40 });
+    let minGap = 9;
+    for (let i = 0; i < 900; i++) { game.frame(1); for (let a = 0; a < 3; a++) for (let b = a + 1; b < 3; b++) minGap = Math.min(minGap, Math.max(Math.abs(es[a]._realX - es[b]._realX), Math.abs(es[a]._realY - es[b]._realY))); }
+    assert.ok(minGap >= 0.98, "重ならない: " + minGap.toFixed(2));
+    assert.ok(es[0]._realY > 4.5 && es[1]._realY > 4.5, "前の 2 体は扉口を通って南の部屋へ出た: " + es.map(e => e._realY.toFixed(1)).join(","));
+    assert.ok(game.attackLog.some(a => a.eventId === 1), "先頭は攻撃を予約する(後ろの敵は、前の敵の後ろで順番を待つ)");
+    const st = fc.getNavStats(); assert.equal(st.errors, 0, String(st.lastError));
+    // 前の敵を倒すと、順番に詰めて、最後の 1 体も出てきて攻撃する(扉口の死体が道をふさがない)
+    const attacks = game.attackLog.length;
+    game.setEnemyHp(1, 0); game.frame(2); assert.equal(es[0]._through, true, "倒れた敵はすぐ通れる");
+    game.setEnemyHp(2, 0); game.frame(200);
+    assert.ok(es[2]._realY > 4.5, "最後の 1 体も、死体の上を通って出てくる: y=" + es[2]._realY.toFixed(2));
+    assert.ok(game.attackLog.some(a => a.eventId === 3), "最後の 1 体が攻撃を予約する");
+    for (const e of es) { game.setEnemyHp(e.eventId(), 0); game.frame(2); assert.equal(e._through, true, "倒れた敵はすぐ通れる"); }
+    assert.deepEqual(plain(fc.listEnemies()), [], "全員倒したので、一覧は空(勝利の判定は従来どおり。敵が残らない)");
+    assert.deepEqual(plain(fc.getSoftPass()), []);
+    fc.end(); fc.resetNavStats();
+    // 繰り返し: 新しい敵で、また同じ
+    const g2 = loadGame({ dev: false }); const f2 = g2.ProjectRFieldCombat; navWorld(g2, GAP_ROWS);
+    for (let round = 0; round < 2; round++) {
+        const e = g2.addNavEnemy(10 + round, 4, 3); g2.setPlayer(4, 6.5); f2.begin(); f2.attachEnemy(10 + round, { ...NAV_SIGHT, reach: 0.8, windupFrames: 20 });
+        g2.frame(300); assert.ok(e._realY > 4.5, "ラウンド " + round + ": 扉口を通って出てくる"); f2.end();
+        assert.deepEqual(plain(f2.getSoftPass()), []);
+    }
+});
