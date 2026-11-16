@@ -153,7 +153,10 @@
  *   ・メインの5枠 = LMB 薙ぎ払い(近接3段コンボの進み具合)/ Shift 絶 / E 一閃 / X・C 固定カード(実際のスキル名・READY・COOL・使えなかった理由)+ 別枠の V アイテム(計6枠)。
  *     Q 奥義・R リロード・右クリックの銃は、枠には出さない(奥義は上のゲージ、弾数は右下の武器の表示。操作はそのまま使える)。
  *     V のアイテム枠は、メインの5枠から少し離し、金色の枠で別の枠として表示する(選んでいるアイテムのアイコン・数量・Cooldown)。SKILL n の表示は出さない。
- *   ・スキル枠の上に、操作ガイド1行: [LMB] 斬撃 ●●○(近接3段コンボの進み具合・残り時間・3段目は強撃)と [RMB] 射撃 弾数。
+ *   ・Stage 6A: 5つのスキル枠はアイコンを必ず出す(既存の IconSet の番号。ProjectRFieldCombat が決める)。状態は 色・暗幕・残り秒・文字 で示す:
+ *       使える(READY)= 緑の縁・明るいアイコン / Cooldown 中 = 暗幕が残り割合だけ上から残って下から引いていき、残り秒(10秒未満は小数1桁)が中央に出る。終わった瞬間は枠が白く短く光る /
+ *       使えない = 暗いアイコン・赤い縁・理由の文字 / LMB = コンボの丸(1・2段目は水色、3段目は金)と受付時間の線、強撃!の瞬間は丸が3つとも埋まって金の縁。文字は 720p でも実寸 14px 以上になる大きさ。
+ *   ・スキル枠の上に、操作ガイド1行: [RMB] 射撃 弾数 と [R] リロード 予備弾(5つのスキル枠に入れない操作の案内。LMB のコンボは LMB の枠の中に出す)。
  *   ・V 長押しの放射メニュー(アイテムを円形に並べ、マウスの方向が光る)。いずれも 1920x1080 基準の座標で、画面の大きさに合わせて拡縮する。
  *   ・フィールド戦闘が終われば、従来の表示に戻る(状態はProjectRFieldCombatが持つ。HUDは読むだけ)。
  *
@@ -183,6 +186,18 @@
     const FIELD_SLOT_COUNT = 6;                // フィールド戦闘: LMB 薙ぎ払い / Shift 絶 / E 一閃 / X・C 固定カード + 別枠の V アイテム
     const RADIAL_MAX = 12;                     // 放射メニューに並べるアイテムの最大数(ProjectRFieldCombat と同じ)
     const SKILL_HUD_Y = 915;
+    // フィールド戦闘(Stage 6A)のスキル枠: 文字の大きさ(1080pで実寸。720pでは 2/3 に縮むので、カード戦闘より大きめ)・アイコン・光る長さ
+    const FIELD_STATE_FONT = 23;
+    const FIELD_NAME_FONT = 22;
+    const FIELD_COOL_FONT = 40;
+    const FIELD_ICON_SIZE = 56;
+    const FIELD_ICON_Y = 50;
+    const READY_FLASH_FRAMES = 20;
+    // Cooldown の残り秒: 10秒未満は小数1桁(切り上げ)、10秒以上は整数。
+    const formatRemaining = seconds => {
+        const t = Math.max(0, Number(seconds) || 0);
+        return t >= 10 ? String(Math.ceil(t - 1e-6)) : (Math.ceil(t * 10 - 1e-6) / 10).toFixed(1);
+    };
 
     const COLORS = Object.freeze({
         footer: 0x03070c,
@@ -1476,6 +1491,12 @@
             this._icon.y = 56;
             this.addChild(this._icon);
 
+            // フィールド戦闘(Stage 6A)だけが使う、アイコンの上の重ね描き(Cooldownの暗幕・コンボの丸)。カード戦闘・SOULでは空のまま。
+            this._fx = new PIXI.Graphics();
+            this.addChild(this._fx);
+            this._prevFieldState = "";
+            this._readyFlashUntil = 0;
+
             this._slotText = new Sprite_ProjectRText(SKILL_SLOT_WIDTH, 28, {
                 fontSize: 18,
                 bold: true,
@@ -1512,9 +1533,119 @@
             this._cooldownText.x = (SKILL_SLOT_WIDTH - 100) / 2;
             this._cooldownText.y = 27;
             this.addChild(this._cooldownText);
+
+            // フィールド戦闘(Stage 6A)用の文字。720pでも読めるよう、カード戦闘の文字より大きく太い(画面が小さくなると 2/3 に縮むため)。
+            this._fStateText = new Sprite_ProjectRText(SKILL_SLOT_WIDTH, 30, { fontSize: FIELD_STATE_FONT, bold: true, align: "center", outlineWidth: 5 });
+            this._fStateText.y = 90;
+            this._fNameText = new Sprite_ProjectRText(SKILL_SLOT_WIDTH - 14, 30, { fontSize: FIELD_NAME_FONT, bold: true, align: "center", color: rgbaHex(COLORS.text), outlineWidth: 5 });
+            this._fNameText.x = 7;
+            this._fNameText.y = 110;
+            this._fCoolText = new Sprite_ProjectRText(120, 60, { fontSize: FIELD_COOL_FONT, bold: true, align: "center", outlineWidth: 7 });
+            this._fCoolText.x = (SKILL_SLOT_WIDTH - 120) / 2;
+            this._fCoolText.y = 18;
+            this._fCountText = new Sprite_ProjectRText(64, 30, { fontSize: 22, bold: true, align: "right", outlineWidth: 5 });
+            this._fCountText.x = 90;
+            this._fCountText.y = 54;
+            for (const text of [this._fStateText, this._fNameText, this._fCoolText, this._fCountText]) { text.visible = false; this.addChild(text); }
+        }
+
+        // フィールド戦闘の枠(Stage 6A)。アイコンは暗くしても必ず見せ、状態を 色・暗幕(Cooldownの残り割合)・残り秒(小数1桁)・文字 の4つで示す。
+        //   state: ready(使える: 緑の縁)/ cooldown(待ち中: 暗幕が下から上へ引いていき、残り秒が出る)/ unavailable(使えない: 赤い縁・暗い)。alert=使えなかった直後(約1.5秒)は赤く光る。
+        //   LMB はコンボの丸(1・2段目は水色、3段目は金)と受付時間の線を出す。V は数量(×n)が状態の文字に入る。準備ができた瞬間は白く短く光る。
+        redrawField(data, imageName) {
+            const W = SKILL_SLOT_WIDTH, H = SKILL_SLOT_HEIGHT, SK = SKILL_SLOT_SKEW;
+            const state = data.state || (data.cooldown?.active ? "cooldown" : (data.disabled ? "unavailable" : "ready"));
+            const cooling = state === "cooldown", unavailable = state === "unavailable", ready = state === "ready";
+            const item = data.accent === "item", alert = !!data.alert, selected = !!data.selected;
+            const flashing = Graphics.frameCount < this._readyFlashUntil;
+            const combo = data.combo || null;
+            const comboHot = !!combo && (combo.step > 0 || combo.finisher);
+            let border = COLORS.panelLine;
+            if (alert) border = COLORS.red; else if (flashing) border = COLORS.white;
+            else if (combo && combo.finisher) border = COLORS.gold; else if (selected) border = COLORS.cyan;
+            else if (ready) border = item ? COLORS.gold : COLORS.green; else if (unavailable) border = 0x8a3a44;
+            const fill = ready ? (item ? COLORS.goldDark : 0x102232) : unavailable ? (item ? 0x1a1508 : 0x0a1018) : (item ? 0x201a0a : COLORS.panel);
+            const points = [SK, 0, W, 0, W - SK, H, 0, H];
+
+            this._shape.clear();
+            if (ready || alert || flashing) drawClosedPolygon(this._shape, points, border, 0.10, border, 9, 0.18);
+            drawClosedPolygon(this._shape, points, fill, 0.97, border, ready || alert || flashing || selected ? 4 : 3, 1);
+            this._shape.lineStyle(2, border, 1);
+            this._shape.beginFill(0x09111b, 1);
+            this._shape.drawRoundedRect((W - 60) / 2, -15, 60, 40, 8);
+            this._shape.endFill();
+
+            // 暗幕: Cooldown の残り割合(ratio)だけ、上から。下の端が「いまの回復の高さ」(水色の線)。
+            const fx = this._fx;
+            fx.clear();
+            if (cooling) {
+                const ratio = clamp(finiteNumber(data.ratio, 1), 0, 1), y1 = H * ratio;
+                if (y1 > 0.5) {
+                    const xl = y => SK * (1 - y / H), xr = y => W - SK * (y / H);
+                    drawClosedPolygon(fx, [SK, 0, W, 0, xr(y1), y1, xl(y1), y1], COLORS.black, 0.5, border, 0, 0);
+                    fx.lineStyle(3, COLORS.cyan, 0.95);
+                    fx.moveTo(xl(y1), y1);
+                    fx.lineTo(xr(y1), y1);
+                }
+            }
+            // LMB のコンボ: 丸3つ(進んだ段は塗りつぶす)+ 受付時間の線(残りの割合)
+            if (combo) {
+                const cy = 83;
+                for (let index = 0; index < 3; index++) {
+                    const heavy = index === 2, filled = combo.finisher || index < combo.step;                    // 強撃の瞬間は、3つとも埋まる
+                    const color = heavy ? COLORS.gold : COLORS.cyan, radius = heavy ? 8 : 6.5;
+                    fx.lineStyle(2, color, filled ? 1 : 0.75);
+                    fx.beginFill(color, filled ? 0.95 : 0.14);
+                    fx.drawCircle(38 + index * 21, cy, radius);
+                    fx.endFill();
+                }
+                fx.lineStyle(0);
+                if (combo.step > 0) {
+                    fx.beginFill(COLORS.black, 0.55);
+                    fx.drawRect(106, cy - 3, 44, 6);
+                    fx.endFill();
+                    fx.beginFill(combo.finisher ? COLORS.gold : COLORS.cyan, 0.95);
+                    fx.drawRect(106, cy - 3, Math.max(2, 44 * clamp(combo.timeLeft, 0, 1)), 6);
+                    fx.endFill();
+                }
+            }
+
+            this._fieldMode = true;
+            this._imageDisplayAllowed = true;                                                    // アイコンは、待ち中・使えないときも見せる(暗くするだけ)
+            this._icon.scale.set(FIELD_ICON_SIZE / (ImageManager.iconWidth || 32), FIELD_ICON_SIZE / (ImageManager.iconHeight || 32));
+            this._icon.y = FIELD_ICON_Y;
+            this._battleImageSprite.y = FIELD_ICON_Y;
+            const iconAlpha = cooling ? 0.62 : unavailable ? 0.4 : 1;
+            this._icon.alpha = iconAlpha;
+            this._battleImageSprite.alpha = iconAlpha;
+            this.refreshImage(data, imageName);
+
+            this._slotText.visible = false; this._nameText.visible = false; this._cooldownText.visible = false;
+            this._fStateText.visible = true; this._fNameText.visible = true; this._fCoolText.visible = cooling;
+            const showCount = alert && data.count !== null && data.count !== undefined;
+            this._fCountText.visible = showCount;
+            this._fCountText.setText(showCount ? "×" + data.count : "", { color: rgbaHex(COLORS.text) });
+            const tone = alert ? "ng" : data.tone;
+            this._fStateText.setText(data.detail || "", { color: toneColor(tone, selected) });
+            this._fNameText.setText(data.name || "—", { color: rgbaHex(unavailable ? COLORS.muted : COLORS.text) });
+            this._fCoolText.setText(cooling ? formatRemaining(data.cooldown.remaining) : "", { color: rgbaHex(COLORS.white) });
+            const keyLabel = String(data.key || this._key);
+            this._keyText.setText(keyLabel, { fontSize: keyLabel.length > 2 ? 21 : 29, color: rgbaHex(ready || flashing ? COLORS.white : COLORS.text) });
         }
 
         redraw(data, imageName) {
+            if (data.mode === "field") { this.redrawField(data, imageName); return; }
+            // カード戦闘・SOULでは、フィールド戦闘用の部品を隠し、アイコンの大きさ・位置も元に戻す。
+            if (this._fieldMode) {
+                this._fieldMode = false;
+                this._fx.clear();
+                this._fStateText.visible = false; this._fNameText.visible = false; this._fCoolText.visible = false; this._fCountText.visible = false;
+                this._slotText.visible = true; this._nameText.visible = true; this._cooldownText.visible = true;
+                this._icon.scale.set(64 / (ImageManager.iconWidth || 32), 64 / (ImageManager.iconHeight || 32));
+                this._icon.y = 56; this._battleImageSprite.y = 56;
+                this._icon.alpha = 1; this._battleImageSprite.alpha = 1;
+                this._prevFieldState = "";
+            }
             const selected = !!data.selected;
             const cooldown = !!data.cooldown?.active;
             const disabled = !!data.disabled;
@@ -1617,7 +1748,17 @@
 
         setData(data) {
             const imageName = data.imageName || this._imageResolver.skillImageName(data);
+            // フィールド戦闘(Stage 6A): 待ち中 → 使える に変わった瞬間、枠を短く光らせる。描き直しの目印は、残り割合(1/40刻み)・残り秒(0.1秒刻み)・コンボの段と線。
+            let fieldSignature = "";
+            if (data.mode === "field") {
+                if (this._prevFieldState === "cooldown" && data.state === "ready") this._readyFlashUntil = Graphics.frameCount + READY_FLASH_FRAMES;
+                this._prevFieldState = data.state || "";
+                const combo = data.combo ? [data.combo.step, Math.ceil(clamp(finiteNumber(data.combo.timeLeft, 0), 0, 1) * 22), !!data.combo.finisher] : null;
+                fieldSignature = JSON.stringify([data.state, Math.round(clamp(finiteNumber(data.ratio, 0), 0, 1) * 40), data.cooldown?.active ? formatRemaining(data.cooldown.remaining) : "",
+                    combo, !!data.alert, Graphics.frameCount < this._readyFlashUntil]);
+            }
             const signature = JSON.stringify([
+                fieldSignature,
                 data.mode,
                 data.key,
                 data.cardId,
@@ -1678,7 +1819,7 @@
 
         // 戦闘終了・表示切替で古い描画を残さない（次のsetDataで必ず描き直す）。
         reset() {
-            for (const slot of this._slots) slot._lastSignature = "";
+            for (const slot of this._slots) { slot._lastSignature = ""; slot._prevFieldState = ""; slot._readyFlashUntil = 0; }
         }
 
         update() {
@@ -2325,39 +2466,29 @@
     const TONE_COLORS = Object.freeze({ ok: COLORS.green, warn: COLORS.gold, ng: COLORS.red, muted: COLORS.muted });
     const toneColor = (tone, selected) => rgbaHex(selected && tone === "muted" ? COLORS.cyan : (TONE_COLORS[tone] ?? COLORS.text));
 
-    // スキル枠の上に、コンパクトに1行: [LMB] 斬撃 ●●○(3段目は強撃。残り時間の線)  [RMB] 射撃 5/7
+    // スキル枠の上に、コンパクトに1行: [RMB] 射撃 7/7   [R] リロード 予備 92(Stage 6A: LMB のコンボは、LMB の枠の中へ移した。Q 奥義はHUD上部のゲージ)。
+    //   5つのスキル枠には入れない操作(RMB の銃・R リロード)の案内と状態だけ。
     class Sprite_ProjectRFieldGuideHUD extends Sprite {
         initialize() {
             super.initialize();
             this._signature = "";
             this._shape = new PIXI.Graphics();
             this.addChild(this._shape);
-            this._lmbText = new Sprite_ProjectRText(70, 30, { fontSize: 20, bold: true });
-            this._lmbText.x = 72;
-            this._lmbText.y = 2;
-            this.addChild(this._lmbText);
-            this._comboText = new Sprite_ProjectRText(90, 30, { fontSize: 18, bold: true });
-            this._comboText.x = 264;
-            this._comboText.y = 3;
-            this.addChild(this._comboText);
-            this._rmbText = new Sprite_ProjectRText(70, 30, { fontSize: 20, bold: true });
-            this._rmbText.x = 444;
-            this._rmbText.y = 2;
-            this.addChild(this._rmbText);
-            this._ammoText = new Sprite_ProjectRText(100, 30, { fontSize: 20, bold: true });
-            this._ammoText.x = 508;
-            this._ammoText.y = 2;
-            this.addChild(this._ammoText);
-            this._keyTexts = [];
-            for (const x of [0, 372]) {
-                const text = new Sprite_ProjectRText(64, 30, { fontSize: 18, bold: true, align: "center" });
+            const make = (x, width, options) => {
+                const text = new Sprite_ProjectRText(width, 34, Object.assign({ fontSize: 24, bold: true, outlineWidth: 5 }, options));
                 text.x = x;
-                text.y = 3;
-                this._keyTexts.push(text);
+                text.y = 1;
                 this.addChild(text);
-            }
-            this._keyTexts[0].setText("LMB");
-            this._keyTexts[1].setText("RMB");
+                return text;
+            };
+            this._rmbKey = make(0, 70, { fontSize: 21, align: "center" });
+            this._rmbText = make(80, 70);
+            this._ammoText = make(150, 110);
+            this._rKey = make(290, 70, { fontSize: 21, align: "center" });
+            this._rText = make(370, 110);
+            this._rStateText = make(480, 150);
+            this._rmbKey.setText("RMB");
+            this._rKey.setText("R");
             this.visible = false;
         }
 
@@ -2375,43 +2506,27 @@
             if (!api) { this.visible = false; this._signature = ""; return; }
             this.visible = true;
             const state = api.getHudState();
-            const combo = state.combo, gun = state.gun;
-            const timeBucket = Math.ceil(combo.timeLeft * 10);
-            const signature = JSON.stringify([combo.step, timeBucket, combo.finisherFlash, gun.ammo, gun.capacity, gun.equipped, state.radial.open]);
+            const gun = state.gun;
+            const reload = state.slots.find(slot => slot.slot === "reload") || { state: "noGun", extra: {} };
+            const reserve = reload.extra && Number.isFinite(reload.extra.reserve) ? reload.extra.reserve : 0;
+            const signature = JSON.stringify([gun.ammo, gun.capacity, gun.equipped, reload.state, reserve, state.radial.open]);
             if (signature === this._signature) return;
             this._signature = signature;
             this.layout();
             const g = this._shape;
             g.clear();
-            for (const x of [0, 372]) {
+            for (const x of [0, 290]) {
                 g.lineStyle(2, COLORS.panelLine, 1);
                 g.beginFill(0x09111b, 0.92);
-                g.drawRoundedRect(x, 0, 64, 32, 8);
+                g.drawRoundedRect(x, 0, 70, 36, 8);
                 g.endFill();
             }
-            // 3段のコンボ: 1・2段目は丸、3段目(強撃)は大きな金の丸。進んだ段は塗りつぶす。
-            for (let index = 0; index < 3; index++) {
-                const heavy = index === 2;
-                const filled = index < combo.step || (heavy && combo.finisherFlash);
-                const x = [158, 194, 238][index], radius = heavy ? 13 : 10;
-                const color = heavy ? COLORS.gold : COLORS.cyan;
-                g.lineStyle(heavy ? 3 : 2, color, filled ? 1 : 0.7);
-                g.beginFill(color, filled ? 0.95 : 0.12);
-                g.drawCircle(x, 16, radius);
-                g.endFill();
-            }
-            if (combo.step > 0) {
-                g.lineStyle(0);
-                g.beginFill(COLORS.cyan, 0.9);
-                g.drawRect(146, 33, Math.max(2, 112 * clamp(combo.timeLeft, 0, 1)), 4);
-                g.endFill();
-            }
-            this._lmbText.setText("斬撃");
-            this._comboText.setText(combo.finisherFlash ? "強撃!" : (combo.step > 0 ? `${combo.step}/3` : "1/3"),
-                { color: combo.finisherFlash ? rgbaHex(COLORS.gold) : rgbaHex(combo.step > 0 ? COLORS.cyan : COLORS.muted) });
             this._rmbText.setText("射撃", { color: rgbaHex(gun.equipped ? COLORS.text : COLORS.muted) });
             this._ammoText.setText(gun.equipped ? `${gun.ammo}/${gun.capacity}` : "—",
                 { color: rgbaHex(!gun.equipped ? COLORS.muted : gun.ammo <= 0 ? COLORS.red : COLORS.green) });
+            this._rText.setText("リロード", { color: rgbaHex(gun.equipped ? COLORS.text : COLORS.muted) });
+            const label = { noGun: ["銃なし", COLORS.muted], reloading: ["リロード中", COLORS.gold], noReserve: ["予備なし", COLORS.red], full: [`予備 ${reserve}`, COLORS.muted], ready: [`予備 ${reserve}`, COLORS.green] }[reload.state] || ["", COLORS.muted];
+            this._rStateText.setText(label[0], { color: rgbaHex(label[1]) });
         }
     }
 

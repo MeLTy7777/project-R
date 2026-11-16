@@ -534,4 +534,44 @@ test("本番の7枚のカード定義は不変で、7枚すべてが日本語の
     assert.equal(plain(deck(g).getPersistentData()).version, plain(deck(withoutHud).getPersistentData()).version);
 });
 
+// ================= フィールド戦闘(Stage 6A)の枠 =================
+test("フィールド戦闘の枠(Stage 6A): アイコンは暗くしても見せ、Cooldownは残り割合の暗幕と残り秒(小数1桁)、使える/使えないは文字と色、LMBはコンボの丸。カード戦闘の描画は変えない", () => {
+    const g = ready("apollo"); step(g);
+    const cardSlots = slots(g);                                                             // カード戦闘の枠(元の描画)
+    const base = { mode: "field", skillId: 0, imageName: "", accent: "", tone: "ok", selected: false, cooldown: { active: false, remaining: 0, total: 0 }, available: true, disabled: false, ratio: 0, alert: false, count: null, combo: null };
+    const field = [
+        { ...base, key: "LMB", slot: "attack", name: "薙ぎ払い", detail: "READY", iconIndex: 76, state: "ready", combo: { step: 0, max: 3, timeLeft: 0, finisher: false } },
+        { ...base, key: "Shift", slot: "mobility", name: "絶", detail: "COOL", iconIndex: 82, state: "cooldown", ratio: 0.5, cooldown: { active: true, remaining: 1.46, total: 3 }, disabled: true },
+        { ...base, key: "E", slot: "special", name: "一閃", detail: "COOL", iconIndex: 78, state: "cooldown", ratio: 0.9, cooldown: { active: true, remaining: 12.2, total: 14 }, disabled: true },
+        { ...base, key: "X", slot: "card1", name: "黄金の矢", detail: "N/A", tone: "ng", iconIndex: 102, state: "unavailable", available: false, disabled: true },
+        { ...base, key: "C", slot: "card2", name: "ギガース殺し", detail: "READY", iconIndex: 70, state: "ready" },
+        { ...base, key: "V", slot: "consumable", name: "ポーション", detail: "効果なし", tone: "ng", accent: "item", iconIndex: 176, state: "ready", alert: true, count: 3 }
+    ];
+    g.hud._adapter.skills = () => field; step(g);
+    const view = i => { const sp = g.hud._skillHUD._slots[i]; return { key: text(sp._keyText), state: text(sp._fStateText), name: text(sp._fNameText), cool: text(sp._fCoolText), coolVisible: sp._fCoolText.visible, count: text(sp._fCountText), countVisible: sp._fCountText.visible,
+        icon: sp._icon._iconIndex, iconVisible: sp._icon.visible, iconAlpha: sp._icon.alpha, legacyHidden: !sp._slotText.visible && !sp._nameText.visible && !sp._cooldownText.visible }; };
+    assert.deepEqual(plain([0, 1, 2, 3, 4, 5].map(i => view(i).icon)), [76, 82, 78, 102, 70, 176], "5スキル + V のアイコンが、枠のアイコンに渡る");
+    assert.ok([0, 1, 2, 3, 4, 5].every(i => view(i).iconVisible && view(i).legacyHidden), "待ち中・使えない状態でもアイコンは見せる。カード戦闘用の文字は隠す");
+    assert.equal(view(0).iconAlpha, 1, "使える: 明るい"); assert.ok(view(1).iconAlpha < 1 && view(1).iconAlpha > 0.4, "待ち中: 少し暗い(アイコンは見える)"); assert.ok(view(3).iconAlpha < view(1).iconAlpha, "使えない: さらに暗い");
+    assert.deepEqual(plain([view(1).coolVisible, view(1).cool, view(2).cool, view(0).coolVisible, view(3).coolVisible]), [true, "1.5", "13", false, false], "残り秒: 10秒未満は小数1桁(切り上げ)、10秒以上は整数。待ち中だけ出る");
+    assert.deepEqual(plain([view(0).state, view(1).state, view(3).state, view(4).state, view(5).state]), ["READY", "COOL", "N/A", "READY", "効果なし"], "状態の文字(使える・待ち中・使えない・使えなかった理由)");
+    assert.deepEqual(plain([view(5).countVisible, view(5).count, view(4).countVisible]), [true, "×3", false], "V は、使えなかった直後は数量をアイコンの右下に出す(それ以外は状態の文字が数量)");
+    assert.deepEqual(plain([0, 1, 2, 3, 4, 5].map(i => view(i).key)), ["LMB", "Shift", "E", "X", "C", "V"]);
+    // 残り割合が変われば描き直す(1/40刻み)。同じなら描き直さない。
+    const spr = g.hud._skillHUD._slots[1], before = g.textDraws; step(g, 2); assert.equal(g.textDraws, before, "変わらない間は文字を描き直さない");
+    field[1] = { ...field[1], ratio: 0.3, cooldown: { active: true, remaining: 0.43, total: 3 } }; step(g);
+    assert.equal(text(spr._fCoolText), "0.5", "残り 0.43 秒 → 0.5(切り上げ。0.0 は出さない)");
+    // 待ち中 → 使える で、短く光る(光っている間は描き直され、終われば元に戻る)
+    field[1] = { ...field[1], state: "ready", ratio: 0, cooldown: { active: false, remaining: 0, total: 3 }, detail: "READY", disabled: false }; step(g);
+    assert.equal(spr._readyFlashUntil > g.Graphics.frameCount, true, "待ち中 → 使える の瞬間に光る"); assert.equal(spr._fCoolText.visible, false);
+    step(g, 6); assert.equal(spr._readyFlashUntil <= g.Graphics.frameCount, true, "光は約0.3秒で終わる");
+    // LMB: コンボの段
+    field[0] = { ...field[0], detail: "2/3", selected: true, combo: { step: 2, max: 3, timeLeft: 0.5, finisher: false } }; step(g); assert.equal(text(g.hud._skillHUD._slots[0]._fStateText), "2/3");
+    field[0] = { ...field[0], detail: "強撃!", combo: { step: 0, max: 3, timeLeft: 0, finisher: true } }; step(g); assert.equal(text(g.hud._skillHUD._slots[0]._fStateText), "強撃!");
+    // 戦闘が終わって(元の枠データに戻って)、カード戦闘の描画が元どおりになる
+    delete g.hud._adapter.skills; g.hud._skillHUD.reset(); step(g);
+    assert.deepEqual(plain(slots(g)), plain(cardSlots), "フィールド戦闘のあと、カード戦闘の枠の文字・アイコンは元どおり");
+    const back = g.hud._skillHUD._slots[0]; assert.equal(back._slotText.visible && back._nameText.visible, true); assert.equal(back._fStateText.visible, false); assert.equal(back._icon.alpha, 1);
+});
+
 console.log(`\n${passed} tests passed`);

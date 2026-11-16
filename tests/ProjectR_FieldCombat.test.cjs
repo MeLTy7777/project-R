@@ -1631,6 +1631,54 @@ test("FieldCombat(Stage 5b): BattleHUDは、戦闘中だけ メイン5枠(LMB �
     fc.end(); assert.deepEqual(plain(adapter.skills()), ["original"]);
 });
 
+test("FieldCombat(Stage 6A): HUDの枠のデータ。5スキルに既存のIconSetのアイコン(あれば setCardPresentation 等を優先)・状態(ready/cooldown/unavailable)・Cooldownの残り割合と秒・LMBのコンボ・使えなかった直後の知らせ・Vの数量。Q奥義・R・右クリックは枠に出ない", () => {
+    const game = loadGame();
+    const fc = game.ProjectRFieldCombat;
+    const hud = game.ProjectRBattleHUD;
+    const adapter = new hud.DataAdapter();
+    hud.getCardPresentation = cardId => ({ name: cardId, iconIndex: 0, imageName: "" });                // 専用のアイコンが無いときは、既定のアイコン(IconSetの番号)
+    fc.begin();
+    let slots = plain(adapter.skills());
+    assert.deepEqual(slots.map(sl => sl.iconIndex), [76, 82, 78, 102, 70, 176], "LMB 薙ぎ払い=76 / Shift 絶=82 / E 一閃=78 / X 黄金の矢=102 / C ギガース殺し=70 / V=持っているアイテムのアイコン");
+    assert.deepEqual(slots.map(sl => sl.state), ["ready", "ready", "ready", "ready", "ready", "ready"]);
+    assert.deepEqual(slots.map(sl => sl.ratio), [0, 0, 0, 0, 0, 0]);
+    assert.deepEqual(slots.map(sl => sl.slot), ["attack", "mobility", "special", "card1", "card2", "consumable"], "5スキル + V だけ。Q 奥義・R リロード・右クリックの銃は枠に出ない");
+    assert.deepEqual([slots[5].count, slots[0].count], [3, null], "V は数量。それ以外は数量なし");
+    assert.deepEqual(plain(slots[0].combo), { step: 0, max: 3, timeLeft: 0, finisher: false }, "LMB はコンボの進み(段・受付時間の残り割合・強撃)");
+    assert.equal(slots[1].combo, null);
+    // 専用のアイコン(setCardPresentation / Skillのnote)があれば、そちらを優先する(既定は使わない)
+    hud.getCardPresentation = cardId => cardId === "apollo_golden_volley" ? { name: "x", iconIndex: 123, imageName: "" } : cardId === "hermes_sweep" ? { name: "s", iconIndex: 0, imageName: "sweep_img" } : { name: cardId, iconIndex: 0, imageName: "" };
+    slots = plain(adapter.skills());
+    assert.deepEqual([slots[3].iconIndex, slots[0].iconIndex, slots[0].imageName, slots[1].iconIndex], [123, 0, "sweep_img", 82], "設定された絵・番号を優先。無いものは既定");
+    hud.getCardPresentation = cardId => ({ name: cardId, iconIndex: 0, imageName: "" });
+    // Cooldown: ready → cooldown(残り割合 1 → 0・秒)→ ready
+    fc.useAbility("special");
+    slots = plain(adapter.skills());
+    assert.equal(slots[2].state, "cooldown"); assert.equal(slots[2].ratio, 1); assert.equal(slots[2].cooldown.remaining, 7); assert.equal(slots[2].cooldown.total, 7);
+    game.frame(210);                                                                                    // 3.5秒 = 半分
+    slots = plain(adapter.skills()); assert.ok(Math.abs(slots[2].ratio - 0.5) < 0.02, "残り割合は半分(" + slots[2].ratio + ")"); assert.ok(Math.abs(slots[2].cooldown.remaining - 3.5) < 0.05);
+    game.frame(215);
+    slots = plain(adapter.skills()); assert.equal(slots[2].state, "ready"); assert.equal(slots[2].ratio, 0); assert.equal(slots[2].cooldown.active, false, "待ちが終われば、また使える");
+    // コンボ: 1段 → 2段 → 強撃(3段目)。受付時間の残り割合は減っていく
+    game.click(); slots = plain(adapter.skills());
+    assert.deepEqual([slots[0].combo.step, slots[0].combo.finisher, slots[0].detail], [1, false, "1/3"]); assert.ok(slots[0].combo.timeLeft > 0.9);
+    game.frame(20); slots = plain(adapter.skills()); assert.ok(slots[0].combo.timeLeft > 0.4 && slots[0].combo.timeLeft < 0.7, "受付時間が減る(" + slots[0].combo.timeLeft + ")");
+    game.click(); game.frame(20); game.click(); slots = plain(adapter.skills());
+    assert.deepEqual([slots[0].combo.finisher, slots[0].detail, slots[0].tone], [true, "強撃!", "warn"], "3段目: 強撃の知らせ");
+    game.frame(60); slots = plain(adapter.skills()); assert.deepEqual([slots[0].combo.step, slots[0].combo.finisher, slots[0].detail], [0, false, "READY"], "受付時間を過ぎれば戻る");
+    // 使えなかった直後(約1.5秒)は alert と理由。Vは数量を残す
+    game.actor.hp = game.actor.mhp; fc.useAbility("consumable"); slots = plain(adapter.skills());
+    assert.deepEqual([slots[5].alert, slots[5].detail, slots[5].count, slots[5].state], [true, "効果なし", 3, "ready"], "HP満タンでは使えない: 理由を出し、数量は count で渡す");
+    game.frame(100); slots = plain(adapter.skills()); assert.deepEqual([slots[5].alert, slots[5].detail], [false, "×3"], "知らせは約1.5秒で消える");
+    // 使える → 使うと V の Cooldown・数量
+    game.actor.hp = 100; fc.useAbility("consumable"); slots = plain(adapter.skills());
+    assert.deepEqual([slots[5].state, slots[5].count, slots[5].cooldown.total, slots[5].ratio], ["cooldown", 2, 8, 1], "V: Cooldown と 数量(×2)");
+    // 使えない: アイテムなし
+    game.frame(500); game.inventory.set(7, 0); slots = plain(adapter.skills());
+    assert.deepEqual([slots[5].state, slots[5].detail, slots[5].disabled], ["unavailable", "NO ITEM", true], "使えない状態");
+    fc.end();
+});
+
 test("FieldCombat(Stage 5b): 1・2キーの固定カード = 戦闘中ずっと装備(ドロー・準備なし)。既存のカード効果を1回使い、Cooldownはカードの定義の値。入力は Q/E/Shift と同じ扱い", () => {
     const game = loadGame();
     const fc = game.ProjectRFieldCombat, deck = game.ProjectRCardDeck;

@@ -1719,6 +1719,7 @@
             if (view.state === "none") return { text: "NO ITEM", tone: "muted" };
             if (view.state === "empty") return { text: "×0", tone: "ng" };
             if (view.state === "unusable") return { text: `×${x.count} 不可`, tone: "ng" };
+            if (view.notice && !(view.cooldown > 0)) return { text: view.notice, tone: "ng" };          // 使えなかった直後は理由(数量は、HUD がアイコンの右下に出す)
             return { text: `×${x.count}`, tone: view.state === "cooldown" ? "muted" : "ok" };
         }
         if (view.state === "unavailable") return { text: "N/A", tone: "ng" };
@@ -1727,28 +1728,43 @@
     };
     // 固定カードの表示名(BattleHUD の内蔵名は英語なので、実装済みのカードは日本語の名前で出す)
     const CARD_NAMES = Object.freeze({ apollo_golden_volley: "黄金の矢", apollo_gigas_slayer: "ギガース殺し", hermes_reed_flute: "葦笛", hermes_veil: "ヴェイル", hermes_psychopomp: "サイコポンポス", hermes_strength: "ストレングス", hermes_sweep: "薙ぎ払い" });
+    // Stage 6A: 5つの固定スキルのアイコン。新しい素材は使わず、既存の img/system/IconSet.png の番号を使う。
+    //   優先順: BattleHUD の setCardPresentation / Skill の note <ProjectRCard> が決めたアイコン(あれば)> この既定。
+    //   attack=薙ぎ払い(DBの薙ぎ払いスキル id173 と同じ 76)/ mobility=絶(82 ブーツ)/ special=一閃(78 閃光)/ card1=黄金の矢(102 弓)/ card2=ギガース殺し(70 光の柱)
+    const SLOT_ICON_DEFAULT = Object.freeze({ attack: 76, mobility: 82, special: 78, card1: 102, card2: 70 });
+    const SLOT_PRESENTATION_ID = Object.freeze({ attack: "hermes_sweep" });
+    const slotIconOf = (slot, d) => {
+        const pres = safe(() => root.ProjectRBattleHUD?.getCardPresentation?.(SLOT_PRESENTATION_ID[slot] || d.cardId) || null, null);
+        if (pres && (pres.iconIndex > 0 || pres.imageName)) return { iconIndex: pres.iconIndex || 0, imageName: pres.imageName || "", name: pres.name };
+        return { iconIndex: SLOT_ICON_DEFAULT[slot] || 0, imageName: "", name: pres && pres.name };
+    };
     const hudSlots = () => {
         const state = getHudState();
         const bySlot = Object.fromEntries(state.slots.map(s => [s.slot, s]));
         const make = slot => {
             const d = LOADOUT[slot], view = bySlot[slot];
             if (slot === "attack") {                                                              // LMB 薙ぎ払い: 近接3段コンボ(進み具合)
-                const pres = safe(() => root.ProjectRBattleHUD.getCardPresentation("hermes_sweep"), null) || {}, c = state.combo;
-                return { mode: "field", key: d.key, slot, name: d.label, detail: c.finisherFlash ? "強撃!" : (c.step > 0 ? `${c.step}/${c.max}` : "READY"), tone: c.step > 0 || c.finisherFlash ? "ok" : "muted", accent: "",
-                    iconIndex: pres.iconIndex || 0, imageName: pres.imageName || "", skillId: 0, available: true, disabled: false, selected: c.step > 0 || c.finisherFlash, cooldown: { active: false, remaining: 0, total: 0 } };
+                const ic = slotIconOf(slot, d), c = state.combo;
+                return { mode: "field", key: d.key, slot, name: d.label, detail: c.finisherFlash ? "強撃!" : (c.step > 0 ? `${c.step}/${c.max}` : "READY"), tone: c.finisherFlash ? "warn" : "ok", accent: "",
+                    iconIndex: ic.iconIndex, imageName: ic.imageName, skillId: 0, available: true, disabled: false, selected: c.step > 0 || c.finisherFlash, cooldown: { active: false, remaining: 0, total: 0 },
+                    state: "ready", ratio: 0, alert: false, count: null, combo: { step: c.step, max: c.max, timeLeft: c.timeLeft, finisher: !!c.finisherFlash } };
             }
             const item = slot === "consumable" && view && view.extra && view.extra.id > 0 ? { name: view.extra.name, iconIndex: view.extra.iconIndex } : null;
-            const pres = slotIcon(d, item) || {};
+            const pres = slot === "consumable" || slot === "reload" ? (slotIcon(d, item) || {}) : slotIconOf(slot, d);
             const cd = view ? view.cooldown : 0, detail = slotDetail(slot, view);
             const name = slot === "consumable" ? (item ? item.name : d.label) : ((slot === "card1" || slot === "card2") ? (CARD_NAMES[d.cardId] || pres.name || d.label) : d.label);
+            const ready = !!(view && view.ready);
             return {
                 mode: "field", key: d.key, slot, name, detail: detail.text, tone: detail.tone, accent: slot === "consumable" ? "item" : "",
                 iconIndex: pres.iconIndex || 0, imageName: pres.imageName || "", skillId: 0,
                 available: !!(view && (view.ready || cd > 0)), disabled: !(view && view.ready),
-                selected: !!(view && (view.flash === "ok" || (slot === "ultimate" && view.ready))), cooldown: { active: cd > 0, remaining: cd, total: cooldownSecondsOf(slot) }
+                selected: !!(view && (view.flash === "ok" || (slot === "ultimate" && view.ready))), cooldown: { active: cd > 0, remaining: cd, total: cooldownSecondsOf(slot) },
+                // Stage 6A: HUD が状態を読みやすく描くための追加(cooldown=待ち中 / ready=使える / unavailable=使えない)。ratio は Cooldown の残り割合(1 → 0)
+                state: cd > 0 ? "cooldown" : ready ? "ready" : "unavailable", ratio: view ? view.ratio : 0, alert: !!(view && view.notice && !(cd > 0)),
+                count: slot === "consumable" && view && view.extra ? view.extra.count : null, combo: null
             };
         };
-        return ["attack", "mobility", "special", "card1", "card2", "consumable"].map(make);      // メイン5枠(LMB 薙ぎ払い / Shift 絶 / E 一閃 / 1・2 固定カード)+ 別枠の C アイテム。Q 奥義・R リロード・右クリックの銃は、HUDの枠には出さない(操作はそのまま使える)
+        return ["attack", "mobility", "special", "card1", "card2", "consumable"].map(make);      // メイン5枠(LMB 薙ぎ払い / Shift 絶 / E 一閃 / X・C 固定カード)+ 別枠の V アイテム。Q 奥義・R リロード・右クリックの銃は、HUDの枠には出さない(操作はそのまま使える)
     };
     const installHud = () => {
         const proto = root.ProjectRBattleHUD?.DataAdapter?.prototype;
