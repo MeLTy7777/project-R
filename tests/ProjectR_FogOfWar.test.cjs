@@ -458,6 +458,27 @@ test("主人公の重ね描き(PlayerOverlay): 壁のすぐ近くで暗闇に隠
     tilemap.removeChild(body); game.frame(); assert.equal(fog.mirrors.size, 0);
 });
 
+test("主人公の重ね描きの複製: 元のスプライトが破棄された(テクスチャの orig が null)あとの複製は、描かず・境界にも含めない(壁際で最後の敵を倒した直後の \"Cannot read property 'width' of null\" の修正)", () => {
+    const game = loadGame();
+    const fog = game.spriteset._projectRFog;
+    // PIXI 5 の Sprite と同じ呼び口: 描く(_render)・境界を計算する(_calculateBounds)。stub の Sprite に、呼ばれた回数を数えるだけの実装を足す
+    game.PIXI.Sprite.prototype._render = function() { this.rendered = (this.rendered || 0) + 1; };
+    game.PIXI.Sprite.prototype._calculateBounds = function() { this.boundsDone = (this.boundsDone || 0) + 1; };
+    const tilemap = game.spriteset._tilemap;
+    const body = new game.PIXI.Sprite(); Object.assign(body, { _character: game.$gamePlayer, x: 100, y: 200, texture: { id: "player" } }); tilemap.addChild(body);
+    game.visionEnabled = true; game.setView(square(0, 0, 8, 6)); game.frame();
+    const mirror = [...fog.mirrors.entries()].find(([src]) => src === body)[1];
+    assert.ok(mirror, "主人公の複製がある");
+    mirror._texture = { orig: {}, baseTexture: {} };
+    mirror._render({}); mirror._calculateBounds();
+    assert.deepEqual([mirror.rendered, mirror.boundsDone], [1, 1], "ふつうのテクスチャなら、描く・境界を計算する");
+    mirror._texture = { orig: null, baseTexture: null };           // 元のスプライトが destroy({ texture: true }) された
+    assert.doesNotThrow(() => { mirror._render({}); mirror._calculateBounds(); }, "破棄されたテクスチャを指している間は、PIXI の orig.width に触らない");
+    assert.deepEqual([mirror.rendered, mirror.boundsDone], [1, 1], "描かず・境界にも含めない");
+    // 次の更新(元のスプライトが無くなった)で、複製ごと片づく
+    tilemap.removeChild(body); game.frame(); assert.equal(fog.mirrors.size, 0);
+});
+
 // ---------------------------------------------------------------------------------------- 滑らかな縁の保存(細かい記録 v2) ----------------------------------------------------------------------------------------
 const pointInPoly = (p, poly) => { let r = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const a = poly[i], b = poly[j]; if ((a.y > p.y) !== (b.y > p.y) && p.x < (b.x - a.x) * (p.y - a.y) / (b.y - a.y) + a.x) r = !r; } return r; };
 const cellSet = (game, w, h, filter = () => true) => { const out = new Set(); for (let cy = 0; cy < h * 16; cy++) for (let cx = 0; cx < w * 16; cx++) if (filter(cx, cy) && game.fog.isExplored(cx >> 4, cy >> 4) && game.fog.isCellSeen((cx + 0.5) / 16, (cy + 0.5) / 16) === true) out.add(cx + "," + cy); return out; };

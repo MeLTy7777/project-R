@@ -99,16 +99,20 @@ test("保護対象(Hendrix・DotMove・既存カード・ダメージ式)は変�
     const out = cp.spawnSync("git", ["status", "--porcelain", "--", ...targets, "js/rmmz_objects.js", "js/rmmz_scenes.js", "data/Skills.json", "data/Map002.json"], { cwd: project, encoding: "utf8" });
     if (out.status !== 0) { console.log("  (git が使えないため保護対象の差分確認を省略)"); return; }
     // SOUL戦闘のスキル(ProjectR_SoulSkills)のための、SOUL以外では何もしない小さな受け口だけは許す(各ファイルの変更はその受け口だけ)
-    const SEAMS = { "js/plugins/ProjectR_GunSystem.js": /cooldownScale/, "js/plugins/ProjectR_SwordSystem.js": /cooldownScale/, "js/plugins/ProjectR_ApolloLyreRhythm.js": /soulAdapter/, "js/plugins/ProjectR_ApolloErosArrow.js": /projectRAttackId/,
+    const SEAMS = { "js/plugins/ProjectR_GunSystem.js": /cooldownScale/, "js/plugins/ProjectR_SwordSystem.js": /cooldownScale/,      // SwordSystem: さらに、フィールド戦闘(Stage 5 / 5c)の3段コンボ用の追加(options の damageScale・sector 等。options を渡さなければ従来と同じ)
+         "js/plugins/ProjectR_ApolloLyreRhythm.js": /soulAdapter/, "js/plugins/ProjectR_ApolloErosArrow.js": /projectRAttackId/,
         // ATTACK の終了で飛行中の攻撃・蓄えを打ち切る追加専用の窓口 clear(reason)(SOUL の準備ループだけが呼ぶ。通常戦闘では呼ばれない)
         "js/plugins/ProjectR_ApolloPlagueRain.js": /clear: reason/, "js/plugins/ProjectR_HermesStrength.js": /clear: reason|setSoulCards/,
-        "js/plugins/ProjectR_CardModifiers.js": /damageMultiplier/ };      // CardModifiers: フックが返す倍率を固定ダメージの基礎値に掛ける追加(SOUL のストレングス用)
+        "js/plugins/ProjectR_CardModifiers.js": /damageMultiplier/,
+        // 絶(Zetsu): フィールド戦闘(Stage 5b)が「敵の体」を通り抜けるための、衝突フィルターの追加専用の窓口(フィルターが無ければ従来のまま。SOUL・通常のカード戦闘は何も登録しない)
+        "js/plugins/ProjectR_HermesZetsu.js": /registerCollisionFilter/ };      // CardModifiers: フックが返す倍率を固定ダメージの基礎値に掛ける追加(SOUL のストレングス用)
     const changed = out.stdout.split(/\r?\n/).filter(Boolean).map(line => line.slice(3).trim());
     for (const file of changed) {
         assert.ok(SEAMS[file], file + " は変更されていない(許すのはSOULスキルの受け口だけ)");
         assert.match(fs.readFileSync(path.join(project, file), "utf8"), SEAMS[file], file + " の変更はSOULスキルの受け口");
         const stat = cp.spawnSync("git", ["diff", "--numstat", "--", file], { cwd: project, encoding: "utf8" }).stdout.trim().split(/\s+/);
-        assert.ok(Number(stat[0]) + Number(stat[1]) <= 60, file + " の変更は小さい(" + stat.slice(0, 2).join("+") + ")");
+        const limit = file === "js/plugins/ProjectR_SwordSystem.js" ? 220 : 60;            // SwordSystem だけ、フィールド戦闘の扇形の判定(sector)の分だけ広く
+        assert.ok(Number(stat[0]) + Number(stat[1]) <= limit, file + " の変更は小さい(" + stat.slice(0, 2).join("+") + ")");
     }
 });
 

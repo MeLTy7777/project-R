@@ -149,6 +149,14 @@
  *   ・Ultimate神が無い戦闘では、Ultimate区画とDivine HP区画を隠します（偽の0/100は出しません）。
  * カード戦闘以外では従来のHotbar（Q/R/X/C/V）とUltimate表示のままです。
  *
+ * ---- フィールド戦闘(ProjectR_FieldCombat。表示だけ) ----
+ *   ・メインの5枠 = LMB 薙ぎ払い(近接3段コンボの進み具合)/ Shift 絶 / E 一閃 / X・C 固定カード(実際のスキル名・READY・COOL・使えなかった理由)+ 別枠の V アイテム(計6枠)。
+ *     Q 奥義・R リロード・右クリックの銃は、枠には出さない(奥義は上のゲージ、弾数は右下の武器の表示。操作はそのまま使える)。
+ *     V のアイテム枠は、メインの5枠から少し離し、金色の枠で別の枠として表示する(選んでいるアイテムのアイコン・数量・Cooldown)。SKILL n の表示は出さない。
+ *   ・スキル枠の上に、操作ガイド1行: [LMB] 斬撃 ●●○(近接3段コンボの進み具合・残り時間・3段目は強撃)と [RMB] 射撃 弾数。
+ *   ・V 長押しの放射メニュー(アイテムを円形に並べ、マウスの方向が光る)。いずれも 1920x1080 基準の座標で、画面の大きさに合わせて拡縮する。
+ *   ・フィールド戦闘が終われば、従来の表示に戻る(状態はProjectRFieldCombatが持つ。HUDは読むだけ)。
+ *
  * 差し替え口（実行時のみ・セーブしません。将来の画像もここから）:
  *   ProjectRBattleHUD.setCardPresentation(cardId, { name, iconIndex, imageName })
  *   ProjectRBattleHUD.setGodPresentation(godId, { name, imageName })
@@ -171,6 +179,9 @@
     const SKILL_SLOT_HEIGHT = 140;
     const SKILL_SLOT_SKEW = 46;
     const SKILL_SLOT_GAP = 18;
+    const FIELD_ITEM_GAP = 44;                 // フィールド戦闘: 6枠目(V アイテム)を、メインの5枠から離す
+    const FIELD_SLOT_COUNT = 6;                // フィールド戦闘: LMB 薙ぎ払い / Shift 絶 / E 一閃 / X・C 固定カード + 別枠の V アイテム
+    const RADIAL_MAX = 12;                     // 放射メニューに並べるアイテムの最大数(ProjectRFieldCombat と同じ)
     const SKILL_HUD_Y = 915;
 
     const COLORS = Object.freeze({
@@ -1507,8 +1518,9 @@
             const selected = !!data.selected;
             const cooldown = !!data.cooldown?.active;
             const disabled = !!data.disabled;
-            const border = selected ? COLORS.cyan : COLORS.panelLine;
-            const fill = selected ? COLORS.cyanDark : COLORS.panel;
+            const itemAccent = data.accent === "item";
+            const border = selected ? COLORS.cyan : (itemAccent ? COLORS.gold : COLORS.panelLine);
+            const fill = selected ? COLORS.cyanDark : (itemAccent ? COLORS.goldDark : COLORS.panel);
             const points = [
                 SKILL_SLOT_SKEW,
                 0,
@@ -1543,12 +1555,18 @@
             this._nameText.setText(data.name || "—", {
                 color: selected ? rgbaHex(COLORS.cyan) : rgbaHex(COLORS.muted)
             });
-            this._slotText.setText(
-                `${data.mode === "card" ? "CARD" : "SKILL"} ${data.mode === "card" && data.key ? data.key : this._index + 1}`,
-                { color: selected ? rgbaHex(COLORS.cyan) : rgbaHex(COLORS.text) }
-            );
-            // カード戦闘中は Q E X C V、それ以外はHotbarの従来キー。
-            this._keyText.setText(data.key || this._key);
+            if (data.mode === "field") {
+                // フィールド戦闘: SKILL n の代わりに、状態(READY・ゲージ%・弾数・数量・COOL)を出す。
+                this._slotText.setText(data.detail || "", { color: toneColor(data.tone, selected) });
+            } else {
+                this._slotText.setText(
+                    `${data.mode === "card" ? "CARD" : "SKILL"} ${data.mode === "card" && data.key ? data.key : this._index + 1}`,
+                    { color: selected ? rgbaHex(COLORS.cyan) : rgbaHex(COLORS.text) }
+                );
+            }
+            // カード戦闘中は Q E X C V、フィールド戦闘中は実際のキー(LMB / Shift / E / X / C / V)、それ以外はHotbarの従来キー。
+            const keyLabel = String(data.key || this._key);
+            this._keyText.setText(keyLabel, { fontSize: keyLabel.length > 2 ? 17 : 25 });
             if (cooldown) {
                 this._cooldownText.setText(Math.max(0, Math.ceil(data.cooldown.remaining)));
             } else {
@@ -1606,6 +1624,9 @@
                 data.instanceId,
                 data.skillId,
                 data.name,
+                data.detail,
+                data.tone,
+                data.accent,
                 data.iconIndex,
                 imageName,
                 data.available,
@@ -1626,21 +1647,32 @@
             this._adapter = adapter;
             this._imageResolver = imageResolver;
             this._slots = [];
-            const totalWidth = SKILL_SLOT_WIDTH * SKILL_COUNT +
-                SKILL_SLOT_GAP * (SKILL_COUNT - 1);
-            const startX = (BASE_WIDTH - totalWidth) / 2;
-            const stepX = SKILL_SLOT_WIDTH + SKILL_SLOT_GAP;
-            for (let index = 0; index < SKILL_COUNT; index++) {
+            this._field = false;
+            for (let index = 0; index < FIELD_SLOT_COUNT; index++) {
                 const slot = new Sprite_ProjectRSkillSlot(
                     index,
-                    SKILL_KEYS[index],
+                    SKILL_KEYS[index] || "C",
                     adapter,
                     imageResolver
                 );
-                slot.x = startX + stepX * index;
                 slot.y = SKILL_HUD_Y;
                 this._slots.push(slot);
                 this.addChild(slot);
+            }
+            this.layout();
+        }
+
+        // フィールド戦闘中だけ、6枠(メインの5枠 + 別枠の V アイテム)。V アイテムの枠は、メインの5枠から少し離す。それ以外は従来の5枠。
+        layout() {
+            const count = this._field ? FIELD_SLOT_COUNT : SKILL_COUNT;
+            const gap = this._field ? FIELD_ITEM_GAP : 0;
+            const totalWidth = SKILL_SLOT_WIDTH * count +
+                SKILL_SLOT_GAP * (count - 1) + gap;
+            const startX = (BASE_WIDTH - totalWidth) / 2;
+            const stepX = SKILL_SLOT_WIDTH + SKILL_SLOT_GAP;
+            for (let index = 0; index < this._slots.length; index++) {
+                this._slots[index].visible = index < count;
+                this._slots[index].x = startX + stepX * index + (this._field && index === count - 1 ? gap : 0);
             }
         }
 
@@ -1653,8 +1685,10 @@
             super.update();
             if (Graphics.frameCount % 4 !== 0) return;
             const data = this._adapter.skills();
+            const field = data[0] && data[0].mode === "field";
+            if (field !== this._field) { this._field = field; this.layout(); }
             for (let index = 0; index < this._slots.length; index++) {
-                this._slots[index].setData(data[index]);
+                if (data[index]) this._slots[index].setData(data[index]);
             }
         }
     }
@@ -2283,6 +2317,192 @@
         }
     }
 
+    // ---- フィールド戦闘(ProjectRFieldCombat)の操作ガイドと放射メニュー(表示だけ。状態は ProjectRFieldCombat.getHudState / getRadialState から毎回読む) ----
+    const fieldCombat = () => {
+        const api = window.ProjectRFieldCombat;
+        return api && typeof api.isActive === "function" && api.isActive() === true ? api : null;
+    };
+    const TONE_COLORS = Object.freeze({ ok: COLORS.green, warn: COLORS.gold, ng: COLORS.red, muted: COLORS.muted });
+    const toneColor = (tone, selected) => rgbaHex(selected && tone === "muted" ? COLORS.cyan : (TONE_COLORS[tone] ?? COLORS.text));
+
+    // スキル枠の上に、コンパクトに1行: [LMB] 斬撃 ●●○(3段目は強撃。残り時間の線)  [RMB] 射撃 5/7
+    class Sprite_ProjectRFieldGuideHUD extends Sprite {
+        initialize() {
+            super.initialize();
+            this._signature = "";
+            this._shape = new PIXI.Graphics();
+            this.addChild(this._shape);
+            this._lmbText = new Sprite_ProjectRText(70, 30, { fontSize: 20, bold: true });
+            this._lmbText.x = 72;
+            this._lmbText.y = 2;
+            this.addChild(this._lmbText);
+            this._comboText = new Sprite_ProjectRText(90, 30, { fontSize: 18, bold: true });
+            this._comboText.x = 264;
+            this._comboText.y = 3;
+            this.addChild(this._comboText);
+            this._rmbText = new Sprite_ProjectRText(70, 30, { fontSize: 20, bold: true });
+            this._rmbText.x = 444;
+            this._rmbText.y = 2;
+            this.addChild(this._rmbText);
+            this._ammoText = new Sprite_ProjectRText(100, 30, { fontSize: 20, bold: true });
+            this._ammoText.x = 508;
+            this._ammoText.y = 2;
+            this.addChild(this._ammoText);
+            this._keyTexts = [];
+            for (const x of [0, 372]) {
+                const text = new Sprite_ProjectRText(64, 30, { fontSize: 18, bold: true, align: "center" });
+                text.x = x;
+                text.y = 3;
+                this._keyTexts.push(text);
+                this.addChild(text);
+            }
+            this._keyTexts[0].setText("LMB");
+            this._keyTexts[1].setText("RMB");
+            this.visible = false;
+        }
+
+        layout() {
+            const field = !!(this.parent && this.parent._skillHUD && this.parent._skillHUD._field);
+            const count = field ? FIELD_SLOT_COUNT : SKILL_COUNT;
+            const totalWidth = SKILL_SLOT_WIDTH * count + SKILL_SLOT_GAP * (count - 1) + (field ? FIELD_ITEM_GAP : 0);
+            this.x = (BASE_WIDTH - totalWidth) / 2 + 6;
+            this.y = SKILL_HUD_Y - 62;
+        }
+
+        update() {
+            super.update();
+            const api = fieldCombat();
+            if (!api) { this.visible = false; this._signature = ""; return; }
+            this.visible = true;
+            const state = api.getHudState();
+            const combo = state.combo, gun = state.gun;
+            const timeBucket = Math.ceil(combo.timeLeft * 10);
+            const signature = JSON.stringify([combo.step, timeBucket, combo.finisherFlash, gun.ammo, gun.capacity, gun.equipped, state.radial.open]);
+            if (signature === this._signature) return;
+            this._signature = signature;
+            this.layout();
+            const g = this._shape;
+            g.clear();
+            for (const x of [0, 372]) {
+                g.lineStyle(2, COLORS.panelLine, 1);
+                g.beginFill(0x09111b, 0.92);
+                g.drawRoundedRect(x, 0, 64, 32, 8);
+                g.endFill();
+            }
+            // 3段のコンボ: 1・2段目は丸、3段目(強撃)は大きな金の丸。進んだ段は塗りつぶす。
+            for (let index = 0; index < 3; index++) {
+                const heavy = index === 2;
+                const filled = index < combo.step || (heavy && combo.finisherFlash);
+                const x = [158, 194, 238][index], radius = heavy ? 13 : 10;
+                const color = heavy ? COLORS.gold : COLORS.cyan;
+                g.lineStyle(heavy ? 3 : 2, color, filled ? 1 : 0.7);
+                g.beginFill(color, filled ? 0.95 : 0.12);
+                g.drawCircle(x, 16, radius);
+                g.endFill();
+            }
+            if (combo.step > 0) {
+                g.lineStyle(0);
+                g.beginFill(COLORS.cyan, 0.9);
+                g.drawRect(146, 33, Math.max(2, 112 * clamp(combo.timeLeft, 0, 1)), 4);
+                g.endFill();
+            }
+            this._lmbText.setText("斬撃");
+            this._comboText.setText(combo.finisherFlash ? "強撃!" : (combo.step > 0 ? `${combo.step}/3` : "1/3"),
+                { color: combo.finisherFlash ? rgbaHex(COLORS.gold) : rgbaHex(combo.step > 0 ? COLORS.cyan : COLORS.muted) });
+            this._rmbText.setText("射撃", { color: rgbaHex(gun.equipped ? COLORS.text : COLORS.muted) });
+            this._ammoText.setText(gun.equipped ? `${gun.ammo}/${gun.capacity}` : "—",
+                { color: rgbaHex(!gun.equipped ? COLORS.muted : gun.ammo <= 0 ? COLORS.red : COLORS.green) });
+        }
+    }
+
+    // V 長押しの放射メニュー。中心は ProjectRFieldCombat が決めた位置(開いたときのマウスの位置)。マウスの方向のアイテムが光る。離すと選ぶ(使わない)。
+    class Sprite_ProjectRRadialHUD extends Sprite {
+        initialize() {
+            super.initialize();
+            this._signature = "";
+            this._shape = new PIXI.Graphics();
+            this.addChild(this._shape);
+            this._cells = [];
+            for (let index = 0; index < RADIAL_MAX; index++) {
+                const icon = new Sprite_ProjectRIcon(46);
+                const count = new Sprite_ProjectRText(76, 26, { fontSize: 18, bold: true, align: "right" });
+                icon.visible = false;
+                count.visible = false;
+                this.addChild(icon);
+                this.addChild(count);
+                this._cells.push({ icon, count });
+            }
+            this._title = new Sprite_ProjectRText(320, 30, { fontSize: 24, bold: true, align: "center" });
+            this._sub = new Sprite_ProjectRText(320, 26, { fontSize: 18, align: "center", color: rgbaHex(COLORS.muted) });
+            this.addChild(this._title);
+            this.addChild(this._sub);
+            this.visible = false;
+        }
+
+        update() {
+            super.update();
+            const api = fieldCombat();
+            const radial = api ? api.getRadialState() : null;
+            if (!radial || !radial.open) { this.visible = false; this._signature = ""; return; }
+            this.visible = true;
+            const scaleX = Math.max(0.0001, Graphics.width / BASE_WIDTH), scaleY = Math.max(0.0001, Graphics.height / BASE_HEIGHT);
+            const cx = radial.center.x / scaleX, cy = radial.center.y / scaleY, count = radial.items.length;
+            const signature = JSON.stringify([Math.round(cx), Math.round(cy), radial.baseRadius, radial.index, radial.selectedId, radial.items.map(item => [item.id, item.count, item.usable])]);
+            if (signature === this._signature) return;
+            this._signature = signature;
+            const radius = radial.baseRadius, g = this._shape, cell = 40;
+            g.clear();
+            g.lineStyle(3, COLORS.cyan, 0.55);
+            g.beginFill(COLORS.black, 0.58);
+            g.drawCircle(cx, cy, radius + 76);
+            g.endFill();
+            g.lineStyle(2, COLORS.panelLine, 0.35);
+            g.drawCircle(cx, cy, radius);
+            if (radial.index >= 0 && count > 0) {                                                    // 中心から、光っているアイテムへの線(マウスの方向)
+                const angle = -Math.PI / 2 + radial.index * 2 * Math.PI / count;
+                g.lineStyle(5, COLORS.cyan, 0.9);
+                g.moveTo(cx, cy);
+                g.lineTo(cx + Math.cos(angle) * (radius - cell), cy + Math.sin(angle) * (radius - cell));
+            }
+            g.lineStyle(0);
+            g.beginFill(COLORS.cyan, 0.9);
+            g.drawCircle(cx, cy, 6);
+            g.endFill();
+            for (let index = 0; index < this._cells.length; index++) {
+                const slot = this._cells[index], item = radial.items[index];
+                slot.icon.visible = !!item;
+                slot.count.visible = !!item;
+                if (!item) continue;
+                const angle = -Math.PI / 2 + index * 2 * Math.PI / count;
+                const x = cx + Math.cos(angle) * radius, y = cy + Math.sin(angle) * radius;
+                const hover = index === radial.index, chosen = item.id === radial.selectedId, dim = !item.usable || item.count <= 0;
+                g.lineStyle(hover ? 5 : 3, hover ? COLORS.cyan : (chosen ? COLORS.gold : COLORS.panelLine), 1);
+                g.beginFill(hover ? COLORS.cyanDark : (chosen ? COLORS.goldDark : COLORS.panel), dim ? 0.6 : 0.97);
+                g.drawRoundedRect(x - cell, y - cell, cell * 2, cell * 2, 14);
+                g.endFill();
+                slot.icon.x = x;
+                slot.icon.y = y - 6;
+                slot.icon.setIconIndex(item.iconIndex);
+                slot.icon.alpha = dim ? 0.45 : 1;
+                slot.count.x = x + cell - 80;
+                slot.count.y = y + cell - 30;
+                slot.count.setText(`×${item.count}`, { color: rgbaHex(dim ? COLORS.red : COLORS.text) });
+            }
+            const hovered = radial.items[radial.index], shown = hovered || radial.items.find(item => item.id === radial.selectedId);
+            this._title.x = cx - 160;
+            this._title.y = cy - 38;
+            this._sub.x = cx - 160;
+            this._sub.y = cy + 4;
+            if (count === 0) {
+                this._title.setText("アイテムなし", { color: rgbaHex(COLORS.muted) });
+                this._sub.setText("離す / 右クリックで閉じる");
+            } else {
+                this._title.setText(shown ? shown.name : "—", { color: rgbaHex(hovered ? COLORS.cyan : COLORS.text) });
+                this._sub.setText(hovered ? (hovered.usable ? "離すと選択(使わない)" : "使えない状態 / 離すと選択") : "方向で選ぶ / 右クリックで取消");
+            }
+        }
+    }
+
     class ProjectRBattleHUDManager extends Sprite {
         initialize(scene) {
             super.initialize();
@@ -2298,6 +2518,8 @@
             this._statusHUD = new Sprite_ProjectRStatusHUD(this._adapter);
             this._countsHUD = new Sprite_ProjectRCardCountsHUD(this._adapter);
             this._divineHUD = new Sprite_ProjectRDivineHUD(this._adapter);
+            this._fieldGuideHUD = new Sprite_ProjectRFieldGuideHUD();
+            this._radialHUD = new Sprite_ProjectRRadialHUD();
             this._cardWasActive = false;
             this.addChild(this._ultimateHUD);
             this.addChild(this._skillHUD);
@@ -2306,6 +2528,8 @@
             this.addChild(this._playerHUD);
             this.addChild(this._weaponHUD);
             this.addChild(this._statusHUD);
+            this.addChild(this._fieldGuideHUD);
+            this.addChild(this._radialHUD);                       // 放射メニューは、いちばん上
             this.updateScale();
         }
 

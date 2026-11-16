@@ -61,7 +61,13 @@
  * 【対象】銃(武器メモ<capacity:>)ではない武器を装備しているとき。何も装備していない素手は従来のCE1のまま。
  *
  * API: ProjectRSwordSystem
- *   swing(source)  斬撃を1回行う → { ok, reason?, degree, eventId }
+ *   swing(source, options?)  斬撃を1回行う → { ok, reason?, degree, serial, step, scale }
+ *       options(省略可。省略すれば従来と同じ): anyWeapon(銃装備でも出す) / visual(false なら Swing Weapon と SE を出さない) / width / depth / forward / lifetime / cooldown /
+ *       damageScale(ダメージ倍率。1なら従来の式) / style(clockwise・counterclockwise・fullcircle・thrust) / pitch / speed / step /
+ *       sector({ radius(tile), arc(度), frames(振り切るまでの更新数), passes:[{ offset(度), delay(更新数) }] })。
+ *       sector を渡すと、長方形のHitboxの代わりに「扇形が時計回りに振られていく」判定になる(見た目の薙ぎ払いと同じ形・同じ時間。ProjectR_HermesSweep と同じ
+ *       CombatOcclusion の扇の判定。壁の向こうには当たらない)。各敵には1回の斬撃につき1回だけ(passes が複数でも)。ProjectR_FieldCombat の左クリック3段コンボが使う。
+ *   getActiveSweeps()  扇形の判定の状態(DEV・テスト用)
  *   getActiveHitboxes() / status() / config
  */
 (() => {
@@ -80,6 +86,8 @@
     const state = { cooldown: 0, swings: 0, hits: 0, last: null };
     let cooldownScale = 1;                                          // 攻撃間隔の倍率の逆数(既定1)。ProjectR_SoulSkills だけが一時的に変える(SOUL戦闘の絶・神託)
     let serial = 0;
+    const sweeps = new Map(); // 扇形の判定(sector)。id -> { map, center, degree, serial, scale, step, sector, frame, hitEnemies:Set, hits }
+    let sweepId = 0;
 
     const map = () => typeof $gameMap !== "undefined" ? $gameMap : null;
     const player = () => typeof $gamePlayer !== "undefined" ? $gamePlayer : null;
@@ -131,7 +139,7 @@
         if (m === map() && SceneManager._scene instanceof Scene_Map) SceneManager._scene._spriteset?.unspawnEvent(id);
         m._events[id] = null;
     };
-    const clear = () => { for (const [id, record] of [...hitboxes]) destroy(id, record); };
+    const clear = () => { sweeps.clear(); for (const [id, record] of [...hitboxes]) destroy(id, record); };
 
     const available = () => {
         const m = map();
@@ -144,33 +152,116 @@
     };
 
     // 見た目(公式Swing Weapon + SE)。旧CEと同じ引数。失敗してもHitbox・ダメージは変えない。
-    const playVisual = () => {
+    // options(省略可。省略すれば、従来とまったく同じ1振り): ProjectR_FieldCombat の3段コンボが、段ごとに範囲・ダメージ倍率・スイングの種類を変えるために使う。
+    const SWING_STYLES = ["clockwise", "counterclockwise", "fullcircle", "thrust"];
+    const playVisual = (style = "clockwise", pitch = 140, speed = 10) => {
         try { player().turnToward?.("mouse or gamepad", false); } catch (_error) { /* 表示のみ */ }
-        try { if (typeof AudioManager !== "undefined") AudioManager.playSe({ name: "Slash1", volume: 80, pitch: 140, pan: 0 }); } catch (_error) { /* 表示のみ */ }
+        try { if (typeof AudioManager !== "undefined") AudioManager.playSe({ name: "Slash1", volume: 80, pitch, pan: 0 }); } catch (_error) { /* 表示のみ */ }
         try {
-            command("SwingWeapon", { weaponSprite: "Pan", eventId: "player", offset: "0, -15", zIndex: "same", style: "clockwise", speed: "10",
+            command("SwingWeapon", { weaponSprite: "Pan", eventId: "player", offset: "0, -15", zIndex: "same", style, speed: String(speed),
                 visualSettings: JSON.stringify({ traitEffect: "true", traitColor: "", traitBlend: "screen", traitOrder: "above" }) });
         } catch (_error) { /* 表示のみ */ }
     };
+    const sectorOptions = raw => {
+        if (!raw || typeof raw !== "object") return null;
+        const pos = (value, fallback, min, max) => { const n = Number(value); return Number.isFinite(n) && n >= min && n <= max ? n : fallback; };
+        const passes = (Array.isArray(raw.passes) && raw.passes.length ? raw.passes : [{ offset: 0, delay: 0 }]).slice(0, 4)
+            .map(p => ({ offset: pos(p && p.offset, 0, -360, 360), delay: Math.floor(pos(p && p.delay, 0, 0, 120)) }));
+        return { radius: pos(raw.radius, 3.9, 0.5, 12), arc: pos(raw.arc, 190, 10, 360), frames: Math.floor(pos(raw.frames, 15, 1, 120)), passes };
+    };
+    const swingOptions = raw => {
+        const o = raw && typeof raw === "object" ? raw : {};
+        const pos = (value, fallback, min, max) => { const n = Number(value); return Number.isFinite(n) && n >= min && n <= max ? n : fallback; };
+        return {
+            anyWeapon: o.anyWeapon === true, visual: o.visual !== false,
+            width: pos(o.width, config.width, 0.01, 8), depth: pos(o.depth, config.depth, 0.01, 8), forward: pos(o.forward, config.forward, 0, 8),
+            lifetime: Math.floor(pos(o.lifetime, config.lifetime, 1, 60)), cooldown: Math.floor(pos(o.cooldown, config.cooldown, 1, 600)),
+            scale: pos(o.damageScale, 1, 0.1, 10), style: SWING_STYLES.includes(o.style) ? o.style : "clockwise",
+            pitch: pos(o.pitch, 140, 50, 150), speed: pos(o.speed, 10, 1, 60), step: Number.isFinite(Number(o.step)) ? Math.floor(Number(o.step)) : 0,
+            sector: sectorOptions(o.sector)
+        };
+    };
 
-    const swing = (source = "api") => {
+    // ---- 扇形の判定(sector): 見た目の薙ぎ払い(白い杖の残像: 狙う向きの -arc/2 → +arc/2 へ時計回りに振る)と同じ扇を、同じ時間で振る ----
+    //   毎更新、「前の更新の角度 → いまの角度」の細い扇(スライス)に触れた敵へ、1回だけダメージ。中心は振った瞬間のプレイヤー中心(見た目の残像も、振った位置に残る)。
+    const SLICE_STEP_DEGREES = 6;
+    const occlusion = () => root.ProjectR?.CombatOcclusion || null;
+    const polarPoint = (center, radius, degree) => ({ x: center.x + Math.sin(degree * Math.PI / 180) * radius, y: center.y - Math.cos(degree * Math.PI / 180) * radius });
+    // 弧は「外接」する折れ線にして、hasLineToPolygon の radius で正確な円弧へ切り詰める(ProjectR_HermesSweep と同じ)。
+    const sliceClip = (center, radius, from, to) => {
+        const count = Math.max(1, Math.ceil((to - from) / SLICE_STEP_DEGREES)), outer = radius / Math.cos((to - from) / count / 2 * Math.PI / 180);
+        const polygon = [{ x: center.x, y: center.y }];
+        for (let i = 0; i <= count; i++) polygon.push(polarPoint(center, outer, from + (to - from) * i / count));
+        return polygon;
+    };
+    const sectorAvailable = () => {
+        const m = map();
+        if (!m || !player() || !(SceneManager._scene instanceof Scene_Map) || !SceneManager._scene._spriteset) return "mapUnavailable";
+        if (typeof occlusion()?.hasLineToPolygon !== "function" || typeof occlusion()?.eventPolygon !== "function" ||
+                !["events", "event", "getCurrentEventHp"].every(name => typeof m[name] === "function") ||
+                typeof PluginManager._commands?.[`${ENGINE}:UpdateEventHp`] !== "function" || typeof player().centerPositionPoint !== "function") return "actionCombatUnavailable";
+        return null;
+    };
+    const damageValueOf = scale => scale === 1 ? "-player weapon" : `-Math.round(player weapon * ${scale})`;
+    const sectorSwing = (opt, m, point, degree, source) => {
+        const missing = sectorAvailable();
+        if (missing) return { ok: false, reason: missing };
+        const id = ++sweepId;
+        sweeps.set(id, { id, map: m, center: { x: point.x, y: point.y }, degree, serial: ++serial, scale: opt.scale, step: opt.step, sector: opt.sector, frame: 0, hitEnemies: new Set(), hits: 0 });
+        state.cooldown = opt.cooldown;
+        state.swings++;
+        state.last = { source, degree, serial, step: opt.step, scale: opt.scale, sector: true };
+        if (opt.visual) playVisual(opt.style, opt.pitch, opt.speed);
+        else { try { player().turnToward?.("mouse or gamepad", false); } catch (_error) { /* 表示のみ */ } }
+        return { ok: true, degree, serial, step: opt.step, scale: opt.scale, sector: true };
+    };
+    // 1更新ぶんの扇形の判定を進める(Game_Map.update から)
+    const stepSweeps = gameMap => {
+        const occ = occlusion();
+        for (const [id, rec] of [...sweeps]) {
+            if (rec.map !== gameMap) { sweeps.delete(id); continue; }
+            const frame = ++rec.frame, { radius, arc, frames, passes } = rec.sector;
+            let alive = false;
+            for (const pass of passes) {
+                const pf = frame - pass.delay;
+                if (pf <= frames) alive = true;
+                if (pf < 1 || pf > frames) continue;
+                const start = rec.degree + pass.offset - arc / 2, clip = sliceClip(rec.center, radius, start + arc * (pf - 1) / frames, start + arc * pf / frames);
+                for (const enemy of gameMap.events()) {
+                    if (!enemy || enemy._erased || rec.hitEnemies.has(enemy) || !enemy.event()?.note?.includes("<enemy>")) continue;
+                    const enemyId = enemy.eventId(), hp = gameMap.getCurrentEventHp(enemyId);
+                    if (hp == null || hp <= 0) continue;
+                    const polygon = occ.eventPolygon(enemy);
+                    if (!Array.isArray(polygon) || polygon.length < 3 || !occ.hasLineToPolygon(rec.center, polygon, { radius, clipPolygon: clip })) continue;
+                    rec.hitEnemies.add(enemy); rec.hits++; state.hits++;
+                    trackDamage(enemyId, `sword:${rec.serial}`, () =>
+                        command("UpdateEventHp", { eventId: String(enemyId), value: damageValueOf(rec.scale), exceedMaxHealth: "false", projectRAttackId: `sword:${rec.serial}` }, 0));
+                }
+            }
+            if (!alive) sweeps.delete(id);
+        }
+    };
+
+    const swing = (source = "api", rawOptions) => {
+        const opt = swingOptions(rawOptions);
         const weapon = equippedWeapon();
-        if (!isMelee(weapon)) return { ok: false, reason: "noMeleeWeapon" };
+        if (!opt.anyWeapon && !isMelee(weapon)) return { ok: false, reason: "noMeleeWeapon" };      // anyWeapon: 銃を持っていても、近接の斬撃を出せる(ダメージは装備中の武器の攻撃力。FieldCombat の左クリック)
         if (state.cooldown > 0) return { ok: false, reason: "cooldown" };
-        const missing = available();
+        const missing = opt.sector ? null : available();
         if (missing) return { ok: false, reason: missing };
         const m = map(), p = player();
         const point = p.centerPositionPoint();
         if (![point?.x, point?.y].every(Number.isFinite)) return { ok: false, reason: "invalidPlayerPosition" };
         const degree = mouseDegree() ?? facingDegree();
+        if (opt.sector) return sectorSwing(opt, m, point, degree, source);
         const radians = (degree - 90) * Math.PI / 180;
-        const x = point.x - 0.5 + Math.cos(radians) * config.forward;
-        const y = point.y - 0.5 + Math.sin(radians) * config.forward;
+        const x = point.x - 0.5 + Math.cos(radians) * opt.forward;
+        const y = point.y - 0.5 + Math.sin(radians) * opt.forward;
         const rotation = degree === 0 ? 360 : degree; // 導入版Collisionは0度だけ非回転扱いなので、真上は同値の360度
         const tag = `<projectRNormalSwordHit${++serial}>`;
         const before = new Set(m.events());
         try {
-            command("spawnEventHitbox", { name: "DynamicHitbox", notetag: `${TAG}${tag}<hitbox: ${config.width}, ${config.depth}>`, comment: "",
+            command("spawnEventHitbox", { name: "DynamicHitbox", notetag: `${TAG}${tag}<hitbox: ${opt.width}, ${opt.depth}>`, comment: "",
                 position: `${x}, ${y}`, rotationDegree: String(rotation), turnToward: "", attachTo: "", wait: "" });
             const created = m.events().filter(e => !before.has(e) && isHitbox(e));
             if (created.length !== 1) throw Error("hitboxCreationFailed");
@@ -178,16 +269,17 @@
             if (!event.isDynamicEvent || typeof event.rotateTo !== "function") throw Error("hitboxCreationFailed");
             event.rotateTo(rotation);
             if (!Number.isFinite(event._rotation) || Math.abs(event._rotation - rotation) > 1e-6) throw Error("hitboxRotationFailed");
-            hitboxes.set(event.eventId(), { map: m, event, tag, degree, framesLeft: config.lifetime, hitEnemies: new Set(), serial });
+            hitboxes.set(event.eventId(), { map: m, event, tag, degree, framesLeft: opt.lifetime, hitEnemies: new Set(), serial, scale: opt.scale, step: opt.step });
         } catch (error) {
             for (const event of m.events()) if (!before.has(event) && isHitbox(event)) destroy(event.eventId(), { map: m, event });
             return { ok: false, reason: String(error?.message || error) };
         }
-        state.cooldown = config.cooldown;
+        state.cooldown = opt.cooldown;
         state.swings++;
-        state.last = { source, degree, serial };
-        playVisual();
-        return { ok: true, degree, serial };
+        state.last = { source, degree, serial, step: opt.step, scale: opt.scale };
+        if (opt.visual) playVisual(opt.style, opt.pitch, opt.speed);
+        else { try { player().turnToward?.("mouse or gamepad", false); } catch (_error) { /* 表示のみ */ } }          // visual=false: 見た目(Swing Weapon・SE)は呼び出し側が出す(FieldCombat の薙ぎ払いのVFX)。Hitbox・ダメージは同じ
+        return { ok: true, degree, serial, step: opt.step, scale: opt.scale };
     };
 
     const _update = Game_Map.prototype.update;
@@ -195,6 +287,7 @@
         _update.apply(this, arguments);
         if (!sceneActive || this.eventsPaused) return;
         if (state.cooldown > 0) state.cooldown = cooldownScale === 1 ? state.cooldown - 1 : Math.max(0, state.cooldown - cooldownScale);   // cooldownScale=2 なら攻撃間隔が半分(SOULの絶Lv3)
+        if (sweeps.size) stepSweeps(this);
         for (const [id, record] of [...hitboxes]) {
             if (record.map !== this || this.event(id) !== record.event || record.event._erased) { hitboxes.delete(id); continue; }
             for (const enemy of this.events()) {
@@ -204,8 +297,10 @@
                 if (hp == null || hp <= 0 || !root.checkCollide(enemyId, record.tag)) continue;
                 record.hitEnemies.add(enemy); // 同じ斬撃では1回だけ
                 state.hits++;
+                // 倍率が1なら従来と同じ式("-player weapon")。3段コンボの強撃だけ倍率(例 2)を掛ける(式の中の "player weapon" は Hendrix が武器ダメージの数値に置き換える)。
+                const damageValue = damageValueOf(record.scale);
                 trackDamage(enemyId, `sword:${record.serial}`, () =>
-                    command("UpdateEventHp", { eventId: String(enemyId), value: "-player weapon", exceedMaxHealth: "false", projectRAttackId: `sword:${record.serial}` }, id));
+                    command("UpdateEventHp", { eventId: String(enemyId), value: damageValue, exceedMaxHealth: "false", projectRAttackId: `sword:${record.serial}` }, id));
             }
             if (--record.framesLeft <= 0) destroy(id, record);
         }
@@ -252,6 +347,7 @@
         config, swing,
         setCooldownScale: value => { const n = Number(value); cooldownScale = Number.isFinite(n) && n >= 1 && n <= 10 ? n : 1; return cooldownScale; },
         getCooldownScale: () => cooldownScale,
+        getActiveSweeps: () => [...sweeps.values()].map(r => ({ id: r.id, degree: r.degree, serial: r.serial, frame: r.frame, hits: r.hits, center: { ...r.center }, radius: r.sector.radius, arc: r.sector.arc, frames: r.sector.frames, passes: r.sector.passes.map(p => ({ ...p })) })),
         getActiveHitboxes: () => [...hitboxes].map(([eventId, r]) => ({ eventId, degree: r.degree, rotation: r.event._rotation, framesLeft: r.framesLeft, hits: r.hitEnemies.size })),
         status: () => ({ ...state, last: state.last && { ...state.last }, active: hitboxes.size, weapon: equippedWeapon()?.name || null })
     };

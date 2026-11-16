@@ -6,5 +6,5 @@ const RESERVED_ALL = ["apollo_golden_volley", "apollo_eros_arrow", "apollo_lyre_
 const STILL_RESERVED = RESERVED_ALL.filter(id => !IMPLEMENTED.includes(id));
 // 実装したカードのplugin(IDが現れてよいファイル)。Cutin/GodSummonVisualの既定リストには予約IDも含めてある。
 const OWN_PLUGIN = { apollo_golden_volley: "ProjectR_ApolloGoldenVolley.js", apollo_eros_arrow: "ProjectR_ApolloErosArrow.js", apollo_gigas_slayer: "ProjectR_ApolloGigasSlayer.js", apollo_hyacinthus: "ProjectR_ApolloHyacinthus.js", apollo_plague_rain: "ProjectR_ApolloPlagueRain.js", apollo_laurel_wreath: "ProjectR_ApolloLaurelWreath.js", apollo_lyre_rhythm: "ProjectR_ApolloLyreRhythm.js", apollo_oracle: "ProjectR_ApolloOracle.js" };
-const SHARED_USERS = ["ProjectR_CardCatalog.js", "ProjectR_CutIn.js", "ProjectR_GodSummonVisual.js", "ProjectR_CombatTestArenaApollo.js", "ProjectR_CharacterPresentation.js"];
+const SHARED_USERS = ["ProjectR_CardCatalog.js", "ProjectR_CutIn.js", "ProjectR_GodSummonVisual.js", "ProjectR_CombatTestArenaApollo.js", "ProjectR_CharacterPresentation.js", "ProjectR_FieldCombat.js"];        // FieldCombat(Stage 5b): 固定カード1・2の既定(黄金の矢・ギガース殺し)
 module.exports = { IMPLEMENTED, RESERVED_ALL, STILL_RESERVED, OWN_PLUGIN, SHARED_USERS, COUNT: IMPLEMENTED.length };

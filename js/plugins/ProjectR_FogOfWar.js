@@ -411,6 +411,21 @@
     // ProjectR_VisionOcclusion の VisionLayer(暗闇・保持)に、記憶した地形の層を差し込む。層の座標は暗闇と同じ(画面の px)。
     //   記憶の層 = 外側の container(マスク = 探索済みのマス)> 内側の container(マスク = いまの視界の外)> 灰色にした全地形の Tilemap。
     // 描画だけの写し(Sprite_Character の更新・Action Combat のフックを重複させない)。同じ texture を共有するので、アニメーションの絵も同時に変わる。
+    // 重ね描きの複製(mirrorSprite)は、元のスプライトのテクスチャを共有する。元のスプライトが destroy({ texture: true }) されると(例: 戦闘が終わって銃の表示・斬撃の絵が片づく)、
+    //   テクスチャの orig が null になる。複製は次の updateOverlay まで残るので、その間に描かれる・境界を計算されると、PIXI が orig.width で
+    //   「Cannot read property 'width' of null」になった(壁のすぐそばで最後の敵を倒した直後の、勝利で元のマップへ戻る瞬間に起きた)。
+    //   原因は複製の寿命(元より長く残る)なので、複製だけが「破棄されたテクスチャを指している間」は、描かず・境界にも含めない(次の更新で複製ごと片づく)。
+    let MirrorSpriteClass = null;
+    const newMirror = () => {
+        if (!MirrorSpriteClass) {
+            MirrorSpriteClass = class extends PIXI.Sprite {
+                _destroyedSource() { const t = this._texture; return !!t && t.orig === null; }
+                _calculateBounds() { if (!this._destroyedSource()) super._calculateBounds(); }
+                _render(renderer) { if (!this._destroyedSource()) super._render(renderer); }
+            };
+        }
+        return new MirrorSpriteClass();
+    };
     const mirrorSprite = (source, target) => {
         target.texture = source.texture;
         for (const key of ["position", "scale", "pivot", "skew", "anchor"]) if (source[key] && target[key] && typeof target[key].copyFrom === "function") target[key].copyFrom(source[key]);
@@ -418,7 +433,7 @@
         target.filters = source.filters;
         const kids = (source.children || []).filter(c => c && typeof Sprite !== "undefined" && c instanceof PIXI.Sprite);
         while (target.children.length > kids.length) target.removeChildAt(target.children.length - 1).destroy({ children: true, texture: false, baseTexture: false });
-        kids.forEach((child, i) => { if (!target.children[i]) target.addChild(new PIXI.Sprite()); mirrorSprite(child, target.children[i]); });
+        kids.forEach((child, i) => { if (!target.children[i]) target.addChild(newMirror()); mirrorSprite(child, target.children[i]); });
     };
     let fogIds = 0; const visIds = new WeakMap();
     class Fog {
@@ -479,7 +494,7 @@
             for (const [src, cp] of this.mirrors) if (!wanted.includes(src)) { this.overlay.removeChild(cp); cp.destroy({ children: true, texture: false, baseTexture: false }); this.mirrors.delete(src); }
             wanted.forEach((src, i) => {
                 let cp = this.mirrors.get(src);
-                if (!cp) { cp = new PIXI.Sprite(); this.mirrors.set(src, cp); this.overlay.addChild(cp); }
+                if (!cp) { cp = newMirror(); this.mirrors.set(src, cp); this.overlay.addChild(cp); }
                 mirrorSprite(src, cp);
                 if (typeof this.overlay.setChildIndex === "function" && this.overlay.children[i] !== cp) this.overlay.setChildIndex(cp, i);
             });

@@ -1,5 +1,5 @@
 // フィールド戦闘のエンカウンター(戦闘マップ専用の戦闘)の実機(Playtest)確認。実キー・実マウスで、F8なしで、入口のイベントから通して確かめる。
-//   N1 探索マップ: 近くに敵がいても戦闘は始まらない / Q・E・R・C・Space と基本攻撃(銃)は無効 / 移動・NPC(F)・メニューは普通
+//   N1 探索マップ: 近くに敵がいても戦闘は始まらない / Q・E・R・C・Shift と基本攻撃(銃)は無効 / 移動・NPC(F)・メニューは普通
 //   N2 入口のイベント(NPC): Fで話す → 戦闘マップへ移動(元のマップ・位置・向きを記録)→ 準備が終わってから戦闘・敵のAI・HUDが有効
 //   N3 戦闘マップ: セーブ禁止 / 敵のイベントのメモ <fieldEnemy> で3体に行動がつく / アビリティ・基本攻撃が使える
 //   N4 勝利: 全員倒すと、結果を1回だけ処理して、元のマップ・位置・向きへ戻る / 探索マップでは戦闘が無効に戻る / 戻ったあとのNPCが結果を話す
@@ -38,10 +38,10 @@ const FC = "ProjectRFieldCombat";
     const st = await json(`({ active: ${FC}.isActive(), enc: ${FC}.getEncounterState().state, allowed: ${FC}.isCombatAllowed(), onScreen: ProjectRCombatPresence.isCombatActive() })`);
     rec("N1a 近くに敵がいても、探索マップでは戦闘が始まらない(HUD・固定戦闘なし)", st.active === false && st.enc === "idle" && st.allowed === false && !(await ev("ProjectRCardDeck.isCardBattleActive()")), JSON.stringify(st));
     const k0 = await json(`${FC}.getState().diagnostics.keyDowns`);
-    for (const k of ["Q", "E", "R", "C", "Space"]) await c.tap(k);
+    for (const k of ["Q", "E", "R", "C", "V", "Shift"]) await c.tap(k);
     await sleep(300);
     const after = await json(`({ keyDowns: ${FC}.getState().diagnostics.keyDowns, last: ${FC}.getLastResult() })`);
-    rec("N1b Q/E/R/C/Space は無効(アビリティを奪わない・発動しない)", after.keyDowns === k0 && after.last === null, JSON.stringify(after));
+    rec("N1b Q/E/R/C/Shift は無効(アビリティを奪わない・発動しない)", after.keyDowns === k0 && after.last === null, JSON.stringify(after));
     // 基本攻撃(銃): 画面内に敵がいても撃てない
     const g0 = await json("({ ammo: $gameSystem.gunAmmo ? $gameSystem.gunAmmo(0) : null, bullets: ProjectRGunSystem.getActiveBullets().length, canUse: ProjectRCombatPresence.canUseWeapon() })");
     await c.pointer(1500, 540); await sleep(150); await c.click(undefined, undefined, 50); await sleep(600);
@@ -74,16 +74,16 @@ const FC = "ProjectRFieldCombat";
     const st = await json(`({ enc: ${FC}.getEncounterState(), active: ${FC}.isActive(), enemies: ${FC}.getState().enemies.length, pos: [$gamePlayer.x, $gamePlayer.y], ring: ProjectRCardDeck.hasPlayerRing('hermes'), potions: $gameParty.numItems($dataItems[7]) })`);
     rec("N2c 戦闘マップの準備が終わってから戦闘が始まる(敵3体に行動がつく・HUD・出現位置(8,9))", ready && st.enc.state === "fighting" && st.enemies === 3 && st.pos[0] === 8 && st.pos[1] === 9 && st.ring === true && st.potions >= 3, JSON.stringify({ state: st.enc.state, enemies: st.enemies, pos: st.pos, ring: st.ring, potions: st.potions }));
     const hud = await json("ProjectRBattleHUD.getViewModel().slots.map(function(x){return x.key+':'+x.name}).join(' ')");
-    rec("N2d 固定アビリティの5枠のHUDが出る", /Q:一閃/.test(hud) && /Space:絶/.test(hud), hud);
+    rec("N2d 固定アビリティのHUD(LMB 薙ぎ払い / Shift 絶 / E 一閃 / X・C / V)が出る", /LMB:薙ぎ払い/.test(hud) && /Shift:絶/.test(hud) && /E:一閃/.test(hud) && /X:/.test(hud) && /C:/.test(hud) && /V:/.test(hud), hud);
     await s.shot("fe_N2");
   });
 
   await check("N3 戦闘マップ", async () => {
     const save = await json("({ enabled: $gameSystem.isSaveEnabled(), blocked: " + FC + ".getEncounterState().saveBlocked })");
     rec("N3a エンカウンター中はセーブできない", save.enabled === false && save.blocked === true, JSON.stringify(save));
-    await c.pointer(1300, 300); await sleep(150); await c.tap("Q"); await sleep(400);
+    await c.pointer(1300, 300); await sleep(150); await c.tap("E"); await sleep(400);
     const q = await json(`${FC}.getLastResult()`);
-    rec("N3b 実キー Q で一閃が発動する(Cooldown が始まる)", q && q.ok === true && q.slot === "special", JSON.stringify(q));
+    rec("N3b 実キー E で一閃が発動する(Cooldown が始まる)", q && q.ok === true && q.slot === "special", JSON.stringify(q));
     // 敵のAI: 近づいて予兆 → 攻撃(HPが減る)。戦闘マップの敵は、扉つきの壁の向こうにいるので、扉を開けてから(実際の遊びでは、扉に話しかけて開ける)
     await ev("$gameSelfSwitches.setValue([8, 5, 'A'], true); 'ok'"); await sleep(500);
     await ev("$gameParty.leader().setHp($gameParty.leader().mhp); 'ok'");
@@ -92,8 +92,8 @@ const FC = "ProjectRFieldCombat";
     const hurt = await wait(`$gameParty.leader().hp < ${hp0}`, 12000);
     rec("N3c 敵のAI(近づく → 予兆 → 攻撃)が働く", attacked && hurt, JSON.stringify({ attacked, hurt }));
     const shot = await json("({ ammo0: $gameSystem.gunAmmo(0) })");
-    await c.click(1300, 400, 50); await sleep(500);
-    rec("N3d 基本攻撃(銃)が使える(弾薬が減る)", (await json("$gameSystem.gunAmmo(0)")) < shot.ammo0, JSON.stringify(shot));
+    await c.pointer(1300, 400); await c.rightClick(undefined, undefined, 50); await sleep(500);
+    rec("N3d 右クリックの銃が使える(弾薬が減る)", (await json("$gameSystem.gunAmmo(0)")) < shot.ammo0, JSON.stringify(shot));
   });
 
   await check("N4 勝利 → 元へ戻る", async () => {
@@ -108,7 +108,7 @@ const FC = "ProjectRFieldCombat";
     const after = await json(`({ v: $gameVariables.value(9), results: window.__results.length, active: ${FC}.isActive(), allowed: ${FC}.isCombatAllowed(), save: $gameSystem.isSaveEnabled(), cardBattle: ProjectRCardDeck.isCardBattleActive(), combatEvent: ProjectRCombatPresence.isCombatEventActive(), enemies: ${FC}.listEnemies().length, weapon: ProjectRCombatPresence.canUseWeapon() })`);
     rec("N4c 結果は1回だけ(変数9=1・結果通知1回)・戦闘は片づく・セーブが戻る・探索マップでは戦闘が無効", after.v === 1 && after.results === 1 && !after.active && !after.allowed && after.save && !after.cardBattle && !after.combatEvent && after.enemies === 0 && !after.weapon, JSON.stringify(after));
     const k0 = await json(`${FC}.getState().diagnostics.keyDowns`);
-    for (const k of ["Q", "E", "R", "C", "Space"]) await c.tap(k);
+    for (const k of ["Q", "E", "R", "C", "V", "Shift"]) await c.tap(k);
     await sleep(300);
     rec("N4d 戻ったあと、戦闘の入力は無効(探索マップ)", (await json(`${FC}.getState().diagnostics.keyDowns`)) === k0 && (await json(`${FC}.getLastResult()`)) === null || true, "keyDowns " + k0);
     await sleep(1500);

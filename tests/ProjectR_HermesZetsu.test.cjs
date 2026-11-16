@@ -123,6 +123,44 @@ test("計算: 通行不能なEvent(DEV Impassable Event)の手前で止まる", 
     assert.ok(plan.land.x >= 12 - 1e-3 && plan.land.x <= 12.2, `Event(x=11..12)の右で止まる: ${plan.land.x}`);
 });
 
+test("計算(衝突フィルター): 登録された相手(敵の体)は無視して通り抜け、地形・壁は無視できない。着地は相手の体の上を避ける。解除すれば元どおり", () => {
+    const w = zetsuWorld({ x: 15, y: 3 });
+    const event = w.ctx.$gameMap.event(1);                              // x=11..12 の通行不能なEvent(敵の体の代わり)
+    aim(w, -6, 0);
+    assert.equal(plain(zetsuApi(w).plan()).limiter, "collision", "フィルターが無いときは、従来どおり止まる");
+    const off = zetsuApi(w).registerCollisionFilter(target => target === event);
+    const through = plain(zetsuApi(w).plan());
+    assert.equal(through.ok, true, JSON.stringify(through));
+    near(through.land.x, 15 - 6, 0.05, "Eventを通り抜けて、指した先へ着地");
+    assert.equal(through.limiter, "none");
+    aim(w, -3.5, 0);                                                    // 指した先(11.5)は、Eventの体(11..12)の上
+    const onBody = plain(zetsuApi(w).plan());
+    assert.equal(onBody.ok, true, JSON.stringify(onBody));
+    assert.ok(onBody.land.x >= 12 - 1e-6 || onBody.land.x + 1 <= 11 + 1e-6, "着地は、相手の体と重ならない: " + onBody.land.x);
+    assert.equal(off(), true); aim(w, -6, 0);
+    assert.equal(plain(zetsuApi(w).plan()).limiter, "collision", "解除すれば、元どおり止まる");
+    // 何でも無視するフィルター(() => true)でも、地形の壁は無視できない
+    const w2 = zetsuWorld({ x: 6, y: 25 });
+    zetsuApi(w2).registerCollisionFilter(() => true);
+    aim(w2, 0, 4);
+    const wall = plain(zetsuApi(w2).plan());
+    assert.equal(wall.ok, true, JSON.stringify(wall));
+    assert.ok(wall.land.y <= 27 + 1e-3, "地形(下の壁)は、フィルターがあっても越えない: " + wall.land.y);
+});
+
+test("計算(衝突フィルター): 壁と敵のすきまが敵で埋まっているときだけ、壁と重ならない最も遠い位置へ着地する(不発にしない)。壁は越えない", () => {
+    const w = zetsuWorld({ x: 12, y: 3 });
+    const event = w.ctx.$gameMap.event(1);                              // x=11..12 の通行不能なEvent(敵の体の代わり)。主人公は、そのすぐ東(体が接している)
+    addWallEvent(w, "CombatWall", 10, 3);                               // 敵のすぐ西に壁(x=10..11)
+    aim(w, -4, 0);
+    assert.equal(plain(zetsuApi(w).plan()).ok, false, "フィルターが無いときは、敵に止められて不発(従来どおり)");
+    zetsuApi(w).registerCollisionFilter(target => target === event);
+    const plan = plain(zetsuApi(w).plan());
+    assert.equal(plan.ok, true, "敵の体のせいで不発にならない: " + JSON.stringify(plan));
+    assert.equal(plan.overlapsBody, true, "重ならない着地点が無いので、敵と重なる位置へ(その印が付く)");
+    assert.ok(plan.land.x >= 11 - 1e-3 && plan.land.x < 12, "壁(x=10..11)は越えない・壁の手前まで: " + plan.land.x);
+});
+
 test("計算: Region 255(VisionWall)は、タイル自体が通行可能でも通さない。壁の手前で止まる", () => {
     const w = zetsuWorld();
     for (let y = 23; y <= 27; y++) setRegion(w, 16, y, 255); // 縦一列のRegion 255

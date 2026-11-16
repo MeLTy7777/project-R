@@ -431,11 +431,11 @@ test("HUDも実Coreの状態をそのまま読む: スロット・DRAW・COOLDOW
     const g = stack(); g.loadMap(); g.arena.startHermes(); g.run(8);
     assert.deepEqual(plain(hudSlotIds(g)), SEQ.slice(0, 5));
     assert.match(hudCounts(g), /DRAW 25\s+DISCARD 0\s+COOLDOWN 0/);
-    const namesBefore = g.hud._skillHUD._slots.map(s => hudH.text(s._nameText));
+    const namesBefore = g.hud._skillHUD._slots.filter(s => s.visible).map(s => hudH.text(s._nameText));        // 表示中の枠だけ(フィールド戦闘の C 用の6つ目は、通常は隠れている)
     pressCard(g, 1); g.run(8);
     assert.deepEqual(plain(hudSlotIds(g)), SEQ.slice(1, 6));
     assert.match(hudCounts(g), /DRAW 24\s+DISCARD 0\s+COOLDOWN 1/);
-    const namesAfter = g.hud._skillHUD._slots.map(s => hudH.text(s._nameText));
+    const namesAfter = g.hud._skillHUD._slots.filter(s => s.visible).map(s => hudH.text(s._nameText));
     assert.deepEqual(namesAfter.slice(0, 4), namesBefore.slice(1), "スロット1には元のスロット2のカードが入る");
     assert.notEqual(namesAfter[0], namesBefore[0]);
     assert.ok(namesAfter[4] && namesAfter[4] !== "");

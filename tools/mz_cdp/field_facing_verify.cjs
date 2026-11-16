@@ -100,9 +100,9 @@ const FC = "ProjectRFieldCombat", FF = "ProjectRFieldFacing", GC = "ProjectRFiel
     await ev(`${FC}.detachEnemy(2); var e = $gameMap.event(2); e.locate(8, 2); e._realX = 8; e._realY = 2; 'ok'`); await sleep(300);
     const hp = id => ev(`$gameMap.getCurrentEventHp(${id})`);
     const h0 = await hp(2); let shots = 0;
-    while (shots < 6 && (await hp(2)) >= h0) { const p = await json("(function(){ var e = $gameMap.event(2); return { x: Math.round(e.screenX()), y: Math.round(e.screenY() - 24) }; })()"); await c.pointer(p.x, p.y); await sleep(200); await c.click(undefined, undefined, 50); await sleep(700); shots++; }
+    while (shots < 6 && (await hp(2)) >= h0) { const p = await json("(function(){ var e = $gameMap.event(2); return { x: Math.round(e.screenX()), y: Math.round(e.screenY() - 24) }; })()"); await c.pointer(p.x, p.y); await sleep(200); await c.rightClick(undefined, undefined, 50); await sleep(700); shots++; }
     const aimDuring = await json(`${FF}.getAim()`);
-    rec("FA3a 斜め(北東)の照準で、左クリックの通常攻撃が当たる(武器の照準は変わらない)", (await hp(2)) < h0 && aimDuring.dir8 === 9, JSON.stringify({ h0, h1: await hp(2), shots, aim: aimDuring.name }));
+    rec("FA3a 斜め(北東)の照準で、右クリックの銃が当たる(武器の照準は変わらない)", (await hp(2)) < h0 && aimDuring.dir8 === 9, JSON.stringify({ h0, h1: await hp(2), shots, aim: aimDuring.name }));
     // スキル(一閃: 照準方向の直線): 南西の敵
     await ev(`var e = $gameMap.event(2); e.locate(11, 2); e._realX = 11; e._realY = 2; $gameMap.event(3).locate(6, 7); 'ok'`);
     await place(8, 5, 8); await ev(`$gameMap.event(2).locate(11, 2); 'ok'`); await sleep(300);

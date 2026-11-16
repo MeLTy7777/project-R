@@ -2,7 +2,7 @@
 //   J1 探索マップで敵が画面内にいても、ヘルメースの指輪(AcquireHermesRing)を入手できる / 戦闘中(エンカウンター・既存の戦闘)は、従来どおり指輪の受け渡しを断る
 //   J2 入口 → 戦闘マップ: 壁・扉・敵3体 / 最初は敵が見えない(壁の向こう)/ 3状態(未探索=黒・探索済み=灰色・見える=通常)
 //   J3 漏れの監査: 隠れた敵が、スプライト・HPバー・影・マーカー・予兆・演出のどれからも見えない(画面のピクセルと、描画ツリーの両方)
-//   J4 入力(実キー): WASD(衝突)・マウスの照準・左クリック(壁で止まる)・Q・Space・E・R・C・F(扉)
+//   J4 入力(実キー): WASD(衝突)・マウスの照準・右クリック(銃。壁で止まる)・E 一閃・Shift 絶・Q 奥義・C アイテム・F(扉)
 //   J5 扉と視界: 閉 → 開で、視線が通る敵だけ見える / 歩いて入ると見え方が変わる / 隠れた敵のAIは動き続ける
 //   J6 攻撃と視界: 見えている敵には当たる・壁の向こうには当たらない
 //   J7 勝利 → 元のマップ / 探索の記憶はマップごとに残る / 2回目は扉・敵が初期状態 / 後に何も残らない(HUD・敵・視界・戦闘)
@@ -130,31 +130,32 @@ const FC = "ProjectRFieldCombat", FW = "ProjectR.FogOfWar";
     await place(8, 9, 2); const sp = await json("({ x: Math.round($gamePlayer.screenX()), y: Math.round($gamePlayer.screenY() - 24) })"); const dirs = [];
     for (const [n, dx, dy, want] of [["右", 300, 0, 6], ["左", -300, 0, 4], ["上", 0, -300, 8], ["下", 0, 300, 2]]) { await c.pointer(sp.x + dx, sp.y + dy); await sleep(300); dirs.push([n, want, (await pos()).d]); }
     rec("J4d マウスの方向を向く(戦闘マップ)", dirs.every(([, w, g]) => w === g), JSON.stringify(dirs));
-    // 左クリック: 北の壁へ撃つ(弾は壁で止まり、敵Cには当たらない)/ 弾薬は減る
+    // 右クリック(銃): 北の壁へ撃つ(弾は壁で止まり、敵Cには当たらない)/ 弾薬は減る
     await c.pointer(sp.x, sp.y - 250); await sleep(250);
     const ammo0 = await json("$gameSystem.gunAmmo(0)"), c0 = await hp(3);
-    await c.click(undefined, undefined, 50); await sleep(900);
-    rec("J4e 左クリックで撃てる(弾薬が減る)が、壁・扉の向こうの敵には当たらない", (await json("$gameSystem.gunAmmo(0)")) < ammo0 && (await hp(3)) === c0, JSON.stringify({ ammo0, c0, c1: await hp(3) }));
+    await c.rightClick(undefined, undefined, 50); await sleep(900);
+    rec("J4e 右クリックで撃てる(弾薬が減る)が、壁・扉の向こうの敵には当たらない", (await json("$gameSystem.gunAmmo(0)")) < ammo0 && (await hp(3)) === c0, JSON.stringify({ ammo0, c0, c1: await hp(3) }));
     // Q: 壁の向こうへ撃っても当たらない(Cooldownは始まる)
-    await c.tap("Q"); await sleep(600);
+    await c.tap("E"); await sleep(600);
     const q = await json(`({ r: ${FC}.getLastResult(), cd: ${FC}.getCooldowns().special })`);
     rec("J4f Q(一閃): 発動して Cooldown が始まる。壁・扉の向こうの敵には当たらない", q.r && q.r.ok === true && q.cd > 5 && (await hp(3)) === c0, JSON.stringify({ q, c: await hp(3) }));
-    await c.tap("Q"); await sleep(200);
+    await c.tap("E"); await sleep(200);
     rec("J4g Q を Cooldown 中に押すと発動しない", (await json(`${FC}.getLastResult()`)).reason === "cooldown", "");
     // Space: 壁の方向へ瞬間移動しても、壁を越えない
-    await place(8, 9, 8); await c.pointer(sp.x, sp.y - 300); await sleep(250); await c.tap("Space"); await sleep(700);
+    await place(8, 9, 8); await c.pointer(sp.x, sp.y - 300); await sleep(250); await c.tap("Shift"); await sleep(700);
     const z = await pos();
-    rec("J4h Space(絶): 壁・扉の方向へ移動しても、壁を越えない(手前で止まる)", z.y > 7.9, JSON.stringify(z));
+    rec("J4h Shift(絶): 壁・扉の方向へ移動しても、壁を越えない(手前で止まる)", z.y > 7.9, JSON.stringify(z));
     // R: HP を減らして飲む
-    await ev("$gameParty.leader().setHp(100); 'ok'"); await c.tap("R"); await sleep(400);
-    rec("J4i R(ポーション): HPが回復する", (await ev("$gameParty.leader().hp")) > 100 && (await json(`${FC}.getLastResult()`)).slot === "consumable", "");
+    await ev("$gameParty.leader().setHp(100); 'ok'"); await c.tap("V"); await sleep(400);
+    rec("J4i C(ポーション。短押し): HPが回復する", (await ev("$gameParty.leader().hp")) > 100 && (await json(`${FC}.getLastResult()`)).slot === "consumable", "");
     // E: ゲージが足りなければ不発 → 満タンで発動
-    await c.tap("E"); await sleep(250); const e0 = await json(`${FC}.getLastResult()`);
-    await ev("ProjectRUltimateGauge.addUltimateGauge(100, 'dev', 'fi1'); 'ok'"); await c.tap("E"); await sleep(1200); const e1 = await json(`${FC}.getLastResult()`);
+    await c.tap("Q"); await sleep(250); const e0 = await json(`${FC}.getLastResult()`);
+    await ev("ProjectRUltimateGauge.addUltimateGauge(100, 'dev', 'fi1'); 'ok'"); await c.tap("Q"); await sleep(1200); const e1 = await json(`${FC}.getLastResult()`);
     rec("J4j E(奥義): ゲージ不足なら不発(gaugeNotFull)/ 満タンなら発動", e0.reason === "gaugeNotFull" && e1.ok === true && (await ev("ProjectRUltimateGauge.getUltimateGauge()")) === 0, JSON.stringify({ e0: e0.reason, e1: e1.ok }));
-    // C: キャンセル
-    await c.tap("C"); await sleep(200);
-    rec("J4k C(キャンセル)", (await json(`${FC}.getLastResult()`)).slot === "cancel", "");
+    // C: アイテム(短押し)。奥義の直後で HP は満タンなので、効果なし(noEffect)で消費しない
+    await ev("$gameParty.leader().setHp($gameParty.leader().mhp); 'ok'"); await c.tap("V"); await sleep(200);
+    const k = await json(`${FC}.getLastResult()`);
+    rec("J4k C(アイテム): 直前のポーションの Cooldown 中 / HP満タンなので、使われない(cooldown か noEffect)", k.slot === "consumable" && k.ok === false && (k.reason === "cooldown" || k.reason === "noEffect"), JSON.stringify(k));
     await s.shot("fi_J4");
   });
 
@@ -191,9 +192,9 @@ const FC = "ProjectRFieldCombat", FW = "ProjectR.FogOfWar";
       const c0 = await hp(3); let shots = 0;
       while (shots < 5 && (await hp(3)) >= c0 && (await ev("$gameMap.getCurrentEventHp(3) > 0"))) {      // 敵は動くので、毎回いまの位置へ照準し直して撃つ(自動照準ではない)
         const p = await json("(function(){ var e = $gameMap.event(3); return { x: Math.round(e.screenX()), y: Math.round(e.screenY() - 24) }; })()");
-        await c.pointer(p.x, p.y); await sleep(150); await c.click(undefined, undefined, 50); await sleep(700); shots++;
+        await c.pointer(p.x, p.y); await sleep(150); await c.rightClick(undefined, undefined, 50); await sleep(700); shots++;
       }
-      rec("J6a 見えている敵には、照準して撃てば当たってHPが減る(左クリック)", (await hp(3)) < c0, JSON.stringify({ c0, c1: await hp(3), shots, dbg: await json("({ e: [$gameMap.event(3)._realX, $gameMap.event(3)._realY], p: [$gamePlayer._realX, $gamePlayer._realY], dead: ProjectR.PlayerDeath && ProjectR.PlayerDeath.isDead && ProjectR.PlayerDeath.isDead() })") }));
+      rec("J6a 見えている敵には、照準して撃てば当たってHPが減る(右クリックの銃)", (await hp(3)) < c0, JSON.stringify({ c0, c1: await hp(3), shots, dbg: await json("({ e: [$gameMap.event(3)._realX, $gameMap.event(3)._realY], p: [$gamePlayer._realX, $gamePlayer._realY], dead: ProjectR.PlayerDeath && ProjectR.PlayerDeath.isDead && ProjectR.PlayerDeath.isDead() })") }));
     }
     await ev(`${FC}.attachEnemy(3, { windupFrames: 30, cooldownFrames: 100, reach: 1.4, aggroTiles: 14 }); 'ok'`);
     // 扉を閉める: 開いた扉の前(北側)から話しかけ → 視線が遮られ、敵が消える
@@ -250,7 +251,7 @@ const FC = "ProjectRFieldCombat", FW = "ProjectR.FogOfWar";
     const scan = await leakScan();
     rec("J8c ロード後: エンカウンター・戦闘・HUD・セーブ禁止が初期状態 / 視界の描画が残らない / 探索の記憶はセーブ時点の値", l.st === "idle" && !l.active && !l.allowed && l.save && !l.weapon && l.hud === false && l.hp > 0 && scan.leaks.length === 0, JSON.stringify({ l, scan }));
     const k0 = await json(`${FC}.getState().diagnostics.keyDowns`);
-    for (const k of ["Q", "E", "R", "C", "Space"]) await c.tap(k);
+    for (const k of ["Q", "E", "R", "C", "V", "Shift"]) await c.tap(k);
     await sleep(300);
     rec("J8d ロード後の探索マップでは、戦闘の入力が無効", (await json(`${FC}.getState().diagnostics.keyDowns`)) === k0, "");
     // 旧セーブ(探索の記録なし)

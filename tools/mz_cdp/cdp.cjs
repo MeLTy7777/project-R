@@ -26,9 +26,14 @@ async function connect() {
   const KEY = { Q: ["KeyQ", 81, "q"], T: ["KeyT", 84, "t"], E: ["KeyE", 69, "e"], X: ["KeyX", 88, "x"], C: ["KeyC", 67, "c"], V: ["KeyV", 86, "v"], F: ["KeyF", 70, "f"], U: ["KeyU", 85, "u"], R: ["KeyR", 82, "r"], J: ["KeyJ", 74, "j"], Esc: ["Escape", 27, "Escape"], W: ["KeyW", 87, "w"], A: ["KeyA", 65, "a"], S: ["KeyS", 83, "s"], D: ["KeyD", 68, "d"],
     F6: ["F6", 117, "F6"], Enter: ["Enter", 13, "Enter"], Tab: ["Tab", 9, "Tab"], Down: ["ArrowDown", 40, "ArrowDown"], Up: ["ArrowUp", 38, "ArrowUp"], Left: ["ArrowLeft", 37, "ArrowLeft"], Right: ["ArrowRight", 39, "ArrowRight"], Shift: ["ShiftLeft", 16, "Shift"] }; // メニュー操作用のキー(H2C-A) // 移動はHendrix_Keyboard_GamepadでWASDに割り当て済み
   // フィールド戦闘(ProjectR_FieldCombat)の操作キー: WASD移動・Space・R。既にあるキーは上書きしない
-  for (const [k, v] of Object.entries({ F7: ["F7", 118, "F7"], W: ["KeyW", 87, "w"], A: ["KeyA", 65, "a"], S: ["KeyS", 83, "s"], D: ["KeyD", 68, "d"], Space: ["Space", 32, " "], R: ["KeyR", 82, "r"], C: ["KeyC", 67, "c"], E: ["KeyE", 69, "e"], Q: ["KeyQ", 81, "q"], F: ["KeyF", 70, "f"] })) if (!KEY[k]) KEY[k] = v;
-  const keyDown = (k) => send("Input.dispatchKeyEvent", { type: "keyDown", code: KEY[k][0], windowsVirtualKeyCode: KEY[k][1], key: KEY[k][2] });
-  const keyUp = (k) => send("Input.dispatchKeyEvent", { type: "keyUp", code: KEY[k][0], windowsVirtualKeyCode: KEY[k][1], key: KEY[k][2] });
+  for (const [k, v] of Object.entries({ F7: ["F7", 118, "F7"], W: ["KeyW", 87, "w"], A: ["KeyA", 65, "a"], S: ["KeyS", 83, "s"], D: ["KeyD", 68, "d"], Space: ["Space", 32, " "], R: ["KeyR", 82, "r"], C: ["KeyC", 67, "c"], E: ["KeyE", 69, "e"], Q: ["KeyQ", 81, "q"], F: ["KeyF", 70, "f"], V: ["KeyV", 86, "v"], X: ["KeyX", 88, "x"], "1": ["Digit1", 49, "1"], "2": ["Digit2", 50, "2"] })) if (!KEY[k]) KEY[k] = v;
+  // 実機の Shift は、押している間ずっと keydown/keyup の shiftKey(=修飾フラグ 8)が true。Shift の keydown 自身と、Shift を押したままの他のキーに、同じ修飾フラグを付ける
+  //   (これが無かった頃は、shiftKey を断るコードの不具合を、合成キーが見逃していた)。physicalShift=false で従来の「フラグなし」の合成キーも送れる。
+  let shiftHeld = false, physicalShift = true;
+  const modifiersFor = (k, type) => physicalShift && ((k === "Shift" && type === "keyDown") || (k !== "Shift" && shiftHeld)) ? 8 : 0;
+  const keyDown = (k) => { if (k === "Shift") shiftHeld = true; return send("Input.dispatchKeyEvent", { type: "keyDown", code: KEY[k][0], windowsVirtualKeyCode: KEY[k][1], key: KEY[k][2], modifiers: modifiersFor(k, "keyDown") }); };
+  const keyUp = (k) => { const m = modifiersFor(k, "keyUp"); if (k === "Shift") shiftHeld = false; return send("Input.dispatchKeyEvent", { type: "keyUp", code: KEY[k][0], windowsVirtualKeyCode: KEY[k][1], key: KEY[k][2], modifiers: m }); };
+  const setPhysicalShift = v => { physicalShift = !!v; };
   const tap = async (k, hold = 80) => { await keyDown(k); await sleep(hold); await keyUp(k); await sleep(60); };
   // ゲーム内のcanvas座標(0..Graphics.width)へ実マウスを動かす
   let lastPointer = { x: 0, y: 0 };
@@ -49,6 +54,10 @@ async function connect() {
     await send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button: "left", buttons: 0, clickCount: 1 });
     await sleep(40);
   };
-  return { send, evalJs, shot, tap, keyDown, keyUp, pointer, click, events, sleep, ws };
+  // 実マウスのボタンの押下/解除(button: "left" | "right")。右クリック=銃、左クリックの長押し=3段コンボが進まないことの確認(Stage 5)
+  const mouseDown = async (button = "left") => { const { x, y } = lastPointer; await send("Input.dispatchMouseEvent", { type: "mousePressed", x, y, button, buttons: button === "right" ? 2 : 1, clickCount: 1 }); };
+  const mouseUp = async (button = "left") => { const { x, y } = lastPointer; await send("Input.dispatchMouseEvent", { type: "mouseReleased", x, y, button, buttons: 0, clickCount: 1 }); };
+  const rightClick = async (cx, cy, hold = 60) => { if (cx !== undefined) await pointer(cx, cy); await mouseDown("right"); await sleep(hold); await mouseUp("right"); await sleep(40); };
+  return { send, evalJs, shot, tap, keyDown, keyUp, setPhysicalShift, pointer, click, mouseDown, mouseUp, rightClick, events, sleep, ws };
 }
 module.exports = { connect, sleep };

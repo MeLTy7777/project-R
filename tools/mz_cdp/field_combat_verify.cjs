@@ -1,8 +1,8 @@
-// リアルタイム・フィールド戦闘(ProjectR_FieldCombat)の実機(Playtest)確認。CDP の実際のキー(WASD/Q/Space/E/R/C/F)とマウス(移動・左クリック)だけで操作する。
+// リアルタイム・フィールド戦闘(ProjectR_FieldCombat)の実機(Playtest)確認。CDP の実際のキー(WASD/Q 奥義/Shift 絶/E 一閃/R リロード/C アイテム/F)とマウス(移動・左クリック・右クリック)だけで操作する。
 //   S1 SOUL戦闘の開始が止まる(通常のプレイ)/ 解除すれば元どおり開始できる / F7 のテスト入口も止まる
 //   E1 戦闘の開始・終了(DEVの手動 begin / end): 戦闘イベント・固定戦闘・HUD(固定アビリティ5枠)/ 終わると片づく。探索マップで勝手に始まらない(エンカウンターは field_encounter_verify)
-//   M1 WASD移動  A1 マウスの照準(向き)  B1 左クリックの通常攻撃(照準した敵だけ当たる・外れる)
-//   Q1 特殊(一閃): 当たる・外れる・Cooldown  Z1 移動(絶): 瞬間移動・Cooldown・壁の手前で止まる  R1 消耗品  U1 奥義  C1 キャンセル
+//   M1 WASD移動  A1 マウスの照準(向き)  B1 右クリックの銃(照準した敵だけ当たる・外れる)
+//   Q1 特殊(一閃。E): 当たる・外れる・Cooldown  Z1 移動(絶): 瞬間移動・Cooldown・壁の手前で止まる  R1 アイテム(C 短押し)  U1 奥義(Q)  C1 キャンセル(API)
 //   T1 敵の予兆と回避: 予兆(赤い範囲)が出て、範囲から出れば当たらず、出なければ当たる
 //   F1 戦闘中のイベント(F): 戦闘中でも調べられる / マップ移動で戦闘が片づく
 //   I1 戦闘中でないときのキーは元のまま(アビリティが発動しない)  X1 繰り返し  X2 Console のエラーなし・保存の書き込みなし
@@ -70,7 +70,7 @@ const FC = "ProjectRFieldCombat";
     const slots = await json("ProjectRBattleHUD.getViewModel().slots");
     const names = slots ? slots.map(x => (x.key || "") + ":" + (x.name || "")).join(" ") : "";
     rec("E1c begin で戦闘イベント・固定戦闘(手札/山札なし)になる", began.ok === true && started && (await json("ProjectRCardDeck.getBattleState().drawPile.length")) === 0, JSON.stringify({ began, started }));
-    rec("E1d HUDの5枠に固定アビリティが出る(Q 一閃 / Space 絶 / E 奥義 / R / C)", !!slots && slots.length === 5 && /Q:一閃/.test(names) && /Space:絶/.test(names) && /E:奥義/.test(names) && /R:/.test(names) && /C:/.test(names), names);
+    rec("E1d HUDに、メイン5枠(LMB 薙ぎ払い / Shift 絶 / E 一閃 / 1・2 固定カード)+ 別枠の C アイテムが出る", !!slots && slots.length === 6 && /LMB:薙ぎ払い/.test(names) && /Shift:絶/.test(names) && /E:一閃/.test(names) && /X:/.test(names) && /C:/.test(names) && /V:/.test(names), names);
     const cards = await json("ProjectRBattleHUD.getViewModel().counts");
     rec("E1e カードのドロー表示(DRAW/DISCARD)は出ない", cards === null || cards === undefined, JSON.stringify(cards));
     await s.shot("fc_E1_engaged");
@@ -96,36 +96,37 @@ const FC = "ProjectRFieldCombat";
     rec("A1 マウスの方向を向く(戦闘中)", dirs.every(([, want, got]) => want === got), JSON.stringify(dirs));
   });
 
-  await check("B1 左クリックの通常攻撃", async () => {
+  await check("B1 右クリックの銃(左クリックは近接。3段コンボは field_controls_verify.cjs)", async () => {
     await ev(`${FC}.end(); ${FC}.begin(); 'ok'`); await topUpPlayer();
     await place(48, 18); await sleep(300);
     const h0 = await hp(GUN);
     const ammo0 = await ev("$gameSystem.gunAmmo ? $gameSystem.gunAmmo(0) : null");
-    await aimAt(GUN); await c.click(undefined, undefined, 40); await sleep(900);
+    await aimAt(GUN); await c.rightClick(undefined, undefined, 40); await sleep(900);
     const h1 = await hp(GUN);
-    rec("B1a 照準した敵に当たってHPが減る", h1 < h0, `HP ${h0} → ${h1}`);
+    rec("B1a 右クリックの銃: 照準した敵に当たってHPが減る", h1 < h0, `HP ${h0} → ${h1}`);
     await c.pointer((await playerScreen()).x - 300, (await playerScreen()).y); await sleep(250);
-    await c.click(undefined, undefined, 40); await sleep(900);
+    await c.rightClick(undefined, undefined, 40); await sleep(900);
     const h2 = await hp(GUN);
     rec("B1b 反対側へ撃つと当たらない(自動照準なし)", h2 === h1, `HP ${h1} → ${h2}`);
-    rec("B1c 弾薬が減る", true, "ammo " + ammo0 + " → " + (await ev("$gameSystem.gunAmmo ? $gameSystem.gunAmmo(0) : null")));
+    const ammo1 = await ev("$gameSystem.gunAmmo ? $gameSystem.gunAmmo(0) : null");
+    rec("B1c 弾薬が減る", ammo0 === null || ammo1 === ammo0 - 2, "ammo " + ammo0 + " → " + ammo1);
   });
 
   await check("Q1 特殊アビリティ(一閃)", async () => {
     await ev(`${FC}.end(); ${FC}.begin(); 'ok'`); await topUpPlayer();
     await bigHp(GUN); await place(48, 18); await sleep(300);
     const h0 = await hp(GUN);
-    await aimAt(GUN); await sleep(150); await c.tap("Q"); await sleep(700);
+    await aimAt(GUN); await sleep(150); await c.tap("E"); await sleep(700);
     const r = await last(), h1 = await hp(GUN), cd = await cds();
-    rec("Q1a Qで一閃が発動し、照準した敵にダメージ", r && r.ok === true && r.slot === "special" && h1 < h0, `${JSON.stringify(r)} HP ${h0} → ${h1}`);
+    rec("Q1a Eで一閃が発動し、照準した敵にダメージ", r && r.ok === true && r.slot === "special" && h1 < h0, `${JSON.stringify(r)} HP ${h0} → ${h1}`);
     rec("Q1b Cooldown 7秒が始まる(HUDにも出る)", cd.special > 6 && cd.special <= 7, JSON.stringify(cd));
-    await c.tap("Q"); await sleep(200);
+    await c.tap("E"); await sleep(200);
     const r2 = await last();
     rec("Q1c Cooldown中は発動しない(cooldown)", r2 && r2.ok === false && r2.reason === "cooldown", JSON.stringify(r2));
     await s.shot("fc_Q1_issen");
     const w = await waitCd("special", 9000);
     await topUpPlayer(); const p = await playerScreen(); await c.pointer(p.x - 300, p.y); await sleep(250);
-    const hb = await hp(GUN); await c.tap("Q"); await sleep(700); const ha = await hp(GUN);
+    const hb = await hp(GUN); await c.tap("E"); await sleep(700); const ha = await hp(GUN);
     rec("Q1d 反対側へ撃つと当たらない(自動照準なし)", w && ha === hb, `HP ${hb} → ${ha}`);
   });
 
@@ -134,16 +135,16 @@ const FC = "ProjectRFieldCombat";
     await place(44, 12); await sleep(300);
     const a = await pos(), p = await playerScreen();
     await c.pointer(p.x + 4 * 48, p.y); await sleep(200);
-    await c.tap("Space"); await sleep(700);
+    await c.tap("Shift"); await sleep(700);
     const b = await pos(), cd = await cds(), r = await last();
-    rec("Z1a Spaceでマウスの方向へ瞬間移動(約3tile)", r && r.ok === true && b.x - a.x > 1.5, `x ${a.x.toFixed(2)} → ${b.x.toFixed(2)} ${JSON.stringify(r)}`);
+    rec("Z1a Shiftでマウスの方向へ瞬間移動(約3tile)", r && r.ok === true && b.x - a.x > 1.5, `x ${a.x.toFixed(2)} → ${b.x.toFixed(2)} ${JSON.stringify(r)}`);
     rec("Z1b Cooldown 3秒", cd.mobility > 2 && cd.mobility <= 3, JSON.stringify(cd));
-    await c.tap("Space"); await sleep(200);
+    await c.tap("Shift"); await sleep(200);
     const r2 = await last(); rec("Z1c Cooldown中は発動しない", r2 && r2.ok === false && r2.reason === "cooldown", JSON.stringify(r2));
     await waitCd("mobility", 6000);
     // 壁の手前で止まる: マップの西端へ向けて
     await place(2, 12); const p2 = await playerScreen(); await c.pointer(Math.max(5, p2.x - 400), p2.y); await sleep(200);
-    await c.tap("Space"); await sleep(700);
+    await c.tap("Shift"); await sleep(700);
     const e = await pos(); rec("Z1d マップの端を越えない", e.x >= 0 && e.x < 2.01, `x ${e.x.toFixed(2)}`);
     await s.shot("fc_Z1_zetsu");
   });
@@ -151,35 +152,34 @@ const FC = "ProjectRFieldCombat";
   await check("R1 消耗品", async () => {
     await ev(`${FC}.end(); ${FC}.begin(); 'ok'`); await sleep(200);
     await topUpPlayer(); const n0 = await ev("$gameParty.numItems($dataItems[7])");
-    await c.tap("R"); await sleep(300);
+    await c.tap("V"); await sleep(300);
     const r0 = await last(); rec("R1a HPが満タンなら使わない(消費しない)", r0 && r0.ok === false && r0.reason === "noEffect" && (await ev("$gameParty.numItems($dataItems[7])")) === n0, JSON.stringify(r0));
     await ev("$gameParty.leader().setHp(100); 'ok'");
-    await c.tap("R"); await sleep(300);
+    await c.tap("V"); await sleep(300);
     const r1 = await last(), h = await ph(), n1 = await ev("$gameParty.numItems($dataItems[7])");
-    rec("R1b Rでポーションを使いHPが回復・個数が1減る", r1 && r1.ok === true && h > 100 && n1 === n0 - 1, `HP 100 → ${h}, 個数 ${n0} → ${n1}`);
+    rec("R1b Cの短押しでポーションを使いHPが回復・個数が1減る", r1 && r1.ok === true && h > 100 && n1 === n0 - 1, `HP 100 → ${h}, 個数 ${n0} → ${n1}`);
     const cd = await cds(); rec("R1c Cooldown 8秒", cd.consumable > 7 && cd.consumable <= 8, JSON.stringify(cd));
-    await ev("$gameParty.leader().setHp(100); 'ok'"); await c.tap("R"); await sleep(250);
+    await ev("$gameParty.leader().setHp(100); 'ok'"); await c.tap("V"); await sleep(250);
     const r2 = await last(); rec("R1d Cooldown中は使えない", r2 && r2.ok === false && r2.reason === "cooldown", JSON.stringify(r2));
   });
 
   await check("U1 奥義", async () => {
     await ev(`${FC}.end(); ${FC}.begin(); 'ok'`); await topUpPlayer(); await bigHp(GUN); await place(51, 18); await sleep(300);
-    await c.tap("E"); await sleep(250);
+    await c.tap("Q"); await sleep(250);
     const r0 = await last(); rec("U1a ゲージが満タンでなければ発動しない(gaugeNotFull)", r0 && r0.ok === false && r0.reason === "gaugeNotFull", JSON.stringify(r0));
     await ev("ProjectRUltimateGauge.addUltimateGauge(100, 'fieldTest', 'fc_fill_1'); 'ok'");
     const full = await ev("ProjectRUltimateGauge.isUltimateGaugeFull()");
     const h0 = await hp(GUN); await aimAt(GUN); await sleep(150);
-    await c.tap("E"); await sleep(1200);
+    await c.tap("Q"); await sleep(1200);
     const r1 = await last(); const g = await ev("ProjectRUltimateGauge.getUltimateGauge()");
-    rec("U1b 満タンならEで奥義が発動し、ゲージが0になる", full && r1 && r1.ok === true && g === 0, JSON.stringify(r1) + " gauge " + g);
+    rec("U1b 満タンならQで奥義が発動し、ゲージが0になる", full && r1 && r1.ok === true && g === 0, JSON.stringify(r1) + " gauge " + g);
     await wait("!ProjectRHermesUltimate || true", 100); await sleep(3500);
     const h1 = await hp(GUN); rec("U1c 奥義が敵にダメージ(6連斬)", h1 < h0, `HP ${h0} → ${h1}`);
   });
 
-  await check("C1 キャンセル", async () => {
+  await check("C1 キャンセル(API。キーは無い)", async () => {
     await ev(`${FC}.end(); ${FC}.begin(); 'ok'`); await sleep(200);
-    await c.tap("C"); await sleep(200);
-    const r = await last(); rec("C1 Cでキャンセルできる(保留中の入力・長押しを取り消す。他は変えない)", r && r.ok === true && r.slot === "cancel", JSON.stringify(r));
+    const r = await json(`${FC}.useAbility('cancel', 'test')`); rec("C1 useAbility('cancel') で保留中の入力・放射メニューを取り消せる(C は Stage 5 でアイテムのキー)", r && r.ok === true && r.slot === "cancel", JSON.stringify(r));
   });
 
   await check("T1 敵の予兆と回避", async () => {
@@ -201,18 +201,18 @@ const FC = "ProjectRFieldCombat";
     await wait("ProjectREnemyAttack.list().filter(function(r){return r.state==='pending'}).length === 0", 4000); await sleep(500);
     const h1 = await ph();
     rec("T1c 範囲から出なければ当たる(HPが減る)", h1 < h0, `HP ${h0} → ${h1}`);
-    // 回避: 予兆が出たら、Space で範囲から出る → 当たらない
+    // 回避: 予兆が出たら、Shift で範囲から出る → 当たらない
     await topUpPlayer(); await waitCd("mobility", 6000);
     await wait(`${FC}.getState().enemies[0] && ${FC}.getState().enemies[0].cooldown === 0`, 8000);
     await place(51, 18); await sleep(150);
     const seen2 = await wait("ProjectREnemyAttack.list().filter(function(r){return r.state==='pending'}).length > 0", 8000);
     const pp = await playerScreen(); await c.pointer(pp.x - 3 * 48, pp.y); await sleep(100);
-    await c.tap("Space"); await sleep(500);
+    await c.tap("Shift"); await sleep(500);
     const where = await pos();
     const h2 = await ph();
     await wait("ProjectREnemyAttack.list().filter(function(r){return r.state==='pending'}).length === 0", 4000); await sleep(500);
     const h3 = await ph();
-    rec("T1d 予兆の間に Space で範囲から出れば当たらない(回避)", seen2 && where.x < 50.2 && h3 === h2, `x ${where.x.toFixed(2)} HP ${h2} → ${h3}`);
+    rec("T1d 予兆の間に Shift で範囲から出れば当たらない(回避)", seen2 && where.x < 50.2 && h3 === h2, `x ${where.x.toFixed(2)} HP ${h2} → ${h3}`);
     await json(`${FC}.detachEnemy(${GUN})`);
   });
 
@@ -246,17 +246,17 @@ const FC = "ProjectRFieldCombat";
   await check("I1 戦闘中でないときのキーは元のまま", async () => {
     await ev(`${FC}.end(); 'ok'`); await place(20, 30); await sleep(300);
     const k0 = await json(`${FC}.getState().diagnostics.keyDowns`);
-    for (const k of ["Q", "E", "R", "C", "Space"]) await c.tap(k);
+    for (const k of ["Q", "E", "R", "C", "V", "Shift"]) await c.tap(k);
     await sleep(300);
     const st = await json(`${FC}.getState()`);
-    rec("I1 戦闘外では Q/E/R/C/Space をアビリティとして奪わない・発動しない", st.active === false && st.diagnostics.keyDowns === k0 && (await last()) === null, JSON.stringify(st.diagnostics));
+    rec("I1 戦闘外では Q/E/R/C/Shift をアビリティとして奪わない・発動しない", st.active === false && st.diagnostics.keyDowns === k0 && (await last()) === null, JSON.stringify(st.diagnostics));
   });
 
   await check("X1 繰り返し", async () => {
     const out = [];
     for (let i = 0; i < 3; i++) {
       await place(46, 15); await ev(`${FC}.begin(); 'ok'`); await sleep(200);
-      await c.tap("Q"); await sleep(150); const cdUp = (await cds()).special;
+      await c.tap("E"); await sleep(150); const cdUp = (await cds()).special;
       await ev(`${FC}.end(); 'ok'`); await sleep(100);
       out.push({ cdUp: Math.round(cdUp), clean: !(await ev("ProjectRCardDeck.isCardBattleActive()")) && !(await ev("ProjectRCombatPresence.isCombatEventActive()")) });
     }

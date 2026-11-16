@@ -259,7 +259,7 @@ test("HUDを破棄(Scene terminate)してもゲームは続行でき、状態は
 // ================= カード手札 =================
 test("5枠はhand[0]～hand[4]に対応し、ラベルは1～5。名前は現在の手札の順", () => {
     const g = ready("apollo"); step(g);
-    assert.equal(g.hud._skillHUD._slots.length, 5);
+    assert.equal(g.hud._skillHUD._slots.filter(slotSprite => slotSprite.visible).length, 5); // 通常は5枠だけ表示(フィールド戦闘だけ、C アイテム用の6つ目を使う)
     assert.deepEqual(plain(slots(g).map(s => s.key)), ["Q", "E", "X", "C", "V"]);
     assert.deepEqual(plain(slots(g).map(s => s.label)), ["CARD Q", "CARD E", "CARD X", "CARD C", "CARD V"]);
     const model = vm5(g);
@@ -366,7 +366,7 @@ test("状態が変わらない間は再描画しない(drawText 0回)。getBattl
     deck(g).getBattleState = () => { calls++; return real(); };
     step(g); assert.equal(calls, 1);
     deck(g).getBattleState = real;
-    assert.equal(g.hud._skillHUD._slots.length, 5); // UI部品は作り直さない
+    assert.equal(g.hud._skillHUD._slots.filter(slotSprite => slotSprite.visible).length, 5); // 通常は5枠だけ表示(フィールド戦闘だけ、C アイテム用の6つ目を使う) // UI部品は作り直さない
     const slotObjects = [...g.hud._skillHUD._slots]; step(g, 5);
     assert.equal(g.hud._skillHUD._slots.every((slotSprite, i) => slotSprite === slotObjects[i]), true);
 });

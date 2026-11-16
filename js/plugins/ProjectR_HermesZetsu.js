@@ -49,7 +49,12 @@
  *   予備動作中も操作・Cooldownは止まらず、無敵でもない。移動先は発動時に固定。予備動作中の別の絶は「teleportPending」で非消費の失敗。
  *   戦闘終了・マップ移動・ロードで予備動作は破棄(後から移動しない)。実行時に着地できない稀な場合は、カード消費済みと記録して動かない。
  *
+ * 【すり抜ける相手(衝突フィルター)】 ProjectR_FieldCombat(エンカウンター中)は、registerCollisionFilter で「敵の体」を登録します。登録された相手(Event)は、
+ *   移動の経路の衝突判定で無視します(敵に止められない・敵のすぐ隣でも発動できる)。壁・Region・閉じた扉・通れないタイル(地形はフィルターに関係なく)・ほかのEventは、これまでどおり止めます。
+ *   着地点は、無視した相手の体の上を避けます(体と重なるなら、重ならない手前まで下がる。重ならない先なら、そこへ着地)。重ならない着地点がまったく無いときだけ(壁と敵のすきまが敵で埋まっている)、壁と重ならない最も遠い位置へ着地します(overlapsBody=true。不発にしない)。フィルターが無ければ、従来のままです。
+ *
  * API: ProjectRHermesZetsu
+ *   registerCollisionFilter(fn)  fn(衝突の相手のオブジェクト) が true なら、その衝突を無視する。解除する関数を返す
  *   plan(mouse?)         移動先を計算するだけ(状態変更なし)。{ ok, start, land, requested, travelled, limiter, reason }
  *   getLastResult()      直近の発動結果(診断用・保存しない)
  *   effectsForLevel(lv)  累積レベルを解決したeffects      cardLevel()   所持データのレベル(既定1)
@@ -87,6 +92,14 @@
             return 1;
         }
     };
+
+    // ---------- 衝突フィルター(経路で無視する相手) ----------
+    const ignoreFilters = [];
+    const filterSays = target => ignoreFilters.some(fn => { try { return fn(target) === true; } catch (_error) { return false; } });
+    // 無視できるのは「キャラクター(Event)」だけ。地形(タイル・マス)の衝突は、フィルターが何を返しても無視しない。
+    const isCharacterTarget = target => (typeof Game_CharacterBase !== "undefined" ? target instanceof Game_CharacterBase : typeof target.eventId === "function");
+    const blockers = list => (ignoreFilters.length ? list.filter(result => !(result && result.targetObject && isCharacterTarget(result.targetObject) && filterSays(result.targetObject))) : list);
+    const ignoredBodies = map => (ignoreFilters.length && typeof map.events === "function" ? map.events().filter(e => e && !e._erased && filterSays(e)) : []);
 
     // ---------- 移動先の計算(状態を変えない) ----------
     // vectorOverride: 予備動作の後の再計算用に、現在地から固定の移動先へ向かうベクトル(タイル)を直接渡す。
@@ -143,10 +156,10 @@
         if (typeof mover?.createCollisionChecker !== "function") return failure("movementUnavailable");
         const checker = mover.createCollisionChecker({ overComplementMode: true });
         const blocked = (from, to) => {
-            if (ux !== 0 && (checker.checkCollision(to.x, from.y, ux > 0 ? 6 : 4).length ||
-                    checker.checkCollision(to.x, to.y, ux > 0 ? 6 : 4).length)) return true;
-            if (uy !== 0 && (checker.checkCollision(from.x, to.y, uy > 0 ? 2 : 8).length ||
-                    checker.checkCollision(to.x, to.y, uy > 0 ? 2 : 8).length)) return true;
+            if (ux !== 0 && (blockers(checker.checkCollision(to.x, from.y, ux > 0 ? 6 : 4)).length ||
+                    blockers(checker.checkCollision(to.x, to.y, ux > 0 ? 6 : 4)).length)) return true;
+            if (uy !== 0 && (blockers(checker.checkCollision(from.x, to.y, uy > 0 ? 2 : 8)).length ||
+                    blockers(checker.checkCollision(to.x, to.y, uy > 0 ? 2 : 8)).length)) return true;
             return false;
         };
         const step = Math.min(STEP, w / 2, h / 2);
@@ -170,13 +183,25 @@
         // 4. 最終確認: 着地矩形がマップ内で、壁(Region/Event)と重ならない。だめなら少し手前へ。
         const safe = p => p.x >= -1e-9 && p.y >= -1e-9 && p.x + w <= map.width() + 1e-9 && p.y + h <= map.height() + 1e-9 &&
             !occlusion.firstBlockerBetween({ x: p.x + w / 2, y: p.y + h / 2 }, { x: p.x + w / 2, y: p.y + h / 2 }, wallOptions);
-        while (travelled > 0 && !safe(at(travelled))) travelled = Math.max(0, travelled - SAFE_BACKOFF);
+        // 無視した相手(敵の体)の上には着地しない: 体と重なるあいだは、手前へ下がる(重ならない位置まで)。
+        const bodies = ignoredBodies(map).map(e => ({ x: e._realX, y: e._realY, w: typeof e.width === "function" ? e.width() : 1, h: typeof e.height === "function" ? e.height() : 1 }));
+        const onBody = p => bodies.some(b => p.x < b.x + b.w - 1e-6 && p.x + w > b.x + 1e-6 && p.y < b.y + b.h - 1e-6 && p.y + h > b.y + 1e-6);
+        const farthest = travelled;
+        while (travelled > 0 && (!safe(at(travelled)) || onBody(at(travelled)))) travelled = Math.max(0, travelled - SAFE_BACKOFF);
+        // 敵の体のせいで、重ならない着地点がまったく無い(壁と敵のすきまが敵で埋まっている など)ときだけ、壁・地形と重ならない最も遠い位置へ着地する(敵と重なる)。
+        //   不発にしない。重なった敵は、呼び出し側(FieldCombat の「重なり」のソフト衝突)が、体が離れるまで通り抜けられるようにする。
+        let overlapsBody = false;
+        if (travelled < MIN_TRAVEL && bodies.length) {
+            let t = farthest;
+            while (t > 0 && !safe(at(t))) t = Math.max(0, t - SAFE_BACKOFF);
+            if (t >= MIN_TRAVEL) { travelled = t; overlapsBody = onBody(at(t)); }
+        }
 
         const land = at(travelled);
         if (!finitePoint(land) || travelled < MIN_TRAVEL) {
             return failure("blocked", { start, requested, travelled, limiter: limiter === "none" ? "collision" : limiter });
         }
-        return { ok: true, start, land, requested, travelled, limiter };
+        return { ok: true, start, land, requested, travelled, limiter, ...(overlapsBody ? { overlapsBody: true } : {}) };
     };
 
     // ---------- 発動(二段階の取引) ----------
@@ -397,6 +422,8 @@
         CARD,
         get LEVELS() { return balance().levels(CARD); },
         plan: mouse => { const env = environment(mouse); return env.ok ? computePlan(env) : env; },
+        // 経路の衝突で無視する相手を登録する(fn(相手のオブジェクト) が true なら無視)。解除する関数を返す。壁・扉・通れない地形は無視できない
+        registerCollisionFilter: fn => { if (typeof fn !== "function") return () => false; ignoreFilters.push(fn); return () => { const i = ignoreFilters.indexOf(fn); if (i >= 0) ignoreFilters.splice(i, 1); return i >= 0; }; },
         getLastResult: () => lastResult ? JSON.parse(JSON.stringify(lastResult)) : null,
         isTeleportPending: () => !!teleport, getWindupFrames: () => windupFrames,
         // DEV/テスト用。予備動作のframe数(0なら成功確定と同時に移動)。保存しない。

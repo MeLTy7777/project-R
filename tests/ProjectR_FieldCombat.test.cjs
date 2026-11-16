@@ -19,6 +19,8 @@ const realCards = JSON.parse(deckParameters.CardDefinitions).map(JSON.parse);
 const extraCards = [
     { cardId: "hermes_issen", ringId: "hermes", maxCopies: 3, cooldownSeconds: 7, targetType: "direction", maxLevel: 3 },
     { cardId: "hermes_zetsu", ringId: "hermes", maxCopies: 5, cooldownSeconds: 0.5, targetType: "ground", maxLevel: 3 },
+    { cardId: "apollo_golden_volley", ringId: "apollo", maxCopies: 5, cooldownSeconds: 3, targetType: "ground", maxLevel: 3 },
+    { cardId: "apollo_gigas_slayer", ringId: "apollo", maxCopies: 5, cooldownSeconds: 4, targetType: "ground", maxLevel: 3 },
     { cardId: "test_filler", ringId: "hermes", maxCopies: 3, cooldownSeconds: 1, targetType: "instant", maxLevel: 3 }       // 通常の戦闘の30枚デッキを作るための穴埋め
 ];
 const cards = [...realCards, ...extraCards];
@@ -26,16 +28,24 @@ const cards = [...realCards, ...extraCards];
 function loadGame({ playtest = false, soulMode, withField = true, dev = true, tag = true } = {}) {
     const noop = function() {};
     const game = {
-        console, window: null, addEventListener: noop, document: { activeElement: { tagName: "BODY" }, hasFocus: () => true, addEventListener: noop },
+        console, window: null, addEventListener: noop, docListeners: {}, document: { activeElement: { tagName: "BODY" }, hasFocus: () => true, addEventListener(type, fn) { (game.docListeners[type] = game.docListeners[type] || []).push(fn); } },
+        TouchInput: { x: 960, y: 540, isCancelled: () => game.rightCancelled === true }, Graphics: { width: 1920, height: 1080 },
         Utils: { isOptionValid: name => name === "test" && playtest },
         Game_System: function() {}, DataManager: { makeSaveContents: () => ({}), extractSaveContents: noop, setupNewGame: noop },
         Scene_Map: function() { this._spriteset = {}; },
         SceneManager: { isSceneChanging: () => false },
-        $gameParty: { inBattle: () => false }, $gameMessage: { isBusy: () => false }, $gameTemp: { clearDestination: noop, reserved: [], reserveCommonEvent(id) { this.reserved.push(id); } },
+        $gameParty: { inBattle: () => false }, $gameMessage: { isBusy: () => false }, $gameTemp: null,
         blocked: null, passedDown: [], passedUp: [], touchCalls: [], transfers: [], eventRunning: false, commands: new Map(), saves: 0,
         $dataMapInfos: [null, { id: 1 }, { id: 2 }, { id: 3 }], $dataSystem: { variables: new Array(60).fill("") }, $dataMap: { note: tag ? "<fieldBattleMap>" : "" }
     };
     game.window = game;
+    game.Game_Temp = function() { this.reserved = []; };
+    game.Game_Temp.prototype.clearDestination = noop;
+    game.Game_Temp.prototype.reserveCommonEvent = function(id) { this.reserved.push(id); };
+    game.$gameTemp = new game.Game_Temp();
+    game.Game_Player = function() {};
+    game.Game_Player.prototype.isDashButtonPressed = function() { return true; };
+    game.Scene_Map.prototype.isMenuCalled = function() { return game.TouchInput.isCancelled(); };
     game.Scene_Map.prototype.update = function() { game.updates = (game.updates || 0) + 1; };
     game.Scene_Map.prototype.createDisplayObjects = noop;
     game.Input = {
@@ -67,20 +77,23 @@ function loadGame({ playtest = false, soulMode, withField = true, dev = true, ta
         canMove: () => true, isTransferring: () => !!game.transferring, centerPositionPoint: () => ({ x: game.$gamePlayer._realX + 0.5, y: game.$gamePlayer._realY + 0.5 }),
         checkEventTriggerTouchFront(d) { game.touchCalls.push(d); }
     };
-    // アイテム
-    const potion = { id: 7, name: "ポーション", itypeId: 1, iconIndex: 176, effects: [{ code: 11, dataId: 0, value1: 0, value2: 500 }] };
-    let potionCount = 3;
-    const actor = { hp: 100, mhp: 544, canUse: () => true, useItem() { potionCount--; }, refresh: noop };
-    game.$dataItems = [null, null, null, null, null, null, null, potion];
+    // アイテム: 在庫(id → 個数)。ポーション(7)・ハイポーション(8)・エリクサー(15)が消耗品。弾薬(31)・大事なもの(40)・「-----」の区切り(6)・メニュー専用(23)・戦闘専用(41)・敵対象(42)は一覧に出ない
+    const mk = (id, name, extra = {}) => ({ id, name, itypeId: 1, iconIndex: 176, consumable: true, occasion: 0, scope: 7, effects: [{ code: 11, dataId: 0, value1: 0, value2: 500 }], ...extra });
+    const potion = mk(7, "ポーション"), hiPotion = mk(8, "ハイポーション", { iconIndex: 177 }), elixir = mk(15, "エリクサー", { iconIndex: 178, scope: 11 });
+    game.$dataItems = [];
+    for (const item of [potion, hiPotion, elixir, mk(6, "-----回復系", { occasion: 3 }), mk(23, "ライフアップ", { occasion: 2 }), mk(31, "弾薬", { consumable: false, scope: 0 }), mk(40, "大事なもの", { itypeId: 2 }), mk(41, "戦闘専用", { occasion: 1 }), mk(42, "爆弾", { scope: 1 })]) game.$dataItems[item.id] = item;
+    game.inventory = new Map([[7, 3], [6, 1], [23, 1], [31, 9], [40, 1], [41, 1], [42, 2]]);
+    const actor = { hp: 100, mhp: 544, canUse: item => game.unusable !== item.id, useItem(item) { game.inventory.set(item.id, (game.inventory.get(item.id) || 0) - 1); game.usedItems.push(item.id); }, refresh: noop };
+    game.usedItems = [];
     game.$gameParty.leader = () => actor;
-    game.$gameParty.items = () => (potionCount > 0 ? [potion] : []);
-    game.$gameParty.hasItem = item => item === potion && potionCount > 0;
-    game.$gameParty.numItems = item => (item === potion ? potionCount : 0);
+    game.$gameParty.items = () => [...game.inventory.keys()].sort((a, b) => a - b).filter(id => game.inventory.get(id) > 0).map(id => game.$dataItems[id]);
+    game.$gameParty.numItems = item => game.inventory.get(item && item.id) || 0;
+    game.$gameParty.hasItem = item => game.$gameParty.numItems(item) > 0;
     game.Game_Action = function() {};
-    game.Game_Action.prototype.setItemObject = noop;
+    game.Game_Action.prototype.setItemObject = function(item) { this.item = item; };
     game.Game_Action.prototype.testApply = () => actor.hp < actor.mhp;
     game.Game_Action.prototype.apply = () => { actor.hp = Math.min(actor.mhp, actor.hp + 500); };
-    game.actor = actor; game.potionCount = () => potionCount;
+    game.actor = actor; game.potionCount = () => game.inventory.get(7) || 0; game.hiPotion = hiPotion; game.elixir = elixir;
     // 既存のProjectRの窓口(stub)
     const sessionSources = new Set(); const endListeners = [];
     game.ProjectRCombatSession = {
@@ -89,8 +102,18 @@ function loadGame({ playtest = false, soulMode, withField = true, dev = true, ta
         onEnd(fn) { endListeners.push(fn); return () => {}; }, isActive: () => sessionSources.size > 0
     };
     game.endSession = reason => game.ProjectRCombatSession.end("field_combat", reason);
-    game.ProjectRCombatPresence = { isCombatEventActive: () => sessionSources.size > 0 };
-    game.ProjectRCardBattleInput = { getBlockedReason: () => game.blocked, cancelPress: () => game.cancelledPress === true };
+    game.ProjectRCombatPresence = { isCombatEventActive: () => sessionSources.size > 0, settings: { attackCommonEventId: 1 } };
+    game.zetsuFilters = []; game.ProjectRHermesZetsu = { registerCollisionFilter(fn) { game.zetsuFilters.push(fn); return () => true; } };
+    game.vfxPlays = []; game.godSwings = []; game.sounds = [];
+    game.vfxRegistered = {};
+    game.ProjectRPresentationVfx = { mapping(key) { return key === "hermes_sweep.staff" ? { library: "ProjectR_Sweep_Staff", anchor: "player", rotate: "aim", stick: true, scale: 100, opacity: 235, offsetY: -24 } : null; }, register(key, definition) { game.vfxRegistered[key] = definition; return true; }, play(key, context) { game.vfxPlays.push({ key, degree: context && context.degree, frame: game.SceneManager.frameStamp ? game.SceneManager.frameStamp() : 0 }); return { ok: true }; } };
+    game.ProjectRGodSummonVisual = { swingWeapon(god, degree, sprite) { game.godSwings.push({ god, degree, sprite }); return true; } };
+    game.AudioManager = { playSe(se) { game.sounds.push(se.name); } };
+    game.swings = []; game.shots = []; game.reloads = []; game.swingCooldown = 0; game.gunState = { equipped: true, ammo: 7, capacity: 7, reserve: 30, reloading: false };
+    game.ProjectRSwordSystem = { swing(source, options) { if (game.swingCooldown > 0) return { ok: false, reason: "cooldown" }; game.swings.push({ source, options }); game.swingCooldown = options.cooldown; return { ok: true, degree: 90, serial: game.swings.length, step: options.step, scale: options.damageScale || 1 }; } };
+    game.ProjectRGunSystem = { fire(source) { if (!game.gunState.equipped) return { ok: false, reason: "noGunEquipped" }; if (game.gunState.reloading) return { ok: false, reason: "reloading" }; if (game.gunState.ammo <= 0) return { ok: false, reason: "empty" }; game.gunState.ammo--; game.shots.push(source); return { ok: true, eventId: 90 + game.shots.length, degree: 45 }; },
+        requestReload(source) { if (!game.gunState.equipped) return { ok: false, reason: "noGunEquipped" }; if (game.gunState.reloading) return { ok: false, reason: "alreadyReloading" }; if (game.gunState.ammo >= game.gunState.capacity) return { ok: false, reason: "magazineFull" }; if (game.gunState.reserve <= 0) return { ok: false, reason: "noReserveAmmo" }; game.gunState.reloading = true; game.reloads.push(source); return { ok: true, frames: 40 }; }, status: () => ({ ...game.gunState }) };
+    game.ProjectRCardBattleInput = { getBlockedReason: event => game.blocked || (event && event.shiftKey ? "modifierKey" : null), cancelPress: () => game.cancelledPress === true };      // 本物と同じく shiftKey を「修飾キー」として断る
     game.attackLog = [];
     game.ProjectREnemyAttack = {
         schedule(spec) { const id = (game.attackLog.length + 1); game.attackLog.push({ id, ...spec }); game.pendingAttack = { id, eventId: spec.eventId, state: "pending", windup: spec.windupFrames, framesLeft: spec.windupFrames, area: { x: 0, y: 0, width: 1, height: 1 } }; return { ok: true, id }; },
@@ -128,7 +151,11 @@ function loadGame({ playtest = false, soulMode, withField = true, dev = true, ta
         game.transferring = false;
         return t;
     };
-    game.frame = (n = 1) => { for (let i = 0; i < n; i++) game.SceneManager._scene.update(); };
+    game.frame = (n = 1) => { for (let i = 0; i < n; i++) { game.SceneManager._scene.update(); if (game.swingCooldown > 0) game.swingCooldown--; } };
+    game.mouseDown = (button = 2) => { const event = { button, preventDefault() { this.defaultPrevented = true; } }; for (const fn of game.docListeners.mousedown || []) fn(event); return event; };
+    game.contextMenu = () => { const event = { preventDefault() { this.defaultPrevented = true; } }; for (const fn of game.docListeners.contextmenu || []) fn(event); return event; };
+    game.click = () => game.$gameTemp.reserveCommonEvent(1);                                  // 左クリック(Hendrix の「攻撃」ボタンが共通イベント1を予約する)
+    game.mouseAt = (x, y) => { game.TouchInput.x = x; game.TouchInput.y = y; };
     game.key = (code, extra = {}) => { const event = { code, keyCode: 0, repeat: false, preventDefault() { this.defaultPrevented = true; }, ...extra }; game.Input._onKeyDown(event); return event; };
     game.keyUp = code => game.Input._onKeyUp({ code });
     return game;
@@ -166,7 +193,7 @@ test("固定戦闘(CardDeckCore は変更しない): 固定戦闘は山札・手
 test("固定戦闘: 通常の戦闘では useFixedCard は使えない(従来の手札の戦闘を変えない)", () => {
     const game = loadGame();
     const deck = game.ProjectRCardDeck;
-    const all = cards.flatMap(card => Array(Number(card.maxCopies)).fill(card.cardId));
+    const all = cards.filter(card => !/^apollo_(golden_volley|gigas_slayer)$/.test(card.cardId)).flatMap(card => Array(Number(card.maxCopies)).fill(card.cardId));
     deck.assignRingToPlayer("hermes"); deck.assignRingToPlayer("apollo");
     cards.forEach(card => deck.setCardOwned(card.cardId));
     assert.equal(deck.setDeck(all).ok, true);
@@ -213,32 +240,6 @@ test("FieldCombat: マップ移動・ロード(CombatSession.endAll)や外から
     assert.equal(fc.isActive(), false, "カード戦闘が外から終えられたら、次のフレームで終わる");
 });
 
-test("FieldCombat: 固定アビリティの割り当て(Q 一閃 7秒 / Space 絶 3秒 / E 奥義 / R 消耗品 8秒 / C キャンセル)と、Cooldownは成功したときだけ始まる", () => {
-    const game = loadGame();
-    const fc = game.ProjectRFieldCombat;
-    const loadout = plain(fc.getLoadout());
-    assert.deepEqual(["special", "mobility", "ultimate", "consumable", "cancel"].map(s => [loadout[s].key, loadout[s].cardId || loadout[s].kind]),
-        [["Q", "hermes_issen"], ["Space", "hermes_zetsu"], ["E", "ultimate"], ["R", "item"], ["C", "cancel"]]);
-    assert.equal(loadout.attack.key, "LMB"); assert.equal(loadout.attack.kind, "engine", "通常攻撃は既存の基本攻撃(Hendrix共通イベント)のまま");
-    assert.equal(plain(fc.useAbility("special")).reason, "inactive", "戦闘外では使えない");
-    fc.begin();
-    const q = plain(fc.useAbility("special"));
-    assert.equal(q.ok, true); assert.equal(q.cardId, "hermes_issen");
-    assert.equal(plain(fc.getCooldowns()).special, 7);
-    assert.equal(plain(fc.useAbility("special")).reason, "cooldown");
-    assert.equal(game.handlerCalls.length, 1, "Cooldown中はカード効果を呼ばない");
-    game.directionResult = { ok: false, reason: "noTarget" };
-    game.frame(60 * 7 + 5);
-    assert.equal(plain(fc.getCooldowns()).special, 0, "1フレーム 1/60秒ずつ進む");
-    const failed = plain(fc.useAbility("special"));
-    assert.equal(failed.ok, false); assert.equal(failed.reason, "abilityFailed");
-    assert.equal(plain(fc.getCooldowns()).special, 0, "失敗(使えなかった)ならCooldownは始まらない");
-    const z = plain(fc.useAbility("mobility"));
-    assert.equal(z.ok, true); assert.equal(plain(fc.getCooldowns()).mobility, 3);
-    assert.equal(plain(fc.useAbility("cancel")).ok, true);
-    assert.equal(plain(fc.useAbility("attack")).reason, "invalidSlot", "通常攻撃はこのPluginが発動しない(既存の入力)");
-});
-
 test("FieldCombat: 絶の「予約(pending)」は成功として扱い、Cooldownを始める", () => {
     const game = loadGame();
     const fc = game.ProjectRFieldCombat;
@@ -253,67 +254,6 @@ test("FieldCombat: 絶の「予約(pending)」は成功として扱い、Cooldow
     const z = plain(fc.useAbility("mobility"));
     assert.equal(z.ok, true); assert.equal(z.pending, true);
     assert.equal(plain(fc.getCooldowns()).mobility, 3);
-});
-
-test("FieldCombat: 奥義(E)はゲージが満タンでなければ発動せず、満タンなら Ultimate の窓口を呼ぶ(Cooldownは持たない)", () => {
-    const game = loadGame();
-    const fc = game.ProjectRFieldCombat;
-    fc.begin();
-    const no = plain(fc.useAbility("ultimate")); assert.equal(no.ok, false); assert.equal(no.reason, "gaugeNotFull");
-    game.ultimateResult = { ok: true, godId: "hermes", started: true };
-    const yes = plain(fc.useAbility("ultimate")); assert.equal(yes.ok, true); assert.equal(yes.godId, "hermes");
-    assert.equal(plain(fc.getCooldowns()).ultimate, 0);
-    // HUDの奥義のキーもEにそろう
-    assert.equal(plain(game.ProjectRUltimateActivation.getInputBinding()).key, "E");
-    fc.end(); assert.equal(plain(game.ProjectRUltimateActivation.getInputBinding()).key, "U", "戦闘外はUのまま");
-});
-
-test("FieldCombat: 消耗品(R)は効果があるときだけ1個使い、満タンなら消費しない。Cooldown 8秒", () => {
-    const game = loadGame();
-    const fc = game.ProjectRFieldCombat;
-    fc.begin();
-    game.actor.hp = game.actor.mhp;
-    const full = plain(fc.useAbility("consumable")); assert.equal(full.ok, false); assert.equal(full.reason, "noEffect"); assert.equal(game.potionCount(), 3);
-    assert.equal(plain(fc.getCooldowns()).consumable, 0);
-    game.actor.hp = 100;
-    const used = plain(fc.useAbility("consumable")); assert.equal(used.ok, true); assert.equal(used.itemId, 7);
-    assert.equal(game.potionCount(), 2); assert.ok(game.actor.hp > 100);
-    assert.equal(plain(fc.getCooldowns()).consumable, 8);
-    assert.equal(plain(fc.useAbility("consumable")).reason, "cooldown");
-    game.frame(60 * 8 + 3); game.actor.hp = 50;
-    game.potionCount = () => 0;                                                           // 在庫なし(下の pick は $gameParty を見る)
-    game.$gameParty.items = () => []; game.$gameParty.hasItem = () => false;
-    assert.equal(plain(fc.useAbility("consumable")).reason, "noItem");
-});
-
-test("FieldCombat: Q/E/R/C/Space を戦闘中だけ受け取る(押しっぱなしは1回)。戦闘外・メニュー/会話中・修飾キーでは元のInputへ渡す。WASD等は常に元のまま", () => {
-    const game = loadGame();
-    const fc = game.ProjectRFieldCombat;
-    game.key("KeyQ"); game.key("Space");
-    assert.deepEqual(game.passedDown, ["KeyQ", "Space"], "戦闘外は元のInputへ渡す(奪わない)");
-    assert.equal(game.updates || 0, 0);
-    fc.begin();
-    const e = game.key("KeyQ");
-    assert.equal(e.defaultPrevented, true, "戦闘中は受け取る");
-    game.key("KeyQ", { repeat: true }); game.key("KeyQ");
-    game.frame(1);
-    assert.equal(game.handlerCalls.filter(c => c === "hermes_issen").length, 1, "押しっぱなし(リピート)は1回だけ発動");
-    game.keyUp("KeyQ"); assert.deepEqual(game.passedUp, [], "受け取ったキーのkeyUpも元へ渡さない");
-    game.key("KeyW"); game.key("KeyA"); game.key("KeyF"); game.key("KeyJ");
-    assert.deepEqual(game.passedDown.slice(2), ["KeyW", "KeyA", "KeyF", "KeyJ"], "移動・F・Jは奪わない");
-    game.blocked = "messageBusy"; game.key("Space");
-    assert.equal(game.passedDown.at(-1), "Space", "メッセージ中は元のInputへ");
-    game.blocked = null; game.key("KeyE", { shiftKey: true });
-    assert.equal(game.passedDown.at(-1), "KeyE", "修飾キーつきは元のInputへ");
-    const before = game.passedDown.length;
-    game.key("KeyR"); game.key("KeyC");
-    assert.equal(game.passedDown.length, before, "R/Cも戦闘中は受け取る");
-    game.frame(1);
-    const log = plain(fc.getLog()).filter(entry => entry.type === "cast" || entry.type === "cancel");
-    assert.ok(log.some(l => l.slot === "consumable") && log.some(l => l.type === "cancel"));
-    // 受け付けられない間(メニュー等)は、溜めた入力を捨てて進めない
-    fc.end(); game.key("KeyQ");
-    assert.equal(game.passedDown.at(-1), "KeyQ", "戦闘が終われば元へ");
 });
 
 test("FieldCombat: メニュー・会話中はCooldownが進まず、溜まった入力も発動しない", () => {
@@ -351,8 +291,8 @@ test("探索マップ: 近くに生きている敵がいても、戦闘は始ま
     assert.equal(plain(fc.begin()).reason, "encounterRequired");
     assert.equal(fc.isCombatAllowed(), false);
     assert.equal(plain(fc.getEncounterState()).state, "idle");
-    game.key("KeyQ"); game.key("KeyE"); game.key("KeyR"); game.key("KeyC"); game.key("Space");
-    assert.deepEqual(game.passedDown, ["KeyQ", "KeyE", "KeyR", "KeyC", "Space"], "戦闘外の入力は元のInputへ(移動・NPC・メニューを邪魔しない)");
+    game.key("KeyQ"); game.key("KeyE"); game.key("KeyR"); game.key("KeyC"); game.key("ShiftLeft");
+    assert.deepEqual(game.passedDown, ["KeyQ", "KeyE", "KeyR", "KeyC", "ShiftLeft"], "戦闘外の入力は元のInputへ(移動・NPC・メニューを邪魔しない)");
     assert.equal(plain(fc.useAbility("special")).reason, "inactive");
     fc.setDevAllowOutsideEncounter(true);
     assert.equal(plain(fc.begin()).ok, true, "DEVの許可があれば手動で始められる");
@@ -478,25 +418,6 @@ test("FieldCombat: 敵の行動 = 近づく → 範囲に入ったら予約(溜�
     game.frame(60); assert.equal(game.attackLog.length, 2, "Cooldownが明けたらまた予約する");
     game.setEnemyHp(3, 0); game.frame(3);
     assert.deepEqual(plain(fc.listEnemies()), [], "倒れた敵の行動は外れる");
-});
-
-test("FieldCombat: BattleHUDの5枠は、戦闘中だけ固定アビリティ(Q/Space/E/R/C)を返し、DRAW/DISCARD表示は出さない。戦闘外は元のまま", () => {
-    const game = loadGame();
-    const fc = game.ProjectRFieldCombat;
-    const adapter = new game.ProjectRBattleHUD.DataAdapter();
-    assert.deepEqual(plain(adapter.skills()), ["original"]); assert.deepEqual(plain(adapter.cardCounts()), { draw: 1 });
-    fc.begin();
-    const slots = plain(adapter.skills());
-    assert.deepEqual(slots.map(s => s.key), ["Q", "Space", "E", "R", "C"]);
-    assert.deepEqual(slots.map(s => s.name).slice(0, 2), ["一閃", "絶"]);
-    assert.ok(slots.every(s => s.mode === "field"));
-    assert.equal(adapter.cardCounts(), null);
-    fc.useAbility("special");
-    const after = plain(adapter.skills());
-    assert.equal(after[0].cooldown.active, true); assert.equal(after[0].cooldown.total, 7); assert.equal(after[0].disabled, true);
-    assert.equal(after[1].disabled, false, "使えるスロットは有効");
-    game.gauge.current = 100; assert.equal(plain(adapter.skills())[2].disabled, false, "ゲージが満タンなら奥義が有効");
-    fc.end(); assert.deepEqual(plain(adapter.skills()), ["original"]);
 });
 
 test("FieldCombat: SOUL戦闘の開始許可 = off(既定)は常に断る / dev は Playtest のときだけ / on は許す。コードは消さない", () => {
@@ -1360,4 +1281,477 @@ test("渋滞(4): 2〜3体が扉口へ押し寄せても、重ならず・全員�
         g2.frame(300); assert.ok(e._realY > 4.5, "ラウンド " + round + ": 扉口を通って出てくる"); f2.end();
         assert.deepEqual(plain(f2.getSoftPass()), []);
     }
+});
+
+// ==================================================================== Stage 5: 操作の再設計(左クリック=近接3段 / 右クリック=銃 / R / Q / Shift / E / C) ====================================================================
+test("FieldCombat(Stage 5): 固定アビリティの割り当て(Q 奥義 / Shift 絶 3秒 / E 一閃 7秒 / R リロード / C アイテム 8秒 / LMB 近接 / RMB 銃)と、Cooldownは成功したときだけ始まる", () => {
+    const game = loadGame();
+    const fc = game.ProjectRFieldCombat;
+    const loadout = plain(fc.getLoadout());
+    assert.deepEqual(["ultimate", "mobility", "special", "reload", "consumable"].map(s => [loadout[s].key, loadout[s].cardId || loadout[s].kind]),
+        [["Q", "ultimate"], ["Shift", "hermes_zetsu"], ["E", "hermes_issen"], ["R", "reload"], ["V", "item"]]);
+    assert.deepEqual(["card1", "card2"].map(s => [loadout[s].key, loadout[s].cardId, loadout[s].kind]), [["X", "apollo_golden_volley", "card"], ["C", "apollo_gigas_slayer", "card"]], "X・C キーの固定カード");
+    assert.equal(loadout.attack.key, "LMB"); assert.equal(loadout.attack.kind, "melee", "左クリックは近接の3段コンボ"); assert.equal(loadout.attack.label, "薙ぎ払い");
+    assert.equal(loadout.gun.key, "RMB"); assert.equal(loadout.gun.kind, "gun");
+    assert.ok(!Object.values(loadout).some(d => d.key === "Space"), "古い Space の割り当ては無い");
+    assert.equal(plain(fc.useAbility("special")).reason, "inactive", "戦闘外では使えない");
+    fc.begin();
+    const q = plain(fc.useAbility("special"));
+    assert.equal(q.ok, true); assert.equal(q.cardId, "hermes_issen");
+    assert.equal(plain(fc.getCooldowns()).special, 7);
+    assert.equal(plain(fc.useAbility("special")).reason, "cooldown");
+    assert.equal(game.handlerCalls.length, 1, "Cooldown中はカード効果を呼ばない");
+    game.directionResult = { ok: false, reason: "noTarget" };
+    game.frame(60 * 7 + 5);
+    assert.equal(plain(fc.getCooldowns()).special, 0, "1フレーム 1/60秒ずつ進む");
+    const failed = plain(fc.useAbility("special"));
+    assert.equal(failed.ok, false); assert.equal(failed.reason, "abilityFailed");
+    assert.equal(plain(fc.getCooldowns()).special, 0, "失敗(使えなかった)ならCooldownは始まらない");
+    const z = plain(fc.useAbility("mobility"));
+    assert.equal(z.ok, true); assert.equal(plain(fc.getCooldowns()).mobility, 3);
+    assert.deepEqual(Object.keys(plain(fc.getCooldowns())).sort(), ["card1", "card2", "consumable", "mobility", "special", "ultimate"], "リロードはCooldownを持たない(既存の銃の仕組み)");
+    assert.equal(plain(fc.useAbility("cancel")).ok, true);
+    assert.equal(plain(fc.useAbility("attack")).reason, "invalidSlot", "近接・銃は useAbility ではなく attackClick / fireGun");
+});
+
+test("FieldCombat(Stage 5): 奥義(Q)はゲージが満タンでなければ発動せず、満タンなら Ultimate の窓口を呼ぶ(Cooldownは持たない)。キー表示もQ", () => {
+    const game = loadGame();
+    const fc = game.ProjectRFieldCombat;
+    fc.begin();
+    const no = plain(fc.useAbility("ultimate")); assert.equal(no.ok, false); assert.equal(no.reason, "gaugeNotFull");
+    game.ultimateResult = { ok: true, godId: "hermes", started: true };
+    game.key("KeyQ"); game.frame(1);
+    const yes = plain(fc.getLastResult()); assert.equal(yes.ok, true); assert.equal(yes.godId, "hermes"); assert.equal(yes.slot, "ultimate"); assert.equal(yes.source, "keyboard");
+    assert.equal(plain(fc.getCooldowns()).ultimate, 0);
+    assert.equal(plain(game.ProjectRUltimateActivation.getInputBinding()).key, "Q");
+    fc.end(); assert.equal(plain(game.ProjectRUltimateActivation.getInputBinding()).key, "U", "戦闘外はUのまま");
+});
+
+test("FieldCombat(Stage 5): Q/E/R/C/Shift を戦闘中だけ受け取る(押しっぱなしは1回)。戦闘外・メニュー/会話中・Ctrl/Alt では元のInputへ渡す。Shiftは修飾キーではなく絶のキー。WASD等は常に元のまま", () => {
+    const game = loadGame();
+    const fc = game.ProjectRFieldCombat;
+    game.key("KeyQ"); game.key("ShiftLeft");
+    assert.deepEqual(game.passedDown, ["KeyQ", "ShiftLeft"], "戦闘外は元のInputへ渡す(奪わない)");
+    assert.equal(game.updates || 0, 0);
+    fc.begin();
+    const e = game.key("KeyE");
+    assert.equal(e.defaultPrevented, true, "戦闘中は受け取る");
+    game.key("KeyE", { repeat: true }); game.key("KeyE");
+    game.frame(1);
+    assert.equal(game.handlerCalls.filter(c => c === "hermes_issen").length, 1, "押しっぱなし(リピート)は1回だけ発動");
+    game.keyUp("KeyE"); assert.deepEqual(game.passedUp, [], "受け取ったキーのkeyUpも元へ渡さない");
+    game.key("KeyW"); game.key("KeyA"); game.key("KeyF"); game.key("KeyJ"); game.key("Space");
+    assert.deepEqual(game.passedDown.slice(2), ["KeyW", "KeyA", "KeyF", "KeyJ", "Space"], "移動・F・J・Space(旧・絶)は奪わない");
+    const shift = game.key("ShiftLeft", { shiftKey: true, keyCode: 16 });
+    assert.equal(shift.defaultPrevented, true, "Shift 自体が絶のキー(修飾キーとして断らない)");
+    game.frame(1); assert.ok(game.handlerCalls.includes("hermes_zetsu"), "Shift で絶");
+    game.key("KeyE", { shiftKey: true });        // Shift を押したままの E は、通常どおり受け取る(クールダウン中なので何も起きない)
+    assert.equal(game.passedDown.length, 7, "Shift を押したままでも、受け取る");
+    game.keyUp("ShiftLeft"); game.keyUp("KeyE");
+    game.key("KeyE", { ctrlKey: true }); game.key("KeyE", { altKey: true });
+    assert.equal(game.passedDown.at(-1), "KeyE", "Ctrl/Alt つきは元のInputへ");
+    game.blocked = "messageBusy"; game.key("KeyQ");
+    assert.equal(game.passedDown.at(-1), "KeyQ", "メッセージ中は元のInputへ");
+    game.blocked = null;
+    const before = game.passedDown.length; game.gunState.ammo = 3;
+    game.key("KeyR"); game.frame(1);
+    assert.equal(game.passedDown.length, before, "Rも戦闘中は受け取る(リロード)");
+    assert.deepEqual(game.reloads, ["field"]);
+    const log = plain(fc.getLog()).filter(entry => entry.type === "cast");
+    assert.ok(log.some(l => l.slot === "reload") && log.some(l => l.slot === "mobility") && log.some(l => l.slot === "special"));
+    fc.end(); game.key("KeyQ");
+    assert.equal(game.passedDown.at(-1), "KeyQ", "戦闘が終われば元へ");
+});
+
+test("FieldCombat(Stage 5): R = リロード(既存の銃の requestReload)。満タン・ストックなし・銃なし・リロード中は既存の理由で断り、Cooldownは始めない", () => {
+    const game = loadGame();
+    const fc = game.ProjectRFieldCombat;
+    fc.begin();
+    assert.equal(plain(fc.useAbility("reload")).reason, "magazineFull");
+    game.gunState.ammo = 2; game.gunState.reserve = 0;
+    assert.equal(plain(fc.useAbility("reload")).reason, "noReserveAmmo");
+    game.gunState.reserve = 30;
+    const ok = plain(fc.useAbility("reload")); assert.equal(ok.ok, true); assert.equal(ok.frames, 40);
+    assert.equal(plain(fc.useAbility("reload")).reason, "alreadyReloading");
+    game.gunState.reloading = false; game.gunState.equipped = false;
+    assert.equal(plain(fc.useAbility("reload")).reason, "noGunEquipped");
+    assert.deepEqual(plain(fc.getCooldowns()), { special: 0, mobility: 0, ultimate: 0, consumable: 0, card1: 0, card2: 0 }, "リロードはCooldownを増やさない");
+    assert.equal(plain(game.ProjectRFieldCombat.getHudState().slots.find(s => s.slot === "reload")).state, "noGun");
+});
+
+test("FieldCombat(Stage 5): 左クリック = 近接3段コンボ。1クリック=1回の斬撃で 1段目 → 2段目 → 3段目(強撃)→ 1段目へ戻る。出なかったクリックは段を進めない。受付時間を過ぎると1段目", () => {
+    const game = loadGame();
+    const fc = game.ProjectRFieldCombat;
+    game.click();
+    assert.deepEqual(game.$gameTemp.reserved, [1], "戦闘外は共通イベント1を元の経路へ渡す(従来のまま)"); assert.equal(game.swings.length, 0);
+    game.$gameTemp.reserved.length = 0;
+    fc.begin();
+    game.click(); assert.deepEqual(game.$gameTemp.reserved, [], "戦闘中は元の経路(銃・旧共通イベント)へ渡さない");
+    assert.equal(game.swings.length, 1); const o1 = game.swings[0].options;
+    assert.equal(game.swings[0].source, "field");
+    assert.deepEqual([o1.step, o1.style, o1.damageScale, o1.anyWeapon], [1, "clockwise", 1, true], "1段目: 通常の式(倍率1)・銃を装備していても出る");
+    assert.equal(plain(fc.getComboState()).step, 1);
+    game.click(); assert.equal(game.swings.length, 1, "間隔(cooldown)の内のクリックは出ない");
+    assert.equal(plain(fc.getComboState()).step, 1, "出なかったクリックは段を進めない"); assert.equal(plain(fc.getComboState()).rejected, 1);
+    game.frame(20); game.click();
+    const o2 = game.swings[1].options;
+    assert.deepEqual([o2.step, o2.style, o2.damageScale], [2, "counterclockwise", 1], "2段目");
+    game.frame(20); game.click();
+    const o3 = game.swings[2].options;
+    assert.deepEqual([o3.step, o3.style, o3.damageScale], [3, "fullcircle", 2], "3段目: 強撃(倍率2・ComboFinisherDamage)");
+    assert.ok(o3.width > o2.width && o3.depth > o2.depth && o3.cooldown > o2.cooldown && o3.lifetime > o2.lifetime, "3段目は範囲が広く、間も長い");
+    assert.equal(plain(fc.getComboState()).step, 0, "3段目のあとは1段目へ戻る"); assert.equal(plain(fc.getComboState()).finishers, 1);
+    game.frame(5); game.click(); assert.equal(game.swings.length, 3, "3段目の間(30フレーム)の内のクリックは出ない");
+    game.frame(40); game.click();
+    assert.equal(game.swings[3].options.step, 1, "続けて押すと、新しい1段目");
+    // 受付時間(0.8秒=48フレーム)を過ぎると1段目に戻る
+    game.frame(20); game.click(); assert.equal(game.swings[4].options.step, 2);
+    game.frame(60); game.click();
+    assert.equal(game.swings[5].options.step, 1, "時間切れ: 2段目の続きではなく1段目"); assert.equal(plain(fc.getComboState()).resets, 1);
+    // 押しっぱなし: Hendrix の「攻撃」ボタンは押した瞬間に1回だけ共通イベントを予約する。予約が無ければ、フレームが進んでも斬撃は増えない
+    const count = game.swings.length; game.frame(200);
+    assert.equal(game.swings.length, count, "押しっぱなし(予約なし)では自動で進まない");
+    assert.equal(plain(fc.getComboConfig()).steps.length, 3);
+    // 別の共通イベントは元の経路へ
+    game.$gameTemp.reserveCommonEvent(2); assert.deepEqual(game.$gameTemp.reserved, [2]);
+    fc.end(); game.$gameTemp.reserved.length = 0; game.click();
+    assert.deepEqual(game.$gameTemp.reserved, [1], "戦闘が終われば元の経路"); assert.equal(game.swings.length, count);
+});
+
+test("FieldCombat(Stage 5): 近接コンボは戦闘ごとに初期状態。プレイヤー死亡中・放射メニュー中・剣の窓口が無いときは出さない", () => {
+    const game = loadGame();
+    const fc = game.ProjectRFieldCombat;
+    fc.begin(); game.click(); game.frame(20); game.click();
+    assert.equal(plain(fc.getComboState()).step, 2);
+    fc.end(); fc.begin();
+    const fresh = plain(fc.getComboState()); assert.deepEqual([fresh.step, fresh.swings, fresh.finishers, fresh.resets, fresh.rejected], [0, 0, 0, 0, 0], "繰り返しのエンカウンターでコンボは持ち越さない");
+    game.frame(30); game.click(); assert.equal(game.swings.at(-1).options.step, 1);
+    game.ProjectR = { PlayerDeath: { isDead: () => true } };
+    game.frame(40); assert.equal(plain(fc.attackClick()).reason, "playerDead"); assert.equal(plain(fc.fireGun()).reason, "playerDead");
+    game.ProjectR = undefined;
+    const sword = game.ProjectRSwordSystem; game.ProjectRSwordSystem = undefined;
+    assert.equal(plain(fc.attackClick()).reason, "swordUnavailable"); game.ProjectRSwordSystem = sword;
+    const gun = game.ProjectRGunSystem; game.ProjectRGunSystem = undefined;
+    assert.equal(plain(fc.fireGun()).reason, "gunUnavailable"); game.ProjectRGunSystem = gun;
+});
+
+test("FieldCombat(Stage 5): 右クリック = 既存の銃を1発。右クリックメニュー(contextmenu)・マップのメニューを出さない。放射メニュー中は撃たない。戦闘外は何もしない", () => {
+    const game = loadGame();
+    const fc = game.ProjectRFieldCombat;
+    assert.equal(game.contextMenu().defaultPrevented, undefined, "戦闘外はこのPluginは何もしない");
+    game.mouseDown(2); game.frame(1); assert.equal(game.shots.length, 0, "戦闘外では撃たない");
+    assert.equal(game.Scene_Map.prototype.isMenuCalled(), false);
+    game.rightCancelled = true; assert.equal(game.Scene_Map.prototype.isMenuCalled(), true, "戦闘外のマップは従来のまま(右クリックの扱いは変えない)"); game.rightCancelled = false;
+    assert.equal(new game.Game_Player().isDashButtonPressed(), true, "戦闘外は Shift のダッシュのまま");
+    fc.begin();
+    assert.equal(new game.Game_Player().isDashButtonPressed(), false, "戦闘中は Shift のダッシュを無効にする");
+    assert.equal(game.contextMenu().defaultPrevented, true, "戦闘中はブラウザの右クリックメニューを出さない");
+    game.rightCancelled = true; assert.equal(game.Scene_Map.prototype.isMenuCalled(), false, "戦闘中の右クリックでマップのメニューを開かない"); game.rightCancelled = false;
+    const down = game.mouseDown(2); assert.equal(down.defaultPrevented, true);
+    game.frame(1);
+    assert.deepEqual(game.shots, ["field"], "右クリック1回 = 1発"); assert.equal(game.swings.length, 0, "銃は近接を出さない");
+    assert.equal(game.$gameTemp.reserved.length, 0);
+    game.frame(120); assert.equal(game.shots.length, 1, "押しっぱなしでは撃ち続けない(mousedown は1回)");
+    game.mouseDown(0); game.frame(1); assert.equal(game.shots.length, 1, "左ボタンの mousedown は銃ではない");
+    game.mouseDown(2); game.mouseDown(2); game.frame(1); assert.equal(game.shots.length, 3, "クリックのたび1発");
+    game.gunState.ammo = 0; game.mouseDown(2); game.frame(1);
+    assert.equal(plain(fc.getControlStats()).gun.last.reason, "empty"); assert.equal(plain(fc.getControlStats()).gun.rejected, 1);
+    game.gunState.ammo = 5; game.gunState.equipped = false; assert.equal(plain(fc.fireGun()).reason, "noGunEquipped", "銃を装備していなければ何も起きない");
+    game.gunState.equipped = true; game.blocked = "messageBusy"; game.mouseDown(2); game.frame(1); assert.equal(game.shots.length, 3, "メッセージ中は撃たない"); game.blocked = null;
+    fc.end(); game.mouseDown(2); game.frame(1); assert.equal(game.shots.length, 3, "戦闘が終われば撃たない");
+    assert.equal(new game.Game_Player().isDashButtonPressed(), true, "戦闘が終われば Shift のダッシュが戻る");
+});
+
+test("FieldCombat(Stage 5): アイテムの一覧は実際の持ち物から。通常の消耗品だけ(区切り・メニュー専用・戦闘専用・敵対象・大事なもの・弾薬は出ない)。選択は使わない・保持する", () => {
+    const game = loadGame();
+    const fc = game.ProjectRFieldCombat;
+    assert.deepEqual(plain(fc.listConsumables()).map(i => [i.id, i.name, i.count, i.usable]), [[7, "ポーション", 3, true]]);
+    game.inventory.set(8, 2); game.inventory.set(15, 1);
+    assert.deepEqual(plain(fc.listConsumables()).map(i => [i.id, i.count]), [[7, 3], [8, 2], [15, 1]]);
+    assert.equal(plain(fc.listConsumables())[1].iconIndex, 177, "アイテムのアイコン");
+    game.unusable = 8; assert.equal(plain(fc.listConsumables())[1].usable, false, "使えない状態(canUse が false)も一覧に出る");
+    game.unusable = 0;
+    assert.equal(plain(fc.selectConsumable(6)).reason, "notFieldItem"); assert.equal(plain(fc.selectConsumable(31)).reason, "notFieldItem"); assert.equal(plain(fc.selectConsumable(999)).reason, "notFieldItem");
+    fc.begin();
+    assert.equal(plain(fc.getSelectedConsumable()).id, 7, "選んでいなければ HP 回復薬");
+    assert.equal(plain(fc.selectConsumable(8)).ok, true);
+    assert.equal(plain(fc.getSelectedConsumable()).id, 8); assert.equal(game.usedItems.length, 0, "選ぶだけでは使わない");
+    fc.end(); fc.begin();
+    assert.equal(plain(fc.getSelectedConsumable()).id, 8, "選んだアイテムは、次のエンカウンターでも(このセッションの間)保持");
+    game.inventory.set(8, 0);
+    const empty = plain(fc.getHudState()).item; assert.equal(empty.state, "empty"); assert.equal(empty.extra.count, 0);
+    game.actor.hp = 100; assert.equal(plain(fc.useAbility("consumable")).reason, "noItem", "持っている数が0なら使えない(選び直すまで×0のまま)");
+    assert.equal(plain(fc.getCooldowns()).consumable, 0);
+});
+
+test("FieldCombat(Stage 5): C の短押し = 選んでいるアイテムを使う(在庫・Cooldown・使えるかの確認)。長押し(0.3秒)のあとに離しても使わない", () => {
+    const game = loadGame();
+    const fc = game.ProjectRFieldCombat;
+    const hold = fc.getItemHoldFrames();
+    assert.equal(hold, 18, "既定 0.3秒 = 18フレーム");
+    fc.begin(); game.actor.hp = 100;
+    const before = game.passedDown.length;
+    game.key("KeyV"); game.keyUp("KeyV"); game.frame(1);
+    assert.equal(game.passedDown.length, before, "C は戦闘中は受け取る");
+    assert.deepEqual(game.usedItems, [7], "短押しで、選んでいるポーションを1個"); assert.equal(game.potionCount(), 2); assert.ok(game.actor.hp > 100);
+    assert.equal(plain(fc.getCooldowns()).consumable, 8, "Cooldown 8秒(どのアイテムも共通)");
+    game.key("KeyV"); game.keyUp("KeyV"); game.frame(1);
+    assert.equal(plain(fc.getLastResult()).reason, "cooldown"); assert.equal(game.usedItems.length, 1);
+    game.frame(60 * 8 + 2);
+    game.actor.hp = game.actor.mhp; game.key("KeyV"); game.keyUp("KeyV"); game.frame(1);
+    assert.equal(plain(fc.getLastResult()).reason, "noEffect", "HPが満タンなどで効果がなければ消費しない"); assert.equal(game.potionCount(), 2);
+    game.actor.hp = 100; game.unusable = 7; game.key("KeyV"); game.keyUp("KeyV"); game.frame(1);
+    assert.equal(plain(fc.getLastResult()).reason, "cannotUse"); assert.equal(game.potionCount(), 2); game.unusable = 0;
+    // 長押し: メニューが開き、離しても使わない
+    game.key("KeyV"); game.frame(hold - 1); assert.equal(plain(fc.getRadialState()).open, false, "0.3秒の前はまだ開かない");
+    game.frame(1); assert.equal(plain(fc.getRadialState()).open, true, "0.3秒で放射メニューが開く");
+    game.keyUp("KeyV"); game.frame(1);
+    assert.equal(plain(fc.getRadialState()).open, false); assert.equal(game.potionCount(), 2, "長押しで離しても使わない");
+    // 在庫の変化: 使い切ったら使えない
+    game.inventory.set(7, 0); game.key("KeyV"); game.keyUp("KeyV"); game.frame(1); assert.equal(plain(fc.getLastResult()).reason, "noItem");
+});
+
+test("FieldCombat(Stage 5): 放射メニュー: マウスの方向のアイテムを選び、C を離すと選ぶ(使わない)。動かさずに離す・右クリック・Esc/X では変えない。アイテムなしも開く", () => {
+    const game = loadGame();
+    const fc = game.ProjectRFieldCombat;
+    game.inventory.set(8, 2); game.inventory.set(15, 1);
+    const hold = fc.getItemHoldFrames();
+    fc.begin();
+    const openMenu = () => { game.mouseAt(960, 540); game.key("KeyV"); game.frame(hold); const r = plain(fc.getRadialState()); assert.equal(r.open, true); return r; };
+    let r = openMenu();
+    assert.deepEqual(r.items.map(i => i.id), [7, 8, 15]); assert.deepEqual([r.center.x, r.center.y], [960, 540], "輪の中心は、開いたときのマウスの位置");
+    assert.equal(r.index, -1, "動かさなければ選ばない");
+    const at = (angleDeg, dist = 120) => game.mouseAt(960 + dist * Math.sin(angleDeg * Math.PI / 180), 540 - dist * Math.cos(angleDeg * Math.PI / 180));
+    at(0); game.frame(1); assert.equal(plain(fc.getRadialState()).hoverId, 7, "真上 = 1番目");
+    at(120); game.frame(1); assert.equal(plain(fc.getRadialState()).hoverId, 8, "時計回りに120度 = 2番目");
+    at(240); game.frame(1); assert.equal(plain(fc.getRadialState()).hoverId, 15);
+    at(150); game.frame(1); assert.equal(plain(fc.getRadialState()).hoverId, 8, "方向で選ぶ(どの距離でも)");
+    at(120, 20); game.frame(1); assert.equal(plain(fc.getRadialState()).index, -1, "中央の遊びの内は選ばない");
+    at(240); game.frame(1); game.keyUp("KeyV"); game.frame(1);
+    assert.equal(plain(fc.getRadialState()).open, false); assert.equal(plain(fc.getSelectedConsumable()).id, 15, "離すと、光っているアイテムを選ぶ");
+    assert.equal(game.usedItems.length, 0, "選ぶだけで消費しない"); assert.equal(plain(fc.getCooldowns()).consumable, 0);
+    assert.equal(plain(fc.getRadialState()).lastCommit.itemId, 15);
+    // 動かさずに離す = 変えない
+    r = openMenu(); game.keyUp("KeyV"); game.frame(1);
+    assert.equal(plain(fc.getSelectedConsumable()).id, 15, "動かさずに離すと変わらない"); assert.equal(plain(fc.getRadialState()).cancels, 1);
+    // 右クリック(撃たない)・Esc・X で取り消し
+    r = openMenu(); at(0); game.frame(1); game.mouseDown(2); game.frame(1);
+    assert.equal(plain(fc.getRadialState()).open, false, "右クリックで閉じる"); assert.equal(game.shots.length, 0, "メニュー中の右クリックは撃たない");
+    game.frame(hold + 5); assert.equal(plain(fc.getRadialState()).open, false, "C を押し続けていても、閉じたメニューは開き直さない");
+    game.keyUp("KeyV"); game.frame(1); assert.equal(plain(fc.getSelectedConsumable()).id, 15, "取り消しのあと C を離しても変わらない");
+    r = openMenu(); at(0); game.frame(1); game.key("Escape"); game.frame(hold + 5); assert.equal(plain(fc.getRadialState()).open, false, "Esc のあとも開き直さない"); game.keyUp("KeyV"); game.frame(1);
+    assert.equal(plain(fc.getSelectedConsumable()).id, 15);
+    r = openMenu(); at(0); game.frame(1); game.key("KeyX"); game.frame(1); assert.equal(plain(fc.getRadialState()).open, true, "X は固定カード(黄金の矢)のキー: メニュー中は受け付けず、メニューも閉じない"); game.keyUp("KeyX"); game.key("Escape"); game.frame(1); assert.equal(plain(fc.getRadialState()).open, false, "取り消しは Esc"); game.keyUp("KeyV"); game.frame(1);
+    assert.equal(plain(fc.getSelectedConsumable()).id, 15, "Esc / X でも変わらない");
+    // アイテムなし
+    game.inventory.set(7, 0); game.inventory.set(8, 0); game.inventory.set(15, 0);
+    r = openMenu(); assert.deepEqual(r.items, [], "アイテムが無くても開く(「アイテムなし」を表示)");
+    at(0); game.frame(1); assert.equal(plain(fc.getRadialState()).index, -1); game.keyUp("KeyV"); game.frame(1);
+    assert.equal(plain(fc.getRadialState()).open, false); assert.equal(plain(fc.getSelectedConsumable()).count, 0, "選んでいたアイテムは、選び直すまで×0のまま");
+    // 使えないアイテムも選べる(使えない表示)
+    game.inventory.set(8, 2); game.unusable = 8; r = openMenu(); assert.equal(r.items[0].usable, false);
+    at(0); game.frame(1); game.keyUp("KeyV"); game.frame(1); assert.equal(plain(fc.getSelectedConsumable()).id, 8);
+    assert.equal(plain(fc.getHudState()).item.state, "unusable");
+});
+
+test("FieldCombat(Stage 5): 放射メニューを開いている間に持ち物が変わると一覧が更新される。メッセージ・イベント中は閉じる。ウィンドウから外れても閉じる", () => {
+    const game = loadGame();
+    const fc = game.ProjectRFieldCombat;
+    game.inventory.set(8, 2); game.inventory.set(15, 1);
+    const hold = fc.getItemHoldFrames();
+    fc.begin(); game.mouseAt(960, 540); game.key("KeyV"); game.frame(hold);
+    assert.equal(plain(fc.getRadialState()).items.length, 3);
+    game.inventory.set(15, 0); game.frame(6);
+    assert.deepEqual(plain(fc.getRadialState()).items.map(i => i.id), [7, 8], "使い切ったアイテムは一覧から消える");
+    game.inventory.set(15, 4); game.inventory.set(8, 0); game.frame(6);
+    assert.deepEqual(plain(fc.getRadialState()).items.map(i => i.id), [7, 15], "増えたアイテムは加わる");
+    game.mouseAt(960, 540 - 120); game.frame(1); assert.equal(plain(fc.getRadialState()).hoverId, 7);
+    game.blocked = "messageBusy"; game.frame(1);
+    assert.equal(plain(fc.getRadialState()).open, false, "会話・メニュー・イベントが始まったら閉じる(選択は変えない)");
+    game.blocked = null; game.keyUp("KeyV"); game.frame(1); assert.equal(plain(fc.getSelectedConsumable()).id, 7); assert.equal(game.usedItems.length, 0);
+    game.key("KeyV"); game.frame(hold); assert.equal(plain(fc.getRadialState()).open, true);
+    game.Input.clear(); assert.equal(plain(fc.getRadialState()).open, false, "Input.clear(シーン切り替え)で閉じる");
+    game.key("KeyV"); game.frame(hold); assert.equal(plain(fc.getRadialState()).open, true);
+    fc.end(); assert.equal(plain(fc.getRadialState()).open, false, "戦闘が終われば閉じる");
+});
+
+test("FieldCombat(Stage 5): 放射メニューを開いている間は、右クリック(銃)・左クリック・Q/E/R/Shift を受け付けない。閉じれば元どおり", () => {
+    const game = loadGame();
+    const fc = game.ProjectRFieldCombat;
+    game.ultimateResult = { ok: true, godId: "hermes" };
+    const hold = fc.getItemHoldFrames();
+    fc.begin(); game.mouseAt(960, 540); game.key("KeyV"); game.frame(hold);
+    assert.equal(plain(fc.getRadialState()).open, true);
+    const castsBefore = plain(fc.getLog()).filter(l => l.type === "cast").length;
+    for (const code of ["KeyQ", "KeyE", "KeyR", "ShiftLeft"]) { const e = game.key(code); assert.equal(e.defaultPrevented, true, code + " は受け取って、何もしない"); }
+    game.click(); game.frame(1);
+    assert.equal(game.swings.length, 0, "左クリックは斬撃を出さない"); assert.equal(game.handlerCalls.length, 0); assert.deepEqual(game.reloads, []);
+    assert.equal(plain(fc.getLog()).filter(l => l.type === "cast").length, castsBefore, "アビリティは発動しない");
+    assert.equal(plain(fc.getComboState()).step, 0);
+    assert.equal(plain(fc.useAbility("special")).reason, "menuOpen"); assert.equal(plain(fc.fireGun()).reason, "menuOpen"); assert.equal(plain(fc.attackClick()).reason, "menuOpen");
+    assert.ok(plain(fc.getRadialState()).blocked >= 4);
+    game.keyUp("ShiftLeft"); game.keyUp("KeyQ"); game.keyUp("KeyE"); game.keyUp("KeyR"); assert.deepEqual(game.passedUp, [], "受け取ったキーのkeyUpも元へ渡さない");
+    game.keyUp("KeyV"); game.frame(1);
+    game.click(); assert.equal(game.swings.length, 1, "閉じれば左クリックは元どおり");
+    game.mouseDown(2); game.frame(1); assert.equal(game.shots.length, 1, "閉じれば右クリックは元どおり");
+    game.key("KeyQ"); game.frame(1); assert.equal(plain(fc.getLastResult()).slot, "ultimate", "閉じればQも元どおり");
+});
+
+test("FieldCombat(Stage 5b): BattleHUDは、戦闘中だけ メイン5枠(LMB 薙ぎ払い / Shift 絶 / E 一閃 / 1・2 固定カード)+ 別枠の C アイテム を返す。Q 奥義・R リロードは枠に出さない(操作は使える)。SKILL・DRAW/DISCARD表示は出さない。戦闘外は元のまま", () => {
+    const game = loadGame();
+    const fc = game.ProjectRFieldCombat;
+    const adapter = new game.ProjectRBattleHUD.DataAdapter();
+    assert.deepEqual(plain(adapter.skills()), ["original"]); assert.deepEqual(plain(adapter.cardCounts()), { draw: 1 });
+    fc.begin();
+    let slots = plain(adapter.skills());
+    assert.equal(slots.length, 6, "メイン5枠 + C");
+    assert.deepEqual(slots.map(s => s.key), ["LMB", "Shift", "E", "X", "C", "V"], "実際のキーの表示");
+    assert.deepEqual(slots.map(s => s.name), ["薙ぎ払い", "絶", "一閃", "黄金の矢", "ギガース殺し", "ポーション"], "実際のスキル名(日本語のカード名・アイテム名)");
+    assert.ok(!slots.some(s => s.key === "Q" || s.key === "R"), "Q 奥義・R リロードは枠に出さない");
+    assert.ok(slots.every(s => s.mode === "field")); assert.deepEqual(slots.map(s => s.accent), ["", "", "", "", "", "item"], "C のアイテム枠は別の枠");
+    assert.deepEqual(slots.map(s => s.detail), ["READY", "READY", "READY", "READY", "READY", "×3"], "状態");
+    assert.equal(slots[5].iconIndex, 176, "選んでいるアイテムのアイコン");
+    assert.equal(adapter.cardCounts(), null);
+    fc.useAbility("special");
+    slots = plain(adapter.skills());
+    assert.equal(slots[2].cooldown.active, true); assert.equal(slots[2].cooldown.total, 7); assert.equal(slots[2].disabled, true); assert.equal(slots[2].detail, "COOL");
+    assert.equal(slots[1].disabled, false, "使えるスロットは有効");
+    fc.useAbility("card1"); fc.useAbility("card2"); slots = plain(adapter.skills());
+    assert.deepEqual([slots[3].cooldown.total, slots[4].cooldown.total], [3, 4], "固定カードのCooldownは、カードの定義の値"); assert.deepEqual([slots[3].detail, slots[4].detail], ["COOL", "COOL"]);
+    game.click(); slots = plain(adapter.skills()); assert.equal(slots[0].detail, "1/3", "LMB 枠にコンボの進み具合"); assert.equal(slots[0].selected, true);
+    game.actor.hp = 100; fc.useAbility("consumable"); slots = plain(adapter.skills());
+    assert.equal(slots[5].detail, "×2"); assert.equal(slots[5].cooldown.active, true, "アイテムのCooldownも枠に出る"); assert.equal(slots[5].cooldown.total, 8);
+    game.inventory.set(7, 0); assert.equal(plain(adapter.skills())[5].detail, "NO ITEM", "持っているアイテムが無い");
+    assert.ok(!JSON.stringify(plain(adapter.skills())).includes("SKILL"), "SKILL 表示は出さない");
+    const hud = plain(fc.getHudState());
+    assert.deepEqual([hud.attack.key, hud.gun.key], ["LMB", "RMB"]); assert.equal(hud.combo.max, 3); assert.equal(hud.radial.open, false); assert.equal(hud.item.slot, "consumable");
+    assert.deepEqual(hud.slots.map(s => s.slot), ["ultimate", "mobility", "special", "reload", "consumable", "card1", "card2"], "状態(API)には、Q 奥義・R リロードも残る");
+    game.gauge.current = 100; assert.equal(plain(fc.getHudState()).slots[0].ready, true, "奥義の状態は読める(枠には出さないだけ)");
+    game.frame(50); assert.equal(plain(fc.getHudState()).combo.step, 0, "受付時間を過ぎれば戻る");
+    fc.end(); assert.deepEqual(plain(adapter.skills()), ["original"]);
+});
+
+test("FieldCombat(Stage 5b): 1・2キーの固定カード = 戦闘中ずっと装備(ドロー・準備なし)。既存のカード効果を1回使い、Cooldownはカードの定義の値。入力は Q/E/Shift と同じ扱い", () => {
+    const game = loadGame();
+    const fc = game.ProjectRFieldCombat, deck = game.ProjectRCardDeck;
+    game.key("KeyX"); game.key("KeyC");
+    assert.deepEqual(game.passedDown, ["KeyX", "KeyC"], "戦闘外は元のInputへ渡す");
+    fc.begin();
+    assert.deepEqual(plain(deck.getBattleState()).drawPile, [], "ドローしない"); assert.deepEqual(plain(deck.getBattleState()).hand, [], "最初は手札なし(固定アビリティを使うときだけ置く)");
+    const e1 = game.key("KeyX"); assert.equal(e1.defaultPrevented, true, "戦闘中は受け取る"); game.key("KeyX", { repeat: true });
+    game.frame(1);
+    assert.deepEqual(game.handlerCalls, ["apollo_golden_volley"], "1キーで黄金の矢(押しっぱなしのリピートは1回)");
+    assert.equal(plain(fc.getCooldowns()).card1, 3); assert.equal(plain(fc.getLastResult()).slot, "card1");
+    game.keyUp("KeyX"); game.key("KeyX"); game.frame(1);
+    assert.equal(plain(fc.getLastResult()).reason, "cooldown", "Cooldown中は使えない"); assert.equal(game.handlerCalls.length, 1);
+    game.key("Digit2"); game.frame(1); assert.deepEqual(game.handlerCalls, ["apollo_golden_volley"], "旧キー(数字の2)は何もしない");
+    game.key("KeyC"); game.frame(1);
+    assert.deepEqual(game.handlerCalls, ["apollo_golden_volley", "apollo_gigas_slayer"], "C キーでギガース殺し"); assert.equal(plain(fc.getCooldowns()).card2, 4, "ギガース殺しのCooldown 4秒(カードの定義)");
+    game.frame(60 * 3 + 2); assert.equal(plain(fc.getCooldowns()).card1, 0); assert.equal(plain(fc.getCooldowns()).card2 > 0, true);
+    game.directionResult = { ok: false, reason: "noTarget" };
+    assert.equal(plain(fc.useAbility("card1")).ok, true, "ground のカードは handler の結果に依らず予約できる(ここでは stub)");
+    // メッセージ中は元へ・放射メニュー中は受け付けない
+    game.keyUp("KeyC"); game.keyUp("KeyX"); game.blocked = "messageBusy"; game.key("KeyC"); assert.equal(game.passedDown.at(-1), "KeyC"); game.keyUp("KeyC"); game.blocked = null;
+    game.frame(60 * 5);
+    game.mouseAt(960, 540); game.key("KeyV"); game.frame(fc.getItemHoldFrames());
+    const before = game.handlerCalls.length; game.key("KeyX"); game.frame(1);
+    assert.equal(game.handlerCalls.length, before, "放射メニュー中は、固定カードも受け付けない");
+    assert.equal(plain(fc.useAbility("card2")).reason, "menuOpen");
+    fc.end(); game.key("KeyX"); assert.equal(game.passedDown.at(-1), "KeyX", "戦闘が終われば元へ");
+    // 未知のカードID
+    assert.deepEqual(plain(fc.getHudState().slots.filter(s => s.slot === "card1" || s.slot === "card2").map(s => s.state)), ["ready", "ready"]);
+});
+
+test("FieldCombat(Stage 5b): 絶の経路で、敵の体は無視される(エンカウンター中・敵だけ)。壁・扉などのほかのEventは無視しない。戦闘外は何も無視しない", () => {
+    const game = loadGame();
+    const fc = game.ProjectRFieldCombat;
+    assert.equal(game.zetsuFilters.length, 1, "FieldCombat が絶の衝突フィルターを1つ登録する");
+    const filter = game.zetsuFilters[0];
+    const enemy = game.addEnemy(1, 5, 5), npc = { eventId: () => 99, databaseEnemy: false, event: () => ({ note: "<VisionWall>" }) }, tagged = { eventId: () => 98, event: () => ({ note: "<enemy>" }) };
+    assert.equal(filter(enemy), false, "戦闘外は、何も無視しない");
+    fc.begin();
+    assert.equal(filter(enemy), true, "戦闘中は、敵の体を無視する");
+    assert.equal(filter(tagged), true, "<enemy> のイベントも敵の体");
+    assert.equal(filter(npc), false, "壁・扉(<VisionWall>)・NPC は無視しない");
+    assert.equal(filter(null), false); assert.equal(filter({}), false);
+    fc.attachEnemy(1); assert.equal(filter(enemy), true);
+    fc.end(); assert.equal(filter(enemy), false, "戦闘が終われば無視しない");
+});
+
+test("FieldCombat(Stage 5b): 絶で敵と重なって着地したとき(壁と敵のすきま)は、重なった敵をプレイヤーが通り抜けられる(閉じ込められない)。離れれば戻す", () => {
+    const game = loadGame(); const fc = game.ProjectRFieldCombat; const w = navWorld(game, GAP_ROWS); playerSim(game, w);
+    const enemy = game.addNavEnemy(1, 4, 3);
+    game.setPlayer(4, 3.1); fc.begin(); fc.attachEnemy(1, { ...NAV_SIGHT, windupFrames: 3000, cooldownFrames: 3000 });
+    game.frame(3);
+    assert.deepEqual(plain(fc.getSoftPass()), [1], "体が重なっている敵は、通り抜けられる(重なりの救済)");
+    game.setPlayer(4, 6); game.frame(30);
+    assert.deepEqual(plain(fc.getSoftPass()), [], "離れれば戻す");
+    game.setPlayer(4, 4.2); game.frame(30); assert.deepEqual(plain(fc.getSoftPass()), [], "体が接しているだけ(重なっていない)なら、何もしない");
+    fc.setSoftCollision(false); game.setPlayer(4, 3.1); game.frame(30); assert.deepEqual(plain(fc.getSoftPass()), [], "ChokeSoftCollision=false なら従来どおり");
+    void enemy;
+});
+
+test("FieldCombat(Stage 5b): 左クリックの3段コンボは、薙ぎ払いのVFX(hermes_sweep.staff + ケーリュケイオン + SE)を出す。強撃は反対側にもう1回。判定・コンボは変わらない。VFXが無ければ従来の見た目", () => {
+    const game = loadGame();
+    const fc = game.ProjectRFieldCombat;
+    fc.begin();
+    game.click();
+    assert.equal(game.swings[0].options.visual, false, "SwordSystem の既定の見た目(Pan)は出さない");
+    assert.deepEqual(game.vfxPlays.map(v => [v.key, v.degree]), [["fieldcombat_sweep.staff", 90]], "1段目: 薙ぎ払いのVFX(斬撃と同じ向き。中心を判定の中心へ合わせた FieldCombat 用の別名)");
+    assert.deepEqual(plain(game.vfxRegistered["fieldcombat_sweep.staff"]), { library: "ProjectR_Sweep_Staff", anchor: "player", rotate: "aim", stick: true, scale: 100, opacity: 235, offsetY: 12 }, "同じ素材・同じ設定で、offsetY だけ 12(マスの中心)。元の hermes_sweep.staff は変えない");
+    assert.deepEqual(plain(game.swings[0].options.sector), { radius: 4, arc: 190, frames: 15, passes: [{ offset: 0, delay: 1 }] }, "当たり判定は、見た目と同じ扇(半径4・190°・15更新で時計回り。VFXの出る1更新あとから)");
+    assert.deepEqual(game.godSwings, [{ god: "hermes", degree: 90, sprite: "ProjectR_Caduceus_DEV" }]); assert.deepEqual(game.sounds, ["Slash2"]);
+    game.frame(20); game.click(); assert.equal(game.vfxPlays.length, 2, "2段目も毎回出る");
+    game.frame(20); game.click();
+    assert.equal(game.swings[2].options.damageScale, 2, "3段目の強撃(判定・倍率は変わらない)"); assert.equal(game.vfxPlays.length, 3);
+    assert.deepEqual(plain(game.swings[2].options.sector.passes), [{ offset: 0, delay: 1 }, { offset: 180, delay: 7 }], "強撃の判定: 反対側の2回目の扇(VFXの2回目と同じ6更新あと)。ぜんぶで一回転");
+    game.frame(5); assert.equal(game.vfxPlays.length, 3, "6フレーム前はまだ");
+    game.frame(2); assert.deepEqual(game.vfxPlays.slice(3).map(v => [v.key, v.degree]), [["fieldcombat_sweep.staff", 270]], "強撃: 反対側へもう1回(一回転)");
+    assert.equal(plain(fc.getComboState()).step, 0, "コンボは従来どおり(3段目のあとは1段目)");
+    game.frame(40); game.click(); assert.equal(game.swings.at(-1).options.step, 1);
+    assert.equal(game.vfxPlays.length, 5, "新しい1段目も出る");
+    // 出なかったクリックは、VFXも出さない
+    const n = game.vfxPlays.length; game.click(); assert.equal(game.vfxPlays.length, n, "間隔の内の連打は、VFXを出さない");
+    // VFXの窓口が無ければ、SwordSystem の既定の見た目へ
+    fc.end(); const vfx = game.ProjectRPresentationVfx; game.ProjectRPresentationVfx = undefined;
+    fc.begin(); game.frame(60); game.click(); assert.equal(game.swings.at(-1).options.visual, true, "VFX が無ければ従来の見た目"); assert.equal(game.swings.at(-1).options.sector, undefined, "VFX が無ければ従来の長方形のHitbox"); game.ProjectRPresentationVfx = vfx;
+    // 戦闘が終われば、予約中のVFXは捨てる
+    fc.end(); fc.begin(); game.frame(30); game.click(); game.frame(20); game.click(); game.frame(20); game.click(); fc.end(); const m = game.vfxPlays.length; game.frame(10);
+    assert.equal(game.vfxPlays.length, m, "戦闘が終わったあとに、予約中のVFXが出ない");
+});
+
+test("FieldCombat(Stage 5c): 実機の Shift(keydown の shiftKey = true)でも絶が発動する。Shift を押したままの E / X / C / R も受け付ける。Ctrl・Alt 付きは元へ渡す", () => {
+    const game = loadGame();
+    const fc = game.ProjectRFieldCombat;
+    assert.equal(plain(game.ProjectRCardBattleInput.getBlockedReason({ shiftKey: true })), "modifierKey", "原因: CardBattleInput は shiftKey=true を断る");
+    fc.begin();
+    const e = game.key("ShiftLeft", { shiftKey: true }); game.frame(1);
+    assert.equal(e.defaultPrevented, true, "Shift を受け取る(元のInputへ渡さない)");
+    assert.deepEqual(game.handlerCalls, ["hermes_zetsu"], "shiftKey=true の Shift で絶が予約される(無反応にならない)");
+    assert.equal(plain(fc.getControlStats().diag).lastDecision, "accepted"); assert.equal(plain(fc.getControlStats().diag).lastReason, null);
+    game.key("KeyE", { shiftKey: true }); game.frame(1);
+    assert.equal(game.handlerCalls.at(-1), "hermes_issen", "Shift を押したままの E(一閃)");
+    game.key("KeyX", { shiftKey: true }); game.frame(1);
+    assert.equal(game.handlerCalls.at(-1), "apollo_golden_volley", "Shift を押したままの X(黄金の矢)");
+    game.key("KeyC", { shiftKey: true }); game.frame(1);
+    assert.equal(game.handlerCalls.at(-1), "apollo_gigas_slayer", "Shift を押したままの C(ギガース殺し)");
+    game.keyUp("ShiftLeft"); game.keyUp("KeyE"); game.keyUp("KeyX"); game.keyUp("KeyC");
+    game.frame(60 * 10);
+    const before = game.handlerCalls.length;
+    const ctrl = game.key("KeyE", { ctrlKey: true }); game.frame(1);
+    assert.equal(ctrl.defaultPrevented, undefined, "Ctrl 付きは受け取らない"); assert.equal(game.handlerCalls.length, before); assert.equal(game.passedDown.at(-1), "KeyE", "元のInputへ渡す");
+    // 絵のとおり Cooldown 中は理由が分かる(Shift が無反応なのではない)
+    game.key("ShiftLeft", { shiftKey: true }); game.frame(1); game.keyUp("ShiftLeft");
+    game.key("ShiftLeft", { shiftKey: true }); game.frame(1);
+    assert.equal(plain(fc.getLastResult()).reason, "cooldown", "Cooldown中は、cooldown と返る");
+    // 使えなかった理由は、枠の下の文字に出る(約1.5秒): 方向が決まらない → 方向なし。Cooldown は COOL のまま
+    game.frame(60 * 10); game.directionResult = { ok: false, reason: "invalidMousePosition" };
+    game.key("KeyE"); game.frame(1); game.keyUp("KeyE");
+    const hs = plain(fc.getHudState()).slots.find(x => x.slot === "special");
+    assert.equal(plain(fc.getLastResult()).ok, false); assert.equal(hs.notice, "方向なし", JSON.stringify(plain(fc.getLastResult())));
+    game.frame(100); assert.equal(plain(fc.getHudState()).slots.find(x => x.slot === "special").notice, null, "しばらくすると消える");
+    game.directionResult = null;
+    // 戦闘外では Shift もそのまま元へ(ダッシュ・メニューを邪魔しない)
+    fc.end(); game.passedDown.length = 0; game.key("ShiftLeft", { shiftKey: true }); game.key("KeyX");
+    assert.deepEqual(game.passedDown, ["ShiftLeft", "KeyX"], "戦闘外は元のInputへ");
 });

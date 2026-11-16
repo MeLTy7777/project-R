@@ -89,7 +89,8 @@ test("登録と範囲: SOULの後・BattleHUD/CombatExtrasHUD/Sandboxの後に1�
     assert.doesNotMatch(code, /UpdateEventHp|\.setHp\(|gainHp|saveGame|StorageManager|\$gameSystem\.\w+\s*=[^=]|\$gameSystem\._\w+\s*=[^=]|\$gameVariables\.setValue|\$gameSwitches\.setValue/, "ゲーム状態・セーブを書かない(通常HUDの visible も触らないことは下の挙動テストで確認)");
     assert.doesNotMatch(code, /requestUseCard|startCardBattle|endCardBattle|registerBoss|\.start\(|\.end\(|skipPhase|moveHeartTo/, "戦闘の制御を呼ばない");
     const status = cp.execFileSync("git", ["status", "--porcelain"], { cwd: project, encoding: "utf8" }).split(/\r?\n/);
-    for (const file of ["js/plugins/ProjectR_BattleHUD.js", "js/plugins/ProjectR_CombatExtrasHUD.js",
+    // ProjectR_BattleHUD.js は、フィールド戦闘(Stage 5)のHUD(スキル枠・操作ガイド・放射メニュー)のために変更した。SOUL戦闘のHUDはこのファイルを使わない(変えていない)ので、ここでは対象外。
+    for (const file of ["js/plugins/ProjectR_CombatExtrasHUD.js",
         "js/plugins/ProjectR_BossFramework.js", "js/plugins/ProjectR_CardDeckCore.js", "js/plugins/Hendrix_Hotbar_Creator.js", "js/plugins/Hendrix_Action_Engine.js", "data/Skills.json", "data/Weapons.json", "data/Enemies.json"]) {
         assert.ok(!status.some(line => line.slice(3) === file), file + " は変更されていない");
     }

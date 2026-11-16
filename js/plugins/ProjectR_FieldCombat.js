@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc v0.1.0 ProjectR リアルタイム・フィールド戦闘(BAPBAP参考): マップ上で連続して戦う固定アビリティ(Q/Space/E/R/C)・敵の予兆・HUD。SOUL戦闘の開始を止める。
+ * @plugindesc v0.6.0 ProjectR リアルタイム・フィールド戦闘(BAPBAP参考): 左クリック=薙ぎ払いの近接3段コンボ(見た目と同じ扇の判定)・Shift絶・E一閃・X/C=固定カード2枚・右クリック=銃・Q奥義・Rリロード・V アイテム(短押し=使う/長押し=放射メニュー)・敵の予兆・HUD。SOUL戦闘の開始を止める。
  * @author ProjectR
  * @base ProjectR_CardDeckCore
  * @base ProjectR_CombatSession
@@ -79,29 +79,66 @@
  * @default true
  *
  * @param SpecialCooldown
- * @text Q 特殊アビリティ(一閃)のCooldown(秒)
+ * @text E 一閃のCooldown(秒)
  * @desc 0以下ならカードの既定(7秒)。
  * @type number
  * @decimals 1
  * @default 7
  *
  * @param MobilityCooldown
- * @text Space 移動アビリティ(絶)のCooldown(秒)
+ * @text Shift 絶(瞬間移動)のCooldown(秒)
  * @desc 絶のカードのCooldown(0.5秒)は手札の補充用の値なので、フィールド戦闘ではこの値を使う。
  * @type number
  * @decimals 1
  * @default 3
  *
  * @param ConsumableCooldown
- * @text R 消耗品のCooldown(秒)
+ * @text V アイテムのCooldown(秒。どのアイテムも共通)
  * @type number
  * @decimals 1
  * @default 8
  *
  * @param ConsumableItemId
- * @text R 消耗品のアイテムID(0=持っているHP回復薬を自動で選ぶ)
+ * @text V アイテムの最初の選択(0=持っているHP回復薬を自動で選ぶ)
+ * @desc 放射メニューで選び直すまでの、使うアイテム。
  * @type item
  * @default 0
+ *
+ * @param Card1Id
+ * @text 1キーの固定カード(実装済みのアクティブカードのID)
+ * @desc 戦闘中ずっと装備している(ドロー・準備・SOULなし)。既定は黄金の矢(apollo_golden_volley)。Cooldown はカードの定義の値(秒)。
+ * @type string
+ * @default apollo_golden_volley
+ *
+ * @param Card2Id
+ * @text 2キーの固定カード(実装済みのアクティブカードのID)
+ * @desc 既定はギガース殺し(apollo_gigas_slayer)。
+ * @type string
+ * @default apollo_gigas_slayer
+ *
+ * @param ComboTimeout
+ * @text 左クリックの3段コンボの受付時間(秒)
+ * @desc 前の斬撃からこの時間の内に次のクリックをすると、次の段(1→2→3)へ進む。過ぎると1段目に戻る。
+ * @type number
+ * @decimals 2
+ * @min 0.2
+ * @default 0.8
+ *
+ * @param ComboFinisherDamage
+ * @text 3段目(強撃)のダメージ倍率
+ * @desc 1・2段目は通常の武器ダメージ(従来の式)。3段目だけ、この倍率を掛ける(範囲も広がる)。
+ * @type number
+ * @decimals 1
+ * @min 1
+ * @default 2
+ *
+ * @param ItemHoldSeconds
+ * @text V を長押しして放射メニューを開くまでの時間(秒)
+ * @desc これより短く離すと「選んでいるアイテムを使う」。
+ * @type number
+ * @decimals 2
+ * @min 0.05
+ * @default 0.3
  *
  * @command StartFieldEncounter
  * @text フィールド戦闘: エンカウンターを始める
@@ -235,7 +272,7 @@
  *   コードもセーブも消さず、開始だけを止める(SoulMode)。新しい武器・スキル・敵AIは作らず、既存のProjectRの部品をつなぐ。
  *
  * 【エンカウンター(戦闘が使える場所)】 戦闘は、NPCとの会話・物語のイベントから入る「専用の戦闘マップ」の中だけです。探索マップでは、近くに敵がいても
- *   戦闘は始まらず、戦闘の入力(Q/E/R/C/Space・基本攻撃)は無効です(移動・NPC・イベント・メニューは普通のまま)。
+ *   戦闘は始まらず、戦闘の入力(Q/E/R/X/C/V/Shift・基本攻撃)は無効です(移動・NPC・イベント・メニューは普通のまま)。
  *   流れ: ①イベントのプラグインコマンド「エンカウンターを始める」(元のマップ・位置・向きを記録 → 戦闘マップへ移動)
  *         ②戦闘マップの準備が終わる(移動・フェード・開始時のイベントの後)→ 戦闘・敵の行動・アビリティ・HUDが有効になる
  *         ③敵を全員倒すと「勝利」(結果を1回だけ処理 → 戦闘を片づける → 元のマップ・位置・向きへ戻る → 結果の変数・コモンイベント)
@@ -246,17 +283,26 @@
  *     sight=視界の距離(tile) / fov=視野角(度)。省略すると、プラグインパラメータ(EnemySightTiles / EnemyFovDegrees)。
  *     敵のイベントには、Hendrix の敵の印(<hp: 敵名> と <enemy>)も必要です(武器・奥義が当たるように)。
  *
- * 【操作(固定)】
- *   WASD      移動(Hendrix Button Configのまま。DotMoveの自由移動)
+ * 【操作(固定。エンカウンター中だけ。戦闘外では従来のまま)】
+ *   WASD      移動(Hendrix Button Configのまま。DotMoveの自由移動)。Shift のダッシュは、エンカウンター中だけ無効(Shift は絶に使う)
  *   マウス    照準(戦闘中は ProjectR_PlayerFacing が主人公をマウスの方向へ向ける)
- *   左クリック(またはJ)  通常攻撃(既存の基本攻撃 共通イベント1 → 剣(SwordSystem) / 銃(GunSystem)。このPluginは変えない)
- *   Q         特殊アビリティ  = 一閃(hermes_issen。マウス方向の直線上の敵へ防御無視の直接ダメージ + 分割ダメージ)
- *   Space     移動アビリティ  = 絶(hermes_zetsu。マウス位置へ瞬間移動 + 直後の通常攻撃1ヒットを強化)。予兆された攻撃の範囲から抜ける回避
- *   E         奥義            = Ultimate(UltimateActivation。ゲージが満タンのときだけ。ゲージは与ダメージでたまる)
- *   R         消耗品          = HP回復薬(持っているアイテムを1個使う。Cooldownあり)
- *   C         アビリティのキャンセル(押しっぱなし中の発動・保留中の入力を取り消す)
+ *   左クリック(またはJ)  薙ぎ払いの近接3段コンボ(見た目は Hermes の「薙ぎ払い」の VFX = hermes_sweep.staff + ケーリュケイオン)。1クリック=ちょうど1回の斬撃: 1段目 → 2段目 → 3段目(強撃。反対側にもう1回の扇 = 一回転、ダメージ倍率 ComboFinisherDamage。VFX は2回)→ 1段目へ戻る。当たり判定は、見た目の杖の残像と同じ扇(半径 4・190°・時計回りに約0.25秒)。
+ *                        押しっぱなしでは進まない(押し直すたびに1段)。前の斬撃から ComboTimeout 秒を過ぎると1段目に戻る。
+ *                        斬撃は既存の ProjectRSwordSystem.swing(sector オプションの扇形の判定。当たったときのダメージ・追跡は既存)。装備が銃でも斬撃は出る(ダメージは装備中の武器の攻撃力)。
+ *   右クリック  既存の銃(ProjectRGunSystem.fire)をマウスの方向へ1発。ブラウザの右クリックメニューは出さない。銃を装備していなければ何も起きない
+ *   R         リロード(既存の ProjectRGunSystem.requestReload。弾薬・リロード時間・満タン/ストック無しの扱いは既存のまま)
+ *   Q         奥義 = Ultimate(UltimateActivation。実際のゲージが満タンのときだけ。ゲージは与ダメージでたまる)
+ *   Shift     絶(hermes_zetsu。マウス位置へ瞬間移動 + 直後の通常攻撃1ヒットを強化)。予兆された攻撃の範囲から抜ける回避
+ *   E         一閃(hermes_issen。マウス方向の直線上の敵へ防御無視の直接ダメージ + 分割ダメージ)
+ *   V         アイテム: 短押し(ItemHoldSeconds より短く離す)= 選んでいる消耗品を1個使う。長押し = 放射メニューを開く
+ *   X / C     固定カード2枚(既定: X = 黄金の矢 / C = ギガース殺し。パラメータ Card1Id / Card2Id。エンカウンター中だけ MZ の X(キャンセル / メニュー)を先に受け取る)。戦闘中ずっと装備(ドロー・準備・SOULなし)。既存のカード効果をそのまま1回使う
  *   F         調べる(Hendrix Button Config の Interact。戦闘中もそのまま)
- *   戦闘中の入力の衝突は、このPluginがマップ戦闘中だけ Q/E/R/C/Space を先に受け取って解決する(メッセージ・メニュー・会話・イベント中は元のまま)。
+ *   放射メニュー(V 長押し): 持っている消耗品(通常アイテム・消耗する・いつでも使える・味方1人/全体/自分が対象)を円形に並べる。V を押したまま、マウスを動かした方向のアイテムが光り、
+ *     V を離すと、そのアイテムを選ぶ(使わない)。動かさずに離す・右クリック・Esc では、選んでいるアイテムは変わらない。開いている間は、右クリック(銃)・左クリック・Q/E/R/Shift/X/C は受け付けない。
+ *     アイテムが無ければ「アイテムなし」を表示。開いている間に持ち物が変わっても、一覧が更新される(選んでいたアイテムが無くなれば、選択なし)。
+ *     Cooldown(ConsumableCooldown)はどのアイテムも共通。使えないアイテム(HP満タンなど)は、使っても消費せず何も起きない。
+ *   戦闘中の入力の衝突は、このPluginがマップ戦闘中だけ Q/E/R/X/C/V/Shift・右クリックを先に受け取って解決する(メッセージ・メニュー・会話・イベント中は元のまま。Shift は絶のキーなので、keydown の shiftKey を修飾キーとして断らない)。
+ *   古い割り当て(Q=一閃 / Space=絶 / E=奥義 / R=回復薬 / C=キャンセル / 数字の1・2=固定カード)は、戦闘中は使いません。
  *
  * 【固定アビリティ】 カードの山札・手札・ドローは使わない。CardDeckCore の固定アビリティ(startCardBattle(FIXED_BATTLE) と useFixedCard)で、
  *   既存のカード効果(handler)をそのまま1回使う。所持カード・指輪には依らない。Cooldownはこのプラグインが持つ(スロットごと)。
@@ -285,7 +331,8 @@
  *   getLoadout() / getCooldowns() / useAbility(slot, source?) / cancel() / getHudState() / getLastResult() / getLog()
  *   attachEnemy(eventId, options?) / detachEnemy(eventId) / listEnemies()
  *   getSoulMode() / setSoulMode(mode) / isSoulAllowed()
- *   スロット名: special(Q) / mobility(Space) / ultimate(E) / consumable(R) / cancel(C)
+ *   スロット名: mobility(Shift) / special(E) / card1(X) / card2(C) / ultimate(Q) / reload(R) / consumable(V)。cancel は API だけ(保留中の入力の取り消し)
+ *   attackClick(source?) 近接の1段 / fireGun(source?) 銃1発 / getComboState() / selectConsumable(id) / listConsumables() / getRadialState() / openRadial() / closeRadial(commit)
  */
 (() => {
     "use strict";
@@ -324,23 +371,42 @@
     // ------------------------------------------------------------------ 固定アビリティの定義(ヘルメース) ----------------------------------------------------------------
     // 新しい技は作らない: 既存のカード効果(一閃・絶)・Ultimate・アイテムをスロットへ割り当てるだけ。Cooldownはここの値(カードの手札補充用の値ではない)。
     const LOADOUT = Object.freeze({
-        attack:     Object.freeze({ slot: "attack",     key: "LMB",   code: null,        label: "通常攻撃", kind: "engine" }),
-        special:    Object.freeze({ slot: "special",    key: "Q",     code: "KeyQ",      keyCode: 81, label: "一閃", kind: "card", cardId: "hermes_issen", cooldown: num(params.SpecialCooldown, 7, 0) }),
-        mobility:   Object.freeze({ slot: "mobility",   key: "Space", code: "Space",     keyCode: 32, label: "絶",   kind: "card", cardId: "hermes_zetsu", cooldown: num(params.MobilityCooldown, 3, 0) }),
-        ultimate:   Object.freeze({ slot: "ultimate",   key: "E",     code: "KeyE",      keyCode: 69, label: "奥義", kind: "ultimate", cooldown: 0 }),
-        consumable: Object.freeze({ slot: "consumable", key: "R",     code: "KeyR",      keyCode: 82, label: "回復薬", kind: "item", cooldown: num(params.ConsumableCooldown, 8, 0) }),
-        cancel:     Object.freeze({ slot: "cancel",     key: "C",     code: "KeyC",      keyCode: 67, label: "キャンセル", kind: "cancel", cooldown: 0 })
+        attack:     Object.freeze({ slot: "attack",     key: "LMB",   code: null,        label: "薙ぎ払い", kind: "melee" }),
+        gun:        Object.freeze({ slot: "gun",        key: "RMB",   code: null,        label: "銃",     kind: "gun" }),
+        ultimate:   Object.freeze({ slot: "ultimate",   key: "Q",     code: "KeyQ",      keyCode: 81, label: "奥義", kind: "ultimate", cooldown: 0 }),
+        mobility:   Object.freeze({ slot: "mobility",   key: "Shift", code: "ShiftLeft", keyCode: 16, label: "絶",   kind: "card", cardId: "hermes_zetsu", cooldown: num(params.MobilityCooldown, 3, 0) }),
+        special:    Object.freeze({ slot: "special",    key: "E",     code: "KeyE",      keyCode: 69, label: "一閃", kind: "card", cardId: "hermes_issen", cooldown: num(params.SpecialCooldown, 7, 0) }),
+        card1:      Object.freeze({ slot: "card1",      key: "X",     code: "KeyX",      keyCode: 88, label: "黄金の矢", kind: "card", cardId: String(params.Card1Id || "").trim() || "apollo_golden_volley", cooldown: 0 }),
+        card2:      Object.freeze({ slot: "card2",      key: "C",     code: "KeyC",      keyCode: 67, label: "ギガース殺し", kind: "card", cardId: String(params.Card2Id || "").trim() || "apollo_gigas_slayer", cooldown: 0 }),
+        reload:     Object.freeze({ slot: "reload",     key: "R",     code: "KeyR",      keyCode: 82, label: "リロード", kind: "reload", cooldown: 0 }),
+        consumable: Object.freeze({ slot: "consumable", key: "V",     code: "KeyV",      keyCode: 86, label: "アイテム", kind: "item", cooldown: num(params.ConsumableCooldown, 8, 0) }),
+        cancel:     Object.freeze({ slot: "cancel",     key: "",      code: null,        label: "キャンセル", kind: "cancel", cooldown: 0 })        // キーは無い(API: 保留中の入力の取り消しだけ)
     });
-    const SLOT_BY_CODE = Object.freeze({ KeyQ: "special", Space: "mobility", KeyE: "ultimate", KeyR: "consumable", KeyC: "cancel" });
-    const SLOT_BY_KEYCODE = Object.freeze({ 81: "special", 32: "mobility", 69: "ultimate", 82: "consumable", 67: "cancel" });
-    const CAST_SLOTS = ["special", "mobility", "ultimate", "consumable"];
+    const SLOT_BY_CODE = Object.freeze({ KeyQ: "ultimate", ShiftLeft: "mobility", ShiftRight: "mobility", KeyE: "special", KeyR: "reload", KeyX: "card1", KeyC: "card2", KeyV: "consumable" });
+    const SLOT_BY_KEYCODE = Object.freeze({ 81: "ultimate", 16: "mobility", 69: "special", 82: "reload", 88: "card1", 67: "card2", 86: "consumable" });
+    const CAST_SLOTS = ["special", "mobility", "ultimate", "consumable", "reload", "card1", "card2"];
     const FPS = 60;
+    // 左クリックの近接3段コンボ。段ごとの斬撃は ProjectRSwordSystem.swing の options で渡す(既存の斬撃・Hitbox・ダメージの式)。1・2段目は従来と同じ式、3段目だけ倍率を掛ける。
+    const COMBO = Object.freeze({
+        max: 3, timeout: Math.max(12, Math.round(num(params.ComboTimeout, 0.8, 0.2) * FPS)), finisher: Math.max(1, num(params.ComboFinisherDamage, 2, 1)),
+        steps: Object.freeze([
+            Object.freeze({ step: 1, style: "clockwise",        width: 1.5, depth: 1.2, forward: 1.0, lifetime: 3, cooldown: 18, pitch: 140, speed: 10, heavy: false }),
+            Object.freeze({ step: 2, style: "counterclockwise", width: 1.7, depth: 1.3, forward: 1.0, lifetime: 3, cooldown: 18, pitch: 150, speed: 10, heavy: false }),
+            Object.freeze({ step: 3, style: "fullcircle",       width: 2.4, depth: 1.9, forward: 1.1, lifetime: 5, cooldown: 30, pitch: 75,  speed: 12, heavy: true })
+        ])
+    });
+    const ITEM_HOLD_FRAMES = Math.max(2, Math.round(num(params.ItemHoldSeconds, 0.3, 0.05) * FPS));      // C をこのフレーム数以上押し続けると放射メニュー
+    const RADIAL_MAX = 12;
+    const newCombo = () => ({ step: 0, lastAt: -1e9, finisherAt: -1e9, swings: 0, finishers: 0, resets: 0, rejected: 0, last: null });
+    const newGunState = () => ({ shots: 0, rejected: 0, last: null });
+    const newRadial = () => ({ open: false, items: [], index: -1, cx: 0, cy: 0, radius: 0, baseRadius: 0, deadzone: 0, openedAt: 0, opens: 0, commits: 0, cancels: 0, blocked: 0, lastCommit: null });
 
     const rt = {
         active: false, engaged: false, frame: 0, serial: 0,
-        cooldowns: { special: 0, mobility: 0, ultimate: 0, consumable: 0 },
-        pending: [], captured: new Set(), lastResult: null, log: [], diag: { keyDowns: 0, accepted: 0, passed: 0, lastCode: null, lastDecision: null, lastReason: null },
-        enemies: new Map(), flash: { slot: null, until: 0, ok: true }, generation: 0, lastPos: null, touchAssists: 0, soft: new Map(), softLast: null, softBlocked: 0
+        cooldowns: { special: 0, mobility: 0, ultimate: 0, consumable: 0, card1: 0, card2: 0 },
+        pending: [], captured: new Set(), lastResult: null, log: [], diag: { keyDowns: 0, accepted: 0, passed: 0, rmb: 0, lastCode: null, lastDecision: null, lastReason: null },
+        enemies: new Map(), flash: { slot: null, until: 0, ok: true }, generation: 0, lastPos: null, touchAssists: 0, soft: new Map(), softLast: null, softBlocked: 0,
+        fx: [], combo: newCombo(), gun: newGunState(), item: { down: false, downAt: 0, selectedId: 0, taps: 0 }, radial: newRadial()
     };
     const note = entry => { rt.log.push({ frame: rt.frame, ...entry }); if (rt.log.length > 120) rt.log.shift(); };
 
@@ -398,6 +464,8 @@
     const sceneIsMap = () => typeof SceneManager !== "undefined" && typeof Scene_Map !== "undefined" && SceneManager._scene instanceof Scene_Map && !!SceneManager._scene._spriteset;
     const soulBusy = () => safe(() => root.ProjectRSoulBattle?.isActive?.() === true || (root.ProjectRSoulEncounter?.getState?.().state ?? "idle") !== "idle", false);
     const resetCooldowns = () => { for (const slot of Object.keys(rt.cooldowns)) rt.cooldowns[slot] = 0; };
+    // 戦闘ごとに、コンボ・銃・放射メニュー・C の押下を初期状態へ(選んでいるアイテム item.selectedId は、このセッションの間だけ残す。保存しない)
+    const resetControls = () => { rt.fx = []; rt.combo = newCombo(); rt.gun = newGunState(); rt.radial = newRadial(); rt.item.down = false; rt.item.downAt = 0; rt.item.taps = 0; };
 
     const begin = (options = {}) => {
         const o = options && typeof options === "object" ? options : {};
@@ -416,7 +484,7 @@
         const began = combatSession().begin(SOURCE, { cardBattle: false });
         if (!began.ok) { deck().endCardBattle(); return fail(began.reason || "combatSessionRejected"); }
         rt.active = true; rt.engaged = o.encounter === true; rt.pending = []; rt.generation++; rt.serial++;
-        resetCooldowns(); rt.lastResult = null;
+        resetCooldowns(); rt.lastResult = null; resetControls();
         note({ type: "begin", engaged: rt.engaged });
         return { ok: true, engaged: rt.engaged };
     };
@@ -427,23 +495,26 @@
         safe(() => combatSession().end(SOURCE, reason));
         safe(() => { if (deck().isCardBattleActive?.()) deck().endCardBattle(); });
         for (const id of [...rt.enemies.keys()]) safe(() => enemyAttack()?.interrupt?.(id, "fieldEnd"));
-        rt.captured.clear(); clearSoft();
+        rt.captured.clear(); clearSoft(); resetControls();
         note({ type: "end", reason });
         return true;
     };
     // CombatSession.endAll(マップ移動・ロード)で、こちらも終わる。
     if (combatSession()?.onEnd) combatSession().onEnd(info => { if (info && info.sourceId === SOURCE && rt.active) end("sessionEnded"); });
 
-    // ------------------------------------------------------------------ 入力(Q/E/R/C/Space) ----------------------------------------------------------------
+    // ------------------------------------------------------------------ 入力(Q/E/R/C/Shift・右クリック。左クリックは共通イベント1の予約を受ける) ----------------------------------------------------------------
     const isEditing = element => !!element && (element.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(element.tagName || ""));
     const blockedReason = (event = {}) => {
         if (!rt.active) return "inactive";
         if (event.defaultPrevented) return "defaultPrevented";
-        if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey) return "modifierKey";
+        if (event.ctrlKey || event.altKey || event.metaKey) return "modifierKey";            // Shift は絶のキー(ダッシュは戦闘中は無効)なので、修飾キーとして扱わない
         if (event.isComposing) return "ime";
         if (typeof document !== "undefined" && (document.hasFocus?.() === false || isEditing(document.activeElement))) return "documentFocus";
         // 実際の入力受付可否は CardBattleInput と同じ判断(Scene・メッセージ・イベント・移動中・全画面会話・開いているウィンドウ)
-        const reason = cardInput()?.getBlockedReason?.(event) ?? null;
+        // CardBattleInput は shiftKey を「修飾キー」として断る(カード戦闘の Q/E/X/C/V は Shift 同時押しを受けない作り)。
+        //   しかし Shift は絶のキーなので、実機で Shift を押すと keydown の shiftKey が true になり、絶(と、Shift を押したままの E/X/C/V/R/Q)が毎回
+        //   「modifierKey」で断られていた(CDP の合成キーは修飾フラグを持たないので、以前のテストでは見えなかった)。Shift だけを外した写しで、残りの条件は同じ判断にする。
+        const reason = cardInput()?.getBlockedReason?.({ defaultPrevented: false, ctrlKey: false, altKey: false, metaKey: false, shiftKey: false, isComposing: !!event.isComposing, target: event.target }) ?? null;
         return reason;
     };
     const slotForEvent = event => event ? (event.code ? SLOT_BY_CODE[event.code] : SLOT_BY_KEYCODE[event.keyCode]) || null : null;
@@ -451,12 +522,18 @@
         const _onKeyDown = Input._onKeyDown;
         Input._onKeyDown = function(event) {
             const slot = slotForEvent(event);
+            if (rt.active && rt.radial.open && event && event.code === "Escape" && !event.repeat) rt.pending.push("radialCancel");      // Esc で放射メニューを閉じる(元のInputへも渡す)
             if (slot && rt.active) {
                 rt.diag.keyDowns++; rt.diag.lastCode = event.code || String(event.keyCode);
                 if (rt.captured.has(slot)) { event.preventDefault?.(); return; }
                 const reason = blockedReason(event);
                 if (reason === null) {
-                    if (!event.repeat) { rt.captured.add(slot); rt.pending.push(slot); rt.diag.accepted++; rt.diag.lastDecision = "accepted"; rt.diag.lastReason = null; }
+                    if (rt.radial.open && slot !== "consumable") {                           // 放射メニューを開いている間は、C 以外の戦闘のキーを受け付けない(元へも渡さない)
+                        if (!event.repeat) { rt.captured.add(slot); rt.radial.blocked++; rt.diag.lastDecision = "menuOpen"; }
+                        event.preventDefault?.();
+                        return;
+                    }
+                    if (!event.repeat) { rt.captured.add(slot); rt.pending.push(slot === "consumable" ? "item:down" : slot); rt.diag.accepted++; rt.diag.lastDecision = "accepted"; rt.diag.lastReason = null; }
                     event.preventDefault?.();
                     return;
                 }
@@ -467,33 +544,82 @@
         const _onKeyUp = Input._onKeyUp;
         Input._onKeyUp = function(event) {
             const slot = slotForEvent(event);
-            if (slot && rt.captured.delete(slot)) return;
+            if (slot && rt.captured.delete(slot)) { if (slot === "consumable" && rt.active) rt.pending.push("item:up"); return; }
             return _onKeyUp.call(this, event);
         };
         const _clear = Input.clear;
-        Input.clear = function() { rt.captured.clear(); rt.pending = []; return _clear.apply(this, arguments); };
+        Input.clear = function() { rt.captured.clear(); rt.pending = []; interruptControls(); return _clear.apply(this, arguments); };
     }
-    if (typeof root.addEventListener === "function") root.addEventListener("blur", () => { rt.captured.clear(); rt.pending = []; });
+    if (typeof root.addEventListener === "function") root.addEventListener("blur", () => { rt.captured.clear(); rt.pending = []; interruptControls(); });
+    // 右クリック = 銃。ブラウザの右クリックメニューは出さない(戦闘中だけ)。1クリック=1発(押しっぱなしでは撃ち続けない)。
+    if (typeof document !== "undefined" && document && typeof document.addEventListener === "function") {
+        document.addEventListener("mousedown", event => {
+            if (!rt.active || !event || event.button !== 2) return;
+            event.preventDefault?.(); rt.diag.rmb++; rt.pending.push("gun");          // マウスのボタンは、押しっぱなしでは mousedown が繰り返されない(1クリック=1回)
+        }, true);
+        document.addEventListener("contextmenu", event => { if (rt.active && event) event.preventDefault?.(); }, true);
+    }
+    // 左クリック(とJ)= 共通イベント1の予約(Hendrix Button Config の「攻撃」。1クリックにつき1回)。戦闘中は、元の経路(銃・剣のどちらか)へ回さず、近接の3段コンボへ。
+    if (typeof Game_Temp !== "undefined" && Game_Temp.prototype && typeof Game_Temp.prototype.reserveCommonEvent === "function") {
+        const _reserve = Game_Temp.prototype.reserveCommonEvent;
+        Game_Temp.prototype.reserveCommonEvent = function(commonEventId) {
+            if (rt.active && Number(commonEventId) === safe(() => presence().settings.attackCommonEventId, 1)) { attackClick("attack"); return; }
+            return _reserve.apply(this, arguments);
+        };
+    }
+    // 戦闘中は Shift のダッシュを無効にする(Shift は絶)。右クリック(RMB)で、マップのメニューを開かない(RMB は銃)。戦闘外は従来のまま。
+    if (typeof Game_Player !== "undefined" && Game_Player.prototype && typeof Game_Player.prototype.isDashButtonPressed === "function") {
+        const _dash = Game_Player.prototype.isDashButtonPressed;
+        Game_Player.prototype.isDashButtonPressed = function() { return rt.active ? false : _dash.apply(this, arguments); };
+    }
+    if (typeof Scene_Map !== "undefined" && Scene_Map.prototype && typeof Scene_Map.prototype.isMenuCalled === "function") {
+        const _menuCalled = Scene_Map.prototype.isMenuCalled;
+        Scene_Map.prototype.isMenuCalled = function() {
+            if (rt.active && safe(() => TouchInput.isCancelled(), false)) return false;
+            return _menuCalled.apply(this, arguments);
+        };
+    }
 
     // ------------------------------------------------------------------ アビリティの発動 ----------------------------------------------------------------
     const playerDead = () => safe(() => root.ProjectR?.PlayerDeath?.isDead?.() === true, false);
     const cooldownOf = slot => rt.cooldowns[slot] || 0;
-    const startCooldown = slot => { const d = LOADOUT[slot]; rt.cooldowns[slot] = Math.max(0, d.cooldown || 0); };
+    // Cooldown(秒): 一閃・絶・アイテムはパラメータ、固定カード1・2(card1 / card2)はカードの定義の値(cooldownSeconds)
+    const cooldownSecondsOf = slot => { const d = LOADOUT[slot]; if (d.cooldown > 0) return d.cooldown; if (slot === "card1" || slot === "card2") return safe(() => Math.max(0, Number(deck().definitions.card(d.cardId).cooldownSeconds) || 0), 0); return 0; };
+    const startCooldown = slot => { rt.cooldowns[slot] = Math.max(0, cooldownSecondsOf(slot)); };
     const flash = (slot, ok) => { rt.flash = { slot, until: rt.frame + 14, ok }; };
 
-    const pickConsumable = () => {
-        if (typeof $gameParty === "undefined" || typeof $dataItems === "undefined") return null;
-        const actor = $gameParty.leader();
-        if (!actor) return null;
-        if (cfg.consumableItemId > 0) { const item = $dataItems[cfg.consumableItemId]; return item && $gameParty.hasItem(item) ? item : null; }
-        return $gameParty.items().find(item => item && item.itypeId === 1 && Array.isArray(item.effects) && item.effects.some(e => e.code === 11) && $gameParty.hasItem(item)) || null;
+    // ---- アイテム(C): 持っている消耗品の一覧・選択・使用 ----
+    // 一覧に出すのは、通常アイテム(itypeId 1)・消耗する・いつでも使える(occasion 0)・対象が味方1人/全体/自分(scope 7/8/11)のもの。「-----」で始まる区切りは除く。数量は実際の持ち物から読む。
+    const FIELD_ITEM_SCOPES = [7, 8, 11];
+    const isFieldConsumable = item => !!item && item.itypeId === 1 && item.consumable === true && item.occasion === 0 && FIELD_ITEM_SCOPES.includes(item.scope) && !/^-{3,}/.test(String(item.name || ""));
+    const leaderActor = () => (typeof $gameParty !== "undefined" && typeof $dataItems !== "undefined" ? safe(() => $gameParty.leader(), null) : null);
+    const itemView = item => { const actor = leaderActor(); return { id: item.id, name: String(item.name || ""), iconIndex: Number(item.iconIndex) || 0, count: safe(() => $gameParty.numItems(item), 0), usable: !!actor && safe(() => actor.canUse(item), false) === true }; };
+    const listConsumables = () => {
+        if (!leaderActor()) return [];
+        return safe(() => $gameParty.items(), []).filter(item => isFieldConsumable(item) && safe(() => $gameParty.numItems(item), 0) > 0).slice(0, RADIAL_MAX).map(itemView);
+    };
+    // 選んでいるアイテム: 放射メニューで選んだもの(持っている数が0になっても、選び直すまでそのまま。0なら使えない表示)→ なければ ConsumableItemId → なければ持っているHP回復薬 → 最初の消耗品。
+    const selectedConsumable = () => {
+        if (!leaderActor()) return null;
+        const chosen = rt.item.selectedId > 0 ? $dataItems[rt.item.selectedId] : null;
+        if (isFieldConsumable(chosen)) return chosen;
+        if (cfg.consumableItemId > 0) { const item = $dataItems[cfg.consumableItemId]; if (isFieldConsumable(item) && safe(() => $gameParty.hasItem(item), false)) return item; }
+        const list = safe(() => $gameParty.items(), []).filter(item => isFieldConsumable(item) && safe(() => $gameParty.numItems(item), 0) > 0);
+        return list.find(item => Array.isArray(item.effects) && item.effects.some(e => e.code === 11)) || list[0] || null;
+    };
+    const selectConsumable = itemId => {
+        const id = Math.round(Number(itemId));
+        if (!(id > 0) || typeof $dataItems === "undefined" || !isFieldConsumable($dataItems[id])) return fail("notFieldItem", { itemId: id || 0 });
+        rt.item.selectedId = id;
+        return { ok: true, itemId: id };
     };
     const useConsumable = () => {
-        const actor = $gameParty.leader();
+        const actor = leaderActor();
         if (!actor) return fail("noActor");
-        const item = pickConsumable();
+        const item = selectedConsumable();
         if (!item) return fail("noItem");
-        if (!actor.canUse(item)) return fail("cannotUse");
+        if (!$gameParty.hasItem(item)) return fail("noItem", { itemId: item.id });             // 持っている数が0
+        if (!actor.canUse(item)) return fail("cannotUse", { itemId: item.id });
         const action = new Game_Action(actor);
         action.setItemObject(item);
         if (!action.testApply(actor)) return fail("noEffect", { itemId: item.id });                 // HPが満タンなどで効果がない: 消費しない
@@ -503,9 +629,165 @@
         actor.refresh?.();
         return { ok: true, itemId: item.id, healed: actor.hp - before };
     };
+
+    // ---- 放射メニュー(C 長押し): マウスを動かした方向のアイテムを選ぶ。C を離すと、そのアイテムを「選んだ状態」にする(使わない) ----
+    const gfx = () => ({ w: safe(() => Graphics.width, 0) || 1920, h: safe(() => Graphics.height, 0) || 1080 });
+    const mousePoint = () => { const g = gfx(), x = safe(() => TouchInput.x, NaN), y = safe(() => TouchInput.y, NaN); return { x: Number.isFinite(x) ? x : g.w / 2, y: Number.isFinite(y) ? y : g.h / 2 }; };
+    const radialBaseRadius = n => Math.max(110, Math.min(170, Math.round(n * 42 / Math.PI)));        // HUD(1920x1080基準)の輪の半径
+    const radialIndexAt = (r, point) => {
+        const n = r.items.length, dx = point.x - r.cx, dy = point.y - r.cy;
+        if (n === 0 || Math.hypot(dx, dy) < r.deadzone) return -1;                                  // 中央(動かさない)= 選ばない
+        const turn = ((Math.atan2(dy, dx) + Math.PI / 2) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);   // 真上から時計回り
+        return Math.round(turn / (2 * Math.PI / n)) % n;
+    };
+    const openRadial = () => {
+        if (!rt.active || rt.radial.open) return false;
+        const g = gfx(), s = g.h / 1080, items = listConsumables(), m = mousePoint(), baseRadius = radialBaseRadius(items.length), radius = baseRadius * s, margin = radius + 70 * s;
+        const clamp = (v, lo, hi) => Math.max(lo, Math.min(Math.max(lo, hi), v));
+        rt.radial = { ...newRadial(), opens: rt.radial.opens + 1, commits: rt.radial.commits, cancels: rt.radial.cancels, blocked: rt.radial.blocked, lastCommit: rt.radial.lastCommit,
+            open: true, items, index: -1, radius, baseRadius, deadzone: 46 * s, openedAt: rt.frame, cx: clamp(m.x, margin, g.w - margin), cy: clamp(m.y, margin, g.h - margin) };
+        note({ type: "radialOpen", items: items.length });
+        return true;
+    };
+    const closeRadial = (commit) => {
+        const r = rt.radial;
+        if (!r.open) return null;
+        let result = { committed: false, itemId: 0 };
+        const picked = commit && r.index >= 0 ? r.items[r.index] : null;
+        if (picked) { rt.item.selectedId = picked.id; r.commits++; result = { committed: true, itemId: picked.id }; r.lastCommit = { itemId: picked.id, frame: rt.frame }; }
+        else r.cancels++;
+        r.open = false; r.items = []; r.index = -1;
+        rt.item.down = false;                                                                      // 閉じたあとも C を押し続けていても、開き直さない(離すまで何もしない)
+        note({ type: "radialClose", committed: result.committed, itemId: result.itemId });
+        return result;
+    };
+    const updateRadial = () => {
+        const r = rt.radial;
+        if (!r.open) return;
+        if ((rt.frame - r.openedAt) % 6 === 0) {                                                    // 開いている間に持ち物が変わったら、一覧を更新する
+            r.items = listConsumables();
+            const s = gfx().h / 1080; r.baseRadius = radialBaseRadius(r.items.length); r.radius = r.baseRadius * s;
+        }
+        r.index = radialIndexAt(r, mousePoint());
+    };
+    const interruptControls = () => { rt.item.down = false; if (rt.radial.open) closeRadial(false); };
+    const itemRelease = () => {
+        if (!rt.item.down) return null;
+        const held = rt.frame - rt.item.downAt;
+        rt.item.down = false;
+        if (rt.radial.open) return closeRadial(true);
+        if (held >= ITEM_HOLD_FRAMES) return null;                                                  // 長押しになったのにメニューが開く前に離した(まれ)。何も使わない
+        rt.item.taps++;
+        return useAbility("consumable", "tap");
+    };
+    // 毎フレーム: C を押し続けた長さを見て、放射メニューを開く。開いている間は、マウスの方向から選ぶアイテムを更新する。
+    const controlsTick = () => {
+        while (rt.fx.length && rt.fx[0].at <= rt.frame) { const fx = rt.fx.shift(); safe(() => root.ProjectRPresentationVfx.play(sweepVfx(), { degree: fx.degree })); }
+        if (rt.item.down && !rt.radial.open && rt.frame - rt.item.downAt >= ITEM_HOLD_FRAMES) openRadial();
+        updateRadial();
+    };
+    const processRequest = req => {
+        if (req === "item:down") { if (!rt.radial.open) { rt.item.down = true; rt.item.downAt = rt.frame - 1; } return; }          // 押したのは、このフレームの1つ前の更新のあと(長押しの長さを、押してからのフレーム数にそろえる)
+        if (req === "item:up") { itemRelease(); return; }
+        if (req === "gun") { if (rt.radial.open) { closeRadial(false); return; } fireGun("rmb"); return; }          // 放射メニュー中の右クリックは、撃たずにメニューを閉じる
+        if (req === "radialCancel") { closeRadial(false); return; }
+        if (rt.radial.open) { rt.radial.blocked++; return; }
+        useAbility(req, "keyboard");
+    };
+    const getRadialState = () => {
+        const r = rt.radial, sel = safe(() => selectedConsumable(), null);
+        return { open: r.open, items: r.items.map(i => ({ ...i })), index: r.index, hoverId: r.items[r.index]?.id ?? 0, selectedId: sel ? sel.id : 0,
+            center: { x: r.cx, y: r.cy }, radius: r.radius, baseRadius: r.baseRadius, deadzone: r.deadzone, opens: r.opens, commits: r.commits, cancels: r.cancels, blocked: r.blocked, lastCommit: r.lastCommit && { ...r.lastCommit } };
+    };
+
+    // ---- 近接3段コンボ(左クリック)と銃(右クリック)。斬撃・弾は既存の ProjectRSwordSystem.swing / ProjectRGunSystem.fire ----
+    const comboStep = () => {
+        const c = rt.combo;
+        if (c.step > 0 && rt.frame - c.lastAt > COMBO.timeout) { c.step = 0; c.resets++; }          // 受付時間を過ぎたら1段目へ戻る
+        return c.step;
+    };
+    const getComboState = () => {
+        const step = comboStep(), c = rt.combo;
+        return { step, next: step + 1, max: COMBO.max, timeout: COMBO.timeout, timeLeft: step > 0 ? Math.max(0, 1 - (rt.frame - c.lastAt) / COMBO.timeout) : 0,
+            swings: c.swings, finishers: c.finishers, resets: c.resets, rejected: c.rejected, finisherFlash: rt.frame - c.finisherAt < 24, last: c.last && { ...c.last } };
+    };
+    const combatInputReason = () => {
+        if (!rt.active) return "inactive";
+        if (playerDead()) return "playerDead";
+        if (rt.radial.open) return "menuOpen";
+        return null;
+    };
+    // 当たり判定 = 見た目の薙ぎ払い(白い杖の残像)と同じ扇形。形(半径・弧)は元の薙ぎ払いカードと同じ数値(ProjectR_CardBalance の hermes_sweep: radiusTiles / arcDegrees)、
+    //   振る時間は残像の素材と同じ(8コマ・24fps のうち、杖が -95° → +95° へ動く6区間 = 15更新)。残像の素材は全段とも時計回りなので、判定も全段で時計回りに振る。
+    //   3段目(強撃)は、残像が2回(反対側へ、6更新あとにもう1回)出るので、判定も同じ2回の扇(ぜんぶで一回転)。1つの斬撃で、同じ敵には1回だけ当たる。
+    //   絵(VFX)は、斬撃の更新の次の更新から出る(実機の記録)ので、判定も1更新遅らせて、見えている杖の先に重ねる(SWEEP_START_DELAY)。
+    const SWEEP_FRAMES = 15, HEAVY_SECOND_DELAY = 6, SWEEP_START_DELAY = 1;
+    // 見た目の中心も、判定の中心(プレイヤーのマスの中心)へ合わせる。元の hermes_sweep.staff は offsetY -24 だが、Hendrix の位置オフセットはプレイヤーの絵の拡縮で2倍に効く(実機: 中心の高さ = 基準414 + 2 x offsetY)ため、
+    //   このままだと残像の中心が約1.5マス上(頭の上)になり、判定の扇とずれる。FieldCombat 用に、同じ素材・同じ設定で offsetY だけ 12(= マスの中心)にした別名を登録して使う(元の hermes_sweep.staff は変えない)。
+    const SWEEP_VFX_KEY = "fieldcombat_sweep.staff", SWEEP_VFX_OFFSET_Y = 12;
+    let sweepVfxKey = null;
+    const sweepVfx = () => {
+        if (sweepVfxKey) return sweepVfxKey;
+        const vfx = root.ProjectRPresentationVfx;
+        const base = safe(() => vfx.mapping("hermes_sweep.staff"), null);
+        sweepVfxKey = base && typeof vfx.register === "function" && safe(() => { vfx.register(SWEEP_VFX_KEY, { ...base, offsetY: SWEEP_VFX_OFFSET_Y }); return true; }, false) ? SWEEP_VFX_KEY : "hermes_sweep.staff";
+        return sweepVfxKey;
+    };
+    const sweepSector = def => {
+        const arc = safe(() => Number(root.ProjectRCardBalance.constant("hermes_sweep", "arcDegrees")), NaN), radius = safe(() => Number(root.ProjectRCardBalance.constant("hermes_sweep", "radiusTiles")), NaN);
+        return { radius: radius > 0 ? radius : 4, arc: arc > 0 ? arc : 190, frames: SWEEP_FRAMES, passes: def.heavy ? [{ offset: 0, delay: SWEEP_START_DELAY }, { offset: 180, delay: SWEEP_START_DELAY + HEAVY_SECOND_DELAY }] : [{ offset: 0, delay: SWEEP_START_DELAY }] };
+    };
+    // 薙ぎ払いのVFX(ProjectR_HermesSweep と同じ: VFX hermes_sweep.staff + ケーリュケイオンの Swing Weapon + SE)。見た目だけで、判定・ダメージは SwordSystem の Hitbox。
+    const sweepPresentation = (degree, heavy) => {
+        safe(() => root.ProjectRPresentationVfx.play(sweepVfx(), { degree }));
+        safe(() => root.ProjectRGodSummonVisual.swingWeapon("hermes", degree, "ProjectR_Caduceus_DEV"));
+        safe(() => AudioManager.playSe({ name: "Slash2", volume: 85, pitch: heavy ? 70 : 100, pan: 0 }));
+        if (heavy) rt.fx.push({ at: rt.frame + HEAVY_SECOND_DELAY, degree: ((degree + 180) % 360 + 360) % 360 });        // 強撃は、反対側へもう1回(一回転)
+    };
+    const hasSweepVfx = () => !!safe(() => root.ProjectRPresentationVfx && typeof root.ProjectRPresentationVfx.play === "function", false);
+    const attackClick = (source = "api") => {
+        let result = null;
+        const reason = combatInputReason();
+        const sword = root.ProjectRSwordSystem;
+        if (reason) result = fail(reason);
+        else if (!sword || typeof sword.swing !== "function") result = fail("swordUnavailable");
+        else {
+            const next = comboStep() + 1, def = COMBO.steps[next - 1];
+            const swung = sword.swing("field", { anyWeapon: true, step: next, width: def.width, depth: def.depth, forward: def.forward, lifetime: def.lifetime, cooldown: def.cooldown,
+                damageScale: def.heavy ? COMBO.finisher : 1, style: def.style, pitch: def.pitch, speed: def.speed, visual: !hasSweepVfx(),
+                ...(hasSweepVfx() ? { sector: sweepSector(def) } : {}) });          // VFX がある(通常)ときは、見た目と同じ扇形の判定。無いときだけ従来の長方形のHitbox
+            if (swung && swung.ok) {
+                const c = rt.combo;
+                c.swings++; c.lastAt = rt.frame;
+                if (hasSweepVfx()) sweepPresentation(Number.isFinite(swung.degree) ? swung.degree : 0, !!def.heavy);
+                if (next >= COMBO.max) { c.step = 0; c.finishers++; c.finisherAt = rt.frame; }         // 3段目(強撃)のあとは、1段目へ戻る
+                else c.step = next;
+                result = { ok: true, step: next, heavy: def.heavy, scale: def.heavy ? COMBO.finisher : 1, degree: swung.degree, serial: swung.serial };
+            } else { rt.combo.rejected++; result = fail(swung?.reason || "swingFailed", { step: next }); }       // 間隔の内(cooldown)などで出なかったクリックは、段を進めない
+        }
+        result.source = source; result.frame = rt.frame;
+        rt.combo.last = { ...result };
+        note({ type: "attack", ok: result.ok === true, step: result.step || 0, reason: result.reason || null });
+        return result;
+    };
+    const fireGun = (source = "api") => {
+        let result = null;
+        const reason = combatInputReason();
+        const gun = root.ProjectRGunSystem;
+        if (reason) result = fail(reason);
+        else if (!gun || typeof gun.fire !== "function") result = fail("gunUnavailable");
+        else { const shot = gun.fire("field"); result = shot && shot.ok ? { ok: true, eventId: shot.eventId, degree: shot.degree } : fail(shot?.reason || "fireFailed"); }
+        if (result.ok) rt.gun.shots++; else rt.gun.rejected++;
+        result.source = source; result.frame = rt.frame;
+        rt.gun.last = { ...result };
+        note({ type: "gun", ok: result.ok === true, reason: result.reason || null });
+        return result;
+    };
     const cancel = () => {
         let cancelled = 0;
         if (rt.pending.length) { cancelled += rt.pending.length; rt.pending = []; }
+        if (rt.radial.open) { closeRadial(false); cancelled++; }
+        rt.item.down = false;
         if (safe(() => cardInput()?.cancelPress?.(undefined, "fieldCancel"), false)) cancelled++;
         safe(() => $gameTemp?.clearDestination?.());
         note({ type: "cancel", cancelled });
@@ -516,6 +798,7 @@
         if (!rt.active) return "inactive";
         if (playerDead()) return "playerDead";
         if (!CAST_SLOTS.includes(slot)) return "invalidSlot";
+        if (rt.radial.open) return "menuOpen";                                                       // 放射メニューを開いている間は、ほかの戦闘の入力は受け付けない
         if (cooldownOf(slot) > 0) return "cooldown";
         return null;
     };
@@ -534,12 +817,16 @@
                 } else if (def.kind === "ultimate") {
                     const used = ultimate()?.requestUltimateActivation?.("field");
                     result = used && used.ok === true ? { ok: true, slot, godId: used.godId ?? null } : fail(used?.reason || "ultimateUnavailable", { slot, detail: used?.handlerReason || null });
+                } else if (def.kind === "reload") {
+                    // リロードは既存の銃の仕組み(弾薬・リロード時間・満タン/ストック無し/銃なしの扱い)のまま。Cooldownはこちらで持たない。
+                    const used = root.ProjectRGunSystem?.requestReload?.("field");
+                    result = used && used.ok === true ? { ok: true, slot, frames: used.frames } : fail(used?.reason || "gunUnavailable", { slot });
                 } else if (def.kind === "item") {
                     const used = useConsumable();
-                    result = used.ok ? { ...used, slot } : { ...used, slot };
+                    result = { ...used, slot };
                 } else result = fail("unsupportedKind", { slot });
             } catch (error) { result = fail("exception", { slot, detail: String(error?.message || error) }); }
-            if (result.ok) startCooldown(slot);                                                  // 成功したときだけCooldown(失敗は何も消費しない)
+            if (result.ok && slot in rt.cooldowns) startCooldown(slot);                              // 成功したときだけCooldown(失敗は何も消費しない)
         }
         result.source = source; result.frame = rt.frame;
         rt.lastResult = result; flash(slot, result.ok === true);
@@ -929,6 +1216,15 @@
             if (!e || !rt.enemies.has(id) || !enemyAlive(e)) { softRelease(id); continue; }
             const age = rt.frame - rec.at, s = bodySize(e);
             if (age >= SOFT.MAX_FRAMES || (age >= SOFT.MIN_FRAMES && !(Math.abs(e._realX - x) < 0.98 * (s.w + 1) / 2 && Math.abs(e._realY - y) < 0.98 * (s.h + 1) / 2))) softRelease(id);
+        }
+        // 重なりの救済: 体が敵と重なっている間は(絶の着地で、壁と敵のすきまに降りたとき など)、その敵をプレイヤーが通り抜けられるようにして、閉じ込められないようにする。離れれば戻す。
+        if (cfg.softCollision && rt.active) {
+            const pc0 = playerCenter(), ps0 = bodySize(p);
+            for (const [id] of rt.enemies) {
+                const e = map()?.event(id); if (!e || !enemyAlive(e) || safe(() => e.isThrough(), false) || rt.soft.has(id)) continue;
+                const c = center(e), s0 = bodySize(e);
+                if (Math.abs(c.x - pc0.x) < 0.85 * (ps0.w + s0.w) / 2 && Math.abs(c.y - pc0.y) < 0.85 * (ps0.h + s0.h) / 2) softAdd(id, "overlap");
+            }
         }
         if (!cfg.softCollision || !navReady() || typeof Input === "undefined") return;
         const dir = Input.dir8 || Input.dir4 || 0;
@@ -1338,12 +1634,13 @@
             // 敵の行動(attachEnemy)は、戦闘中でなくても、隠れていても止めない(メッセージ・イベント・メニュー中だけ止まる)
             if (rt.enemies.size && enemiesMayAct()) updateEnemies();
             if (!rt.active || generation !== rt.generation) return;
-            if (cardInput()?.getBlockedReason?.() !== null) { rt.pending = []; return; }          // メニュー・会話・イベント中は進めない
+            if (cardInput()?.getBlockedReason?.() !== null) { rt.pending = []; interruptControls(); return; }          // メニュー・会話・イベント中は進めない(C の押下・放射メニューも取り消す)
             const dt = 1 / FPS;
             for (const slot of Object.keys(rt.cooldowns)) if (rt.cooldowns[slot] > 0) rt.cooldowns[slot] = Math.max(0, rt.cooldowns[slot] - dt);
             safe(() => deck().updateCooldown(dt));                                                // 一閃の分割ダメージなどの時計(カード戦闘の時計)
             touchAssist(); softTick();
-            for (const slot of requests) { if (!rt.active || generation !== rt.generation) break; useAbility(slot, "keyboard"); }
+            controlsTick();
+            for (const req of requests) { if (!rt.active || generation !== rt.generation) break; processRequest(req); }
             refreshLayer(this);
         };
         const _createDisplayObjects = Scene_Map.prototype.createDisplayObjects;
@@ -1354,17 +1651,47 @@
     }
 
     // ------------------------------------------------------------------ 表示(スロットのHUD・敵の予兆) ----------------------------------------------------------------
+    const reloadView = () => {
+        const g = safe(() => root.ProjectRGunSystem?.status?.(), null);
+        if (!g || !g.equipped) return { state: "noGun", ready: false, ammo: 0, capacity: 0, reserve: 0, equipped: false };
+        const state = g.reloading ? "reloading" : g.ammo >= g.capacity ? "full" : g.reserve <= 0 ? "noReserve" : "ready";
+        return { state, ready: state === "ready", ammo: g.ammo, capacity: g.capacity, reserve: g.reserve, equipped: true };
+    };
+    // 使えなかった直後(約1.5秒)は、枠の下の文字に理由を出す(Cooldown は COOL のまま)。Shift(絶)が「無反応」に見えないように、予約はできたが確定できなかった(壁・方向なし等)場合も出す。
+    const NOTICE_FRAMES = 90;
+    const FAIL_NOTICE = Object.freeze({ invalidMousePosition: "方向なし", noDestination: "進めない", blocked: "進めない", movementUnavailable: "動けない", playerMovementLocked: "動けない", playerThrough: "動けない",
+        noTarget: "対象なし", noItem: "なし", cannotUse: "使用不可", noEffect: "効果なし", playerDead: "戦闘不能", battleInactive: "戦闘外" });
+    const noticeOf = slot => {
+        const r = rt.lastResult;
+        if (!r || r.slot !== slot || r.frame === undefined || rt.frame - r.frame > NOTICE_FRAMES || rt.frame < r.frame) return null;
+        let key = null;
+        if (r.ok === false && r.reason !== "cooldown" && r.reason !== "menuOpen") key = r.detail || r.reason;
+        else if (r.ok === true && r.pending === true && slot === "mobility") {             // 絶: 予約のあと確定できなかった(壁・方向なし等)
+            const z = safe(() => root.ProjectRHermesZetsu.getLastResult(), null);
+            if (z && z.ok === false && z.reason !== "pending" && z.reason !== "reserved" && z.reason !== "teleportPending") key = z.reason;
+        }
+        return key ? FAIL_NOTICE[key] || "使用不可" : null;
+    };
     const getHudState = () => {
         const gauge = safe(() => { const g = root.ProjectRUltimateGauge; const max = g?.getUltimateGaugeMax?.() ?? 0; return max > 0 ? { gauge: g.getUltimateGauge(), max } : null; }, null);
-        const slots = ["special", "mobility", "ultimate", "consumable"].map(slot => {
+        const slots = ["ultimate", "mobility", "special", "reload", "consumable", "card1", "card2"].map(slot => {
             const d = LOADOUT[slot], cd = cooldownOf(slot);
-            const total = Math.max(0.0001, d.cooldown || 0);
-            let ready = cd <= 0, extra = null;
-            if (slot === "ultimate") { ready = !!gauge && gauge.gauge >= gauge.max; extra = gauge ? { gauge: gauge.gauge, max: gauge.max } : null; }
-            if (slot === "consumable") { const item = pickConsumable(); ready = ready && !!item; extra = { count: item ? $gameParty.numItems(item) : 0 }; }
-            return { slot, key: d.key, label: d.label, cooldown: cd, ratio: d.cooldown > 0 ? Math.min(1, cd / total) : 0, ready, extra, flash: rt.flash.slot === slot && rt.frame < rt.flash.until ? (rt.flash.ok ? "ok" : "ng") : null };
+            const total = Math.max(0.0001, cooldownSecondsOf(slot));
+            let ready = cd <= 0, extra = null, state = cd > 0 ? "cooldown" : "ready";
+            if (slot === "ultimate") { ready = !!gauge && gauge.gauge >= gauge.max; extra = gauge ? { gauge: gauge.gauge, max: gauge.max } : null; state = ready ? "ready" : "charging"; }
+            else if (slot === "reload") { const r = reloadView(); ready = r.ready; extra = r; state = r.state; }
+            else if (slot === "consumable") {
+                const item = selectedConsumable(), v = item ? itemView(item) : null;
+                extra = v ? { id: v.id, name: v.name, iconIndex: v.iconIndex, count: v.count, usable: v.usable } : { id: 0, name: "", iconIndex: 0, count: 0, usable: false };
+                ready = cd <= 0 && !!v && v.count > 0 && v.usable;
+                state = !v ? "none" : v.count <= 0 ? "empty" : cd > 0 ? "cooldown" : !v.usable ? "unusable" : "ready";
+            }
+            if (slot === "card1" || slot === "card2") { const known = safe(() => !!deck().definitions.card(d.cardId), false); ready = ready && known; state = !known ? "unavailable" : state; extra = { cardId: d.cardId, known }; }
+            return { slot, key: d.key, label: d.label, cooldown: cd, ratio: cooldownSecondsOf(slot) > 0 ? Math.min(1, cd / total) : 0, ready, state, extra, flash: rt.flash.slot === slot && rt.frame < rt.flash.until ? (rt.flash.ok ? "ok" : "ng") : null, notice: noticeOf(slot) };
         });
-        return { active: rt.active, slots, attack: { key: "LMB", label: "攻撃" }, cancel: { key: "C", label: "取消" }, telegraphs: telegraphRecords().length };
+        const reload = reloadView();
+        return { active: rt.active, slots, attack: { key: "LMB", label: "薙ぎ払い" }, gun: { key: "RMB", label: "射撃", ammo: reload.ammo, capacity: reload.capacity, equipped: reload.equipped },
+            combo: getComboState(), item: slots[4], radial: getRadialState(), telegraphs: telegraphRecords().length };
     };
     const telegraphRecords = () => {
         const api = enemyAttack(); if (!api || !rt.active) return [];
@@ -1375,24 +1702,53 @@
     const slotIcon = (def, item) => {
         if (def.kind === "card") return safe(() => root.ProjectRBattleHUD?.getCardPresentation?.(def.cardId) || null, null);
         if (def.kind === "item" && item) return { name: item.name, iconIndex: item.iconIndex, imageName: "" };
+        if (def.kind === "reload") return { name: def.label, iconIndex: safe(() => ($dataItems.find(i => i && i.name === "弾薬") || {}).iconIndex, 0) || 0, imageName: "" };
         return null;
     };
+    // 枠の下の短い状態の文字(detail)と色の種類(tone: ok / warn / ng / muted)。
+    const slotDetail = (slot, view) => {
+        if (!view) return { text: "", tone: "muted" };
+        const x = view.extra || {};
+        if (slot === "ultimate") return view.ready ? { text: "READY", tone: "ok" } : { text: x.max > 0 ? `${Math.floor(Math.max(0, Math.min(1, x.gauge / x.max)) * 100 + 1e-6)}%` : "--%", tone: "muted" };
+        if (slot === "reload") {
+            if (view.state === "noGun") return { text: "NO GUN", tone: "muted" };
+            if (view.state === "reloading") return { text: "RELOAD…", tone: "warn" };
+            return { text: `${x.ammo}/${x.capacity}`, tone: x.ammo <= 0 ? "ng" : view.state === "noReserve" ? "warn" : "ok" };
+        }
+        if (slot === "consumable") {
+            if (view.state === "none") return { text: "NO ITEM", tone: "muted" };
+            if (view.state === "empty") return { text: "×0", tone: "ng" };
+            if (view.state === "unusable") return { text: `×${x.count} 不可`, tone: "ng" };
+            return { text: `×${x.count}`, tone: view.state === "cooldown" ? "muted" : "ok" };
+        }
+        if (view.state === "unavailable") return { text: "N/A", tone: "ng" };
+        if (view.notice && !(view.cooldown > 0)) return { text: view.notice, tone: "ng" };
+        return view.cooldown > 0 ? { text: "COOL", tone: "muted" } : { text: "READY", tone: "ok" };
+    };
+    // 固定カードの表示名(BattleHUD の内蔵名は英語なので、実装済みのカードは日本語の名前で出す)
+    const CARD_NAMES = Object.freeze({ apollo_golden_volley: "黄金の矢", apollo_gigas_slayer: "ギガース殺し", hermes_reed_flute: "葦笛", hermes_veil: "ヴェイル", hermes_psychopomp: "サイコポンポス", hermes_strength: "ストレングス", hermes_sweep: "薙ぎ払い" });
     const hudSlots = () => {
         const state = getHudState();
         const bySlot = Object.fromEntries(state.slots.map(s => [s.slot, s]));
-        const make = (slot, view) => {
-            const d = LOADOUT[slot];
-            const item = slot === "consumable" ? pickConsumable() : null;
+        const make = slot => {
+            const d = LOADOUT[slot], view = bySlot[slot];
+            if (slot === "attack") {                                                              // LMB 薙ぎ払い: 近接3段コンボ(進み具合)
+                const pres = safe(() => root.ProjectRBattleHUD.getCardPresentation("hermes_sweep"), null) || {}, c = state.combo;
+                return { mode: "field", key: d.key, slot, name: d.label, detail: c.finisherFlash ? "強撃!" : (c.step > 0 ? `${c.step}/${c.max}` : "READY"), tone: c.step > 0 || c.finisherFlash ? "ok" : "muted", accent: "",
+                    iconIndex: pres.iconIndex || 0, imageName: pres.imageName || "", skillId: 0, available: true, disabled: false, selected: c.step > 0 || c.finisherFlash, cooldown: { active: false, remaining: 0, total: 0 } };
+            }
+            const item = slot === "consumable" && view && view.extra && view.extra.id > 0 ? { name: view.extra.name, iconIndex: view.extra.iconIndex } : null;
             const pres = slotIcon(d, item) || {};
-            const cd = view ? view.cooldown : 0;
+            const cd = view ? view.cooldown : 0, detail = slotDetail(slot, view);
+            const name = slot === "consumable" ? (item ? item.name : d.label) : ((slot === "card1" || slot === "card2") ? (CARD_NAMES[d.cardId] || pres.name || d.label) : d.label);
             return {
-                mode: "field", key: d.key, slot, name: slot === "cancel" ? d.label : (pres.name && slot !== "special" && slot !== "mobility" ? pres.name : d.label),
+                mode: "field", key: d.key, slot, name, detail: detail.text, tone: detail.tone, accent: slot === "consumable" ? "item" : "",
                 iconIndex: pres.iconIndex || 0, imageName: pres.imageName || "", skillId: 0,
-                available: slot === "cancel" ? true : !!(view && (view.ready || cd > 0)), disabled: slot === "cancel" ? false : !(view && view.ready),
-                selected: !!(view && view.flash === "ok"), cooldown: { active: cd > 0, remaining: cd, total: d.cooldown || 0 }
+                available: !!(view && (view.ready || cd > 0)), disabled: !(view && view.ready),
+                selected: !!(view && (view.flash === "ok" || (slot === "ultimate" && view.ready))), cooldown: { active: cd > 0, remaining: cd, total: cooldownSecondsOf(slot) }
             };
         };
-        return ["special", "mobility", "ultimate", "consumable", "cancel"].map(slot => make(slot, bySlot[slot]));
+        return ["attack", "mobility", "special", "card1", "card2", "consumable"].map(make);      // メイン5枠(LMB 薙ぎ払い / Shift 絶 / E 一閃 / 1・2 固定カード)+ 別枠の C アイテム。Q 奥義・R リロード・右クリックの銃は、HUDの枠には出さない(操作はそのまま使える)
     };
     const installHud = () => {
         const proto = root.ProjectRBattleHUD?.DataAdapter?.prototype;
@@ -1403,12 +1759,12 @@
         proto.__projectRFieldCombat = true;
     };
     installHud();
-    // 奥義のキー表示も E にそろえる(Uキーも従来どおり使える)。
+    // 奥義のキー表示も Q にそろえる(Uキーも従来どおり使える)。
     safe(() => {
         const ua = ultimate();
         if (ua && typeof ua.getInputBinding === "function") {
             const original = ua.getInputBinding;
-            ua.getInputBinding = function() { const b = original.apply(this, arguments); return rt.active && b ? { ...b, key: "E", active: true } : b; };
+            ua.getInputBinding = function() { const b = original.apply(this, arguments); return rt.active && b ? { ...b, key: "Q", active: true } : b; };
         }
     });
 
@@ -1450,14 +1806,20 @@
         if (rt.active) drawTelegraphs(L.tele);
     };
 
+    // 絶(Shift)の瞬間移動は、エンカウンター中、敵の体に止められない(壁・閉じた扉・通れない地形では、これまでどおり止まる)。着地は、敵の体と重ならない位置。
+    const isEnemyBody = o => rt.active && !!o && typeof o.eventId === "function" && (rt.enemies.has(o.eventId()) || enc.attached.has(o.eventId()) || o.databaseEnemy === true || /<enemy>/.test(safe(() => String(o.event().note), "")));
+    safe(() => root.ProjectRHermesZetsu.registerCollisionFilter(isEnemyBody));
+
     // ------------------------------------------------------------------ 公開API ----------------------------------------------------------------
     root.ProjectRFieldCombat = Object.freeze({
-        VERSION: "0.1.0", SOURCE,
+        VERSION: "0.5.0", SOURCE,
         begin, end, isActive: () => rt.active,
         getState: () => ({ active: rt.active, engaged: rt.engaged, encounter: enc.state, serial: rt.serial, frame: rt.frame, enemies: [...rt.enemies.values()].map(b => ({ eventId: b.eventId, state: b.state, attacks: b.attacks, cooldown: b.cooldown })), diagnostics: { ...rt.diag }, pending: rt.pending.length, touchAssists: rt.touchAssists }),
         getLoadout: () => JSON.parse(JSON.stringify(LOADOUT)),
         getCooldowns: () => ({ ...rt.cooldowns }),
         useAbility, cancel, getHudState, getHudSlots: hudSlots,
+        attackClick, fireGun, getComboState, getComboConfig: () => JSON.parse(JSON.stringify(COMBO)), getSweepVfxKey: () => sweepVfx(), listConsumables, selectConsumable, getSelectedConsumable: () => { const i = selectedConsumable(); return i ? itemView(i) : null; },
+        getRadialState, openRadial, closeRadial, getItemHoldFrames: () => ITEM_HOLD_FRAMES, getControlStats: () => ({ combo: getComboState(), gun: { ...rt.gun, last: rt.gun.last && { ...rt.gun.last } }, item: { ...rt.item }, radial: getRadialState(), diag: { ...rt.diag } }),
         getLastResult: () => (rt.lastResult ? JSON.parse(JSON.stringify(rt.lastResult)) : null),
         getLog: () => rt.log.map(e => ({ ...e })),
         attachEnemy, detachEnemy, listEnemies: () => [...rt.enemies.keys()],
