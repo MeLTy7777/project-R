@@ -233,23 +233,29 @@ test("扇形の判定(sector): 見た目の薙ぎ払い(半径4・190°・15更�
     const SECTOR = { radius: 4, arc: 190, frames: 15, passes: [{ offset: 0, delay: 0 }] };
     // 1) 通常の扇(1回): 東・南東寄り・北東寄りは当たり、西・射程外は外れる。当たる更新は、時計回りに 北東寄り(早い)< 東 < 南東寄り(遅い)
     const w = setup(); const before = hpAll(w), hitFrame = {};
+    const heard = [], off = sword(w).addHitListener(p => heard.push(p));          // Stage 6B: 命中の通知口
     const r = sword(w).swing("t", { anyWeapon: true, step: 1, sector: SECTOR });
     assert.equal(r.ok, true); assert.equal(r.sector, true); assert.equal(sword(w).getActiveHitboxes().length, 0, "長方形のHitboxは作らない");
     for (let f = 1; f <= 20; f++) { w.frames(1); const now = hpAll(w); for (const id of [2, 3, 4, 5, 6]) if (hitFrame[id] === undefined && now[id] < before[id]) hitFrame[id] = f; }
     assert.deepEqual(Object.keys(hitFrame).map(Number).sort(), [2, 3, 4], `当たったのは 北東寄り・東・南東寄り(西 5・射程外 6 は外れる): ${JSON.stringify(hitFrame)}`);
     assert.ok(hitFrame[2] < hitFrame[4] && hitFrame[4] < hitFrame[3], `時計回りの振りに合わせた順: ${JSON.stringify(hitFrame)}`);
     assert.ok(hitFrame[3] <= 17, "15更新 + ダメージ反映の1〜2更新で終わる");
+    assert.deepEqual(heard.map(h => h.enemyId).sort(), [2, 3, 4], "命中の通知: 当たった敵ごとに1回(外れた敵・射程外には通知しない)");
+    assert.ok(heard.every(h => h.kind === "sword" && h.step === 1 && h.scale === 1 && Math.abs(h.degree - 90) < 15 && h.sector === true && Number.isFinite(h.serial)), JSON.stringify(heard[0]));
+    assert.equal(off(), true, "リスナーを外せる"); assert.equal(off(), false);
     const after = hpAll(w), dmg = before[4] - after[4];
     assert.ok(dmg > 0 && before[2] - after[2] === dmg && before[3] - after[3] === dmg, "各敵に1回ずつ(同じダメージ)");
     w.frames(20); assert.equal(sword(w).getActiveSweeps().length, 0, "振り切ったら消える"); assert.deepEqual(hpAll(w), after, "あとから繰り返し当たらない");
     // 2) 強撃(2回の扇・倍率2): 西も当たる(2回目の扇)。各敵1回だけ・ダメージは2倍
     const w2 = setup(); const b2 = hpAll(w2);
+    const heard2 = []; sword(w2).addHitListener(p => heard2.push(p));
     sword(w2).swing("t", { anyWeapon: true, step: 3, damageScale: 2, sector: { ...SECTOR, passes: [{ offset: 0, delay: 1 }, { offset: 180, delay: 7 }] } });
     const again = sword(w2).swing("t", { anyWeapon: true, sector: SECTOR });
     assert.equal(again.ok, false); assert.equal(again.reason, "cooldown", "Cooldown中は出ない(1クリック=1回)");
     w2.frames(30); const a2 = hpAll(w2);
     assert.deepEqual(dropped(b2, a2), [2, 3, 4, 5].filter(id => true), "強撃: 一回転で、西(5)にも当たる。射程外(6)は外れる");
     for (const id of [2, 3, 4, 5]) assert.equal(b2[id] - a2[id], dmg * 2, `敵${id}: 倍率2の1回分だけ`);
+    assert.deepEqual(heard2.map(h => h.enemyId).sort(), [2, 3, 4, 5], "強撃の通知: 2回の扇でも、各敵に1回だけ(段 3・倍率 2)"); assert.ok(heard2.every(h => h.step === 3 && h.scale === 2));
     // 3) 後始末: 振っている途中でマップ移動すれば消える
     const w3 = setup(); sword(w3).swing("t", { anyWeapon: true, sector: SECTOR }); w3.frames(3);
     assert.equal(sword(w3).getActiveSweeps().length, 1); w3.ctx.$gameMap.setup(4); assert.equal(sword(w3).getActiveSweeps().length, 0);

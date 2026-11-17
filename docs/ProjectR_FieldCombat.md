@@ -216,6 +216,33 @@ ATTACK/DEFENSE の区切りも、カードのドロー・ランダムな手札�
 
 **4. 実機の検証**: `tools/mz_cdp/field_hud6a_verify.cjs` 38/38(実キー・実マウス。アイコン・Cooldown の暗幕と残り秒が実際の Cooldown と一致・コンボ・V・720p/1080p/1440p の収まりと文字の実寸・勝利→2回目の戦闘・性能)。Node: `tests/ProjectR_FieldCombat.test.cjs` に枠のデータ 1 本、`tests/ProjectR_BattleHUD.phase5a.test.cjs` に枠の描画 1 本を追加。
 
+## Stage 6B: 命中の手応え(点滅・反動・ヒットストップ・SE)
+
+攻撃が**実際にダメージを与えたときだけ**、当たった敵に短い手応えを出します。**ダメージの式・当たり判定(扇形)・攻撃の時間・コンボ・スキル・操作は変えていません**(見た目と音と、当たった敵だけの短い停止だけ)。
+
+**しくみ**
+1. `ProjectR_SwordSystem` / `ProjectR_GunSystem` に、命中の通知口 `addHitListener(fn)` を足しました(追加のみ。リスナーが無ければ何もしない)。ダメージを出した直後に、`{ kind: sword|gun, enemyId, serial, step, scale, degree }` を通知します。
+2. **Hendrix の `UpdateEventHp` は、HP を「次のフレーム」で減らします**(実機で確認。従来の `trackDamage` の前後比較は 0 になる)。そのため FieldCombat は、通知を**予約**し、毎フレーム HP を見て、**実際に減ったときだけ**手応えを出します(8フレーム待っても減らなければ捨てる = 当たっても無効だったとき・外れ)。
+3. 手応えを出すのは、フィールド戦闘中(エンカウンター中)の近接と銃だけです。スキル(一閃・黄金の矢など)の命中には出しません。
+
+| | 近接 1・2段目 | 3段目の強撃 | 銃 |
+| --- | --- | --- | --- |
+| 点滅(白)の長さ | 6 フレーム | 10 フレーム(濃い) | 4 フレーム(薄い) |
+| 反動(絵だけ)| 4px | 10px | 3px |
+| ヒットストップ(その敵だけ)| 3 フレーム | 6 フレーム | 2 フレーム |
+| 命中SE(既存の効果音) | Blow1(音量55・ピッチ115) | Blow6(音量75・ピッチ80。低く重い) | Damage1(音量45・ピッチ125。小さい) |
+
+- **反動**: 敵の絵(Sprite_Character)だけを、主人公から敵への向き(銃は弾の向き)へずらして戻します(約0.13〜0.2秒。すばやく押され、ゆっくり戻る)。**Game_Event の位置・当たり判定・経路は動かしません**(押し戻しなし)。
+- **ヒットストップ**: 既存の `ProjectR_HitStop` で、当たった敵の `Game_Event.update` だけを数フレーム飛ばし、その敵の AI(FieldCombat の行動)も一緒に止めます。**ゲーム全体・時計・Cooldown・入力・プレイヤー・他の敵は止めません。** 倒した敵は止めません。
+- **SE**: 薙ぎ払いが何体に当たっても、1回の攻撃につき**1回だけ**。別の攻撃でも、4フレーム以内は続けて鳴らしません(銃の連射・コンボで鳴りすぎない)。
+- **霧(Fog of War)**: 命中の瞬間に**見えていない敵**には、点滅・反動・SE・ヒットストップのどれも出しません(位置がもれない)。
+- **片づけ**: 戦闘の開始・終了(勝利・撤退・マップ移動・ロード)で、予約・点滅・反動・ヒットストップを全部捨てます。敵が倒れて消えたら、その敵の分も捨てます。絵(Sprite)の点滅は、次の更新で元(0)に戻ります。Game_Event には何も書かない(セーブに残らない)。
+- **設定**(プラグインパラメータ。どれも 0 / none で無効): `HitFeedback` / `HitstopFrames` / `HitstopHeavyFrames` / `HitstopGunFrames` / `RecoilPixels` / `RecoilHeavyPixels` / `RecoilGunPixels` / `FlashFrames` / `HitSeMelee` / `HitSeHeavy` / `HitSeGun`(名前:音量:ピッチ)。Console では `ProjectRFieldCombat.getHitFx()`(設定・予約・出ている手応え・統計)と `setHitFeedback({...})`。
+
+**実機の検証**: `tools/mz_cdp/field_hitfx_verify.cjs` 29/29(実キー・実マウス・フレームごとの記録)。Node: `tests/ProjectR_FieldCombat.test.cjs` に 4 本、`tests/ProjectR_SwordSystem.test.cjs` に命中の通知の確認。
+
+**気づいた既存の現象(Stage 5 の判定側。今回の変更とは無関係)**: 近接の扇形の判定が、静止した的に**ときどき(25回に1〜3回)当たらない**ことがあります(手応えをオフにしても同じ頻度)。原因は未調査です。手応えは「実際にダメージが入ったとき」だけ出すので、当たらなかったクリックでは何も出ません。
+
 ## 敵と予兆
 
 - 敵は既存の `<enemy>` つきのイベント(Map001 の「公式銃テスト敵」)。`ProjectRFieldCombat.attachEnemy(eventId)` で、メモリ上だけ「近づく → 範囲に入ったら溜めて(予兆)→ 近接攻撃 → Cooldown」の行動をつけます(`ProjectREnemyAttack` の予約を使う)。溜めの間は動きません。元の並列ページの攻撃は止めます(二重にならないように)。
@@ -379,6 +406,7 @@ Map008 の扉口(8,7)に敵が並ぶと、次の 2 つの渋滞が起きてい�
 - tools/mz_cdp/field_controls_verify.cjs 68/68(**Stage 5**。実キー・実マウス。Map001 の銃テスト敵): HUD(Q/Shift/E/R/C・SKILL なし・アイテム枠・操作ガイド)・左クリックの3段コンボ(1クリック=1斬撃・3段目はダメージ約2倍・1.5秒押しっぱなしでも1回・0.8秒で1段目へ戻る・間隔内の連打は進めない)・右クリックの銃(1クリック=1発・右クリックメニューもマップのメニューも出ない・押しっぱなしでも1発)・R リロード(満タンは何もしない)・Q 奥義(ゲージ)・Shift 絶(ダッシュ無効)・E 一閃・C 短押し(Cooldown・HP満タン)/長押し(0.3秒で放射メニュー・方向で選ぶ・離すと選ぶ(使わない)・右クリックで取り消し・アイテムなし・持ち物の変化・メッセージで閉じる・開いている間の入力の衝突)・720p / 1080p / 1440p で HUD と放射メニューが収まり重ならない・戦闘外は従来・3回繰り返し・Console エラーなし・保存の書き込みなし。スクリーンショット付き。
 - Stage 5 の回帰(新しい割り当てへ更新したうえで): field_combat 42/42・field_encounter 28/28・field_integration 40/40・field_facing 28/28・field_perception 23/23・field_boundary 21/21・field_fixes 20/20・field_god 16/16・field_traffic 22/22・field_pathfinding 28/28。
 - **Stage 5c**: tools/mz_cdp/field_stage5c_verify.cjs 45/45(実キー・実マウス。Map008): HUD のキー(LMB / Shift / E / X / C + V)・実機の Shift(`shiftKey` = true)で絶が発動・診断 accepted・Shift を押したままの E/X/R・使えない理由の表示(壁ぎわ=進めない・Cooldown=COOL)・X = 黄金の矢 / C = ギガース殺し(ダメージ・メニューは開かない・ドロー/準備/SOULなし)・V の短押し(HP回復・数量 -1)/ 長押し(放射メニュー)・メニュー中の X は受け付けない・戦闘外の X でメニューが開き X で閉じる・戦闘外の Shift のダッシュは従来どおり・薙ぎ払いの判定(東向きで当たる/外れる・時計回りの順・2段目・斜め4方向・強撃の一回転と2倍ダメージ・射程外・閉じた扉の向こう・押しっぱなしは1回・3回で 1→2→3→リセット)・VFX と判定の中心/向き/半径/進みの一致。回帰(新しい割り当てへ更新): field_controls 68/68・field_skills 35/35・field_combat 42/42・field_encounter 28/28・field_integration 40/40・field_facing 28/28・field_perception 23/23・field_boundary 21/21・field_fixes 20/20・field_god 16/16・field_traffic 22/22・field_pathfinding 28/28・fog_of_war 24/24(Console のエラー 0・保存の書き込み 0)。Node: tests/ProjectR_FieldCombat.test.cjs 65(Stage 5c で Shift の実機の形・使えない理由を追加し、キー割り当て・コンボの扇・VFX の別名の期待を更新)、tests/ProjectR_SwordSystem.test.cjs 11(扇形の判定を追加)、ほか既存の全テスト 124 ファイル合格(`ProjectR_SoulBattlePoC` の SwordSystem の変更量の上限と、`ProjectR_H2CB3` の検証スクリプトの台帳を、Stage 5c の追加に合わせて更新)。保護セーブのハッシュは変わらず。
+- **Stage 6B**: tools/mz_cdp/field_hitfx_verify.cjs 29/29(上の「Stage 6B」)。
 - **Stage 6A**: tools/mz_cdp/field_hud6a_verify.cjs 38/38(上の「Stage 6A」)。回帰: field_skills 35/35・field_controls 68/68・field_stage5c 45/45・field_combat 42/42・field_encounter 28/28・field_integration 40/40・field_facing 28/28。Node 124 ファイル全部合格。
 - tools/mz_cdp/field_traffic_verify.cjs 22/22(Stage 4b。上の「扉口の渋滞の解消」)。
 - tools/mz_cdp/field_pathfinding_verify.cjs 28/28(Stage 4。F8 なし。Map008。N1〜N5 の柱はメモリ上のタイルだけ書き換え。N6 は Map008 に入れた DEV の柱そのもの: 通れない・視線は通る・出現位置から撤退 NPC・柱の東側へ行ける・扉から来た敵が北の列を回り込む・扉を閉じると止まる・繰り返し 2 回目も同じ): まっすぐ進めるときは従来と同じ軌跡(最大のずれ 0)・柱(8,9)(8,10)をよけて追いつく(探索 1 回。切ると柱の前で止まる)・扉の枠の角を戸口の中央で通る(横ずれ 0)・扉を閉じる/壁の陰へ隠れると 1 フレームで止まる(隠れた位置・最後に見た位置を追わない)・見えれば探し直す・戸口をふさぐと戸口まで行って待つ(探索は 30 フレームごと)・敵3体で 1 フレーム 3 回まで・重ならない・攻撃の溜め→実行→HP が減る→Cooldown・倒した敵・繰り返しのエンカウンター 2 回・性能・保存の書き込みなし。回帰: field_perception 23/23・field_combat 42/42・field_encounter 28/28・field_boundary 21/21・field_fixes 20/20・field_integration 40/40・field_facing 28/28・field_god 16/16(すべて Stage 4 の変更後)。
@@ -444,4 +472,5 @@ Map008 の扉口(8,7)に敵が並ぶと、次の 2 つの渋滞が起きてい�
     8. **Shift(絶)**(Stage 5c): 戦闘マップで、マウスを遠くへ向けて **キーボードの Shift** を押す(押しっぱなしにせず1回)→ 瞬間移動する。壁ぎわで壁へ向けて押すと動かず、枠の下に「進めない」が出る。Shift を押したまま E・X・C も使える。
     9. **薙ぎ払いの当たり**(Stage 5c): 敵の少し手前で、敵の方向へ左クリック。白い杖の残像が**敵の上を通ったときに**ダメージが出る(残像の外・真後ろの敵には当たらない)。3回目(強撃)は一回転で、後ろの敵にも当たる。斜め向きでも、残像の向きと当たる向きが同じ。
     10. **スキル枠の見え方**(Stage 6A): 戦闘マップで、下のスキル枠を見る。**LMB・Shift・E・X・C の5つすべてにアイコン**が出る(V はポーションなど)。E・X・C・Shift を使うと、**アイコンが暗くなって残り秒(例 2.4)が中央に出て、暗幕が下から引いていく**。終わると緑の縁に戻り、一瞬白く光る。左クリックを1回ごとに、LMB の枠が **1/3 → 2/3 → 強撃!**(丸が埋まる・金の縁)。HP が満タンのときに V を押すと、赤い縁と「効果なし」・数量(×3)が約1.5秒出る。ウィンドウを小さく(720p 相当に)しても、文字が読めて、戦場(プレイヤーの足元)が隠れない。
+    11. **命中の手応え**(Stage 6B): 戦闘マップで敵の近くへ行き、**左クリック**で斬る。当たった敵が**白く光り、斬った向きへ少しだけ押されて戻り、一瞬止まる**(約0.05秒)。3回目(強撃)は、光る時間・押される幅・止まる時間が大きく、音が低く重い。**右クリックの銃**は、小さな光と反動・小さな音。**敵が何体いても、音は1回の攻撃につき1回**。敵に当たらなかったときは、斬る音だけで何も起きない。敵の位置そのものは動かない(壁際に押し込まれたりしない)。止まっている敵以外・自分の動き・ボタン操作は止まらない。壁・閉じた扉の向こうの見えない敵には、光も音も出ない。
 

@@ -104,6 +104,80 @@
  * @type item
  * @default 0
  *
+ * @param HitFeedback
+ * @text 命中の手応え(点滅・反動・ヒットストップ・SE)
+ * @desc 攻撃が実際にダメージを与えたときだけ、当たった敵に出す見た目と音。オフにすると何も出ません(ダメージ・判定・時間には関係しません)。
+ * @type boolean
+ * @default true
+ *
+ * @param HitstopFrames
+ * @text ヒットストップ: 通常の近接(フレーム)
+ * @desc 当たった敵だけを止める長さ(60フレーム=1秒)。0で無し。時計・入力・Cooldown・他の敵は止めません。
+ * @type number
+ * @min 0
+ * @max 12
+ * @default 3
+ *
+ * @param HitstopHeavyFrames
+ * @text ヒットストップ: 3段目の強撃(フレーム)
+ * @type number
+ * @min 0
+ * @max 12
+ * @default 6
+ *
+ * @param HitstopGunFrames
+ * @text ヒットストップ: 銃(フレーム)
+ * @type number
+ * @min 0
+ * @max 12
+ * @default 2
+ *
+ * @param RecoilPixels
+ * @text 反動(見た目だけ): 通常の近接(px)
+ * @desc 当たった敵の絵を、攻撃の向きへ少しずらして戻す距離。敵の位置・当たり判定・経路は変わりません。0で無し。
+ * @type number
+ * @min 0
+ * @max 24
+ * @default 4
+ *
+ * @param RecoilHeavyPixels
+ * @text 反動: 3段目の強撃(px)
+ * @type number
+ * @min 0
+ * @max 24
+ * @default 10
+ *
+ * @param RecoilGunPixels
+ * @text 反動: 銃(px)
+ * @type number
+ * @min 0
+ * @max 24
+ * @default 3
+ *
+ * @param FlashFrames
+ * @text 点滅の長さ: 通常の近接(フレーム)
+ * @desc 当たった敵が白く光る長さ(強撃は約1.6倍・銃は約0.6倍)。0で無し。
+ * @type number
+ * @min 0
+ * @max 30
+ * @default 6
+ *
+ * @param HitSeMelee
+ * @text 命中SE: 通常の近接(名前:音量:ピッチ。none で無し)
+ * @desc 薙ぎ払いが何体に当たっても、1回の攻撃につき1回だけ鳴ります。
+ * @type string
+ * @default Blow1:55:115
+ *
+ * @param HitSeHeavy
+ * @text 命中SE: 3段目の強撃
+ * @type string
+ * @default Blow6:75:80
+ *
+ * @param HitSeGun
+ * @text 命中SE: 銃
+ * @type string
+ * @default Damage1:45:125
+ *
  * @param Card1Id
  * @text 1キーの固定カード(実装済みのアクティブカードのID)
  * @desc 戦闘中ずっと装備している(ドロー・準備・SOULなし)。既定は黄金の矢(apollo_golden_volley)。Cooldown はカードの定義の値(秒)。
@@ -319,6 +393,9 @@
  *   ・限界: 視界の判定は変えないので、壁(Region 255)や閉じた扉の向こうへ回り込む追跡はしない(視線が切れた瞬間に止まる)。見えている間に、柱などをよける回り込みだけを行う。
  *   ・探索は敵ごとに 12 フレーム以上あけ、全体で 1 フレーム 3 回まで。範囲はプレイヤーまわり(+8マス)・最大 1500 ノード。エンカウンター中・体が 1 マス以下・ループしないマスだけ。
  *   ・敵のメモ <fieldEnemy: path=0> で、その敵だけ従来のまっすぐの追跡にできる。
+ *   命中の手応え(Stage 6B): 攻撃が実際にダメージを与えたときだけ、当たった敵に 点滅・反動(絵だけ)・ヒットストップ(その敵だけ)・SE を出す。近接1・2段 / 3段目の強撃 / 銃で強さが違う。
+ *     SwordSystem / GunSystem の命中の通知(addHitListener)を受け、HP が実際に減ったのを確かめてから出す(HPは次のフレームで減る)。霧で見えていない敵には何も出さない。
+ *     API: getHitFx() / setHitFeedback({ enabled, hitstop:{melee,heavy,gun}, recoil:{...}, flash:{...}, se:{melee,heavy,gun} })(DEV。保存しない)。パラメータ HitFeedback / HitstopFrames / RecoilPixels / FlashFrames / HitSeMelee ほか。
  *   API: getEnemyNav(eventId) / findNavPath(from, to, { avoidEnemies, allowPartial }) / getNavStats() / resetNavStats() / setPathfinding(on)・isPathfinding()(DEV。保存しない)
  *
  * 【敵】 ProjectREnemyAttack(予約 → 溜め → 実行)を使う。attachEnemy(eventId) で、生きている敵のEventに「近づいて、溜めて、近接攻撃する」行動を
@@ -484,7 +561,7 @@
         const began = combatSession().begin(SOURCE, { cardBattle: false });
         if (!began.ok) { deck().endCardBattle(); return fail(began.reason || "combatSessionRejected"); }
         rt.active = true; rt.engaged = o.encounter === true; rt.pending = []; rt.generation++; rt.serial++;
-        resetCooldowns(); rt.lastResult = null; resetControls();
+        resetCooldowns(); rt.lastResult = null; resetControls(); clearHitFx("begin"); ensureHitListeners();
         note({ type: "begin", engaged: rt.engaged });
         return { ok: true, engaged: rt.engaged };
     };
@@ -495,7 +572,7 @@
         safe(() => combatSession().end(SOURCE, reason));
         safe(() => { if (deck().isCardBattleActive?.()) deck().endCardBattle(); });
         for (const id of [...rt.enemies.keys()]) safe(() => enemyAttack()?.interrupt?.(id, "fieldEnd"));
-        rt.captured.clear(); clearSoft(); resetControls();
+        rt.captured.clear(); clearSoft(); resetControls(); clearHitFx(reason);
         note({ type: "end", reason });
         return true;
     };
@@ -1295,6 +1372,7 @@
         for (const [id, b] of [...rt.enemies]) {
             const e = map()?.event(id);
             if (!e || !enemyAlive(e)) { settleDeadEnemy(e); rt.enemies.delete(id); safe(() => api.interrupt(id, "enemyGone")); continue; }
+            if (hit.fx.size && hitFrozen(e)) continue;                                              // 命中のヒットストップ(Stage 6B): 当たったその敵だけ、数フレーム止まる(他の敵・時計・入力・Cooldown は止めない)
             if (b.cooldown > 0) b.cooldown--;
             const c = center(e), dist = Math.hypot(p.x - c.x, p.y - c.y);
             // 視界: 見えている間だけ「気づいている」。見失ったら、すぐ止まる(追跡の目標は持たない)。溜め(windup)の間は、いまの攻撃を撃ち終える(従来どおり)
@@ -1631,6 +1709,7 @@
             rt.pending = [];
             _update.apply(this, arguments);
             tickFrame();
+            hitTick();
             // 敵の行動(attachEnemy)は、戦闘中でなくても、隠れていても止めない(メッセージ・イベント・メニュー中だけ止まる)
             if (rt.enemies.size && enemiesMayAct()) updateEnemies();
             if (!rt.active || generation !== rt.generation) return;
@@ -1649,6 +1728,136 @@
             createLayer(this);
         };
     }
+
+    // ------------------------------------------------------------------ 命中の手応え(Stage 6B): 点滅・反動・ヒットストップ・SE ----------------------------------------------------------------
+    //   攻撃が「実際にダメージを与えた」ときだけ、当たった敵に短い手応えを出す。ダメージの計算・判定・時間・Cooldown・入力・敵のAIは変えない(見た目と音と、当たった敵だけの短い停止)。
+    //   ・SwordSystem / GunSystem が、ダメージを出した直後に命中を通知する(addHitListener)。HP は次のフレームで減るので、ここで HP が減ったことを確かめてから出す(減らなければ何も出さない)。
+    //   ・種類: melee(1・2段目)/ heavy(3段目の強撃)/ gun(銃)。強いほど 点滅が長く・反動が大きく・ヒットストップが長く・SEが低くて重い。
+    //   ・ヒットストップ: 既存の ProjectR_HitStop で、当たった敵の Game_Event.update だけを数フレーム飛ばす(その敵のAI・移動も一緒に止める)。倒れた敵は止めない。
+    //   ・反動: 敵の絵(Sprite_Character)だけを、攻撃の向きへ数px ずらして戻す。Game_Event の位置は動かさない(押し戻し・経路・当たり判定は変わらない)。
+    //   ・SE: 既存の効果音。薙ぎ払いが複数の敵に当たっても、1回の攻撃につき1回だけ。続けて鳴らさない(間隔 4 フレーム)。
+    //   ・霧(Fog of War): 命中の瞬間に見えていなかった敵には、点滅・反動・SE・ヒットストップのどれも出さない(位置がもれない)。
+    //   ・片づけ: 戦闘の開始・終了(勝利・撤退・マップ移動・ロード)で、予約・点滅・反動・ヒットストップを全部捨てる。倒れた・消えた敵の分も捨てる。
+    const parseSe = (text, fallback) => {
+        const raw = text === undefined || text === null || String(text).trim() === "" ? fallback : String(text);
+        const parts = raw.split(":"), name = parts[0].trim();
+        return !name || name.toLowerCase() === "none" ? null : { name, volume: num(parts[1], 70, 0), pitch: num(parts[2], 100, 50) };
+    };
+    const flashBase = Math.floor(num(params.FlashFrames, 6, 0));
+    const hitCfg = {
+        enabled: String(params.HitFeedback === undefined ? "true" : params.HitFeedback) !== "false",
+        hitstop: { melee: Math.floor(num(params.HitstopFrames, 3, 0)), heavy: Math.floor(num(params.HitstopHeavyFrames, 6, 0)), gun: Math.floor(num(params.HitstopGunFrames, 2, 0)) },
+        recoil: { melee: num(params.RecoilPixels, 4, 0), heavy: num(params.RecoilHeavyPixels, 10, 0), gun: num(params.RecoilGunPixels, 3, 0) },
+        recoilFrames: { melee: 8, heavy: 12, gun: 6 },
+        flash: { melee: flashBase, heavy: Math.round(flashBase * 1.6), gun: flashBase > 0 ? Math.max(2, Math.round(flashBase * 0.6)) : 0 },
+        flashAlpha: { melee: 170, heavy: 230, gun: 130 },
+        se: { melee: parseSe(params.HitSeMelee, "Blow1:55:115"), heavy: parseSe(params.HitSeHeavy, "Blow6:75:80"), gun: parseSe(params.HitSeGun, "Damage1:45:125") },
+        seGap: 4, confirmFrames: 8, hitstopMax: 12
+    };
+    const hit = { pending: [], fx: new Map(), seDone: new Set(), seLast: -999, regs: { sword: false, gun: false },
+        stats: { notified: 0, confirmed: 0, dropped: 0, killed: 0, hidden: 0, se: 0, seSkipped: 0, hitstops: 0, flashes: 0, recoils: 0, cleared: 0 } };
+    const hitFrozen = e => { const f = hit.fx.get(e); return !!f && rt.frame < f.stopUntil; };
+    const onHit = payload => {
+        hit.stats.notified++;
+        if (!rt.active || !hitCfg.enabled || !payload) return;
+        const id = Number(payload.enemyId), e = map()?.event(id);
+        if (!e || e._erased) return;
+        const hp0 = safe(() => map().getCurrentEventHp(id), null);
+        if (hp0 == null || !(hp0 > 0)) return;
+        if (!eventVisible(e)) { hit.stats.hidden++; return; }                               // 見えていない敵には何も出さない(位置がもれる)
+        const kind = payload.kind === "gun" ? "gun" : (Number(payload.step) >= COMBO.max ? "heavy" : "melee");
+        hit.pending.push({ eventId: id, event: e, hp0, kind, key: String(payload.kind) + ":" + String(payload.serial), degree: Number(payload.degree), born: rt.frame });
+        if (hit.pending.length > 64) { hit.pending.shift(); hit.stats.dropped++; }
+    };
+    const ensureHitListeners = () => {
+        for (const [reg, name] of [["sword", "ProjectRSwordSystem"], ["gun", "ProjectRGunSystem"]]) {
+            if (hit.regs[reg]) continue;
+            const add = safe(() => root[name].addHitListener, null);
+            if (typeof add === "function") { add(onHit); hit.regs[reg] = true; }
+        }
+    };
+    const recoilDirection = (p, e) => {
+        let vx, vy;
+        if (p.kind === "gun" && Number.isFinite(p.degree)) { vx = Math.sin(p.degree * Math.PI / 180); vy = -Math.cos(p.degree * Math.PI / 180); }
+        else { const c = center(e), pc = playerCenter(); vx = c.x - pc.x; vy = c.y - pc.y; }
+        const len = Math.hypot(vx, vy);
+        if (!(len > 0.001)) { const d = Number.isFinite(p.degree) ? p.degree : 180; vx = Math.sin(d * Math.PI / 180); vy = -Math.cos(d * Math.PI / 180); return { x: vx, y: vy }; }
+        return { x: vx / len, y: vy / len };
+    };
+    const confirmHit = (p, e, hp) => {
+        const dead = hp <= 0 || e._erased, kind = p.kind;
+        hit.stats.confirmed++;
+        if (dead) hit.stats.killed++;
+        // SE: 1回の攻撃につき1回だけ(薙ぎ払いが何体に当たっても)。続けて鳴らさない
+        const se = hitCfg.se[kind];
+        if (se && !hit.seDone.has(p.key) && rt.frame - hit.seLast >= hitCfg.seGap) {
+            safe(() => AudioManager.playSe({ name: se.name, volume: se.volume, pitch: se.pitch, pan: 0 }));
+            hit.seDone.add(p.key); if (hit.seDone.size > 32) hit.seDone.clear();
+            hit.seLast = rt.frame; hit.stats.se++;
+        } else if (se) hit.stats.seSkipped++;
+        const flash = hitCfg.flash[kind];
+        const prev = hit.fx.get(e);
+        const entry = { event: e, eventId: p.eventId, kind, start: rt.frame, flashFrames: flash, flashAlpha: hitCfg.flashAlpha[kind], recoilFrames: hitCfg.recoilFrames[kind], amp: 0, dx: 0, dy: 0, stopUntil: 0, life: 0 };
+        if (!dead) {                                                                         // 倒れた敵は動かさない・止めない(倒れる動きを妨げない)
+            const px = hitCfg.recoil[kind];
+            if (px > 0) { const d = recoilDirection(p, e); entry.amp = px; entry.dx = d.x; entry.dy = d.y; hit.stats.recoils++; }
+            const frames = Math.min(hitCfg.hitstopMax, hitCfg.hitstop[kind]);
+            if (frames > 0 && safe(() => root.ProjectRHitStop.apply(e, frames, { owner: "fieldcombat:" + p.key, maxFrames: hitCfg.hitstopMax * 2 }).ok, false)) { entry.stopUntil = rt.frame + frames; hit.stats.hitstops++; }
+        }
+        if (flash > 0) hit.stats.flashes++;
+        if (prev && prev.stopUntil > entry.stopUntil) entry.stopUntil = prev.stopUntil;
+        entry.life = Math.max(flash, entry.amp > 0 ? entry.recoilFrames : 0, entry.stopUntil - rt.frame) + 1;
+        if (flash > 0 || entry.amp > 0 || entry.stopUntil > rt.frame) hit.fx.set(e, entry);
+    };
+    // 毎フレーム: 予約した命中の「実際にHPが減ったか」を確かめる(減らなかったら捨てる)。終わった手応えを片づける。
+    const hitTick = () => {
+        if (!hit.pending.length && !hit.fx.size) return;
+        const m = map();
+        for (const p of hit.pending.slice()) {
+            const e = p.event;
+            const hp = !m || m.event(p.eventId) !== e ? 0 : safe(() => m.getCurrentEventHp(p.eventId), null);
+            if (hp != null && hp < p.hp0) { hit.pending.splice(hit.pending.indexOf(p), 1); confirmHit(p, e, hp); }
+            else if (rt.frame - p.born > hitCfg.confirmFrames || hp == null) { hit.pending.splice(hit.pending.indexOf(p), 1); hit.stats.dropped++; }
+        }
+        for (const [e, fx] of [...hit.fx]) if (!m || e._erased || m.event(fx.eventId) !== e || rt.frame - fx.start > fx.life) hit.fx.delete(e);
+    };
+    const clearHitFx = reason => {
+        if (hit.fx.size || hit.pending.length) hit.stats.cleared++;
+        for (const e of hit.fx.keys()) safe(() => root.ProjectRHitStop?.clear?.(e));
+        hit.pending = []; hit.fx.clear(); hit.seDone.clear(); hit.seLast = -999;
+        note({ type: "hitFxClear", reason });
+    };
+    // 敵の絵(Sprite_Character)だけに 点滅(blend color)と反動(位置のずらし)を足す。Game_Event には何も書かない(セーブに残らない)。
+    if (typeof Sprite_Character !== "undefined") {
+        const _updatePosition = Sprite_Character.prototype.updatePosition;
+        Sprite_Character.prototype.updatePosition = function() {
+            _updatePosition.apply(this, arguments);
+            const fx = hit.fx.size ? hit.fx.get(this._character) : undefined;
+            if (!fx || !(fx.amp > 0)) return;
+            const t = (rt.frame - fx.start) / fx.recoilFrames;
+            if (t < 0 || t >= 1) return;
+            const s = t < 0.3 ? t / 0.3 : Math.pow(1 - (t - 0.3) / 0.7, 2);                 // すばやく押され、ゆっくり戻る
+            this.x += fx.dx * fx.amp * s; this.y += fx.dy * fx.amp * s;
+        };
+        const _update = Sprite_Character.prototype.update;
+        Sprite_Character.prototype.update = function() {
+            _update.apply(this, arguments);
+            const fx = hit.fx.size ? hit.fx.get(this._character) : undefined;
+            const left = fx ? fx.start + fx.flashFrames - rt.frame : 0;
+            if (fx && left > 0) { this.setBlendColor([255, 255, 255, Math.round(fx.flashAlpha * left / fx.flashFrames)]); this._projectRHitFlash = true; }
+            else if (this._projectRHitFlash) { this.setBlendColor([0, 0, 0, 0]); this._projectRHitFlash = false; }
+        };
+    }
+    const getHitFx = () => ({ config: JSON.parse(JSON.stringify(hitCfg)), listening: { ...hit.regs }, pending: hit.pending.map(p => ({ eventId: p.eventId, kind: p.kind, key: p.key, hp0: p.hp0, born: p.born })),
+        active: [...hit.fx.values()].map(f => ({ eventId: f.eventId, kind: f.kind, start: f.start, flashFrames: f.flashFrames, amp: f.amp, dx: f.dx, dy: f.dy, stopUntil: f.stopUntil, life: f.life })), stats: { ...hit.stats } });
+    const setHitFeedback = o => {
+        const v = o && typeof o === "object" ? o : {};
+        if (typeof v.enabled === "boolean") { hitCfg.enabled = v.enabled; if (!v.enabled) clearHitFx("disabled"); }
+        for (const group of ["hitstop", "recoil", "flash"]) if (v[group] && typeof v[group] === "object") for (const k of ["melee", "heavy", "gun"]) if (Number.isFinite(Number(v[group][k])) && Number(v[group][k]) >= 0) hitCfg[group][k] = Number(v[group][k]);
+        if (v.se && typeof v.se === "object") for (const k of ["melee", "heavy", "gun"]) if (k in v.se) hitCfg.se[k] = v.se[k] && v.se[k].name ? { name: String(v.se[k].name), volume: num(v.se[k].volume, 70, 0), pitch: num(v.se[k].pitch, 100, 50) } : null;
+        return getHitFx().config;
+    };
+    ensureHitListeners();
 
     // ------------------------------------------------------------------ 表示(スロットのHUD・敵の予兆) ----------------------------------------------------------------
     const reloadView = () => {
@@ -1835,7 +2044,7 @@
         getCooldowns: () => ({ ...rt.cooldowns }),
         useAbility, cancel, getHudState, getHudSlots: hudSlots,
         attackClick, fireGun, getComboState, getComboConfig: () => JSON.parse(JSON.stringify(COMBO)), getSweepVfxKey: () => sweepVfx(), listConsumables, selectConsumable, getSelectedConsumable: () => { const i = selectedConsumable(); return i ? itemView(i) : null; },
-        getRadialState, openRadial, closeRadial, getItemHoldFrames: () => ITEM_HOLD_FRAMES, getControlStats: () => ({ combo: getComboState(), gun: { ...rt.gun, last: rt.gun.last && { ...rt.gun.last } }, item: { ...rt.item }, radial: getRadialState(), diag: { ...rt.diag } }),
+        getRadialState, openRadial, closeRadial, getHitFx, setHitFeedback, getItemHoldFrames: () => ITEM_HOLD_FRAMES, getControlStats: () => ({ combo: getComboState(), gun: { ...rt.gun, last: rt.gun.last && { ...rt.gun.last } }, item: { ...rt.item }, radial: getRadialState(), diag: { ...rt.diag } }),
         getLastResult: () => (rt.lastResult ? JSON.parse(JSON.stringify(rt.lastResult)) : null),
         getLog: () => rt.log.map(e => ({ ...e })),
         attachEnemy, detachEnemy, listEnemies: () => [...rt.enemies.keys()],

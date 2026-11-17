@@ -198,6 +198,9 @@
         return typeof gauge?.trackDamage === "function"
             ? gauge.trackDamage(enemyId, { attackId, source: "damage:gun" }, apply) : apply();
     };
+    // 命中の通知口(Stage 6B。追加のみ・リスナーが無ければ何もしない)。ダメージを出した直後に呼ぶ(HPは次のフレームで減る。実際に減ったかは受け取った側が確かめる)。
+    const hitListeners = [];
+    const notifyHit = payload => { for (const fn of hitListeners.slice()) { try { fn(payload); } catch (_error) { /* 通知の失敗で射撃を止めない */ } } };
     const spawnBullet = (point, degree, from) => {
         const m = map();
         const templates = typeof $dataTemplateMap !== "undefined" ? $dataTemplateMap?.events : null;
@@ -399,6 +402,7 @@
             try {
                 trackDamage(enemyId, `gun:${record.serial}`, () =>
                     command("UpdateEventHp", { eventId: String(enemyId), value: "-player weapon", exceedMaxHealth: "false", projectRAttackId: `gun:${record.serial}` }, sourceId));
+                notifyHit({ kind: "gun", enemyId, serial: record.serial, degree: record.degree });
             } finally {
                 destroyBullet(sourceId, record); // 1発1Hit。貫通なし。
             }
@@ -503,6 +507,7 @@
 
     root.ProjectRGunSystem = {
         config, fire, requestReload,
+        addHitListener: fn => { if (typeof fn !== "function") return () => false; hitListeners.push(fn); return () => { const i = hitListeners.indexOf(fn); if (i >= 0) hitListeners.splice(i, 1); return i >= 0; }; },
         setCooldownScale: value => { const n = Number(value); cooldownScale = Number.isFinite(n) && n >= 1 && n <= 10 ? n : 1; return cooldownScale; },
         getCooldownScale: () => cooldownScale,
         isReloading: () => state.reloading,

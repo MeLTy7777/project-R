@@ -25,7 +25,7 @@ const extraCards = [
 ];
 const cards = [...realCards, ...extraCards];
 
-function loadGame({ playtest = false, soulMode, withField = true, dev = true, tag = true } = {}) {
+function loadGame({ playtest = false, soulMode, withField = true, dev = true, tag = true, before } = {}) {
     const noop = function() {};
     const game = {
         console, window: null, addEventListener: noop, docListeners: {}, document: { activeElement: { tagName: "BODY" }, hasFocus: () => true, addEventListener(type, fn) { (game.docListeners[type] = game.docListeners[type] || []).push(fn); } },
@@ -110,8 +110,9 @@ function loadGame({ playtest = false, soulMode, withField = true, dev = true, ta
     game.ProjectRGodSummonVisual = { swingWeapon(god, degree, sprite) { game.godSwings.push({ god, degree, sprite }); return true; } };
     game.AudioManager = { playSe(se) { game.sounds.push(se.name); } };
     game.swings = []; game.shots = []; game.reloads = []; game.swingCooldown = 0; game.gunState = { equipped: true, ammo: 7, capacity: 7, reserve: 30, reloading: false };
-    game.ProjectRSwordSystem = { swing(source, options) { if (game.swingCooldown > 0) return { ok: false, reason: "cooldown" }; game.swings.push({ source, options }); game.swingCooldown = options.cooldown; return { ok: true, degree: 90, serial: game.swings.length, step: options.step, scale: options.damageScale || 1 }; } };
-    game.ProjectRGunSystem = { fire(source) { if (!game.gunState.equipped) return { ok: false, reason: "noGunEquipped" }; if (game.gunState.reloading) return { ok: false, reason: "reloading" }; if (game.gunState.ammo <= 0) return { ok: false, reason: "empty" }; game.gunState.ammo--; game.shots.push(source); return { ok: true, eventId: 90 + game.shots.length, degree: 45 }; },
+    game.hitListeners = { sword: [], gun: [] }; game.emitHit = p => (game.hitListeners[p.kind] || []).slice().forEach(fn => fn(p));          // 命中の通知口(Stage 6B)
+    game.ProjectRSwordSystem = { addHitListener(fn) { game.hitListeners.sword.push(fn); return () => true; }, swing(source, options) { if (game.swingCooldown > 0) return { ok: false, reason: "cooldown" }; game.swings.push({ source, options }); game.swingCooldown = options.cooldown; return { ok: true, degree: 90, serial: game.swings.length, step: options.step, scale: options.damageScale || 1 }; } };
+    game.ProjectRGunSystem = { addHitListener(fn) { game.hitListeners.gun.push(fn); return () => true; }, fire(source) { if (!game.gunState.equipped) return { ok: false, reason: "noGunEquipped" }; if (game.gunState.reloading) return { ok: false, reason: "reloading" }; if (game.gunState.ammo <= 0) return { ok: false, reason: "empty" }; game.gunState.ammo--; game.shots.push(source); return { ok: true, eventId: 90 + game.shots.length, degree: 45 }; },
         requestReload(source) { if (!game.gunState.equipped) return { ok: false, reason: "noGunEquipped" }; if (game.gunState.reloading) return { ok: false, reason: "alreadyReloading" }; if (game.gunState.ammo >= game.gunState.capacity) return { ok: false, reason: "magazineFull" }; if (game.gunState.reserve <= 0) return { ok: false, reason: "noReserveAmmo" }; game.gunState.reloading = true; game.reloads.push(source); return { ok: true, frames: 40 }; }, status: () => ({ ...game.gunState }) };
     game.ProjectRCardBattleInput = { getBlockedReason: event => game.blocked || (event && event.shiftKey ? "modifierKey" : null), cancelPress: () => game.cancelledPress === true };      // 本物と同じく shiftKey を「修飾キー」として断る
     game.attackLog = [];
@@ -140,6 +141,7 @@ function loadGame({ playtest = false, soulMode, withField = true, dev = true, ta
     game.handlerCalls = [];
     deck.registerActivationHandler("direction", ctx => { game.handlerCalls.push(ctx.definition.cardId); return game.directionResult || { ok: true }; });
     deck.registerActivationHandler("ground", ctx => { game.handlerCalls.push(ctx.definition.cardId); return { ok: true }; });
+    if (before) before(game);                                                                  // Stage 6B: FieldCombat を読み込む前に足したい部品(Sprite_Character など)
     if (withField) vm.runInContext(read("js/plugins/ProjectR_FieldCombat.js"), context);
     if (withField && dev) game.ProjectRFieldCombat.setDevAllowOutsideEncounter(true);          // 部品のテストは探索マップでも戦闘を始められる(DEV)。エンカウンターのテストは dev=false
     // 実行待ちの移動(reserveTransfer)を実行する: マップを組み直し、主人公を移動先へ置く
@@ -1629,6 +1631,120 @@ test("FieldCombat(Stage 5b): BattleHUDは、戦闘中だけ メイン5枠(LMB �
     game.gauge.current = 100; assert.equal(plain(fc.getHudState()).slots[0].ready, true, "奥義の状態は読める(枠には出さないだけ)");
     game.frame(50); assert.equal(plain(fc.getHudState()).combo.step, 0, "受付時間を過ぎれば戻る");
     fc.end(); assert.deepEqual(plain(adapter.skills()), ["original"]);
+});
+
+// ---- Stage 6B: 命中の手応え ----
+const hitGame = () => {
+    const game = loadGame({ before: g => {
+        g.Sprite_Character = function(character) { this._character = character; this.x = 100; this.y = 200; this.blend = [0, 0, 0, 0]; };
+        g.Sprite_Character.prototype.updatePosition = function() { this.x = 100; this.y = 200; };
+        g.Sprite_Character.prototype.update = function() { this.updatePosition(); };
+        g.Sprite_Character.prototype.setBlendColor = function(color) { this.blend = color.slice(); };
+    } });
+    game.stops = [];
+    game.ProjectRHitStop = { apply(e, frames, o) { game.stops.push({ id: e.eventId(), frames, owner: o && o.owner }); e._stopped = frames; return { ok: true, remaining: frames }; }, clear(e) { game.stops.push({ id: e.eventId(), cleared: true }); }, isFrozen: () => false };
+    return game;
+};
+const spriteOf = (game, e) => { const sp = new game.Sprite_Character(e); sp.update(); return sp; };
+test("FieldCombat(Stage 6B): 命中の手応え。実際にHPが減ったときだけ、近接1・2段 / 3段目の強撃 / 銃で違う手応え(SE・ヒットストップ・点滅・反動)が出る。外れ・ダメージなしでは何も出ない", () => {
+    const game = hitGame(), fc = game.ProjectRFieldCombat;
+    assert.deepEqual(plain(fc.getHitFx().listening), { sword: true, gun: true }, "SwordSystem・GunSystem の命中の通知を受け取る");
+    fc.begin();
+    const e1 = game.addEnemy(1, 12.4, 10.2, 200, "<enemy>");                                  // 主人公(10.4, 10.2)の東
+    // 通常の近接(1段目): HP が減るまでは何も出ない。減った次のフレームに出る
+    game.emitHit({ kind: "sword", enemyId: 1, serial: 1, step: 1, scale: 1, degree: 90 });
+    game.frame(2); assert.deepEqual(game.sounds, [], "HPが減っていない間は、SE・ヒットストップなし"); assert.equal(plain(fc.getHitFx().pending).length, 1);
+    game.setEnemyHp(1, 140); game.frame(1);
+    assert.deepEqual(game.sounds, ["Blow1"], "1・2段目の命中SE"); assert.deepEqual(plain(game.stops), [{ id: 1, frames: 3, owner: "fieldcombat:sword:1" }], "当たった敵だけ 3 フレーム");
+    let fx = plain(fc.getHitFx().active); assert.equal(fx.length, 1); assert.deepEqual([fx[0].kind, fx[0].flashFrames, fx[0].amp], ["melee", 6, 4]); assert.ok(fx[0].dx > 0.99 && Math.abs(fx[0].dy) < 0.05, "反動は、主人公から敵への向き(東)");
+    const sp = spriteOf(game, e1);
+    assert.ok(sp.x > 100 && sp.y === 200 || sp.x === 100, "反動は絵の位置だけ(最初の1フレームは小さい)"); assert.ok(sp.blend[3] > 0 && sp.blend[0] === 255, "点滅(白)");
+    game.frame(3); sp.update(); assert.ok(sp.x > 102, "数フレーム後は反動が最大に近い(x=" + sp.x + ")"); assert.deepEqual([e1._realX, e1._realY], [12.4, 10.2], "Game_Event の位置は変えない(押し戻しなし)");
+    game.frame(12); sp.update(); assert.deepEqual([sp.x, sp.y, plain(sp.blend)], [100, 200, [0, 0, 0, 0]], "終わったら、位置も点滅も元に戻る"); assert.equal(plain(fc.getHitFx().active).length, 0);
+    // 3段目の強撃: SEが低く重く・ヒットストップが長く・反動が大きく・点滅が長い
+    game.sounds.length = 0; game.stops.length = 0; game.setEnemyHp(1, 200); game.frame(8);
+    game.emitHit({ kind: "sword", enemyId: 1, serial: 2, step: 3, scale: 2, degree: 90 }); game.setEnemyHp(1, 100); game.frame(1);
+    fx = plain(fc.getHitFx().active); assert.deepEqual([game.sounds[0], game.stops[0].frames, fx[0].kind, fx[0].flashFrames, fx[0].amp], ["Blow6", 6, "heavy", 10, 10], "強撃");
+    // 銃: 弾の向き(degree)へ反動・小さめの手応え
+    game.frame(16); game.sounds.length = 0; game.stops.length = 0; game.setEnemyHp(1, 200); game.frame(2);
+    game.emitHit({ kind: "gun", enemyId: 1, serial: 3, degree: 0 }); game.setEnemyHp(1, 150); game.frame(1);
+    fx = plain(fc.getHitFx().active); assert.deepEqual([game.sounds[0], game.stops[0].frames, fx[0].kind, fx[0].flashFrames, fx[0].amp], ["Damage1", 2, "gun", 4, 3]); assert.ok(Math.abs(fx[0].dx) < 0.01 && fx[0].dy < -0.99, "弾の向き(真上)へ反動");
+    // 外れ・ダメージなし(通知はあっても HP が減らない): 何も出ない・捨てる
+    game.frame(16); game.sounds.length = 0; game.stops.length = 0;
+    game.emitHit({ kind: "sword", enemyId: 1, serial: 4, step: 1, degree: 90 }); game.frame(12);
+    assert.deepEqual([game.sounds.length, game.stops.length, plain(fc.getHitFx().active).length, plain(fc.getHitFx().pending).length], [0, 0, 0, 0], "HPが減らなければ何も出ない");
+    assert.ok(fc.getHitFx().stats.dropped >= 1);
+    fc.end();
+});
+
+test("FieldCombat(Stage 6B): 薙ぎ払いが複数の敵に当たっても、SEは1回の攻撃につき1回。続けて鳴らさない。敵ごとに点滅・反動・ヒットストップ(当たった敵だけ)", () => {
+    const game = hitGame(), fc = game.ProjectRFieldCombat; fc.begin();
+    game.addEnemy(1, 12.4, 10.2, 200, "<enemy>"); game.addEnemy(2, 10.4, 12.2, 200, "<enemy>"); game.addEnemy(3, 8.4, 10.2, 200, "<enemy>"); game.addEnemy(4, 10.4, 6.2, 200, "<enemy>");
+    for (const id of [1, 2, 3]) game.emitHit({ kind: "sword", enemyId: id, serial: 7, step: 1, degree: 90 });          // 同じ攻撃(serial 7)が3体に当たる
+    for (const id of [1, 2, 3]) game.setEnemyHp(id, 150);
+    game.frame(1);
+    assert.deepEqual(plain(game.sounds), ["Blow1"], "SEは1回だけ");
+    assert.deepEqual(plain(game.stops.map(x => x.id).sort()), [1, 2, 3], "ヒットストップは、当たった3体だけ(4番は止めない)");
+    const fx = plain(fc.getHitFx().active); assert.deepEqual(fx.map(x => x.eventId).sort(), [1, 2, 3]);
+    const dir = id => fx.find(x => x.eventId === id); assert.ok(dir(1).dx > 0.99 && dir(3).dx < -0.99 && dir(2).dy > 0.99, "反動は、それぞれ主人公から離れる向き");
+    assert.equal(fc.getHitFx().stats.seSkipped, 2, "2体目・3体目のSEは鳴らさない");
+    // 次の攻撃: 間隔(4フレーム)をあけないと鳴らさない。あければ鳴る
+    game.frame(1); game.emitHit({ kind: "sword", enemyId: 4, serial: 8, step: 2, degree: 90 }); game.setEnemyHp(4, 100); game.frame(1);
+    assert.equal(game.sounds.length, 1, "直後の別の攻撃のSEは続けて鳴らさない");
+    game.frame(8); game.emitHit({ kind: "sword", enemyId: 4, serial: 9, step: 2, degree: 90 }); game.setEnemyHp(4, 60); game.frame(1);
+    assert.equal(game.sounds.length, 2, "間隔があけば鳴る");
+    fc.end();
+});
+
+test("FieldCombat(Stage 6B): 倒した敵は止めない・動かさない(SEだけ)。霧で見えていない敵には何も出さない(位置がもれない)。無効にすれば何も出ない", () => {
+    const game = hitGame(), fc = game.ProjectRFieldCombat; fc.begin();
+    const e1 = game.addEnemy(1, 12.4, 10.2, 30, "<enemy>"), e2 = game.addEnemy(2, 10.4, 12.2, 200, "<enemy>");
+    game.emitHit({ kind: "sword", enemyId: 1, serial: 1, step: 1, degree: 90 }); game.setEnemyHp(1, 0); game.frame(1);
+    assert.deepEqual([game.sounds.length, game.stops.length, plain(fc.getHitFx().active).every(x => x.amp === 0 && x.stopUntil === 0)], [1, 0, true], "倒した敵: SEは鳴るが、止めない・動かさない");
+    assert.equal(fc.getHitFx().stats.killed, 1);
+    // 霧: 敵2 は見えない
+    game.ProjectR = game.ProjectR || {}; game.ProjectR.FogOfWar = { isEventVisible: e => e !== e2 };
+    game.sounds.length = 0; game.stops.length = 0; game.frame(8);
+    game.emitHit({ kind: "sword", enemyId: 2, serial: 2, step: 1, degree: 180 }); game.setEnemyHp(2, 150); game.frame(3);
+    assert.deepEqual([game.sounds.length, game.stops.length, plain(fc.getHitFx().active).filter(x => x.eventId === 2).length, fc.getHitFx().stats.hidden], [0, 0, 0, 1], "見えていない敵には、SE・ヒットストップ・点滅・反動のどれも出さない");
+    delete game.ProjectR.FogOfWar;
+    // 無効
+    fc.setHitFeedback({ enabled: false }); game.setEnemyHp(2, 200); game.frame(2);
+    game.emitHit({ kind: "sword", enemyId: 2, serial: 3, step: 1, degree: 180 }); game.setEnemyHp(2, 100); game.frame(3);
+    assert.deepEqual([game.sounds.length, game.stops.length], [0, 0], "HitFeedback をオフにすれば何も出ない");
+    fc.setHitFeedback({ enabled: true, hitstop: { melee: 5 }, recoil: { melee: 8 }, se: { melee: null } }); game.frame(16);
+    game.emitHit({ kind: "sword", enemyId: 2, serial: 4, step: 1, degree: 180 }); game.setEnemyHp(2, 50); game.frame(1);
+    assert.deepEqual([game.sounds.length, game.stops[game.stops.length - 1].frames, plain(fc.getHitFx().active)[0].amp], [0, 5, 8], "設定で、ヒットストップ・反動・SE(none)を変えられる");
+    fc.end();
+});
+
+test("FieldCombat(Stage 6B): 片づけ。戦闘の終了(勝利・撤退・マップ移動)・敵が倒れる/消える・繰り返しの戦闘で、点滅・反動・ヒットストップ・予約が残らない。ダメージ・判定・時間は変えない", () => {
+    const game = hitGame(), fc = game.ProjectRFieldCombat;
+    for (const round of [1, 2, 3]) {
+        fc.begin();
+        const e1 = game.addEnemy(1, 12.4, 10.2, 200, "<enemy>"); game.addEnemy(2, 8.4, 10.2, 200, "<enemy>");
+        game.emitHit({ kind: "sword", enemyId: 1, serial: 10 * round, step: 3, degree: 90 }); game.emitHit({ kind: "sword", enemyId: 2, serial: 10 * round, step: 3, degree: 90 });
+        game.setEnemyHp(1, 100); game.frame(1);
+        game.emitHit({ kind: "gun", enemyId: 2, serial: 10 * round + 1, degree: 270 });                         // 予約したまま(HPはまだ減っていない)
+        const sp = spriteOf(game, e1); game.frame(1); sp.update(); assert.ok(sp.blend[3] > 0, "round " + round + ": 点滅している");
+        assert.equal(plain(fc.getHitFx().active).length, 1); assert.equal(plain(fc.getHitFx().pending).length, 2, "HPがまだ減っていない予約(近接と銃)");
+        fc.end(round === 2 ? "retreat" : "victory");
+        assert.deepEqual([plain(fc.getHitFx().active).length, plain(fc.getHitFx().pending).length], [0, 0], "round " + round + ": 終了で全部捨てる");
+        assert.ok(game.stops.some(x => x.cleared && x.id === 1), "ヒットストップの記録も捨てる");
+        sp.update(); assert.deepEqual([plain(sp.blend), sp.x, sp.y], [[0, 0, 0, 0], 100, 200], "絵が元に戻る");
+        new game.Game_Map().setup(1);                                                                         // マップを組み直す(前の敵は消える)
+        game.stops.length = 0; game.sounds.length = 0;
+        game.emitHit({ kind: "sword", enemyId: 1, serial: 99, step: 1, degree: 90 }); game.frame(2);
+        assert.equal(plain(fc.getHitFx().pending).length, 0, "戦闘外の命中の通知は受け付けない");
+    }
+    // 敵が倒れて消えたら、その敵の手応えも消える
+    fc.begin(); const e = game.addEnemy(5, 12.4, 10.2, 200, "<enemy>");
+    game.emitHit({ kind: "sword", enemyId: 5, serial: 50, step: 1, degree: 90 }); game.setEnemyHp(5, 100); game.frame(1); assert.equal(plain(fc.getHitFx().active).length, 1);
+    e._erased = true; game.frame(1); assert.equal(plain(fc.getHitFx().active).length, 0, "消えた敵の分は捨てる"); fc.end();
+    // 実装の前提: ダメージの式・判定・時間(スイングの引数)は、手応えがあってもなくても同じ
+    const a = hitGame(); a.ProjectRFieldCombat.begin(); a.click(); a.frame(1); const optsOn = JSON.stringify(plain(a.swings[0].options));
+    const b = hitGame(); b.ProjectRFieldCombat.setHitFeedback({ enabled: false }); b.ProjectRFieldCombat.begin(); b.click(); b.frame(1);
+    assert.equal(optsOn, JSON.stringify(plain(b.swings[0].options)), "手応えの有無で、スイングの引数(ダメージ倍率・判定・時間)は変わらない");
 });
 
 test("FieldCombat(Stage 6A): HUDの枠のデータ。5スキルに既存のIconSetのアイコン(あれば setCardPresentation 等を優先)・状態(ready/cooldown/unavailable)・Cooldownの残り割合と秒・LMBのコンボ・使えなかった直後の知らせ・Vの数量。Q奥義・R・右クリックは枠に出ない", () => {

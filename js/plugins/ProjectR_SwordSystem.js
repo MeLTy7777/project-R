@@ -116,6 +116,9 @@
         return typeof gauge?.trackDamage === "function"
             ? gauge.trackDamage(enemyId, { attackId, source: "damage:sword" }, apply) : apply();
     };
+    // 命中の通知口(Stage 6B。追加のみ・リスナーが無ければ何もしない)。ダメージを出した直後に呼ぶ。HPは「次のフレーム」で減るので、実際に減ったかは受け取った側が確かめる。
+    const hitListeners = [];
+    const notifyHit = payload => { for (const fn of hitListeners.slice()) { try { fn(payload); } catch (_error) { /* 通知の失敗で攻撃を止めない */ } } };
 
     // 導入版Game_MaithlDynamicEvent.event()の寿命スクリプトと同じ同期解除(Hermes剣術と同じ)。
     const destroy = (id, record) => {
@@ -236,6 +239,7 @@
                     rec.hitEnemies.add(enemy); rec.hits++; state.hits++;
                     trackDamage(enemyId, `sword:${rec.serial}`, () =>
                         command("UpdateEventHp", { eventId: String(enemyId), value: damageValueOf(rec.scale), exceedMaxHealth: "false", projectRAttackId: `sword:${rec.serial}` }, 0));
+                    notifyHit({ kind: "sword", enemyId, serial: rec.serial, step: rec.step, scale: rec.scale, degree: rec.degree, sector: true });
                 }
             }
             if (!alive) sweeps.delete(id);
@@ -301,6 +305,7 @@
                 const damageValue = damageValueOf(record.scale);
                 trackDamage(enemyId, `sword:${record.serial}`, () =>
                     command("UpdateEventHp", { eventId: String(enemyId), value: damageValue, exceedMaxHealth: "false", projectRAttackId: `sword:${record.serial}` }, id));
+                notifyHit({ kind: "sword", enemyId, serial: record.serial, step: record.step, scale: record.scale, degree: record.degree, sector: false });
             }
             if (--record.framesLeft <= 0) destroy(id, record);
         }
@@ -345,6 +350,7 @@
 
     root.ProjectRSwordSystem = {
         config, swing,
+        addHitListener: fn => { if (typeof fn !== "function") return () => false; hitListeners.push(fn); return () => { const i = hitListeners.indexOf(fn); if (i >= 0) hitListeners.splice(i, 1); return i >= 0; }; },
         setCooldownScale: value => { const n = Number(value); cooldownScale = Number.isFinite(n) && n >= 1 && n <= 10 ? n : 1; return cooldownScale; },
         getCooldownScale: () => cooldownScale,
         getActiveSweeps: () => [...sweeps.values()].map(r => ({ id: r.id, degree: r.degree, serial: r.serial, frame: r.frame, hits: r.hits, center: { ...r.center }, radius: r.sector.radius, arc: r.sector.arc, frames: r.sector.frames, passes: r.sector.passes.map(p => ({ ...p })) })),
