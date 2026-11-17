@@ -117,6 +117,18 @@
             ? gauge.trackDamage(enemyId, { attackId, source: "damage:sword" }, apply) : apply();
     };
     // 命中の通知口(Stage 6B。追加のみ・リスナーが無ければ何もしない)。ダメージを出した直後に呼ぶ。HPは「次のフレーム」で減るので、実際に減ったかは受け取った側が確かめる。
+    // ダメージ計算に使う武器の差し替え(Stage 6C。damageWeapon オプションがあるときだけ)。Hendrix の "player weapon" は、スロット1の武器の攻撃スキルとアクターの ATK(装備の合計)で計算するので、
+    //   銃を持っている間の近接は、銃の攻撃力で計算されていた。命中のダメージ計算(UpdateEventHp の呼び出し)の間だけ、スロット1の武器を weaponId(0 = 素手)に差し替え、すぐ元に戻す。
+    //   ダメージの式・倍率・判定は変わらない。装備は実際には変えない(同期の1回の呼び出しの間だけ。例外でも必ず戻す)ので、セーブ・装備画面・銃(GunSystem)には影響しない。
+    const withDamageWeapon = (weaponId, apply) => {
+        if (weaponId === null || weaponId === undefined) return apply();
+        const slot = typeof $gameParty !== "undefined" ? $gameParty.leader?.()?._equips?.[0] : null;
+        if (!slot || typeof slot.setObject !== "function" || typeof slot.object !== "function") return apply();
+        if (weaponId > 0 && !(typeof $dataWeapons !== "undefined" && $dataWeapons[weaponId])) return apply();          // 存在しない武器は差し替えない(従来どおり)
+        const original = slot.object(), replacement = weaponId > 0 ? $dataWeapons[weaponId] : null;
+        slot.setObject(replacement);
+        try { return apply(); } finally { slot.setObject(original); }
+    };
     const hitListeners = [];
     const notifyHit = payload => { for (const fn of hitListeners.slice()) { try { fn(payload); } catch (_error) { /* 通知の失敗で攻撃を止めない */ } } };
 
@@ -181,7 +193,8 @@
             lifetime: Math.floor(pos(o.lifetime, config.lifetime, 1, 60)), cooldown: Math.floor(pos(o.cooldown, config.cooldown, 1, 600)),
             scale: pos(o.damageScale, 1, 0.1, 10), style: SWING_STYLES.includes(o.style) ? o.style : "clockwise",
             pitch: pos(o.pitch, 140, 50, 150), speed: pos(o.speed, 10, 1, 60), step: Number.isFinite(Number(o.step)) ? Math.floor(Number(o.step)) : 0,
-            sector: sectorOptions(o.sector)
+            sector: sectorOptions(o.sector),
+            weapon: o.damageWeapon === undefined || o.damageWeapon === null || !Number.isFinite(Number(o.damageWeapon)) ? null : Math.max(0, Math.floor(Number(o.damageWeapon)))
         };
     };
 
@@ -210,7 +223,7 @@
         const missing = sectorAvailable();
         if (missing) return { ok: false, reason: missing };
         const id = ++sweepId;
-        sweeps.set(id, { id, map: m, center: { x: point.x, y: point.y }, degree, serial: ++serial, scale: opt.scale, step: opt.step, sector: opt.sector, frame: 0, hitEnemies: new Set(), hits: 0 });
+        sweeps.set(id, { id, map: m, center: { x: point.x, y: point.y }, degree, serial: ++serial, scale: opt.scale, step: opt.step, sector: opt.sector, weapon: opt.weapon, frame: 0, hitEnemies: new Set(), hits: 0 });
         state.cooldown = opt.cooldown;
         state.swings++;
         state.last = { source, degree, serial, step: opt.step, scale: opt.scale, sector: true };
@@ -237,8 +250,8 @@
                     const polygon = occ.eventPolygon(enemy);
                     if (!Array.isArray(polygon) || polygon.length < 3 || !occ.hasLineToPolygon(rec.center, polygon, { radius, clipPolygon: clip })) continue;
                     rec.hitEnemies.add(enemy); rec.hits++; state.hits++;
-                    trackDamage(enemyId, `sword:${rec.serial}`, () =>
-                        command("UpdateEventHp", { eventId: String(enemyId), value: damageValueOf(rec.scale), exceedMaxHealth: "false", projectRAttackId: `sword:${rec.serial}` }, 0));
+                    trackDamage(enemyId, `sword:${rec.serial}`, () => withDamageWeapon(rec.weapon, () =>
+                        command("UpdateEventHp", { eventId: String(enemyId), value: damageValueOf(rec.scale), exceedMaxHealth: "false", projectRAttackId: `sword:${rec.serial}` }, 0)));
                     notifyHit({ kind: "sword", enemyId, serial: rec.serial, step: rec.step, scale: rec.scale, degree: rec.degree, sector: true });
                 }
             }
@@ -273,7 +286,7 @@
             if (!event.isDynamicEvent || typeof event.rotateTo !== "function") throw Error("hitboxCreationFailed");
             event.rotateTo(rotation);
             if (!Number.isFinite(event._rotation) || Math.abs(event._rotation - rotation) > 1e-6) throw Error("hitboxRotationFailed");
-            hitboxes.set(event.eventId(), { map: m, event, tag, degree, framesLeft: opt.lifetime, hitEnemies: new Set(), serial, scale: opt.scale, step: opt.step });
+            hitboxes.set(event.eventId(), { map: m, event, tag, degree, framesLeft: opt.lifetime, hitEnemies: new Set(), serial, scale: opt.scale, step: opt.step, weapon: opt.weapon });
         } catch (error) {
             for (const event of m.events()) if (!before.has(event) && isHitbox(event)) destroy(event.eventId(), { map: m, event });
             return { ok: false, reason: String(error?.message || error) };
@@ -303,8 +316,8 @@
                 state.hits++;
                 // 倍率が1なら従来と同じ式("-player weapon")。3段コンボの強撃だけ倍率(例 2)を掛ける(式の中の "player weapon" は Hendrix が武器ダメージの数値に置き換える)。
                 const damageValue = damageValueOf(record.scale);
-                trackDamage(enemyId, `sword:${record.serial}`, () =>
-                    command("UpdateEventHp", { eventId: String(enemyId), value: damageValue, exceedMaxHealth: "false", projectRAttackId: `sword:${record.serial}` }, id));
+                trackDamage(enemyId, `sword:${record.serial}`, () => withDamageWeapon(record.weapon, () =>
+                    command("UpdateEventHp", { eventId: String(enemyId), value: damageValue, exceedMaxHealth: "false", projectRAttackId: `sword:${record.serial}` }, id)));
                 notifyHit({ kind: "sword", enemyId, serial: record.serial, step: record.step, scale: record.scale, degree: record.degree, sector: false });
             }
             if (--record.framesLeft <= 0) destroy(id, record);

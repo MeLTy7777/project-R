@@ -264,4 +264,48 @@ test("扇形の判定(sector): 見た目の薙ぎ払い(半径4・190°・15更�
     const sw = plain(sword(w4).getActiveSweeps())[0]; assert.deepEqual([sw.radius, sw.arc, sw.frames, sw.passes.length], [3.9, 190, 15, 1]);
 });
 
+// ---- Stage 6C: 近接と銃の攻撃力の分離(damageWeapon) ----
+test("damageWeapon(Stage 6C): 銃を持っている間の近接は、指定した武器の攻撃力で計算する。式・倍率は同じ・装備は実際には変えない・銃(GunSystem)には影響しない", () => {
+    const W = id => (w) => w.ctx.$dataWeapons[id].params[2];
+    const SECTOR = { radius: 4, arc: 190, frames: 15, passes: [{ offset: 0, delay: 0 }] };
+    // 4番の敵のすぐ西に立ち、東(敵)へ振って、敵の HP の減りを返す
+    const dmg = (equipId, options = {}, rect = false) => {
+        const w = swordWorld({ weapon: equipId });
+        const target = ev(w, 4);
+        w.placePlayer(target._realX - 1, target._realY); w.frames(3); centerOn(w); pointAt(w, 1, 0); w.frames(1);
+        const before = hpOf(w, 4), equippedBefore = w.ctx.$gameParty.leader().equips()[0].id;
+        const r = sword(w).swing("t", { anyWeapon: true, step: 1, ...(rect ? {} : { sector: SECTOR }), ...options });
+        assert.equal(r.ok, true, JSON.stringify(r));
+        w.frames(20);
+        const after = hpOf(w, 4);
+        assert.equal(w.ctx.$gameParty.leader().equips()[0].id, equippedBefore, "装備は変わらない(差し替えは命中の計算の間だけ・元に戻る)");
+        return { d: before - after, atk: w.ctx.$gameParty.leader().atk, w };
+    };
+    const gunAtk = W(GUN_ID), swordAtk = W(SWORD_ID);
+    const w0 = swordWorld(); assert.notEqual(gunAtk(w0), swordAtk(w0), "前提: 銃と剣の ATK が違う");
+    const withSword = dmg(SWORD_ID).d;                                   // 剣を装備して振る(従来どおり)= 基準
+    const gunOld = dmg(GUN_ID).d;                                        // 銃を持って振る(従来: 銃の ATK)
+    const gunNew = dmg(GUN_ID, { damageWeapon: SWORD_ID }).d;            // 銃を持ったまま、剣の ATK で計算する
+    assert.ok(withSword > 0 && gunOld > 0);
+    assert.notEqual(gunOld, withSword, "従来: 銃を持つと近接のダメージは銃の ATK で、剣のときと違う");
+    assert.equal(gunNew, withSword, "damageWeapon=剣: 銃を持っていても、剣を装備したときと同じダメージ(式は同じ)");
+    // 長方形のHitbox(sector なし)の経路でも同じ
+    assert.equal(dmg(GUN_ID, { damageWeapon: SWORD_ID }, true).d, dmg(SWORD_ID, {}, true).d, "長方形のHitboxでも同じ");
+    // 強撃の倍率(2)は、差し替えた武器の基礎ダメージにかかる
+    const heavy = dmg(GUN_ID, { damageWeapon: SWORD_ID, damageScale: 2 }).d;
+    assert.ok(Math.abs(heavy - gunNew * 2) <= 1, "倍率2: " + heavy + " vs " + gunNew * 2);
+    // 素手(0)は、銃の ATK を含まない(銃より小さい)。存在しない武器は差し替えない(従来どおり銃の ATK)
+    assert.ok(dmg(GUN_ID, { damageWeapon: 0 }).d < gunOld, "素手: 銃の ATK を使わない");
+    assert.equal(dmg(GUN_ID, { damageWeapon: 9999 }).d, gunOld, "存在しない武器は差し替えない");
+    assert.equal(dmg(GUN_ID, { damageWeapon: null }).d, gunOld, "null は従来どおり");
+    assert.equal(dmg(SHORT_SWORD, { damageWeapon: SWORD_ID }).d, withSword, "別の武器を装備していても、指定した武器の ATK で計算する(FieldCombat は近接武器の装備中は指定しない)");
+    // 差し替えのあと、装備・ATK・弾の所持は元のまま。例外があっても元に戻る
+    const w = swordWorld({ weapon: GUN_ID }), before = w.ctx.$gameParty.leader().atk, slot = w.ctx.$gameParty.leader()._equips[0];
+    const failing = w.ctx.PluginManager._commands; const key = Object.keys(failing).find(k => /UpdateEventHp$/.test(k)); const orig = failing[key];
+    failing[key] = () => { throw new Error("boom"); };
+    try { const target = ev(w, 4); w.placePlayer(target._realX - 1, target._realY); w.frames(3); centerOn(w); pointAt(w, 1, 0); w.frames(1); sword(w).swing("t", { anyWeapon: true, sector: SECTOR, damageWeapon: SWORD_ID }); try { w.frames(20); } catch (_e) { /* 例外は外へ出てよい */ } }
+    finally { failing[key] = orig; }
+    assert.equal(slot.object().id, GUN_ID, "例外でも、スロット1の武器は必ず元に戻る"); assert.equal(w.ctx.$gameParty.leader().atk, before);
+});
+
 console.log(`${passed} Sword system tests passed`);

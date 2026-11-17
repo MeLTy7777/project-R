@@ -104,6 +104,18 @@
  * @type item
  * @default 0
  *
+ * @param SeparateMeleeDamage
+ * @text 近接と銃の攻撃力を分ける
+ * @desc オンなら、銃を持っている間の薙ぎ払いは、銃の攻撃力ではなく近接の武器の攻撃力で計算します(銃のダメージは変わりません)。オフにすると従来(銃の攻撃力)です。
+ * @type boolean
+ * @default true
+ *
+ * @param MeleeWeaponId
+ * @text 近接の武器(0 = 自動)
+ * @desc 銃を持っているときの薙ぎ払いの攻撃力の元にする武器(データベースの武器)。0 = 自動: リードのデータベースの初期武器(近接のもの)。それも無ければ素手。近接の武器を装備しているときは、装備中の武器がそのまま使われます。
+ * @type weapon
+ * @default 0
+ *
  * @param HitFeedback
  * @text 命中の手応え(点滅・反動・ヒットストップ・SE)
  * @desc 攻撃が実際にダメージを与えたときだけ、当たった敵に出す見た目と音。オフにすると何も出ません(ダメージ・判定・時間には関係しません)。
@@ -393,6 +405,8 @@
  *   ・限界: 視界の判定は変えないので、壁(Region 255)や閉じた扉の向こうへ回り込む追跡はしない(視線が切れた瞬間に止まる)。見えている間に、柱などをよける回り込みだけを行う。
  *   ・探索は敵ごとに 12 フレーム以上あけ、全体で 1 フレーム 3 回まで。範囲はプレイヤーまわり(+8マス)・最大 1500 ノード。エンカウンター中・体が 1 マス以下・ループしないマスだけ。
  *   ・敵のメモ <fieldEnemy: path=0> で、その敵だけ従来のまっすぐの追跡にできる。
+ *   近接と銃の攻撃力(Stage 6C): 銃を持っている間の薙ぎ払いは、銃の攻撃力ではなく近接の武器(リードのDBの初期武器 = ロングソード。MeleeWeaponId で変更)の攻撃力で計算する。銃のダメージ・式・強撃の倍率は変わらない。
+ *     API: getMeleeDamageSource() / setMeleeDamageSource({ separate, weaponId })(DEV。保存しない)。パラメータ SeparateMeleeDamage(オフで従来)/ MeleeWeaponId。
  *   命中の手応え(Stage 6B): 攻撃が実際にダメージを与えたときだけ、当たった敵に 点滅・反動(絵だけ)・ヒットストップ(その敵だけ)・SE を出す。近接1・2段 / 3段目の強撃 / 銃で強さが違う。
  *     SwordSystem / GunSystem の命中の通知(addHitListener)を受け、HP が実際に減ったのを確かめてから出す(HPは次のフレームで減る)。霧で見えていない敵には何も出さない。
  *     API: getHitFx() / setHitFeedback({ enabled, hitstop:{melee,heavy,gun}, recoil:{...}, flash:{...}, se:{melee,heavy,gun} })(DEV。保存しない)。パラメータ HitFeedback / HitstopFrames / RecoilPixels / FlashFrames / HitSeMelee ほか。
@@ -829,9 +843,10 @@
         if (reason) result = fail(reason);
         else if (!sword || typeof sword.swing !== "function") result = fail("swordUnavailable");
         else {
-            const next = comboStep() + 1, def = COMBO.steps[next - 1];
+            const next = comboStep() + 1, def = COMBO.steps[next - 1], meleeSource = getMeleeDamageSource();
             const swung = sword.swing("field", { anyWeapon: true, step: next, width: def.width, depth: def.depth, forward: def.forward, lifetime: def.lifetime, cooldown: def.cooldown,
                 damageScale: def.heavy ? COMBO.finisher : 1, style: def.style, pitch: def.pitch, speed: def.speed, visual: !hasSweepVfx(),
+                ...(meleeSource.weaponId !== null ? { damageWeapon: meleeSource.weaponId } : {}),          // Stage 6C: 銃を持っている間は、近接の武器の攻撃力で計算する(近接の武器を装備していれば何も足さない)
                 ...(hasSweepVfx() ? { sector: sweepSector(def) } : {}) });          // VFX がある(通常)ときは、見た目と同じ扇形の判定。無いときだけ従来の長方形のHitbox
             if (swung && swung.ok) {
                 const c = rt.combo;
@@ -1729,6 +1744,35 @@
         };
     }
 
+    // ------------------------------------------------------------------ 近接と銃の攻撃力の分離(Stage 6C) ----------------------------------------------------------------
+    //   原因: 命中のダメージは Hendrix の "player weapon" = スロット1の武器の攻撃スキルとアクターの ATK(装備の合計)で計算される。FieldCombat のプレイヤーはスロット1に銃を持つので、
+    //   薙ぎ払いも「銃の攻撃力」で計算されていた(銃の攻撃力を上げると近接も上がる)。独立した近接の攻撃力(能力値・スロット)は無い。
+    //   方針(新しい能力値・スロットは作らない。セーブは変えない): 銃を持っている間の薙ぎ払いだけ、命中のダメージ計算の間、スロット1の武器を「近接の武器」に一時的に差し替える(SwordSystem の damageWeapon)。
+    //     近接の武器 = パラメータ MeleeWeaponId(0 = 自動)→ リードのデータベースの初期武器(銃でないもの)→ 素手。近接の武器を装備しているときは、装備中の武器がそのまま(従来どおり)。
+    //   ダメージの式・強撃の倍率・判定・手応え・操作は変わらない。銃のダメージは銃を装備したまま(従来どおり)。
+    const meleeCfg = { separate: String(params.SeparateMeleeDamage === undefined ? "true" : params.SeparateMeleeDamage) !== "false", weaponId: Math.max(0, Math.floor(num(params.MeleeWeaponId, 0, 0))) };
+    const isGunWeapon = w => !!w && /<capacity:/i.test(w.note || "");                          // SwordSystem・GunSystem と同じ判定(<capacity:> を持つ武器 = 銃)
+    const isMeleeWeaponId = id => id > 0 && safe(() => { const w = $dataWeapons[id]; return !!w && !isGunWeapon(w); }, false);
+    const getMeleeDamageSource = () => {
+        const leader = safe(() => $gameParty.leader(), null);
+        const out = { separate: meleeCfg.separate, configuredWeaponId: meleeCfg.weaponId, weaponId: null, source: "off", equipped: null };
+        if (!leader) { out.source = "noLeader"; return out; }
+        const equipped = safe(() => leader.weapons()[0] || null, null);
+        out.equipped = equipped ? { id: equipped.id, name: equipped.name, gun: isGunWeapon(equipped) } : null;
+        if (!meleeCfg.separate) return out;
+        if (equipped && !isGunWeapon(equipped)) { out.source = "equippedMelee"; return out; }              // 近接の武器を装備している: 装備中の武器がそのまま(従来どおり)
+        if (isMeleeWeaponId(meleeCfg.weaponId)) { out.weaponId = meleeCfg.weaponId; out.source = "parameter"; return out; }
+        const dbId = safe(() => Number($dataActors[leader.actorId()].equips[0]) || 0, 0);
+        if (isMeleeWeaponId(dbId)) { out.weaponId = dbId; out.source = "actorDefault"; return out; }
+        out.weaponId = 0; out.source = "unarmed"; return out;                                               // 近接の武器が無い: 素手(銃の攻撃力は使わない)
+    };
+    const setMeleeDamageSource = o => {
+        const v = o && typeof o === "object" ? o : {};
+        if (typeof v.separate === "boolean") meleeCfg.separate = v.separate;
+        if (v.weaponId !== undefined && Number.isFinite(Number(v.weaponId)) && Number(v.weaponId) >= 0) meleeCfg.weaponId = Math.floor(Number(v.weaponId));
+        return getMeleeDamageSource();
+    };
+
     // ------------------------------------------------------------------ 命中の手応え(Stage 6B): 点滅・反動・ヒットストップ・SE ----------------------------------------------------------------
     //   攻撃が「実際にダメージを与えた」ときだけ、当たった敵に短い手応えを出す。ダメージの計算・判定・時間・Cooldown・入力・敵のAIは変えない(見た目と音と、当たった敵だけの短い停止)。
     //   ・SwordSystem / GunSystem が、ダメージを出した直後に命中を通知する(addHitListener)。HP は次のフレームで減るので、ここで HP が減ったことを確かめてから出す(減らなければ何も出さない)。
@@ -2044,7 +2088,7 @@
         getCooldowns: () => ({ ...rt.cooldowns }),
         useAbility, cancel, getHudState, getHudSlots: hudSlots,
         attackClick, fireGun, getComboState, getComboConfig: () => JSON.parse(JSON.stringify(COMBO)), getSweepVfxKey: () => sweepVfx(), listConsumables, selectConsumable, getSelectedConsumable: () => { const i = selectedConsumable(); return i ? itemView(i) : null; },
-        getRadialState, openRadial, closeRadial, getHitFx, setHitFeedback, getItemHoldFrames: () => ITEM_HOLD_FRAMES, getControlStats: () => ({ combo: getComboState(), gun: { ...rt.gun, last: rt.gun.last && { ...rt.gun.last } }, item: { ...rt.item }, radial: getRadialState(), diag: { ...rt.diag } }),
+        getRadialState, openRadial, closeRadial, getHitFx, setHitFeedback, getMeleeDamageSource, setMeleeDamageSource, getItemHoldFrames: () => ITEM_HOLD_FRAMES, getControlStats: () => ({ combo: getComboState(), gun: { ...rt.gun, last: rt.gun.last && { ...rt.gun.last } }, item: { ...rt.item }, radial: getRadialState(), diag: { ...rt.diag } }),
         getLastResult: () => (rt.lastResult ? JSON.parse(JSON.stringify(rt.lastResult)) : null),
         getLog: () => rt.log.map(e => ({ ...e })),
         attachEnemy, detachEnemy, listEnemies: () => [...rt.enemies.keys()],

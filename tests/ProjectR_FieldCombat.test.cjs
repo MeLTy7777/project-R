@@ -1747,6 +1747,36 @@ test("FieldCombat(Stage 6B): 片づけ。戦闘の終了(勝利・撤退・マ�
     assert.equal(optsOn, JSON.stringify(plain(b.swings[0].options)), "手応えの有無で、スイングの引数(ダメージ倍率・判定・時間)は変わらない");
 });
 
+test("FieldCombat(Stage 6C): 銃を持っている間の薙ぎ払いは、近接の武器(DBのリードの初期武器・パラメータ)の攻撃力で計算する。近接の武器の装備中・分離オフ・近接の武器なしの扱い。銃には何も渡さない", () => {
+    const game = loadGame(), fc = game.ProjectRFieldCombat, leader = game.$gameParty.leader();
+    const gun = { id: 51, name: "テストハンドガン", note: "<capacity: 7>" }, longsword = { id: 2, name: "ロングソード", note: "" }, axe = { id: 4, name: "斧", note: "" };
+    game.$dataWeapons = [null, null, longsword, null, axe]; game.$dataWeapons[51] = gun;
+    game.$dataActors = [null, { equips: [2, 0, 0, 3, 0] }];
+    let equipped = gun; leader.weapons = () => (equipped ? [equipped] : []); leader.actorId = () => 1;
+    const swingOptions = () => { game.swingCooldown = 0; game.swings.length = 0; fc.begin(); const before = game.swings.length; game.click(); game.frame(1); const o = game.swings[game.swings.length - 1].options; fc.end(); return { o, n: game.swings.length - before }; };
+    // 銃を持っている: DB のリードの初期武器(ロングソード id 2)
+    assert.deepEqual(plain(fc.getMeleeDamageSource()), { separate: true, configuredWeaponId: 0, weaponId: 2, source: "actorDefault", equipped: { id: 51, name: "テストハンドガン", gun: true } });
+    let r = swingOptions(); assert.equal(r.o.damageWeapon, 2, "スイングに近接の武器を渡す"); assert.deepEqual([r.o.damageScale, r.o.step, r.o.anyWeapon], [1, 1, true], "倍率・段・アビリティは従来どおり");
+    // パラメータで武器を指定(銃は選べない・存在しない武器は無視 → DB の初期武器)
+    assert.deepEqual([fc.setMeleeDamageSource({ weaponId: 4 }).weaponId, fc.getMeleeDamageSource().source], [4, "parameter"]); assert.equal(swingOptions().o.damageWeapon, 4);
+    assert.equal(fc.setMeleeDamageSource({ weaponId: 51 }).source, "actorDefault", "銃は近接の武器にならない"); assert.equal(fc.setMeleeDamageSource({ weaponId: 77 }).source, "actorDefault", "存在しない武器は無視");
+    fc.setMeleeDamageSource({ weaponId: 0 });
+    // 3段目の強撃: 倍率はそのまま(2)・近接の武器は同じ
+    game.swingCooldown = 0; game.swings.length = 0; fc.begin(); for (let i = 0; i < 3; i++) { game.click(); game.frame(40); } const opts = game.swings.map(x => x.options); fc.end();
+    assert.deepEqual(opts.map(o => [o.step, o.damageScale, o.damageWeapon]), [[1, 1, 2], [2, 1, 2], [3, 2, 2]], "強撃は ×2・近接の武器は3回とも同じ");
+    // 近接の武器を装備している: 何も足さない(従来どおり、装備中の武器の攻撃力)
+    equipped = longsword; assert.deepEqual([fc.getMeleeDamageSource().source, fc.getMeleeDamageSource().weaponId], ["equippedMelee", null]); assert.equal("damageWeapon" in swingOptions().o, false);
+    // 近接の武器が無い(何も装備せず、DB の初期武器も無い): 素手(銃の攻撃力は使わない)
+    equipped = null; game.$dataActors = [null, { equips: [0, 0, 0, 0, 0] }]; assert.deepEqual([fc.getMeleeDamageSource().source, fc.getMeleeDamageSource().weaponId], ["unarmed", 0]); assert.equal(swingOptions().o.damageWeapon, 0);
+    // DB の初期武器が銃なら使わない
+    game.$dataActors = [null, { equips: [51, 0, 0, 0, 0] }]; equipped = gun; assert.equal(fc.getMeleeDamageSource().source, "unarmed");
+    // 分離をオフ: 従来(何も渡さない = 銃の攻撃力)
+    game.$dataActors = [null, { equips: [2, 0, 0, 3, 0] }]; fc.setMeleeDamageSource({ separate: false }); assert.equal(fc.getMeleeDamageSource().source, "off"); assert.equal("damageWeapon" in swingOptions().o, false, "オフなら従来どおり");
+    fc.setMeleeDamageSource({ separate: true });
+    // 銃: 近接の武器は渡さない(銃は装備している銃の攻撃力のまま)
+    game.shots.length = 0; fc.begin(); game.mouseDown(2); game.frame(1); fc.end(); assert.ok(game.shots.length >= 1, "銃は撃てる"); assert.equal(JSON.stringify(plain(game.shots)).includes("damageWeapon"), false, "銃の呼び出しに近接の武器は渡さない");
+});
+
 test("FieldCombat(Stage 6A): HUDの枠のデータ。5スキルに既存のIconSetのアイコン(あれば setCardPresentation 等を優先)・状態(ready/cooldown/unavailable)・Cooldownの残り割合と秒・LMBのコンボ・使えなかった直後の知らせ・Vの数量。Q奥義・R・右クリックは枠に出ない", () => {
     const game = loadGame();
     const fc = game.ProjectRFieldCombat;
