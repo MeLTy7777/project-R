@@ -336,7 +336,8 @@ test("プラグインはPlaytestでガードされ、ガードより前にAPI/�
 test("Core/Manager/Gauge/Bridge/Activation/全カード/Hendrix/DotMoveは変更されていない", () => {
     // (CardBattleInput / UltimateActivation / HermesReedFluteSleep / HermesSwordsmanship は Phase 5A-RT3 で
     //  Q/E/X/C/V・診断・表示連携を足したため対象外。検証は tests/ProjectR_CombatRuntimeCompliance.test.cjs)
-    const protectedFiles = ["ProjectR_CardDeckCore", "ProjectR_GodSummonManager", "ProjectR_UltimateGauge",
+    // ProjectR_UltimateGauge は、Stage 6D で意図して変更した(HPが次のフレームで減る実ゲームでも与ダメージを加算する待ち。式・加算量は不変)。検証: tests/ProjectR_UltimateGauge.phase4b.test.cjs(従来)と tests/ProjectR_GunSystem.test.cjs(遅れて反映されるHP)
+    const protectedFiles = ["ProjectR_CardDeckCore", "ProjectR_GodSummonManager",
         "ProjectR_UltimateGodDamageBridge",
         "ProjectR_HermesUltimate", "ProjectR_ApolloUltimate", "ProjectR_ApolloGoldenArrow", "ProjectR_ApolloDiseaseAttack",
         "ProjectR_ApolloLyreCalm", "ProjectR_HermesRecognitionObscure",

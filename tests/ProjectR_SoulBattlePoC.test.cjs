@@ -105,7 +105,9 @@ test("保護対象(Hendrix・DotMove・既存カード・ダメージ式)は変�
         "js/plugins/ProjectR_ApolloPlagueRain.js": /clear: reason/, "js/plugins/ProjectR_HermesStrength.js": /clear: reason|setSoulCards/,
         "js/plugins/ProjectR_CardModifiers.js": /damageMultiplier/,
         // 絶(Zetsu): フィールド戦闘(Stage 5b)が「敵の体」を通り抜けるための、衝突フィルターの追加専用の窓口(フィルターが無ければ従来のまま。SOUL・通常のカード戦闘は何も登録しない)
-        "js/plugins/ProjectR_HermesZetsu.js": /registerCollisionFilter/ };      // CardModifiers: フックが返す倍率を固定ダメージの基礎値に掛ける追加(SOUL のストレングス用)
+        "js/plugins/ProjectR_HermesZetsu.js": /registerCollisionFilter/,
+        // UltimateGauge: 与ダメージを、HPが次のフレームで減る実ゲームでも取りこぼさないための待ち(Stage 6D。同期に減るときは従来どおり。ゲージの式・加算量は変えない)
+        "js/plugins/ProjectR_UltimateGauge.js": /pendingHp/ };      // CardModifiers: フックが返す倍率を固定ダメージの基礎値に掛ける追加(SOUL のストレングス用)
     const changed = out.stdout.split(/\r?\n/).filter(Boolean).map(line => line.slice(3).trim());
     for (const file of changed) {
         assert.ok(SEAMS[file], file + " は変更されていない(許すのはSOULスキルの受け口だけ)");

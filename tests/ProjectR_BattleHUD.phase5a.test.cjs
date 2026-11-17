@@ -174,7 +174,7 @@ test("セーブ項目を追加しない: $gameSystemの新規プロパティな�
 });
 test("HUDが依存する本体plugin(Core/Input/Manager/Gauge/Activation/Ultimate/カード/Hendrix/DotMove)は変更しない", () => {
     const names = fs.readdirSync(path.join(__dirname, "..", "js/plugins")).filter(f =>
-        (/^ProjectR_/.test(f) && !/^ProjectR_(BattleHUD|MenuHUD|Casino|TexasHoldem|CombatPresence|PlayerFacing|CombatTestArena|CardBattleInput|UltimateActivation|HermesReedFluteSleep|HermesSwordsmanship|GodSummonVisual)/.test(f)) || /^Hendrix_|^DotMoveSystem/.test(f))
+        (/^ProjectR_/.test(f) && !/^ProjectR_(BattleHUD|MenuHUD|Casino|TexasHoldem|CombatPresence|PlayerFacing|CombatTestArena|CardBattleInput|UltimateActivation|HermesReedFluteSleep|HermesSwordsmanship|GodSummonVisual|UltimateGauge)/.test(f)) || /^Hendrix_|^DotMoveSystem/.test(f))
         // 基準(0060015)に存在したファイルだけ比べる。後から追加したplugin(視界/メニュー/ボス枠組み等)は別のテストが担当。
         .filter(f => cp.spawnSync("git", ["cat-file", "-e", `0060015:js/plugins/${f}`], { cwd: path.join(__dirname, "..") }).status === 0);
     assert.ok(names.length >= 18);

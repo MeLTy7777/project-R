@@ -755,8 +755,9 @@ test("Core/Input/Manager/Gauge/Activation/Bridge/既存カードplugin/Hermes系
     // 変更禁止のpluginは、Phase 4D-1完了時点(e5502f3)と完全に同じ
     // (CardBattleInput / UltimateActivation / HermesReedFluteSleep / HermesSwordsmanship は Phase 5A-RT3 で
     //  Q/E/X/C/V・診断・表示連携を足したため固定対象から外す。挙動は専用テストで確認する)
+    // ProjectR_UltimateGauge は、Stage 6D で意図して変更した(HPが次のフレームで減る実ゲームでも与ダメージを加算する待ち。式・加算量は不変)。検証: tests/ProjectR_UltimateGauge.phase4b.test.cjs(従来)と tests/ProjectR_GunSystem.test.cjs(遅れて反映されるHP)
     for (const file of ["ProjectR_CardDeckCore", "ProjectR_GodSummonManager", "ProjectR_UltimateGodDamageBridge",
-        "ProjectR_UltimateGauge", "ProjectR_ApolloGoldenArrow", "ProjectR_ApolloDiseaseAttack", "ProjectR_ApolloLyreCalm",
+        "ProjectR_ApolloGoldenArrow", "ProjectR_ApolloDiseaseAttack", "ProjectR_ApolloLyreCalm",
         "ProjectR_HermesRecognitionObscure", "ProjectR_HermesSwiftMovement",
         "ProjectR_HermesUltimate"]) {
         const before = cp.execFileSync("git", ["show", `e5502f3:js/plugins/${file}.js`], { encoding: "utf8", maxBuffer: 1 << 26 }).replace(/\r\n/g, "\n");

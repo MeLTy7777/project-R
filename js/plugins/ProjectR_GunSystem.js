@@ -220,7 +220,7 @@
             if (!Number.isFinite(event._rotation) || Math.abs(event._rotation - degree) > 0.000001) {
                 throw Error("bulletRotationFailed");
             }
-            bullets.set(id, { map: m, event, serial: ++serial, age: 0, last: from || toTileCenter(event), degree });
+            bullets.set(id, { map: m, event, serial: ++serial, age: 0, last: from || toTileCenter(event), origin: from || toTileCenter(event), degree });
             return { ok: true, eventId: id };
         } catch (error) {
             for (const event of m.events()) {
@@ -366,15 +366,34 @@
     };
     const pickHitBullet = enemy => {
         const recorded = root.CollisionManager?.lastSourceEventId;
-        if (bullets.has(recorded)) return recorded;
+        if (bullets.has(recorded) && !bullets.get(recorded).deferred) return recorded;
         // 弾の見た目の中心(rotateTo後はscreenX/Y)と敵の中心(screenY-タイル高/2)の距離が最小の弾。重なっている弾は1タイル以内。
         const th = map().tileHeight();
         let best = null, bestDistance = Infinity;
         for (const [id, record] of bullets) {
+            if (record.deferred) continue;                                                              // 壁の中に出た弾(下の至近距離の判定だけで扱う)
             const d = Math.hypot(record.event.screenX() - enemy.screenX(), record.event.screenY() - (enemy.screenY() - th / 2));
             if (d < bestDistance) { best = id; bestDistance = d; }
         }
         return bestDistance <= map().tileWidth() * 1.2 ? best : null;
+    };
+    // 至近距離(Stage 6D): 弾は銃口(体の中心から約1〜2.4マス先。真北は約2.35マス)に出るので、それより手前にいる敵は、弾の当たり判定が重ならず当たらなかった。
+    //   発射の直後(age 1)だけ、「体の中心 → 弾の位置」の線分が敵の体に触れていれば、その弾が当たったことにする(壁・閉じた扉が間にあれば、その前に弾が消えるので当たらない)。
+    //   ダメージ・弾数・間隔・射程は変えない(従来どおり 1発1Hit)。
+    const pointBlankBullet = enemy => {
+        let fresh = false; for (const record of bullets.values()) if (record.age === 1) { fresh = true; break; }
+        if (!fresh) return null;                                                                  // 発射の直後の弾が無いフレームは、何もしない(多角形も作らない)
+        const occ = root.ProjectR?.CombatOcclusion;
+        if (typeof occ?.eventPolygon !== "function" || typeof occ?.firstContact !== "function") return null;
+        const polygon = occ.eventPolygon(enemy);
+        if (!Array.isArray(polygon) || polygon.length < 3) return null;
+        let best = null, bestFraction = Infinity;
+        for (const [id, record] of bullets) {
+            if (record.age !== 1 || !record.origin) continue;
+            const fraction = occ.firstContact(record.origin, toTileCenter(record.event), polygon);
+            if (fraction !== null && fraction < bestFraction && (!record.deferred || fraction < record.wallFraction)) { best = id; bestFraction = fraction; }          // 壁の中に出た弾は、敵が壁より手前にいるときだけ
+        }
+        return best;
     };
     const updateBullets = m => {
         if (!bullets.size) return;
@@ -384,19 +403,24 @@
             record.age++;
             const now = toTileCenter(record.event);
             let blocked = record.age > config.bulletFrames;
-            if (!blocked && wall?.firstBlockerBetween?.(record.last, now, { mode: "combat" })) blocked = true;
+            if (!blocked) {
+                const blocker = wall?.firstBlockerBetween?.(record.last, now, { mode: "combat" });
+                if (blocker) { blocked = true; if (record.age === 1 && Number.isFinite(blocker.fraction)) { record.deferred = true; record.wallFraction = blocker.fraction; } }          // 発射の直後に壁の中へ出た弾は、敵の判定(至近距離)のあとで消す
+            }
             record.last = now;
             if (!blocked && (root.checkCollide(id, "<destroyProjectile>") || root.checkCollide(id, "map boundary"))) blocked = true;
-            if (blocked) destroyBullet(id, record);
+            if (blocked && !record.deferred) destroyBullet(id, record);
         }
         if (!bullets.size) return;
         for (const enemy of m.events()) {
             if (!enemy || enemy._erased || !enemy.event()?.note?.includes("<enemy>")) continue;
             const enemyId = enemy.eventId();
             const hp = m.getCurrentEventHp(enemyId);
-            if (hp == null || hp <= 0 || !root.checkCollide(enemyId, BULLET_TAG)) continue;
+            if (hp == null || hp <= 0) continue;
+            const collided = root.checkCollide(enemyId, BULLET_TAG);
             // Hendrixは<dmg:>付きの弾でしかlastSourceEventIdを記録しないため、記録が無ければ衝突した敵に最も近い弾を特定する。
-            const sourceId = pickHitBullet(enemy);
+            const sourceId = collided ? pickHitBullet(enemy) : pointBlankBullet(enemy);
+            if (!collided && sourceId === null) continue;
             const record = bullets.get(sourceId);
             if (!record || record.map !== m || m.event(sourceId) !== record.event) continue;
             try {
@@ -408,6 +432,7 @@
             }
             if (!bullets.size) break;
         }
+        for (const [id, record] of [...bullets]) if (record.deferred) destroyBullet(id, record);          // 壁の中に出た弾で、敵に当たらなかったものを消す(従来は先に消していた)
     };
 
     // ---- 攻撃入力の受け口: 共通イベント1(Hendrixの攻撃ボタン)が受理されたとき、銃ならここへ回す ----

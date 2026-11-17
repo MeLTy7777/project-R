@@ -162,7 +162,8 @@
         gauge: state ? state.current : 0, max: state ? state.max : 0,
         rate: state ? Math.min(1, Math.max(0, state.current / state.max)) : 0, full: isFull(), ready: isReady()
     });
-    const clear = () => { state = null; gainIds.clear(); totals = newTotals(); lastGain = null; useCounts.clear(); };
+    const pendingHp = new Map(); // targetId -> { base, queue: [context], age }(Stage 6D: 遅れて反映されるHPの待ち)
+    const clear = () => { state = null; gainIds.clear(); totals = newTotals(); lastGain = null; useCounts.clear(); pendingHp.clear(); };
 
     const addUltimateGauge = (amount, source, gainId) => {
         const base = { ok: false, reason: null, requested: typeof amount === "number" ? amount : null, gained: 0,
@@ -290,14 +291,40 @@
             return rejected("gaugeError");
         }
     };
-    // 攻撃側のHP適用をそのまま実行し、前後のHP差を与ダメージとして記録する。applyの結果と例外は変えない。
+    // 与ダメージの「遅れて反映されるHP」(Stage 6D): Hendrix の UpdateEventHp は HP を次のフレームで減らす(同じ呼び出しの前後では差が 0 になり、実ゲームでは与ダメージのゲージが増えなかった)。
+    //   前後で減っていなければ、その敵の基準HPと文脈を覚え、数フレームのあいだ、実際に減ったHPを与ダメージとして1回だけ加算する(settlePendingHp。Scene_Map の更新のあとに呼ぶ)。
+    //   二重加算しない: 同期に減ったときは従来どおりその場で1回(待たない)/ 敵ごとに基準HPを持ち、観測した減少分を最初の文脈へ1回だけ加算して基準を更新する(同じフレームに複数が当たっても合計は実際に減った分)/
+    //   回避・無効(HPが減らない)は PENDING_FRAMES で捨てる(加算なし)/ 複数の敵は別々 / gainId(damage:<attackId>:<targetId>)の重複拒否は従来どおり。
+    const PENDING_FRAMES = 8;
+    const queueHpLoss = (eventId, base, context) => {
+        if (!state) return;
+        const group = pendingHp.get(eventId);
+        if (group) { group.queue.push(context); group.age = 0; } else pendingHp.set(eventId, { base, queue: [context], age: 0 });
+    };
+    const settlePendingHp = () => {
+        for (const [eventId, group] of [...pendingHp]) {
+            let hp; try { hp = eventHp(eventId); } catch (error) { hp = undefined; }
+            if (hp === undefined || !state) { pendingHp.delete(eventId); continue; }
+            if (hp < group.base) {
+                const context = group.queue.shift();
+                recordEventHpLoss(eventId, group.base, context);
+                group.base = hp; group.age = 0;
+                if (hp <= 0 || !group.queue.length) pendingHp.delete(eventId);
+            } else if (++group.age > PENDING_FRAMES) pendingHp.delete(eventId);
+        }
+    };
+    // 攻撃側のHP適用をそのまま実行し、前後のHP差を与ダメージとして記録する。applyの結果と例外は変えない。HPが同じフレームで減らなければ、次のフレーム以降の減少を待つ(上)。
     const trackDamage = (eventId, context, apply) => {
         let before;
         try { before = eventHp(eventId); } catch (error) { before = undefined; }
         try {
             return apply();
         } finally {
-            if (before > 0) recordEventHpLoss(eventId, before, context);
+            if (before > 0) {
+                let after; try { after = eventHp(eventId); } catch (error) { after = undefined; }
+                if (after !== undefined && after >= before) queueHpLoss(eventId, before, context);
+                else recordEventHpLoss(eventId, before, context);
+            }
         }
     };
 
@@ -340,6 +367,12 @@
         Game_Map.prototype.setup = function() { clear(); return _setup.apply(this, arguments); };
     }
     if (typeof Scene_Map !== "undefined") {
+        const _update = Scene_Map.prototype.update;
+        Scene_Map.prototype.update = function() {
+            const result = _update.apply(this, arguments);
+            if (pendingHp.size) { try { settlePendingHp(); } catch (error) { pendingHp.clear(); } }
+            return result;
+        };
         const _onMapLoaded = Scene_Map.prototype.onMapLoaded;
         Scene_Map.prototype.onMapLoaded = function() {
             _onMapLoaded.apply(this, arguments);
@@ -364,6 +397,7 @@
         recordDamageDealt,
         recordEventHpLoss,
         trackDamage,
+        getPendingDamageCount: () => pendingHp.size,
         recordImportantDodge,
         getGainConfig: () => gainConfig,
         getGainStats: () => Object.freeze({ totals: Object.freeze({ ...totals }), last: lastGain && Object.freeze({ ...lastGain }) }),
