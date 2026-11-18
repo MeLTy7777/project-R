@@ -306,6 +306,36 @@ ATTACK/DEFENSE の区切りも、カードのドロー・ランダムな手札�
 ### 検証
 `tools/mz_cdp/field_gun_gauge_verify.cjs` 16/16(実機)。Node: `tests/ProjectR_GunSystem.test.cjs`(新規 7 本: 16方向 × 4距離・ダメージ/弾数/間隔/射程・1発1Hit・壁・遅れて反映される HP でのゲージ・回避・複数の敵・連続・従来の同期の経路・戦闘の終了)。修正を無効にすると、それぞれのテストが落ちることを確認済み。
 
+## Stage 7A: 強敵の攻撃パターンの土台(DEV・試作)
+
+ProjectR には雑魚はいない(強敵・中ボス・ボスだけ)。そのため、1体ずつ大きな攻撃を「予兆 → 判定 → 硬直」で出す型を、同じ形で増やせるようにした。**今回は試作の強敵 1 体・攻撃 2 つだけ。バランスの調整はしていない**(数値はすべて仮)。
+
+### 構成(再利用したもの)
+- **新規 `js/plugins/ProjectR_FieldStrongEnemy.js`**(攻撃の状態機械)。FieldCombat が毎フレーム `update()` を呼ぶ。敵のメモ `<fieldEnemy: strong=dev_strong, ...>` の敵だけ(`ProjectR_FieldCombat.js` の追加は約 25 行: タグ読み取り・呼び出し・予兆の描画・後片付け)。
+- **再利用**: 敵の視界(`perceive`: 距離・視野角・壁/閉じた扉。強敵も「見えている間だけ」攻撃を始める)/ `ProjectR_CombatOcclusion` の壁・扉の判定(`hasLineToPolygon`(攻撃の形で切る)・`firstBlockerBetween`・`hasLineOfSight`・`eventPolygon`)/ FieldCombat の予兆の描画層と HUD の予兆の数 / Hendrix の公式のダメージ(`UpdateEventHp "-damage"`・敵データベースの `<dmg: 敵名>`。ダメージ式は変えない)/ 既存の後片付け(戦闘の終了・敵の死亡・撤退・マップ移動)。**従来の敵の攻撃(`ProjectR_EnemyAttack`)・Map008 のゴブリンは変えていない**。
+- **DEV マップ `data/Map009.json`(DEV_FieldStrongEnemy。`data/MapInfos.json` に 1 行)**: 21×15。強敵 1 体(トレント HP500・ATK30。敵データベースの既存の項目)・撤退用の人・壁ごしの確認用に 縦の壁(x=5, y=5〜8)と 2×2 の柱(14〜15, 7〜8)。**Map008 は変えていない**。実際のストーリーには何も足していない。
+
+### 攻撃の仕様(試作 `dev_strong`。数値は仮。60fps)
+| 攻撃 | 形 | 溜め | 判定 | 硬直 | 始める条件 | 中断 |
+|---|---|---|---|---|---|---|
+| cone(扇形) | 正面の扇。半径 2.6・半角 50° | 54 f(0.9秒) | 6 f | 42 f | プレイヤーまで 2.3 マス以内 | 溜めの間に 100 以上の損害 → 中断(ダメージなし・24 f の硬直) |
+| line(直線) | 幅 0.8・長さ 7 の帯 | 66 f(1.1秒) | 6 f | 54 f | 2.0〜6.2 マス | 中断されない(強い溜め) |
+- **よけ方**: cone = 横・後ろへ(プレイヤーの体は 1×1 なので、1.6 マス前から約 3 マス横へ)/ line = 1 歩(1 マス以上)横へ / 絶(Shift)・普通の移動のどちらでも。
+- **向きと位置は溜めの始まりで固定**(追いかけない)。溜め・判定・硬直の間は敵は動かない。
+- **予兆と判定は同じ多角形**(`shapePolygon`)。壁・閉じた扉で切る(予兆も壁で切って描く)。判定は「プレイヤーの体の形が攻撃の形に重なり、原点から壁・扉に遮られずに届く」(`hasLineToPolygon`)。**判定は active の間、毎フレーム**。ダメージは 1 つの攻撃につき 1 回。
+- **選び方**: 敵の視界で見えているときだけ。近ければ cone、遠ければ line、両方当てはまる 2.0〜2.3 マスでは交互。間に壁・閉じた扉があれば始めない(予兆も出さない)。終わると、敵の `cooldown=`(Map009 では 80 f)の間は始めない。
+- **後片付け**: 戦闘の終了(勝利・敗北・撤退)・マップ移動・読み込み・敵の死亡・撤退(detach)・プレイヤーの死亡・戦闘が終わったあとで、進行中の攻撃を取り消す(ダメージなし・予兆も消える)。戦闘が終わったあとは新しい攻撃を始めない。
+
+### 検証
+- Node: `tests/ProjectR_FieldStrongEnemy.test.cjs`(12 本。実エンジン + 本物の FieldCombat: 形(予兆と判定の一致)・時間・よけ方と向きの固定・壁/扉・視界・選び方・中断・死亡・後片付け・既存の敵が変わらない・ソース)。
+- 実機: `tools/mz_cdp/field_strong_enemy_verify.cjs` 19/19(実キー・クリック。上の仕様どおりのフレーム数・A/D と絶でのよけ・銃での中断・壁・後片付け・Map008 のゴブリンは従来のまま)。
+
+### 手動の確認(Playtest)
+1. Playtest で MAP001 に入り、F8 でコンソールを開く(Map008 の入口の人は変えていないので、Map009 へは次の 1 行で入る)。
+2. 貼る: `ProjectRFieldCombat.startEncounter({ encounterId: 'strong', battleMapId: 9, spawnX: 10, spawnY: 12, direction: 8, resultVariableId: 9 })`その前に、固定アビリティ(絶・一閃など)用のヘルメースの指輪とポーションを、同じコンソールで用意する(Map008 の入口の人と同じ内容): `(function(){var it=new Game_Interpreter();it.setup([{code:357,indent:0,parameters:['ProjectR_HermesProductionDeck','AcquireHermesRing','AcquireHermesRing',{}]},{code:0,indent:0,parameters:[]}],0);for(var i=0;i<20&&it.isRunning();i++)it.update();$gameParty.gainItem($dataItems[7],3);$gameParty.leader().setHp($gameParty.leader().mhp);})()`(すでに指輪を持っていれば不要)。
+3. 強敵(トレント)が近づいてくる。遠いと **直線**(赤い細い帯。約 1.1 秒)・近いと **扇形**(赤い扇。約 0.9 秒)の予兆が出る。赤が濃くなり、白い縁になった瞬間が判定。横へ歩く(A/D)か Shift(絶)でよける。
+4. 試すこと: 立ったままで当たる / 横へ歩いてよける / 柱(右の 2×2)や壁(左の縦の壁)の裏では当たらない / 扇形の溜めの間に銃を 2 発以上当てると攻撃が止まる(直線は止まらない)/ 倒す・撤退の人に話しかける → 攻撃が消えて元のマップへ戻る。
+
 ## 敵と予兆
 
 - 敵は既存の `<enemy>` つきのイベント(Map001 の「公式銃テスト敵」)。`ProjectRFieldCombat.attachEnemy(eventId)` で、メモリ上だけ「近づく → 範囲に入ったら溜めて(予兆)→ 近接攻撃 → Cooldown」の行動をつけます(`ProjectREnemyAttack` の予約を使う)。溜めの間は動きません。元の並列ページの攻撃は止めます(二重にならないように)。

@@ -437,6 +437,7 @@
     const combatSession = () => root.ProjectRCombatSession;
     const cardInput = () => root.ProjectRCardBattleInput;
     const enemyAttack = () => root.ProjectREnemyAttack;
+    const strongApi = () => root.ProjectRFieldStrongEnemy;                      // 強敵の攻撃(Stage 7A: ProjectR_FieldStrongEnemy。<fieldEnemy: strong=名前> の敵だけ)
     const ultimate = () => root.ProjectRUltimateActivation;
     const map = () => (typeof $gameMap !== "undefined" ? $gameMap : null);
     const safe = (fn, fallback) => { try { return fn(); } catch (_error) { return fallback; } };
@@ -586,6 +587,7 @@
         safe(() => combatSession().end(SOURCE, reason));
         safe(() => { if (deck().isCardBattleActive?.()) deck().endCardBattle(); });
         for (const id of [...rt.enemies.keys()]) safe(() => enemyAttack()?.interrupt?.(id, "fieldEnd"));
+        safe(() => strongApi()?.clear?.("fieldEnd"));                                  // 強敵の攻撃も、戦闘の終了(勝利・敗北・撤退・マップ移動)で取り消す(ダメージなし)
         rt.captured.clear(); clearSoft(); resetControls(); clearHitFx(reason);
         note({ type: "end", reason });
         return true;
@@ -945,7 +947,7 @@
             eventId: e.eventId(), state: "chase", cooldown: 0, attackId: null,
             windupFrames: Math.round(num(o.windupFrames, 36, 1)), cooldownFrames: Math.round(num(o.cooldownFrames, 120, 0)),
             reach: num(o.reach, 1.2, 0.5), notetag: String(o.notetag || "<projectRFieldMelee><dmg: ゴブリン>"), chase: o.chase !== false, pathfinding: o.pathfinding !== false,
-            attacks: 0, aggroTiles: num(o.aggroTiles, 10, 1),
+            attacks: 0, aggroTiles: num(o.aggroTiles, 10, 1), strong: o.strong ? String(o.strong) : null,
             // 視界(敵ごとに変えられる): sight / aggro(旧名)→ 距離。fov → 視野角。省略は、プラグインパラメータ
             sightTiles: Math.max(1, num(o.sightTiles, num(o.aggroTiles, cfg.sightTiles, 0.1), 0.1)), fovDegrees: Math.min(360, Math.max(10, num(o.fovDegrees, cfg.fovDegrees, 0))),
             customSight: o.sightTiles !== undefined || o.aggroTiles !== undefined, customFov: o.fovDegrees !== undefined,
@@ -1003,7 +1005,7 @@
         return { enabled: cfg.perception, sightTiles: cfg.sightTiles, fovDegrees: cfg.fovDegrees };
     };
     const resetPerception = () => { cfg.perception = perceptionDefaults.perception; return setPerception({ sightTiles: perceptionDefaults.sightTiles, fovDegrees: perceptionDefaults.fovDegrees }); };
-    const detachEnemy = eventId => { const had = rt.enemies.delete(Number(eventId)); softRelease(Number(eventId)); if (had) safe(() => enemyAttack()?.interrupt?.(Number(eventId), "detach")); return had; };
+    const detachEnemy = eventId => { const had = rt.enemies.delete(Number(eventId)); softRelease(Number(eventId)); if (had) { safe(() => enemyAttack()?.interrupt?.(Number(eventId), "detach")); safe(() => strongApi()?.interrupt?.(Number(eventId), "detach")); } return had; };
     // ------------------------------------------------------------------ 敵の経路探索(Stage 4: 通れない所をよけて追う) ----------------------------------------------------------------
     // 「追うかどうか」は、上の視界の判定がすべてを決める(見えている間だけ)。ここは「どう動くか」だけ。
     //   1. まっすぐ進める(体の大きさの四角が、通れるマスだけを通って、プレイヤーまで行ける)間は、従来どおり dotMoveToPlayer(動きは変わらない)。
@@ -1386,7 +1388,7 @@
         navState.frameSearches = 0; navState.frameMs = 0;
         for (const [id, b] of [...rt.enemies]) {
             const e = map()?.event(id);
-            if (!e || !enemyAlive(e)) { settleDeadEnemy(e); rt.enemies.delete(id); safe(() => api.interrupt(id, "enemyGone")); continue; }
+            if (!e || !enemyAlive(e)) { settleDeadEnemy(e); rt.enemies.delete(id); safe(() => api.interrupt(id, "enemyGone")); safe(() => strongApi()?.interrupt?.(id, "enemyGone")); continue; }
             if (hit.fx.size && hitFrozen(e)) continue;                                              // 命中のヒットストップ(Stage 6B): 当たったその敵だけ、数フレーム止まる(他の敵・時計・入力・Cooldown は止めない)
             if (b.cooldown > 0) b.cooldown--;
             const c = center(e), dist = Math.hypot(p.x - c.x, p.y - c.y);
@@ -1398,10 +1400,17 @@
                 b.seeReason = playerDead() ? "playerDead" : r.reason;
                 if (sees && !b.aware) { b.aware = true; b.acquired++; note({ type: "acquire", eventId: id }); }
                 else if (!sees && b.aware) { b.aware = false; b.losses++; note({ type: "lose", eventId: id, reason: b.seeReason }); }
-                if (sees && b.state !== "windup" && (dist <= b.reach || !(b.nav && b.nav.mode === "path"))) safe(() => e.setDirection(directionOfBearing(bearingDegree(c, p))));      // 見つけたら、プレイヤーの方を向く(経路を進んでいる間は進む向き。攻撃の範囲に入ったら、プレイヤーの方)
+                if (sees && b.state !== "windup" && b.state !== "strong" && (dist <= b.reach || !(b.nav && b.nav.mode === "path"))) safe(() => e.setDirection(directionOfBearing(bearingDegree(c, p))));      // 見つけたら、プレイヤーの方を向く(経路を進んでいる間は進む向き。攻撃の範囲に入ったら、プレイヤーの方)
             } else if (b.aware) { b.aware = false; }
             b.sees = sees;
             if (!sees) navLose(b);                                                                  // 見失った瞬間に経路を捨てる(最後に見た位置を覚えない)
+            if (b.strong) {                                                                         // 強敵(Stage 7A): 攻撃の選び方と 溜め → 判定 → 硬直 は ProjectR_FieldStrongEnemy が持つ。攻撃している間は、ほかの動き・攻撃をしない
+                const sx = strongApi();
+                const sr = sx ? safe(() => sx.update({ eventId: id, profile: b.strong, active: rt.active, sees, playerDead: playerDead(), cooldown: b.cooldown, dist, center: c, player: p }), null) : null;
+                if (sr && sr.finished) { b.cooldown = b.cooldownFrames; b.attacks++; }
+                if (sr && sr.busy) { b.state = "strong"; navIdle(b); continue; }
+                if (b.state === "strong") b.state = "chase";
+            }
             if (b.state === "windup") {
                 const outcome = b.attackId != null ? safe(() => api.getOutcome(b.attackId), null) : null;
                 const pendingRecord = b.attackId != null ? safe(() => api.get(b.attackId), null) : null;
@@ -1410,7 +1419,7 @@
                 }
                 continue;                                                                           // 溜めの間は動かない(予兆と実際の攻撃を一致させる)
             }
-            if (!playerDead() && sees && dist <= b.reach && b.cooldown <= 0) {
+            if (!b.strong && !playerDead() && sees && dist <= b.reach && b.cooldown <= 0) {
                 const r = api.schedule({ eventId: id, kind: "melee", windupFrames: b.windupFrames, notetag: b.notetag, reach: Math.max(1, b.reach) });
                 if (r && r.ok) { b.state = "windup"; b.attackId = r.id; navIdle(b); }
                 continue;
@@ -1521,7 +1530,7 @@
             const kv = /^(\w+)=(.+)$/.exec(part.trim()); if (!kv) continue;
             const key = kv[1].toLowerCase(), v = kv[2];
             if (key === "windup") o.windupFrames = Number(v); else if (key === "cooldown") o.cooldownFrames = Number(v); else if (key === "reach") o.reach = Number(v);
-            else if (key === "aggro") o.aggroTiles = Number(v); else if (key === "sight") o.sightTiles = Number(v); else if (key === "fov") o.fovDegrees = Number(v); else if (key === "chase") o.chase = !(v === "0" || v.toLowerCase() === "false"); else if (key === "path") o.pathfinding = !(v === "0" || v.toLowerCase() === "false");
+            else if (key === "aggro") o.aggroTiles = Number(v); else if (key === "sight") o.sightTiles = Number(v); else if (key === "fov") o.fovDegrees = Number(v); else if (key === "strong") o.strong = v; else if (key === "chase") o.chase = !(v === "0" || v.toLowerCase() === "false"); else if (key === "path") o.pathfinding = !(v === "0" || v.toLowerCase() === "false");
         }
         return o;
     };
@@ -1944,12 +1953,14 @@
         });
         const reload = reloadView();
         return { active: rt.active, slots, attack: { key: "LMB", label: "薙ぎ払い" }, gun: { key: "RMB", label: "射撃", ammo: reload.ammo, capacity: reload.capacity, equipped: reload.equipped },
-            combo: getComboState(), item: slots[4], radial: getRadialState(), telegraphs: telegraphRecords().length };
+            combo: getComboState(), item: slots[4], radial: getRadialState(), telegraphs: telegraphRecords().length + strongTelegraphs().length };
     };
     const telegraphRecords = () => {
         const api = enemyAttack(); if (!api || !rt.active) return [];
         return safe(() => api.list().filter(r => r && r.state === "pending" && eventVisible(map()?.event(r.eventId))), []);          // 隠れている敵の予兆は出さない(位置がもれる)
     };
+    // 強敵の予兆(Stage 7A): 判定と同じ多角形(溜め = 淡い赤で濃くなる / 判定中 = 濃い赤と白い縁)。見えていない敵の予兆は出さない。
+    const strongTelegraphs = () => { const sx = strongApi(); if (!sx || !rt.active) return []; return safe(() => sx.telegraphs().filter(r => eventVisible(map()?.event(r.eventId))), []); };
     // HUD: 既存の ProjectR_BattleHUD の5枠(スキル枠)に、固定アビリティを表示する(カードの手札・山札の表示は、フィールド戦闘の間だけ使わない)。
     //   BattleHUD のデータ元(DataAdapter)の skills() / cardCounts() を、フィールド戦闘の間だけ差し替える。HUDの描画・配置は既存のまま。
     const slotIcon = (def, item) => {
@@ -2066,6 +2077,11 @@
                 g.beginFill(0xff2a2a, fill); g.lineStyle(2, 0xff6666, 0.85);
                 g.drawPolygon([o.x - nx, o.y - ny, o.x + nx, o.y + ny, ex + nx, ey + ny, ex - nx, ey - ny]); g.endFill();
             }
+        }
+        for (const r of strongTelegraphs()) {
+            const pts = []; for (const q of r.polygon) { const sp = toScreen(q.x, q.y); pts.push(sp.x, sp.y); }
+            if (r.phase === "active") { g.beginFill(0xff1a1a, 0.62); g.lineStyle(3, 0xffffff, 0.95); } else { g.beginFill(0xff2a2a, 0.16 + 0.34 * Math.max(0, Math.min(1, r.progress))); g.lineStyle(2, 0xff6666, 0.85); }
+            g.drawPolygon(pts); g.endFill();
         }
     };
     const refreshLayer = scene => {
