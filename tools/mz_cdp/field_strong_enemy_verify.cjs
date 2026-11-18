@@ -44,6 +44,7 @@ const FC = "ProjectRFieldCombat", SE = "ProjectRFieldStrongEnemy";
   // 強敵を「動かない・視界あり」の状態で付け直す(幾何を確かめる検証用。自然な戦闘は A で確かめる)
   const fixEnemy = async (x, y, dir) => { await put(19, 13); await ev(`${FC}.detachEnemy(1); 'ok'`); await ev(`${FC}.attachEnemy(1, { strong: 'dev_strong', reach: 2, sightTiles: 12, cooldownFrames: 60, chase: false }); 'ok'`); await putEnemy(x, y, dir); await sleep(200); };
   const phases = () => json("window.__ph");
+  const hitCount = () => ev(`${SE}.getLog().filter(function(e) { return e.type === 'damage'; }).length`);          // 判定が当たってダメージ処理を実行した回数(プレイヤーの回避 5% でダメージ 0 でも数える)
   const phaseOf = (list, id, p) => list.find(r => r.id === id && r.phase === p);
 
   // ---- A 登録・マップ・自然な戦闘 ----
@@ -82,23 +83,23 @@ const FC = "ProjectRFieldCombat", SE = "ProjectRFieldStrongEnemy";
     // 直線: 敵 (10,5)・プレイヤー (10,10)(約5マス)。溜めの間に D を押し続けて横へ歩く → 当たらない / 対照: 立っている → 当たる
     const run = async (move) => {
       await fixEnemy(10, 5, 2); await put(10, 10); await topUp(); await ev("window.__ph = []; 'ok'"); const ok = await waitAttack("line", 8000); if (!ok) return { started: false };
-      const x0 = await ev("$gamePlayer._realX"); const h0 = await hp();
+      const x0 = await ev("$gamePlayer._realX"); const h0 = await hp(), n0 = await hitCount();
       if (move) { await c.keyDown("D"); await sleep(520); await c.keyUp("D"); }
-      await waitEnd(8000); const x1 = await ev("$gamePlayer._realX"); return { started: true, moved: +(x1 - x0).toFixed(2), lost: h0 - (await hp()) };
+      await waitEnd(8000); const x1 = await ev("$gamePlayer._realX"); return { started: true, moved: +(x1 - x0).toFixed(2), lost: h0 - (await hp()), hits: (await hitCount()) - n0 };
     };
     const still = await run(false), side = await run(true);
-    rec("B1 直線: 立っていれば当たる(対照)・溜めの間に D で横へ歩けば(1マス以上)当たらない", still.started && still.lost > 0 && side.started && side.moved >= 1 && side.lost === 0, { still, side });
+    rec("B1 直線: 立っていれば当たる(対照)・溜めの間に D で横へ歩けば(1マス以上)当たらない", still.started && (still.lost > 0 || still.hits > 0) && side.started && side.moved >= 1 && side.lost === 0 && side.hits === 0, { still, side });
   });
   await check("B2", async () => {
     // 扇形: 敵 (10,8)・プレイヤー (10,9.6)(約1.6マス)。溜めの間に D で横へ歩く → 当たらない
     const run = async (move, key) => {
       await fixEnemy(10, 8, 2); await put(10, 9.6); await topUp(); await ev("window.__ph = []; 'ok'"); const ok = await waitAttack("cone", 8000); if (!ok) return { started: false };
-      const x0 = await ev("$gamePlayer._realX"), y0 = await ev("$gamePlayer._realY"); const h0 = await hp();
+      const x0 = await ev("$gamePlayer._realX"), y0 = await ev("$gamePlayer._realY"); const h0 = await hp(), n0 = await hitCount();
       if (move) { await c.keyDown(key); await sleep(800); await c.keyUp(key); }
-      await waitEnd(8000); const x1 = await ev("$gamePlayer._realX"), y1 = await ev("$gamePlayer._realY"); return { started: true, moved: +Math.hypot(x1 - x0, y1 - y0).toFixed(2), lost: h0 - (await hp()) };
+      await waitEnd(8000); const x1 = await ev("$gamePlayer._realX"), y1 = await ev("$gamePlayer._realY"); return { started: true, moved: +Math.hypot(x1 - x0, y1 - y0).toFixed(2), lost: h0 - (await hp()), hits: (await hitCount()) - n0 };
     };
     const still = await run(false), side = await run(true, "D"), side2 = await run(true, "A");
-    rec("B2 扇形: 立っていれば当たる(対照)・溜めの間に A/D で横へ歩けば(約3マス)当たらない", still.started && still.lost > 0 && side.started && side.moved >= 2.4 && side.lost === 0 && side2.started && side2.moved >= 2.4 && side2.lost === 0, { still, side, side2 });
+    rec("B2 扇形: 立っていれば当たる(対照)・溜めの間に A/D で横へ歩けば(約3マス)当たらない", still.started && (still.lost > 0 || still.hits > 0) && side.started && side.moved >= 2.4 && side.lost === 0 && side.hits === 0 && side2.started && side2.moved >= 2.4 && side2.lost === 0 && side2.hits === 0, { still, side, side2 });
   });
   await check("B3", async () => {
     // 絶(Shift): 溜めの間に、敵の横の遠くへマウスを向けて Shift → 瞬間移動して当たらない(直線)
@@ -150,10 +151,10 @@ const FC = "ProjectRFieldCombat", SE = "ProjectRFieldStrongEnemy";
       await fixEnemy(10, 7, 6); await put(13, 7); await topUp(); await ev("window.__ph = []; 'ok'"); const ok = await waitAttack("line", 8000); if (!ok) return { started: false };
       const full = await json(`${SE}.displayPolygon(1)`); await sleep(200); if (hide) await put(16.2, 7);
       await sleep(150); const poly = await json(`${SE}.displayPolygon(1)`), o = await json(`${SE}.get(1).origin`); const len = p => Math.max(...p.map(v => Math.hypot(v.x - o.x, v.y - o.y)));
-      const h0 = await hp(); await waitEnd(8000); return { started: true, len: +len(poly).toFixed(2), lost: h0 - (await hp()) };
+      const h0 = await hp(), n0 = await hitCount(); await waitEnd(8000); return { started: true, len: +len(poly).toFixed(2), lost: h0 - (await hp()), hits: (await hitCount()) - n0 };
     };
     const front = await run(false), behind = await run(true);
-    rec("C2 柱の裏へ入ると、予兆は柱で切れて(長さ < 4.5)・当たらない。柱の手前に立っていれば当たる", front.started && front.lost > 0 && behind.started && behind.len < 4.5 && behind.lost === 0, { front, behind });
+    rec("C2 柱の裏へ入ると、予兆は柱で切れて(長さ < 4.5)・当たらない。柱の手前に立っていれば当たる", front.started && (front.lost > 0 || front.hits > 0) && behind.started && behind.len < 4.5 && behind.lost === 0 && behind.hits === 0, { front, behind });
   });
 
   // ---- D 後片付け ----

@@ -1406,10 +1406,11 @@
             if (!sees) navLose(b);                                                                  // 見失った瞬間に経路を捨てる(最後に見た位置を覚えない)
             if (b.strong) {                                                                         // 強敵(Stage 7A): 攻撃の選び方と 溜め → 判定 → 硬直 は ProjectR_FieldStrongEnemy が持つ。攻撃している間は、ほかの動き・攻撃をしない
                 const sx = strongApi();
-                const sr = sx ? safe(() => sx.update({ eventId: id, profile: b.strong, active: rt.active, sees, playerDead: playerDead(), cooldown: b.cooldown, dist, center: c, player: p }), null) : null;
+                const sr = sx ? safe(() => sx.update({ eventId: id, profile: b.strong, active: rt.active, chase: b.chase, sees, playerDead: playerDead(), cooldown: b.cooldown, dist, center: c, player: p }), null) : null;
                 if (sr && sr.finished) { b.cooldown = b.cooldownFrames; b.attacks++; }
                 if (sr && sr.busy) { b.state = "strong"; navIdle(b); continue; }
                 if (b.state === "strong") b.state = "chase";
+                if (sr && (sr.move === "hold" || sr.move === "retreat")) { navIdle(b); continue; }              // 位置取り(Stage 7B): 帯の中では動かない / 下がる(動きは ProjectR_FieldStrongEnemy が DotMove で行う)。approach / default は、従来の追跡
             }
             if (b.state === "windup") {
                 const outcome = b.attackId != null ? safe(() => api.getOutcome(b.attackId), null) : null;

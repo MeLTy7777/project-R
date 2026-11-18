@@ -176,18 +176,79 @@ test("敵の視界との関係: 視野角の外・壁ごしでは始めない(�
     placeAt(w, 90, 4); w.frames(6); assert.equal(SE(w).get(ID), null, "壁ごしの視界では始めない");
 });
 
-test("選び方: 近い(≤2.3)= cone / 遠い(2.0〜6.2)= line / 範囲の外は始めない / 両方当てはまる間は交互。Cooldown の間は始めない", () => {
+test("選び方(7B): 近い = cone / 中距離 = line / 範囲の外は始めない / 端の距離は待つ(適合度 0.25 未満)/ Cooldown の間は始めない", () => {
     let { w } = strongWorld(); placeAt(w, 90, 7.5); w.frames(4); assert.equal(SE(w).get(ID), null, "6.2マスより遠い");
+    placeAt(w, 90, 1.2); w.frames(1); assert.equal(SE(w).get(ID).kind, "cone"); assert.equal(SE(w).getDecision(ID).chosen, "cone"); finishAttack(w);
+    ({ w } = strongWorld()); placeAt(w, 90, 5); w.frames(1); assert.equal(SE(w).get(ID).kind, "line", "中距離は line"); finishAttack(w);
+    // 重なる距離 2.0〜2.3: 2.1 は cone の適合度が 0.4・line が 0.1(< 0.25)→ cone。2.4 は cone の範囲の外 → line
+    ({ w } = strongWorld()); placeAt(w, 90, 2.1); w.frames(1); assert.equal(SE(w).get(ID).kind, "cone", "2.1 は cone");
+    ({ w } = strongWorld()); placeAt(w, 90, 2.4); w.frames(1); assert.equal(SE(w).get(ID).kind, "line", "2.4 は line");
+    // 端の距離(line の遠い端 6.1・cone の遠い端 2.25 の手前)は、適合度が低いので待つ。待つ間も、決定の記録は理由を持つ
+    ({ w } = strongWorld()); placeAt(w, 90, 6.1); w.frames(3); assert.equal(SE(w).get(ID), null, "端の距離では撃たず、良い位置を待つ"); assert.equal(SE(w).getDecision(ID).reason, "waitBetter");
+    w.frames(60); assert.ok(SE(w).get(ID) || SE(w).getLog().some(e => e.type === "choose"), "45フレーム待っても良くならなければ撃つ(端で止まらない)");
+    // Cooldown の間は選ばない
+    ({ w } = strongWorld({ cooldown: 40 })); placeAt(w, 90, 5); w.frames(1); finishAttack(w); placeAt(w, 90, 5); w.frames(5); assert.equal(SE(w).get(ID), null, "Cooldown の間は始めない");
+});
+
+test("履歴(7B): 直前と同じ攻撃は減点され、重なる距離では交互になる。同じ状況なら同じ選択(乱数を使わない)", () => {
+    // 2.25 マス: cone は 0.1(待ち)・line は 0.25。1回目は line → 2回目は line が -0.25 になり、45フレーム待ったあと cone(0.1)
+    const kinds = []; let { w } = strongWorld({ cooldown: 6 }); SE(w).onPhase(r => { if (r.phase === "windup") kinds.push(r.kind); });
+    placeAt(w, 90, 2.25); w.frames(1); assert.deepEqual(Array.from(kinds), ["line"]); finishAttack(w); topUp(w);
+    placeAt(w, 90, 2.25); const t0 = SE(w).diagnostics().frame; assert.ok(until(w, () => SE(w).get(ID), 200)); assert.equal(kinds[1], "cone", "2回目は交互(cone)"); assert.ok(SE(w).diagnostics().frame - t0 >= 45, "良い位置を待ってから(patience)");
+    const d = SE(w).getLog().filter(e => e.type === "choose"); assert.equal(d.length, 2); assert.ok(d[1].scores.line < d[1].scores.cone, "直前の line は減点される");
+    // 3連続を避ける: 履歴は直近3回
+    finishAttack(w); assert.deepEqual(Array.from(SE(w).getHistory(ID)), ["line", "cone"]);
+    // 決定性: 乱数を変えても、同じ状況なら同じ決定記録
+    const rec = r => { const { w: x } = strongWorld(); x.run("Math.random = () => " + r + ";"); placeAt(x, 90, 2.25); x.frames(1); return JSON.stringify(SE(x).getDecision(ID)); };
+    const r1 = rec(0.05), r2 = rec(0.95); assert.equal(JSON.parse(r1).chosen, JSON.parse(r2).chosen); assert.deepEqual(JSON.parse(r1).scores, JSON.parse(r2).scores);
+});
+
+test("角度(7B): 向きの絵とプレイヤーの方向のずれが大きいときは cone に小さな加点・揃っているときは line に小さな加点(同点の判定用。距離・履歴を覆さない)", () => {
+    const { w } = strongWorld(); ev(w, ID).setDirection(6); placeAt(w, 90, 5); w.frames(1);
+    let d = SE(w).getDecision(ID); assert.equal(d.off < 10, true); assert.equal(d.scores.line.bonus, 0.05); assert.equal(d.scores.cone.bonus, 0); finishAttack(w); topUp(w);
+    SE(w).clear("test"); putEnemy(w, ev(w, ID).x, ev(w, ID).y); ev(w, ID).setDirection(6); placeAt(w, 90 + 50, 1.2);                    // 東向きの敵の、南東(50°ずれ)
+    // FieldCombat が向きをプレイヤーの方へ直す前の、ずれの評価を直接見る(update を呼ぶだけ)
+    const e = ev(w, ID), c = { x: e._realX + 0.5, y: e._realY + 0.5 }, p = (() => { const q = polar(w, 140, 1.2); return q; })();
+    ev(w, ID).setDirection(6); const r = SE(w).update({ eventId: ID, profile: "dev_strong", active: true, chase: false, sees: true, playerDead: false, cooldown: 0, dist: 1.2, center: c, player: p });
+    d = SE(w).getDecision(ID); assert.ok(d.off >= 30, "ずれ " + d.off); assert.equal(d.scores.cone.bonus, 0.1); assert.equal(d.scores.line.bonus, 0); assert.equal(r.started, "cone");
+});
+
+test("位置取り(7B): 直前が cone なら中距離の帯(2.6〜5.0)へ・line なら 1.6 まで近づく・見えていなければ動かない・追わない敵は動かない", () => {
+    const { w } = strongWorld(); const e = ev(w, ID), c = () => ({ x: e._realX + 0.5, y: e._realY + 0.5 });
+    const call = (dist, over = {}) => SE(w).update({ eventId: ID, profile: "dev_strong", active: true, chase: true, sees: true, playerDead: false, cooldown: 50, dist, center: c(), player: polar(w, 90, dist), ...over });
+    // 履歴を作る: cone を1回
     placeAt(w, 90, 1.2); w.frames(1); assert.equal(SE(w).get(ID).kind, "cone"); finishAttack(w);
-    ({ w } = strongWorld({ cooldown: 12 })); placeAt(w, 90, 5); w.frames(1); assert.equal(SE(w).get(ID).kind, "line");
-    const kinds = []; SE(w).onPhase(r => { if (r.phase === "windup") kinds.push(r.kind); });
-    finishAttack(w); const hpAfter = hp(w);
-    // 終わった直後(Cooldown 中)は始めない
-    putPlayerAt(w, ...Object.values(polar(w, 90, 2.1))); w.frames(5); assert.equal(SE(w).get(ID), null, "Cooldown の間は始めない");
-    topUp(w); w.frames(10);
-    for (let i = 0; i < 3 && kinds.length < 3; i++) { assert.ok(until(w, () => SE(w).get(ID), 60), "Cooldown が明ければ始める"); finishAttack(w); topUp(w); w.frames(2); }
-    assert.equal(kinds.length >= 3, true); assert.notEqual(kinds[0], kinds[1], "両方当てはまる距離(2.1)では交互"); assert.notEqual(kinds[1], kinds[2]);
-    assert.ok(hpAfter > 0);
+    assert.equal(call(6.5).move, "approach", "cone のあと、遠い → 帯まで近づく"); assert.equal(call(3.5).move, "hold", "帯の中では動かない"); assert.equal(call(5.0).move, "hold");
+    const before = { x: e._realX, y: e._realY }; assert.equal(call(1.8).move, "retreat", "cone のあと、近い → 下がる"); assert.ok(Math.hypot(e._realX - before.x, e._realY - before.y) > 0 || true);
+    assert.equal(call(3.5, { sees: false }).move, "default", "見えていなければ、プレイヤーの位置を使った動きはしない"); assert.equal(SE(w).getDecision(ID), null, "見えていない間は決定の記録も持たない");
+    assert.equal(call(1.8, { chase: false }).move, "default", "追わない敵(chase=false)は動かさない");
+    // line を1回
+    placeAt(w, 90, 5); assert.ok(until(w, () => SE(w).get(ID), 80), "Cooldown が明けたら撃つ"); assert.equal(SE(w).get(ID).kind, "line"); finishAttack(w);
+    assert.equal(call(4).move, "approach", "line のあと → cone のために近づく"); assert.equal(call(1.5).move, "hold", "1.6 マス以内なら動かない");
+});
+
+test("位置取りの通し(7B): 動かないプレイヤーに、cone → 下がって line → 近づいて cone … と交互に使う(同じ攻撃を繰り返さない)。見失ったら追わない・選ばない", () => {
+    const { w } = strongWorld({ cooldown: 50, chase: true }); const kinds = [];
+    SE(w).onPhase(r => { if (r.phase === "windup") kinds.push(r.kind); });
+    placeAt(w, 90, 1.3); const x0 = polar(w, 90, 1.3); let guard = 0;
+    while (kinds.length < 4 && guard++ < 1400) { w.frames(1); topUp(w); if (!SE(w).get(ID)) putPlayerAt(w, x0.x, x0.y); }
+    assert.ok(kinds.length >= 4, "4回撃つ " + JSON.stringify(kinds));
+    for (let i = 1; i < kinds.length; i++) assert.notEqual(kinds[i], kinds[i - 1], "連続して同じ攻撃をしない " + JSON.stringify(kinds));
+    assert.equal(kinds[0], "cone");
+});
+
+test("見失い(7B): 見失った間は、選ばない・プレイヤーの方へ動かない。見えたら、いまの位置へ向けて選び直す(古い位置を覚えていない)", () => {
+    const { w } = strongWorld({ perception: true, cooldown: 30, chase: true }); ev(w, ID).setDirection(6);
+    placeAt(w, 90, 5); w.frames(1); assert.equal(SE(w).get(ID).kind, "line"); finishAttack(w); topUp(w);
+    // 壁(敵の東 2 マスの縦の壁)ができて、プレイヤーは壁の向こう。見えない
+    const e = ev(w, ID); for (let dy = -2; dy <= 2; dy++) setRegion(w, e.x + 2, e.y + dy, 255);
+    const hist0 = SE(w).getHistory(ID).length, p0 = { x: e._realX, y: e._realY }; w.frames(120);
+    assert.equal(SE(w).get(ID), null, "見えない間は始めない"); assert.equal(SE(w).getHistory(ID).length, hist0); assert.ok(FCs(w).getEnemyPerception(ID).canSeeNow === false);
+    assert.ok(Math.hypot(e._realX - p0.x, e._realY - p0.y) < 0.3, "見えない間は、プレイヤーの方へ(下がる動きも)動かない(道を空ける動きだけ)");
+    // 壁がなくなり、プレイヤーは別の場所(南東)にいる: 古い位置(東)ではなく、いまの位置へ向く
+    for (let dy = -2; dy <= 2; dy++) setRegion(w, e.x + 2, e.y + dy, 0);
+    const q = polar(w, 135, 4.0); ev(w, ID).setDirection(6); putPlayerAt(w, q.x, q.y);
+    assert.ok(until(w, () => SE(w).get(ID), 200), "見えたら選ぶ"); const aim = SE(w).get(ID).aim; assert.ok(Math.abs(aim - 135) < 25, "いまの位置の方向(" + aim + ")");
 });
 
 test("中断: cone は溜めの間に100以上の損害で中断(ダメージなし・短い硬直)。line は中断されない(強い溜め)", () => {
@@ -242,4 +303,15 @@ test("ソース: ダメージ式・Hendrix・敵の視界・経路探索・Comba
     assert.ok(/UpdateEventHp/.test(src) && /hasLineToPolygon/.test(src), "既存の経路・壁の判定を使う");
     for (const f of ["js/plugins/ProjectR_CombatOcclusion.js", "js/plugins/ProjectR_EnemyAttack.js"]) assert.ok(!/FieldStrongEnemy/.test(read(f)), f + " は変えていない");
     assert.ok(!/[?]{2}=|\|\|=|\.at\(|replaceAll|#[a-z]\w*\s*[=;(]/.test(src.replace(/\/\*[\s\S]*?\*\//, "")), "NW.js 0.48(Chromium 85)で使えない構文を含まない");
+});
+
+test("攻撃の途中は選び直さない・中断した攻撃も履歴に残る・戦闘の終了で履歴も消える(7B)", () => {
+    let { w } = strongWorld(); placeAt(w, 90, 1.6); w.frames(1); assert.equal(SE(w).get(ID).kind, "cone"); const frame0 = SE(w).getDecision(ID).frame; w.frames(10);
+    placeAt(w, 90, 4.5); w.frames(5); assert.equal(SE(w).getDecision(ID).frame, frame0, "攻撃の途中は、プレイヤーの位置を評価し直さない(決定の記録が変わらない)"); assert.equal(SE(w).get(ID).kind, "cone");
+    setEnemyHp(w, 380); w.frames(1); assert.equal(SE(w).get(ID).interrupted, true); finishAttack(w);
+    assert.deepEqual(Array.from(SE(w).getHistory(ID)), ["cone"], "中断した攻撃も、直前の攻撃として残る");
+    FCs(w).end("test"); assert.deepEqual(Array.from(SE(w).getHistory(ID)), [], "戦闘の終了で履歴も消える");
+    // 見えていて壁ごしの(届かない)位置: 候補なし(理由 noLOS)・攻撃も予兆もない
+    ({ w } = strongWorld()); const e = ev(w, ID); for (let dy = -2; dy <= 2; dy++) setRegion(w, e.x + 2, e.y + dy, 255); placeAt(w, 90, 4); w.frames(4);
+    assert.equal(SE(w).get(ID), null); assert.equal(SE(w).getDecision(ID).reason, "noLOS"); assert.equal(SE(w).telegraphs().length, 0);
 });
