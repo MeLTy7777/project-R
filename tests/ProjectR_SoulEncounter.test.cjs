@@ -1210,7 +1210,7 @@ test("I6-C2 データの検証: JSON・Map007・参照(変数・コモンイベ�
     assert.match(ce[5].list.find(c => c.code === 401).parameters[0], /\\V\[19\]/, "勝利の回数を表示する");
     assert.match(ce[6].list.find(c => c.code === 401).parameters[0], /\\V\[18\]/, "その他の回数を表示する");
     // マップ情報: 1〜6 はそのまま・7 が追加。開始位置は元のまま
-    assert.deepEqual(infos.filter(m => m && m.id !== 3).map(m => [m.id, m.name]), [[1, "MAP001"], [2, "GunTemplate"], [4, "DEV_CombatTestArena"], [5, "DEV_CombatTransferRoom"], [6, "DEV_SoulBattleStage"], [7, "TEST_SOUL"], [8, "DEV_FieldBattle"], [9, "DEV_FieldStrongEnemy"], [10, "DEV_FieldMiniboss"]]);      // 8 = フィールド戦闘のDEV戦闘マップ(後から追加)/ 9 = 強敵の攻撃パターンのDEVマップ(Stage 7A)/ 10 = 2段階の中ボスのDEVマップ(Stage 7C)
+    assert.deepEqual(infos.filter(m => m && m.id !== 3).map(m => [m.id, m.name]), [[1, "MAP001"], [2, "GunTemplate"], [4, "DEV_CombatTestArena"], [5, "DEV_CombatTransferRoom"], [6, "DEV_SoulBattleStage"], [7, "TEST_SOUL"], [8, "DEV_FieldBattle"], [9, "DEV_FieldStrongEnemy"], [10, "DEV_FieldMiniboss"], [11, "DEV_FieldBoss"]]);      // 8 = フィールド戦闘のDEV戦闘マップ(後から追加)/ 9 = 強敵の攻撃パターンのDEVマップ(Stage 7A)/ 10 = 2段階の中ボスのDEVマップ(Stage 7C)/ 11 = ボスHUD確認のDEVマップ(Stage 7D-A)
     assert.deepEqual([sys.startMapId, sys.startX, sys.startY], [1, 29, 19], "ゲームの開始位置は書き換えていない");
     assert.equal(sys.variables.length, 21);
     // Map007: 大きさ・床・イベント

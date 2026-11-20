@@ -29,7 +29,7 @@
  * 【API】 ProjectRFieldStrongEnemy
  *   update(ctx) -> { busy, started, finished, move }   (FieldCombat が呼ぶ。move = 攻撃していないときの位置取り: approach / hold / retreat / default)
  *   telegraphs() / get(eventId) / list() / interrupt(eventId, reason) / clear(reason) / onPhase(fn) / getLog() / diagnostics()
- *   getPhase(eventId) = { phase, transition, framesLeft } / cues() = 遷移の輪(金色。攻撃ではない)
+ *   getPhase(eventId) = { phase, transition, framesLeft, chainIndex, followUp, profile, phaseCount, transitionRatio }  (HUD などが読む。読み出し専用) / cues() = 遷移の輪(金色。攻撃ではない)
  *   getDecision(eventId) = 直近の選択の記録(候補ごとの 適合度・減点・加点・得点・届くか) / getHistory(eventId) = 直近3回の攻撃の種類
  *   shapePolygon(spec, origin, aimDegree) / displayPolygon(eventId) / playerHitTest(eventId) / PROFILES
  *
@@ -144,7 +144,7 @@
     };
 
     // ---------- 攻撃の進行 ----------
-    const stateOf = id => { let s = states.get(id); if (!s) { s = { attack: null, last: null, count: 0, history: [], waited: 0, decision: null, noRetreat: false, retreatPrev: null, retreatStuck: 0, phase: 0, transition: null, followUp: false, chainIndex: 0, toneSet: false }; states.set(id, s); } return s; };
+    const stateOf = id => { let s = states.get(id); if (!s) { s = { attack: null, last: null, count: 0, history: [], waited: 0, decision: null, noRetreat: false, retreatPrev: null, retreatStuck: 0, phase: 0, transition: null, followUp: false, chainIndex: 0, toneSet: false, profileName: null }; states.set(id, s); } return s; };
     const phaseEvent = (a, phase, extra) => { a.phase = phase; const rec = { id: a.id, eventId: a.eventId, kind: a.kind, phase, ...extra }; note({ type: "phase", ...rec }); emit(rec); };
     // 取り消した攻撃が出していた判定のイベントは、すぐ消す(3フレームの寿命を待たない。ダメージは attack が無ければ出ない)
     const dropHitboxes = a => { for (const id of a.hitboxIds || []) { try { const x = map().event(id); if (x && !x._erased) command(a.eventId, "DestroyEvent", { target: String(id), destroyNearby: "", permanent: "false" }); } catch (_e) { /* 後片付け */ } } a.hitboxIds = []; };
@@ -269,6 +269,7 @@
         frameNo++;
         try {
             const profile0 = PROFILES[ctx.profile] || PROFILES.dev_strong, e = map() && map().event(ctx.eventId), s = stateOf(ctx.eventId);
+            s.profileName = PROFILES[ctx.profile] ? ctx.profile : "dev_strong";
             if (!e || e._erased || hpOf(ctx.eventId) <= 0) { if (s.attack) finish(s, "sourceGone"); s.transition = null; resetTone(e, s); return { busy: false }; }          // 倒れた(遷移中の致命傷を含む): 攻撃も遷移も消える
             if (ctx.active === false) { if (s.attack) finish(s, "inactive"); if (s.transition) { s.transition = null; } return { busy: false }; }          // 戦闘が終わったあと(撤退・勝利・敗北の移動の間)は、新しい攻撃を始めない・進行中のものは取り消す
             // 2段階の中ボス: 実際に適用された HP が閾値以下になった最初のフレームで、1回だけ遷移(HP は次のフレームで減るので、適用された値を毎フレーム見る)
@@ -324,7 +325,7 @@
         onPhase: fn => { if (typeof fn !== "function") return () => {}; listeners.add(fn); return () => listeners.delete(fn); },
         getLog: () => log.map(e => ({ ...e })),
         getDecision: id => { const s = states.get(Number(id)); return s && s.decision ? JSON.parse(JSON.stringify(s.decision)) : null; },
-        getPhase: id => { const s = states.get(Number(id)); return s ? { phase: s.phase || 1, transition: !!s.transition, framesLeft: s.transition ? s.transition.frames : 0, chainIndex: s.chainIndex, followUp: s.followUp } : null; },
+        getPhase: id => { const s = states.get(Number(id)); return s ? { phase: s.phase || 1, transition: !!s.transition, framesLeft: s.transition ? s.transition.frames : 0, chainIndex: s.chainIndex, followUp: s.followUp, profile: s.profileName, phaseCount: (PROFILES[s.profileName] && PROFILES[s.profileName].phases ? PROFILES[s.profileName].phases.length : 1), transitionRatio: (PROFILES[s.profileName] && PROFILES[s.profileName].transition ? PROFILES[s.profileName].transition.ratio : null) } : null; },
         getHistory: id => { const s = states.get(Number(id)); return s ? [...s.history] : []; },
         diagnostics: () => ({ enemies: states.size, active: [...states.values()].filter(s => s.attack).length, frame: frameNo, serial, errors })
     });

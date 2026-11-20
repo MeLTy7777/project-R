@@ -395,6 +395,31 @@ Stage 7A の手順で、`battleMapId` を **10** にして入る: `ProjectRField
 3. フェーズ2: 敵は赤みがかり、予兆の色が**オレンジ**になる。**扇形 → すぐ直線**(または同じ攻撃の連続)の 2 連続のあと、約 2 秒の休み。連続の間にも 1 撃目の硬直がある(攻撃の機会)。横へ歩く・Shift でよける・扇形の溜めに銃 2 発で止める、は引き続き使える。
 4. 遷移の途中で倒す → フェーズ2にならず勝利。撤退の人に話しかける → 攻撃・輪が消えて戻る。
 
+## Stage 7D-A: フィールド戦闘のボスHUD
+
+新規 `js/plugins/ProjectR_FieldBossHud.js`(v0.1.0)。ボス戦の間だけ、**名前・HP(現在/最大・バー)・フェーズ**を画面上部に出す共通のHUD。AI・攻撃・ダメージ・Cooldown・フェーズの遷移の規則・セーブには触らない(読むだけ)。`ProjectR_FieldStrongEnemy.js` には、読み出し専用の情報を `getPhase()` に足しただけ(プロフィール名・段階数・遷移の閾値。動きは変えない)。
+
+### 指定と表示
+- **ボスの指定**: 敵イベントのメモに `<fieldBoss: 名前 | phases=2 | color=c0392b | label=PHASE>`。名前は省略すると敵データベースの名前・`phases=` を省略すると強敵のプロフィールの段階数(1 のときはフェーズを出さない)・`color` はバーの色・`label` はフェーズの前の文字。**特定のボス名・プロフィール名は plugin に書いていない**(再利用用)。表示の既定(位置・幅・残像の速さ・色)は `ProjectRFieldBossHud.configure({...})` で変えられる。ボスが複数いるときは、イベントIDの小さい方。
+- **出る条件**: フィールド戦闘中(`ProjectRFieldCombat.isActive()`)で、`<fieldBoss>` を持つ敵が戦闘に付いているときだけ。指定のない戦闘(Map008・Map009・Map010)・探索マップでは出ない。勝利・撤退・マップ移動・戦闘の終了で消える。倒れたら、HP 0 の表示が数フレーム(deadFrames=30)残ってから消える。
+- **表示**: 名前(左上)/ `PHASE n/m`(右上。遷移の間は金色の `PHASE 2/2…` とバーの縁も金色)/ HPバー(減った分は黄色の残像が遅れて追いつく・回復はすぐ追いつく・遷移の閾値に白い目盛り)/ `HP 現在 / 最大`(バーの下)。
+- **実際の HP**: `getCurrentEventHp` / `getMaxEventHp`(いまゲームに適用されている値。Hendrix は HP を次のフレームで適用する)を毎フレーム読む。ダメージ・回復・過回復・フェーズの遷移のあとも、先取りも遅れたままにもならない(実機: 一致のずれ 0)。
+- **位置**: 既存の戦闘HUD(`ProjectR_BattleHUD` の Manager)の中・1920×1080 基準。**画面上部の中央は ULTIMATE のHUD(y 20〜150)が使っているので、その下**(名前 y≈162 / バー y=196 / HPの数 y≈220〜245。x 580〜1340)。プレイヤーの表示・スキル枠(下側)・ULTIMATE・予兆(世界の中)と重ならない(描画される部品ごとに実機で確認)。既存の `ProjectR_CombatExtrasHUD`(カード戦闘のボスHUD)は、別の戦闘のものとして、そのまま(あちらは y=70 で ULTIMATE と重なる。今回は変えていない)。
+
+### DEV マップ
+- **Map011(DEV_FieldBoss。`data/MapInfos.json` に 1 行)**: Map010 と同じ地形・同じ 2 段階の中ボス + `<fieldBoss: DEV 中ボス(2段階) | phases=2>` のタグだけ。Map008・Map009・Map010 は変えていない(それらでは、ボスHUD は出ない)。
+
+### 検証
+- Node: `tests/ProjectR_FieldBossHud.test.cjs` 7 本(タグ・出る条件・実際の HP(ダメージ・回復・過回復)・フェーズ(遷移・目盛り・段階数)・名前と複数のボス・死亡/勝利/撤退/マップ移動/再入場・読むだけ)。
+- 実機: `tools/mz_cdp/field_boss_hud_verify.cjs` 14/14(上の挙動と、既存HUDとの重なり)。既存の戦闘HUDの回帰(`field_hud6a_verify` ほか)も合格。
+
+### 手動の確認(Playtest)
+Stage 7A の手順で、`battleMapId` を **11** にして入る: `ProjectRFieldCombat.startEncounter({ encounterId: 'boss', battleMapId: 11, spawnX: 10, spawnY: 12, direction: 8, resultVariableId: 9 })`。
+1. 画面上部の中央、ULTIMATE のゲージの**下**に、ボスの名前・赤い HP バー・`HP 500 / 500`・`PHASE 1/2` が出る(バーの真ん中の白い目盛り = フェーズが変わる 50%)。
+2. 銃などで当てると、HP の数とバーが減り、黄色い残像が遅れて追いつく。ポーションなどで増えれば上がる。
+3. HP が半分(250)になると、`PHASE 2/2…`(金色)と金色の輪 → 終わると `PHASE 2/2`。
+4. 倒すと HP 0 の表示のあと消えて、元のマップへ戻る。撤退の人に話しかけても消える。Map008・Map009・Map010(従来の戦闘)では、ボスHUD は出ない。
+
 ## 敵と予兆
 
 - 敵は既存の `<enemy>` つきのイベント(Map001 の「公式銃テスト敵」)。`ProjectRFieldCombat.attachEnemy(eventId)` で、メモリ上だけ「近づく → 範囲に入ったら溜めて(予兆)→ 近接攻撃 → Cooldown」の行動をつけます(`ProjectREnemyAttack` の予約を使う)。溜めの間は動きません。元の並列ページの攻撃は止めます(二重にならないように)。
