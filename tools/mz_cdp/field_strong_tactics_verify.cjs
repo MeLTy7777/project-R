@@ -20,6 +20,8 @@ const FC = "ProjectRFieldCombat", SE = "ProjectRFieldStrongEnemy";
   const topUp = () => ev("$gameParty.leader().setHp($gameParty.leader().mhp); 'ok'");
   const put = async (x, y) => { await ev(`$gamePlayer.locate(${Math.floor(x)}, ${Math.floor(y)}); $gamePlayer._realX = ${x}; $gamePlayer._realY = ${y}; $gamePlayer.center(${x}, ${y}); 'ok'`); await sleep(250); };
   const putEnemy = (x, y, dir) => ev(`(function(){ var e = $gameMap.event(1); e.locate(${x}, ${y}); e._realX = ${x}; e._realY = ${y}; e.setDirection(${dir || 2}); return 'ok'; })()`);
+  // 銃と同じダメージ式(player weapon)の命中を、コマンドで直接 n 回(タイミング・回避 5%・ばらつきで中断の検証が揺れないように)
+  const weaponHits = n => ev(`(function(){ for (var i = 0; i < ${n}; i++) PluginManager.callCommand(Object.assign(new Game_Interpreter(), { _eventId: 0 }), 'Hendrix_Action_Engine', 'UpdateEventHp', { eventId: '1', value: '-player weapon', exceedMaxHealth: 'false' }); return 'ok'; })()`);
   const atk = () => json(`${SE}.get(1)`);
   const waitAttack = (kind, ms = 15000) => wait(`(function(){ var a = ${SE}.get(1); return !!a && ${kind ? `a.kind === '${kind}' && ` : ""}a.phase === 'windup'; })()`, ms);
   const waitEnd = (ms = 8000) => wait(`!${SE}.get(1)`, ms);
@@ -98,7 +100,7 @@ const FC = "ProjectRFieldCombat", SE = "ProjectRFieldStrongEnemy";
     await fixEnemy(10, 7, 2, { chase: true, cooldownFrames: 40 }); await ev(`${FC}.setPerception({ enabled: false }); 'ok'`); await ev("$gameSystem.setGunAmmo(51, 7); $gameParty.gainItem($dataItems[31], 60); 'ok'"); await ev("window.__ph = []; 'ok'"); await topUp();
     await put(10, 8.7); const ok = await waitAttack("cone", 8000); if (!ok) { rec("T5 中断", false, "cone が始まらない"); return; }
     const a0 = await atk(); const e = await ev("({ x: $gameMap.event(1).screenX(), y: $gameMap.event(1).screenY() })"); await c.pointer(e.x, e.y - 24); await sleep(80);
-    for (let k = 0; k < 3; k++) { await c.rightClick(undefined, 50); await sleep(220); }
+    await weaponHits(3);
     await waitEnd(8000); const ph = await json("window.__ph"); const end = ph.find(r => r.id === a0.id && r.phase === "end"); const hist = await json(`${SE}.getHistory(1)`);
     await put(10, 8.7); const ok2 = await waitAttack(null, 10000); const a1 = ok2 ? await atk() : null; const d1 = await dist();
     rec("T5 扇形を銃で中断 → 履歴に cone が残る・次の攻撃は line(下がってから)", end && end.reason === "interrupted" && hist[hist.length - 1] === "cone" && !!a1 && a1.kind === "line", { reason: end && end.reason, hist, next: a1 && a1.kind, d: +d1.toFixed(2) });

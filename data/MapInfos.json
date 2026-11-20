@@ -8,5 +8,6 @@ null,
 {"id":6,"expanded":false,"name":"DEV_SoulBattleStage","order":6,"parentId":0,"scrollX":0,"scrollY":0},
 {"id":7,"expanded":false,"name":"TEST_SOUL","order":7,"parentId":0,"scrollX":0,"scrollY":0},
 {"id":8,"expanded":false,"name":"DEV_FieldBattle","order":8,"parentId":0,"scrollX":0,"scrollY":0},
-{"id":9,"expanded":false,"name":"DEV_FieldStrongEnemy","order":9,"parentId":0,"scrollX":0,"scrollY":0}
+{"id":9,"expanded":false,"name":"DEV_FieldStrongEnemy","order":9,"parentId":0,"scrollX":0,"scrollY":0},
+{"id":10,"expanded":false,"name":"DEV_FieldMiniboss","order":10,"parentId":0,"scrollX":0,"scrollY":0}
 ]

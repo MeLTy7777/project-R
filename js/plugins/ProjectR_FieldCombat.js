@@ -1406,8 +1406,9 @@
             if (!sees) navLose(b);                                                                  // 見失った瞬間に経路を捨てる(最後に見た位置を覚えない)
             if (b.strong) {                                                                         // 強敵(Stage 7A): 攻撃の選び方と 溜め → 判定 → 硬直 は ProjectR_FieldStrongEnemy が持つ。攻撃している間は、ほかの動き・攻撃をしない
                 const sx = strongApi();
-                const sr = sx ? safe(() => sx.update({ eventId: id, profile: b.strong, active: rt.active, chase: b.chase, sees, playerDead: playerDead(), cooldown: b.cooldown, dist, center: c, player: p }), null) : null;
-                if (sr && sr.finished) { b.cooldown = b.cooldownFrames; b.attacks++; }
+                const sr = sx ? safe(() => sx.update({ eventId: id, profile: b.strong, active: rt.active, chase: b.chase, cooldownFrames: b.cooldownFrames, sees, playerDead: playerDead(), cooldown: b.cooldown, dist, center: c, player: p }), null) : null;
+                if (sr && sr.finished) { b.cooldown = Number.isFinite(sr.cooldown) ? sr.cooldown : b.cooldownFrames; b.attacks++; }          // 中ボスのフェーズ2は、連続の2撃目(0)・短い Cooldown・長い休みを cooldown で返す
+                else if (sr && Number.isFinite(sr.cooldown)) b.cooldown = sr.cooldown;
                 if (sr && sr.busy) { b.state = "strong"; navIdle(b); continue; }
                 if (b.state === "strong") b.state = "chase";
                 if (sr && (sr.move === "hold" || sr.move === "retreat")) { navIdle(b); continue; }              // 位置取り(Stage 7B): 帯の中では動かない / 下がる(動きは ProjectR_FieldStrongEnemy が DotMove で行う)。approach / default は、従来の追跡
@@ -1962,6 +1963,7 @@
     };
     // 強敵の予兆(Stage 7A): 判定と同じ多角形(溜め = 淡い赤で濃くなる / 判定中 = 濃い赤と白い縁)。見えていない敵の予兆は出さない。
     const strongTelegraphs = () => { const sx = strongApi(); if (!sx || !rt.active) return []; return safe(() => sx.telegraphs().filter(r => eventVisible(map()?.event(r.eventId))), []); };
+    const strongCues = () => { const sx = strongApi(); if (!sx || !rt.active || typeof sx.cues !== "function") return []; return safe(() => sx.cues().filter(r => eventVisible(map()?.event(r.eventId))), []); };
     // HUD: 既存の ProjectR_BattleHUD の5枠(スキル枠)に、固定アビリティを表示する(カードの手札・山札の表示は、フィールド戦闘の間だけ使わない)。
     //   BattleHUD のデータ元(DataAdapter)の skills() / cardCounts() を、フィールド戦闘の間だけ差し替える。HUDの描画・配置は既存のまま。
     const slotIcon = (def, item) => {
@@ -2081,8 +2083,13 @@
         }
         for (const r of strongTelegraphs()) {
             const pts = []; for (const q of r.polygon) { const sp = toScreen(q.x, q.y); pts.push(sp.x, sp.y); }
-            if (r.phase === "active") { g.beginFill(0xff1a1a, 0.62); g.lineStyle(3, 0xffffff, 0.95); } else { g.beginFill(0xff2a2a, 0.16 + 0.34 * Math.max(0, Math.min(1, r.progress))); g.lineStyle(2, 0xff6666, 0.85); }
+            const lk = r.look || null;                                                              // 中ボスのフェーズ2は、予兆の色がオレンジ(形・時間は同じ)
+            if (r.phase === "active") { g.beginFill(lk ? lk.fill : 0xff1a1a, 0.62); g.lineStyle(3, 0xffffff, 0.95); } else { g.beginFill(lk ? lk.fill : 0xff2a2a, 0.16 + 0.34 * Math.max(0, Math.min(1, r.progress))); g.lineStyle(2, lk ? lk.line : 0xff6666, 0.85); }
             g.drawPolygon(pts); g.endFill();
+        }
+        for (const r of strongCues()) {                                                             // 中ボスの遷移の輪(金色の輪。攻撃ではない)
+            const pts = []; for (const q of r.polygon) { const sp = toScreen(q.x, q.y); pts.push(sp.x, sp.y); }
+            g.beginFill(0xffd24a, 0.10 * (1 - r.progress)); g.lineStyle(4, 0xffe27a, 0.95 * (1 - 0.5 * r.progress)); g.drawPolygon(pts); g.endFill();
         }
     };
     const refreshLayer = scene => {

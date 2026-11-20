@@ -20,6 +20,8 @@ const FC = "ProjectRFieldCombat", SE = "ProjectRFieldStrongEnemy";
   const put = async (x, y) => { await ev(`$gamePlayer.locate(${Math.floor(x)}, ${Math.floor(y)}); $gamePlayer._realX = ${x}; $gamePlayer._realY = ${y}; $gamePlayer.center(${x}, ${y}); 'ok'`); await sleep(250); };
   const putEnemy = (x, y, dir) => ev(`(function(){ var e = $gameMap.event(1); e.locate(${x}, ${y}); e._realX = ${x}; e._realY = ${y}; e.setDirection(${dir || 2}); return 'ok'; })()`);
   const setEnemyHp = n => ev(`(function(){ var hp = $gameMap.getCurrentEventHp(1); PluginManager.callCommand(Object.assign(new Game_Interpreter(), { _eventId: 0 }), 'Hendrix_Action_Engine', 'UpdateEventHp', { eventId: '1', value: (${n} > hp ? '+' : '') + (${n} - hp), exceedMaxHealth: 'true' }); return 'ok'; })()`);
+  // 銃と同じダメージ式(player weapon)の命中を、コマンドで直接 n 回(タイミング・回避 5%・ばらつきで中断の検証が揺れないように)
+  const weaponHits = n => ev(`(function(){ for (var i = 0; i < ${n}; i++) PluginManager.callCommand(Object.assign(new Game_Interpreter(), { _eventId: 0 }), 'Hendrix_Action_Engine', 'UpdateEventHp', { eventId: '1', value: '-player weapon', exceedMaxHealth: 'false' }); return 'ok'; })()`);
   const atk = () => json(`${SE}.get(1)`);
   const sd = () => json(`${SE}.diagnostics()`);
   const waitAttack = (kind, ms = 15000) => wait(`(function(){ var a = ${SE}.get(1); return !!a && ${kind ? `a.kind === '${kind}' && ` : ""}a.phase === 'windup'; })()`, ms);
@@ -114,9 +116,9 @@ const FC = "ProjectRFieldCombat", SE = "ProjectRFieldStrongEnemy";
     await fixEnemy(10, 8, 2); await setEnemyHp(500); await ev("$gameSystem.setGunAmmo(51, 7); $gameParty.gainItem($dataItems[31], 60); 'ok'"); await topUp(); await sleep(300); await ev("window.__ph = []; 'ok'");
     await put(10, 9.8); const ok = await waitAttack("cone", 8000); if (!ok) { rec("B4 銃で中断", false, "cone が始まらない"); return; }
     const h0 = await hp(), a0 = await atk(); const e = await ev("({ x: $gameMap.event(1).screenX(), y: $gameMap.event(1).screenY() })"); await c.pointer(e.x, e.y - 24); await sleep(80);
-    for (let k = 0; k < 3; k++) { await c.rightClick(undefined, 50); await sleep(220); }
+    await weaponHits(3);
     await waitEnd(8000); const ph = await phases(), end = ph.find(r => a0 && r.id === a0.id && r.phase === "end"); const lost = h0 - (await hp()); const ehp = await ev("$gameMap.getCurrentEventHp(1)");
-    rec("B4 銃を2発以上当てると(128 ≥ 100)扇形の溜めは中断される(中断・プレイヤーのダメージなし)", end && end.reason === "interrupted" && lost === 0 && ehp <= 372, { reason: end && end.reason, lost, ehp, hp0: a0 && a0.hp0, log: (await json(`${SE}.getLog().slice(-5)`)).map(x => [x.frame, x.phase || x.type, x.interrupted || x.reason || ""]) });
+    rec("B4 銃と同じダメージを2発以上(≥ 100)当てると扇形の溜めは中断される(中断・プレイヤーのダメージなし)", end && end.reason === "interrupted" && lost === 0 && ehp <= 372, { reason: end && end.reason, lost, ehp, hp0: a0 && a0.hp0, log: (await json(`${SE}.getLog().slice(-5)`)).map(x => [x.frame, x.phase || x.type, x.interrupted || x.reason || ""]) });
   });
   await check("B4b", async () => {
     await fixEnemy(10, 5, 2); await setEnemyHp(500); await topUp(); await sleep(300); await ev("window.__ph = []; 'ok'");

@@ -32,7 +32,7 @@ const setEnemyHp = (w, v) => { const e = ev(w, ID); w.ctx.$gameVariables._data[e
 const topUp = w => w.ctx.$gameParty.leader().setHp(w.ctx.$gameParty.leader().mhp);
 
 // 戦闘中の世界: 敵(ID 4)を空き地に置き、強敵として付ける。敵は動かない(chase=false)・視界は既定で無効(いつも見える)・Cooldown は短い。
-function strongWorld({ perception = false, cooldown = 10, chase = false } = {}) {
+function strongWorld({ perception = false, cooldown = 10, chase = false, profile = "dev_strong" } = {}) {
     const w = zetsuWorld({ level: 1, x: 12, y: 25 });
     assert.equal(w.ctx.ProjectRCombatTestArena.endTest().ok, true); w.frames(2);
     FCs(w).setDevAllowOutsideEncounter(true);
@@ -40,7 +40,7 @@ function strongWorld({ perception = false, cooldown = 10, chase = false } = {}) 
     attachHpBars(w, [ID], 500);
     const spot = openSpot(w); assert.ok(spot, "前提: 周りが空いた場所がある");
     putEnemy(w, spot.x, spot.y);
-    const r = FCs(w).attachEnemy(ID, { strong: "dev_strong", reach: 2, sightTiles: 12, cooldownFrames: cooldown, chase });
+    const r = FCs(w).attachEnemy(ID, { strong: profile, reach: 2, sightTiles: 12, cooldownFrames: cooldown, chase });
     assert.equal(r.ok, true, JSON.stringify(r));
     FCs(w).setPerception({ enabled: perception });
     w.run("Math.random = () => 0.5;");
@@ -314,4 +314,108 @@ test("攻撃の途中は選び直さない・中断した攻撃も履歴に残�
     // 見えていて壁ごしの(届かない)位置: 候補なし(理由 noLOS)・攻撃も予兆もない
     ({ w } = strongWorld()); const e = ev(w, ID); for (let dy = -2; dy <= 2; dy++) setRegion(w, e.x + 2, e.y + dy, 255); placeAt(w, 90, 4); w.frames(4);
     assert.equal(SE(w).get(ID), null); assert.equal(SE(w).getDecision(ID).reason, "noLOS"); assert.equal(SE(w).telegraphs().length, 0);
+});
+
+// ======================= Stage 7C: 2段階の中ボス(dev_miniboss) =======================
+const mini = (opt = {}) => strongWorld({ profile: "dev_miniboss", cooldown: 80, ...opt });
+const bossLog = w => SE(w).getLog().filter(e => e.type === "bossPhase");
+const hitboxes = w => map(w).events().filter(e => e && !e._erased && e.event && e.event() && /EnemyAttackHitbox/.test(e.event().name || "")).length;
+const phaseOf = w => SE(w).getPhase(ID);
+// 状態が消えた(戦闘の終了・マップ移動のあと、敵が付いたままなら、次のフレームで新しい状態 = フェーズ1・遷移なし・連続なし になる)
+const isReset = w => { const p = phaseOf(w); return p === null || (p.phase === 1 && !p.transition && !p.followUp && p.chainIndex === 0); };
+
+test("7C 設定: 閾値・段階の設定は dev_miniboss の中だけ。フェーズ1は dev_strong と同じ攻撃・選び方(同じ設定を共有)。敵データベース・Map008・Map009 は変えない", () => {
+    const P = SE(strongWorld().w).PROFILES; assert.equal(P.dev_strong.phases, undefined, "dev_strong は1段階のまま");
+    assert.equal(P.dev_miniboss.transition.ratio, 0.5); assert.equal(P.dev_miniboss.phases.length, 2);
+    assert.equal(P.dev_miniboss.phases[0].attacks, P.dev_strong.attacks, "フェーズ1は同じ攻撃を共有"); assert.equal(P.dev_miniboss.phases[0].tactics, P.dev_strong.tactics, "フェーズ1は同じ選び方を共有");
+    assert.equal(P.dev_miniboss.phases[1].attacks, P.dev_strong.attacks, "フェーズ2も、攻撃の形・時間・ダメージは同じ(cone / line)");
+    const en = JSON.parse(read("data/Enemies.json")).filter(Boolean).find(e => e.name === "トレント"); assert.equal(en.params[0], 500); assert.equal(en.params[2], 30);
+    const m10 = JSON.parse(read("data/Map010.json")), boss = m10.events.filter(e => e && /<fieldEnemy/.test(e.note)); assert.equal(boss.length, 1); assert.ok(/strong=dev_miniboss/.test(boss[0].note)); assert.ok(/<fieldBattleMap>/.test(m10.note));
+    const m9 = JSON.parse(read("data/Map009.json")); assert.ok(/strong=dev_strong/.test(m9.events.find(e => e && /<fieldEnemy/.test(e.note)).note), "Map009 は dev_strong のまま");
+    const m8 = JSON.parse(read("data/Map008.json")); for (const e of m8.events.filter(e => e && /<fieldEnemy/.test(e.note))) assert.ok(!/strong/.test(e.note));
+    const infos = JSON.parse(read("data/MapInfos.json")); assert.ok(infos.some(x => x && x.id === 10 && x.name === "DEV_FieldMiniboss"));
+});
+
+test("7C 閾値: 実際に適用された HP が 50%(250)以下になった最初のフレームで、1回だけ遷移する。251 では遷移しない・250 ちょうどで遷移・HPが遅れて反映されても取りこぼさない", () => {
+    const { w } = mini(); placeAt(w, 90, 6.8); setEnemyHp(w, 251); w.frames(10); assert.equal(bossLog(w).length, 0, "251 は 50% を超える"); assert.equal(phaseOf(w).phase, 1);
+    // Hendrix は HP を次のフレームで反映する: ヒットした同じフレームでは、まだ 251 のまま(遷移しない)→ 次のフレームに 250 が見える → そのフレームに遷移
+    w.frames(1); assert.equal(bossLog(w).length, 0); setEnemyHp(w, 250); w.frames(1);
+    assert.equal(bossLog(w).length, 1, "250 ちょうど(以下)で遷移"); assert.equal(phaseOf(w).transition, true); assert.equal(phaseOf(w).phase, 2);
+    const x = mini(); placeAt(x.w, 90, 6.8); setEnemyHp(x.w, 260); x.w.frames(3); setEnemyHp(x.w, 40); x.w.frames(1); assert.equal(bossLog(x.w).length, 1, "一度に大きく減っても1回");
+});
+
+test("7C 1回だけ: 遷移のあと HP がさらに減っても・回復しても、再び遷移しない。フェーズ1に戻らない", () => {
+    const { w } = mini(); placeAt(w, 90, 6.8); setEnemyHp(w, 240); w.frames(1); assert.equal(bossLog(w).length, 1);
+    for (const v of [200, 120, 60, 400, 100, 30]) { setEnemyHp(w, v); w.frames(30); }
+    assert.equal(bossLog(w).filter(r => r.phase === "transition").length, 1, "遷移は1回だけ"); assert.equal(phaseOf(w).phase, 2);
+});
+
+test("7C 遷移の安全: 進行中の攻撃(溜め・判定中)は取り消され、遷移の間(90フレーム)は攻撃も移動もダメージもない。判定のイベントも残らない。演出(輪)が出る", () => {
+    for (const waitFrames of [20, 64]) {                      // 20 = 溜めの途中 / 64 = line の判定の直前後
+        const { w } = mini(); const e = ev(w, ID); const p0 = { x: e._realX, y: e._realY }; placeAt(w, 90, 4.5); w.frames(1); w.frames(waitFrames);
+        assert.ok(SE(w).get(ID), "攻撃が進行中");
+        setEnemyHp(w, 200); w.frames(1); assert.equal(SE(w).get(ID), null, "進行中の攻撃は取り消される"); assert.equal(phaseOf(w).transition, true);
+        assert.ok(SE(w).getLog().some(x => x.type === "end" && x.reason === "phaseChange"), "理由 phaseChange");
+        w.frames(3); assert.equal(hitboxes(w), 0, "判定のイベントは残らない"); assert.equal(SE(w).cues().length, 1, "遷移の輪が出る"); assert.equal(SE(w).telegraphs().length, 0, "攻撃の予兆ではない");
+        const hh = hp(w);
+        for (let i = 0; i < 82; i++) { w.frames(1); assert.equal(SE(w).get(ID), null, "遷移の間は攻撃しない"); }
+        assert.equal(hp(w), hh, "遷移の間はダメージなし"); assert.ok(Math.hypot(e._realX - p0.x, e._realY - p0.y) < 0.01, "遷移の間は動かない");
+        assert.ok(until(w, () => !phaseOf(w).transition, 20), "遷移が終わる"); assert.equal(SE(w).cues().length, 0);
+    }
+});
+
+test("7C 遷移中の致命傷: 遷移の途中で倒れたらフェーズ2は始まらず、攻撃も輪も残らない。フェーズ1での致命傷は遷移しない", () => {
+    let { w } = mini(); placeAt(w, 90, 6.8); setEnemyHp(w, 200); w.frames(5); assert.equal(phaseOf(w).transition, true);
+    setEnemyHp(w, 0); w.frames(2); assert.equal(SE(w).get(ID), null); assert.equal(SE(w).cues().length, 0, "輪が消える"); assert.ok(!FCs(w).listEnemies().includes(ID));
+    w.frames(120); assert.equal(bossLog(w).filter(r => r.phase === "phase2").length, 0, "フェーズ2は始まらない"); assert.equal(SE(w).list().length, 0);
+    ({ w } = mini()); placeAt(w, 90, 4.5); w.frames(1); w.frames(20); setEnemyHp(w, 0); w.frames(3); assert.equal(bossLog(w).length, 0, "250 を飛び越えて倒れたときは遷移しない"); assert.equal(SE(w).get(ID), null);
+});
+
+test("7C フェーズ2: 同じ cone / line(時間は同じ)を、連続2撃(間に通常の硬直)→ 長めの休み。フェーズ1は従来どおりの間隔。予兆はオレンジ", () => {
+    // フェーズ1: 80フレームの Cooldown(連続なし)
+    let { w } = mini(); placeAt(w, 90, 1.4); const t1 = [], ends1 = [];
+    SE(w).onPhase(r => { const at = SE(w).diagnostics().frame; if (r.phase === "windup") t1.push(at); if (r.phase === "end") ends1.push(at); });
+    let g = 0; while (t1.length < 2 && g++ < 900) { w.frames(1); topUp(w); } assert.ok(t1.length >= 2);
+    assert.ok(t1[1] - ends1[0] >= 78 && t1[1] - ends1[0] <= 90, "フェーズ1は 80 フレームの Cooldown " + (t1[1] - ends1[0]));
+    // フェーズ2へ
+    ({ w } = mini()); placeAt(w, 90, 1.4); w.frames(1); setEnemyHp(w, 240); w.frames(1); assert.equal(phaseOf(w).transition, true);
+    const starts = [], ends = [], windups = {}; let look = null;
+    SE(w).onPhase(r => { const at = SE(w).diagnostics().frame; if (r.phase === "windup") { starts.push({ kind: r.kind, at }); windups[r.kind] = r.windup; } if (r.phase === "end") ends.push({ at, reason: r.reason }); });
+    g = 0; while (starts.length < 5 && g++ < 1500) { w.frames(1); topUp(w); const t = SE(w).telegraphs(); if (!look && t.length && !phaseOf(w).transition) look = t[0].look; }
+    assert.ok(starts.length >= 5, "フェーズ2で5回撃つ"); assert.equal(look && look.fill, 0xff8c1a, "フェーズ2の予兆はオレンジ");
+    const gap = i => starts[i].at - ends[i - 1].at;
+    assert.ok(gap(1) <= 3, "1撃目の硬直のすぐあとに2撃目(連続) " + gap(1)); assert.ok(gap(2) >= 100, "2撃のあとは長めの休み(120) " + gap(2)); assert.ok(gap(3) <= 3, "次の連続 " + gap(3));
+    assert.equal(windups.cone, 54, "cone の溜めは同じ"); assert.ok(windups.line === undefined || windups.line === 66, "line の溜めは同じ");
+    const end0 = SE(w).getLog().filter(e => e.type === "end" && e.reason === "completed")[0], rec0 = SE(w).getLog().filter(e => e.type === "phase" && e.phase === "recovery" && e.id === end0.id)[0];
+    assert.ok(end0.frame - rec0.frame >= 42, "1撃目の硬直は短縮されない(回復の機会) " + (end0.frame - rec0.frame));
+});
+
+test("7C フェーズ2の中断: 扇形は100以上の損害で中断され、連続は切れる。直線は中断されない", () => {
+    const { w } = mini(); placeAt(w, 90, 1.4); w.frames(1); setEnemyHp(w, 240); w.frames(100);       // 遷移を終える
+    topUp(w); assert.ok(until(w, () => SE(w).get(ID), 300), "フェーズ2の最初の攻撃"); assert.equal(SE(w).get(ID).kind, "cone");
+    w.frames(10); setEnemyHp(w, 100); w.frames(1); assert.equal(SE(w).get(ID).interrupted, true, "cone は中断される");
+    const hp0 = hp(w); finishAttack(w); const end = SE(w).getLog().filter(e => e.type === "end").pop(); assert.equal(end.reason, "interrupted"); assert.equal(phaseOf(w).followUp, false, "連続は切れる"); assert.equal(hp(w), hp0);
+    const x = mini(); placeAt(x.w, 90, 4.5); x.w.frames(1); setEnemyHp(x.w, 240); x.w.frames(100); topUp(x.w); assert.ok(until(x.w, () => SE(x.w).get(ID), 300)); assert.equal(SE(x.w).get(ID).kind, "line"); x.w.frames(10); setEnemyHp(x.w, 120); x.w.frames(1);
+    assert.equal(SE(x.w).get(ID).interrupted, false, "line は中断されない");
+});
+
+test("7C 後片付け: 遷移の途中・連続の途中で、戦闘の終了・撤退・マップ移動をしても、攻撃・輪・判定が残らない。再入場はフェーズ1から(遷移は新しい戦闘で再び1回)", () => {
+    let { w } = mini(); placeAt(w, 90, 6.8); setEnemyHp(w, 200); w.frames(10); assert.equal(phaseOf(w).transition, true);
+    FCs(w).end("test"); assert.ok(isReset(w), "段階の状態も消える"); assert.equal(SE(w).cues().length, 0); assert.equal(SE(w).list().length, 0); w.frames(120); assert.equal(hitboxes(w), 0);
+    setEnemyHp(w, 500); assert.equal(FCs(w).begin().ok, true); FCs(w).detachEnemy(ID);
+    assert.equal(FCs(w).attachEnemy(ID, { strong: "dev_miniboss", reach: 2, sightTiles: 12, cooldownFrames: 80, chase: false }).ok, true); FCs(w).setPerception({ enabled: false });
+    placeAt(w, 90, 6.8); w.frames(5); assert.equal(phaseOf(w).phase, 1); assert.equal(phaseOf(w).transition, false); const n0 = bossLog(w).length;
+    setEnemyHp(w, 200); w.frames(1); assert.equal(bossLog(w).length, n0 + 1, "新しい戦闘で、もう1回だけ遷移");
+    ({ w } = mini()); placeAt(w, 90, 1.4); w.frames(1); setEnemyHp(w, 240); w.frames(100); topUp(w); assert.ok(until(w, () => SE(w).get(ID), 300)); w.frames(70);
+    FCs(w).detachEnemy(ID); assert.equal(SE(w).get(ID), null); assert.equal(phaseOf(w), null); assert.equal(SE(w).telegraphs().length, 0); w.frames(100); assert.equal(hitboxes(w), 0);
+    ({ w } = mini()); placeAt(w, 90, 6.8); setEnemyHp(w, 200); w.frames(10); w.enterMap(4, 12, 25); w.frames(3); assert.equal(SE(w).cues().length, 0); assert.equal(SE(w).list().length, 0); assert.ok(isReset(w), "マップ移動で段階も消える");
+});
+
+test("7C Map009 の回帰: dev_strong の強敵は HP が 50% 以下になっても遷移しない・輪も出ない・従来どおり(1段階。連続はしない)", () => {
+    const { w } = strongWorld(); placeAt(w, 90, 4.5); w.frames(1); setEnemyHp(w, 100); w.frames(10);
+    assert.equal(SE(w).getLog().filter(e => e.type === "bossPhase").length, 0); assert.equal(SE(w).cues().length, 0); assert.equal(SE(w).getPhase(ID).phase, 1);
+    finishAttack(w); placeAt(w, 90, 1.4); const ends = [], starts = [];
+    SE(w).onPhase(r => { const at = SE(w).diagnostics().frame; if (r.phase === "end") ends.push(at); if (r.phase === "windup") starts.push(at); });
+    let g = 0; while (starts.length < 2 && g++ < 700) { w.frames(1); topUp(w); }
+    assert.ok(starts[1] - ends[0] >= 8, "連続はしない(Cooldown が入る)");
 });
