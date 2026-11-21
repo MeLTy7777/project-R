@@ -563,7 +563,9 @@ test("Phase 4A/4B/4C/Manager/Bridge/Coreは変更されておらず、Hermes固�
     // (UltimateActivation / HermesReedFluteSleep / HermesSwordsmanship は Phase 5A-RT3 で診断・表示連携を足したため、
     //  固定対象から外す。挙動は各専用テストと tests/ProjectR_CombatRuntimeCompliance.test.cjs で確認する)
     // ProjectR_UltimateGauge は、Stage 6D で意図して変更した(HPが次のフレームで減る実ゲームでも与ダメージを加算する待ち。式・加算量は不変)。検証: tests/ProjectR_UltimateGauge.phase4b.test.cjs(従来)と tests/ProjectR_GunSystem.test.cjs(遅れて反映されるHP)
-    for (const file of ["ProjectR_CardDeckCore", "ProjectR_GodSummonManager", "ProjectR_UltimateGodDamageBridge",
+    // ProjectR_GodSummonManager は、Stage 1E-1 で意図して変更した(startCardBattle の第2引数 { ultimateRingId } の追加専用の窓口)。許す差分は tests/ProtectedSeams.cjs が厳密に確かめる(ほかの行は cd586e8 と同じ)。
+    require("./ProtectedSeams.cjs").assertGodSummonSeamOnly("cd586e8");
+    for (const file of ["ProjectR_CardDeckCore", "ProjectR_UltimateGodDamageBridge",
         "ProjectR_ApolloGoldenArrow", "ProjectR_ApolloDiseaseAttack", "ProjectR_ApolloLyreCalm",
         "ProjectR_HermesRecognitionObscure", "ProjectR_HermesSwiftMovement"]) {
         const before = cp.execFileSync("git", ["show", `cd586e8:js/plugins/${file}.js`], { encoding: "utf8", maxBuffer: 1 << 26 }).replace(/\r\n/g, "\n");

@@ -124,9 +124,11 @@ test("安全: ダメージ・HP・保存値・ファイル・セーブの書き�
     const status = cp.execFileSync("git", ["status", "--porcelain"], { cwd: project, encoding: "utf8" }).split(/\r?\n/);
     const protectedFiles = ["js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js", "js/plugins/ProjectR_CardDeckCore.js", "js/plugins/ProjectR_CardBattleInput.js",
         "js/plugins/ProjectR_CombatSession.js", "js/plugins/ProjectR_CombatPresence.js", "js/plugins/ProjectR_DamageModifiers.js",
-        "js/plugins/ProjectR_UltimateActivation.js", "js/plugins/ProjectR_ApolloGoldenArrow.js", "js/rmmz_scenes.js", "js/rmmz_objects.js",
+        "js/plugins/ProjectR_ApolloGoldenArrow.js", "js/rmmz_scenes.js", "js/rmmz_objects.js",
         "data/Skills.json", "data/Weapons.json", "data/Map002.json", "data/Map004.json"];
     for (const file of protectedFiles) assert.ok(!status.some(line => line.slice(3) === file), file + " は変更されていない");
+    // ProjectR_UltimateActivation は、Stage 1E-1 で意図して変更した(キー入力の入力ゲートの追加専用の窓口)。許す差分は tests/ProtectedSeams.cjs が厳密に確かめる。
+    require("./ProtectedSeams.cjs").assertUltimateActivationSeamOnly("HEAD");
 });
 
 // ---------------------------------------------------------------- 状態とフェーズ遷移 ----------------------------------------------------------------

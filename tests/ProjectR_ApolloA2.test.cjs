@@ -55,8 +55,9 @@ test("予約ID: ユーザー確定の8個が設計ID 8〜15に対応し、一意
     // リポジトリの本番コードでの出現: 予約IDはCardCatalogにだけ現れる(他のpluginが勝手に使っていない)
     const plugins = fs.readdirSync(path.join(root, "js/plugins")).filter(f => f.endsWith(".js"));
     for (const id of RESERVED) {
-        // ProjectR_SoulBattleStage(SOUL専用ステージ)は、神の置き場から出す遠距離カードの一覧(GOD_PROJECTILE_CARDS)として名前を参照するだけ(実装・登録はしない)。ProjectR_SoulMana(SOUL専用のマナ)は、承認済みD8コスト表(カードID→コスト)として名前を参照するだけ
-        const users = plugins.filter(f => f !== "ProjectR_SoulBattleStage.js" && f !== "ProjectR_SoulSkills.js" && f !== "ProjectR_SoulMana.js" && fs.readFileSync(path.join(root, "js/plugins", f), "utf8").includes(id));
+        // ProjectR_FieldCombat(Stage 1D-1)は、指輪ロードアウトの通常スキル5枠のため、承認済みスキルのIDを表(SKILL_DEFS)として参照し、各カードの既存の発動ハンドラを呼ぶだけ(実装・登録はしない)。黄金の矢だけは従来から参照している。
+        // ProjectR_RingLoadout(指輪の装備・スキル編成)は、承認済みの通常5スキルの表(SKILL_SETS)として名前を参照するだけ(実装・登録はしない)。 ProjectR_SoulBattleStage(SOUL専用ステージ)は、神の置き場から出す遠距離カードの一覧(GOD_PROJECTILE_CARDS)として名前を参照するだけ(実装・登録はしない)。ProjectR_SoulSkillScale(SOUL専用の攻撃スキルの拡大: 5枚のカードIDで倍率を引くだけ)・ProjectR_SoulMana(SOUL専用のマナ)は、承認済みD8コスト表(カードID→コスト)として名前を参照するだけ。ProjectR_SoulResonance(SOUL専用の共鳴)は、カードID→共鳴の値の表として名前を参照するだけ
+        const users = plugins.filter(f => f !== "ProjectR_RingLoadout.js" && (f !== "ProjectR_FieldCombat.js" || id === "apollo_golden_volley") && f !== "ProjectR_SoulBattleStage.js" && f !== "ProjectR_SoulSkills.js" && f !== "ProjectR_SoulMana.js" && fs.readFileSync(path.join(root, "js/plugins", f), "utf8").includes(id));
         // 黄金の矢(apollo_golden_volley)はPhase A4で実装済み。実装・演出の登録・DEVの入口にも現れる。残りの7枚は引き続きCardCatalogにだけ。
         if (id === "apollo_golden_volley") assert.deepEqual(users.sort(), ["ProjectR_ApolloGoldenVolley.js", "ProjectR_CardCatalog.js", "ProjectR_CharacterPresentation.js", "ProjectR_CombatTestArenaApollo.js", "ProjectR_CutIn.js", "ProjectR_FieldCombat.js", "ProjectR_GodSummonVisual.js"], id);        // FieldCombat(Stage 5b): 1キーの固定カードの既定
         else if (id === "apollo_eros_arrow") assert.deepEqual(users.sort(), ["ProjectR_ApolloErosArrow.js", "ProjectR_CardCatalog.js", "ProjectR_CombatTestArenaApollo.js", "ProjectR_CutIn.js", "ProjectR_GodSummonVisual.js"], id); // A6Aで実装済み

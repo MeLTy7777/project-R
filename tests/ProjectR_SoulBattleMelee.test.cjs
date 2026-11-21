@@ -96,10 +96,12 @@ test("登録と安全: 1回だけ・有効・依存の後ろ。許可リスト�
     assert.doesNotMatch(code, /value:\s*[`"']-|projectRFixed:\s*\{\s*base|criticalChanceBonus\s*:/, "ダメージの数値・式を自分で作らない");
     const status = cp.execFileSync("git", ["status", "--porcelain"], { cwd: project, encoding: "utf8" }).split(/\r?\n/);
     for (const file of ["js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js", "js/plugins/ProjectR_HermesSwordsmanship.js",
-        "js/plugins/ProjectR_HermesUltimate.js", "js/plugins/ProjectR_HermesSweep.js", "js/plugins/ProjectR_HermesIssen.js", "js/plugins/ProjectR_CardDeckCore.js", "js/plugins/ProjectR_GodSummonManager.js", "js/plugins/ProjectR_CardBattleInput.js", "js/plugins/ProjectR_UltimateActivation.js"]) {          // (UltimateGauge は Stage 6D で意図して変更した)
+        "js/plugins/ProjectR_HermesUltimate.js", "js/plugins/ProjectR_HermesSweep.js", "js/plugins/ProjectR_HermesIssen.js", "js/plugins/ProjectR_CardDeckCore.js", "js/plugins/ProjectR_CardBattleInput.js"]) {          // (UltimateGauge は Stage 6D で意図して変更した)
 
         assert.ok(!status.some(line => line.slice(3) === file), file + " は変更されていない");
     }
+    // GodSummonManager(第2引数 { ultimateRingId })と UltimateActivation(入力ゲート)は、Stage 1E-1 で意図して変更した。許す差分は tests/ProtectedSeams.cjs が厳密に確かめる。
+    require("./ProtectedSeams.cjs").assertGodSummonSeamOnly("HEAD"); require("./ProtectedSeams.cjs").assertUltimateActivationSeamOnly("HEAD");
 });
 
 // ---------------------------------------------------------------- 延長計画(状態を変えない純粋な計算) ----------------------------------------------------------------

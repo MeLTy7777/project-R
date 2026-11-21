@@ -38,11 +38,11 @@ var $plugins =
 ,{"name":"ProjectR_CombatTestArena","status":true,"description":"v1.1.0 DEV専用 Combat Test Arena（Playtest限定。配布版では何もしません）。","parameters":{}}
 ,{"name":"ProjectR_PartyCombat","status":true,"description":"v1.0.0 仲間(最大2人)の戦闘フレームワーク。定義レジストリ・HP/ダウン・自動AIの意思決定。","parameters":{}}
 ,{"name":"ProjectR_PartyRoster","status":true,"description":"v1.0.0 主人公と出撃中の仲間を読み取り専用で返す名簿(Phase Apollo-A3)。NPCは含まない。","parameters":{}}
-,{"name":"ProjectR_MenuCore","status":true,"description":"v1.0.0 メニュー基盤。カード/神/指輪の表示、デッキ・Ultimate・指輪・所持品のモデル、戦闘中ロック。","parameters":{}}
+,{"name":"ProjectR_MenuCore","status":true,"description":"v1.1.0 メニュー基盤。カード/神/指輪の表示、デッキ・Ultimate・指輪・指輪装備/スキル編成・所持品のモデル、戦闘中ロック。","parameters":{}}
 ,{"name":"ProjectR_MenuUI","status":true,"description":"v1.0.0 メニュー画面の共通部品。","parameters":{}}
 ,{"name":"ProjectR_DeckBuilder","status":true,"description":"v1.0.0 カードデッキ構築画面(メニューのSKILL)。","parameters":{}}
 ,{"name":"ProjectR_UltimateSelect","status":true,"description":"v1.0.0 Ultimateの神の選択画面(メニューのULTIMATE)。","parameters":{}}
-,{"name":"ProjectR_RingParty","status":true,"description":"v1.0.0 指輪/Party Rings画面(主人公と仲間の間で指輪を移す)。","parameters":{}}
+,{"name":"ProjectR_RingParty","status":true,"description":"v1.1.0 指輪/Party Rings画面(指輪装備: 主人公の装備と仲間への受け渡し / スキル編成: 通常5枠とQ奥義)。","parameters":{}}
 ,{"name":"ProjectR_Inventory","status":true,"description":"v1.0.0 所持品・装備の確認画面(メニューのITEM)。","parameters":{}}
 ,{"name":"ProjectR_MenuIntegration","status":true,"description":"v1.0.0 メニュー接続(SKILL/ULTIMATE/ITEM)、戦闘中ロック、進行用プラグインコマンド。","parameters":{}}
 ,{"name":"ProjectR_CombatSession","status":true,"description":"v1.0.0 戦闘ライフサイクルの一元窓口(開始/終了でカード戦闘・HUD・神・Gauge・仲間を管理)。","parameters":{}}
@@ -55,6 +55,7 @@ var $plugins =
 ,{"name":"ProjectR_CombatTestArenaFullSpec","status":true,"description":"v1.0.0 DEV専用 Combat Test Arena 追加シナリオ(ボス/仲間/メニュー/指輪。Playtest限定)。","parameters":{}}
 ,{"name":"ProjectR_CombatTestArenaAnimation","status":true,"description":"v1.0.0 DEV専用 Animation / Weapon Certification Zone(銃・動作・アンカーの確認端末。Playtest限定)。","parameters":{}}
 ,{"name":"ProjectR_CardCatalog","status":true,"description":"v1.0.0 カード設計カタログ(Hermes 7枚のデータモデル)と累積レベル解決。","parameters":{}}
+,{"name":"ProjectR_RingLoadout","status":true,"description":"v0.3.0 ProjectR 指輪の装備・スキル編成の保存領域と操作API(Stage 1A/1B/1C)。","parameters":{}}
 ,{"name":"ProjectR_CardBalance","status":true,"description":"v1.0.0 カードバランス設定(data/ProjectR_CardBalance.json)の読み込み・検証・Lv別の解決・開発用の一時上書き。","parameters":{"DevConfigPath":"dev_tuning/ProjectR_CardBalance.dev.json"}}
 ,{"name":"ProjectR_Elements","status":true,"description":"v1.0.0 属性(Database属性ID)の共通窓口: 属性倍率の読み取り・固定ダメージの属性補正(1回だけ)・弱点ダメージ修飾。","parameters":{}}
 ,{"name":"ProjectR_CardBalanceEditor","status":true,"description":"v1.0.0 DEV専用 カードバランスエディタ(Playtest限定・F6)。製品の既定値は変更しない。","parameters":{}}

@@ -77,6 +77,11 @@
  *   一度だけ読み取って戦闘中のsnapshotにします。主人公がその指輪を所持している
  *   場合だけ最大1体を作り、無効/未選択でも戦闘は通常どおり開始します。
  *   一時召喚（perform）とは別管理で、カード発動で壊れず、カード効果にも使いません。
+ *   【戦闘ごとの指輪の指定(Stage 1E-1)】startCardBattle(cardIds, { ultimateRingId }) の第2引数で、この戦闘だけ
+ *   使うUltimate指輪を渡せます(フィールド戦闘の指輪ロードアウトのQ枠用)。オプション自体を省略すれば従来どおり
+ *   Coreの選択を読みます。ultimateRingId: null や空・文字列以外は「この戦闘は奥義なし」(Coreの選択へは戻さない)。
+ *   指定は戦闘成功後に取り込み、endCardBattle・マップ移動・ロード・開始失敗の clear() で消えます。
+ *   Coreの選択(setUltimateRing / getUltimateRingId)は一切読み替えず、書き換えません。
  *   論理アンカー自体はAI・自律攻撃・標的・衝突・Ultimate Gaugeを持ちません
  *   （HPは下のPhase 3C-2のDivine HPとして戦闘状態側に持つ）。位置は毎回
  *   Playerの現在位置＋オフセットから導出するので、壁や経路探索の影響を受けません。
@@ -127,6 +132,7 @@
     const summons = new Map(); // 一時召喚（カード発動ごと）。
     let persistent = null; // 常駐Ultimateの顕現（論理アンカー）。最大1。崩壊中はnull。
     let battle = null; // 常駐Ultimateの戦闘状態 {godId, ringId, maxHp, hp, status, recoveryRemaining}。顕現とは別。
+    let sessionRing = null; // この戦闘だけの指輪の指定 { ringId: string|null }。null = 指定なし(Coreの選択を使う)。clear() で消える。保存しない。
     let persistentResult = { ok: false, reason: "notStarted" };
     let serial = 0;
 
@@ -145,6 +151,7 @@
         summons.clear();
         persistent = null;
         battle = null;
+        sessionRing = null;
         persistentResult = { ok: false, reason: "notStarted" };
     };
 
@@ -233,7 +240,7 @@
         if (battle) return persistentResult; // 崩壊中でも作り直さない（復帰は時間経過のみ）。
         try {
             if (!deck.isCardBattleActive()) return fail("battleInactive");
-            const ringId = deck.getUltimateRingId?.();
+            const ringId = sessionRing ? sessionRing.ringId : deck.getUltimateRingId?.();      // この戦闘だけの指定があればそれ(null = なし)。無ければCoreの選択
             if (!ringId) return fail("noUltimateSelected");
             if (!deck.hasPlayerRing(ringId)) return fail("ultimateRingNotOwnedByPlayer");
             const godId = resolveGodId(ringId);
@@ -298,10 +305,16 @@
         return result;
     };
     const _startCardBattle = deck.startCardBattle;
-    deck.startCardBattle = function() {
+    deck.startCardBattle = function(cardIds, options) {
+        // 第2引数 { ultimateRingId } は入口で読む。Core の開始は内部で endBattle() → clear() を通るので、ここで先に保持しておくと消える。
+        const hasRing = !!options && typeof options === "object" && Object.prototype.hasOwnProperty.call(options, "ultimateRingId");
+        const requested = hasRing ? options.ultimateRingId : null;
         const result = _startCardBattle.apply(this, arguments);
         // 成功した戦闘だけ。失敗しても戦闘結果は変えない。
-        if (result?.ok) ensurePersistent(); else clear();
+        if (result?.ok) {
+            sessionRing = hasRing ? { ringId: typeof requested === "string" && requested.length ? requested : null } : null;     // Core の開始が終わってから取り込む(clear の後)
+            ensurePersistent();
+        } else clear();
         return result;
     };
 
@@ -333,6 +346,7 @@
         getPersistentUltimateGodId: () => battle?.godId ?? null,
         getPersistentUltimateRingId: () => battle?.ringId ?? null,
         getPersistentUltimateResult: () => ({ ...persistentResult }),
+        getBattleUltimateRingOverride: () => sessionRing ? { ringId: sessionRing.ringId } : null,      // この戦闘だけの指定(診断用。null = 指定なし)
         damagePersistentUltimate,
         hasPersistentUltimateBattleState: () => !!battle,
         isPersistentUltimateCollapsed: () => battle?.status === "collapsed",

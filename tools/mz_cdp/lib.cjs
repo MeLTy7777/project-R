@@ -11,6 +11,8 @@ async function session(opts = {}) {
   const c = await connect(); const ev = c.evalJs;
   // フィールド戦闘(ProjectR_FieldCombat)への移行後も、従来のSOUL・カード戦闘の検証が動くように、起動したら SOUL を許可し、探索マップでも戦闘・武器を使えるようにする(DEV)(ページ側のタイマー。
   //   FieldCombat が読み込まれたら1回だけ実行して止まる)。フィールド戦闘そのものを確かめるスクリプトは session({ field: true }) でこの準備を省く。
+  // Stage 1D-1: 通常スキル5枠は、本番では指輪ロードアウト(空の枠は何もしない)。従来の field_* 検証は旧い固定スロットが前提なので、既定では旧い固定スロット(DEV互換)にする。指輪ロードアウトを確かめるスクリプトは session({ field: true, ring: true })。
+  if (!opts.ring) await ev("(function() { if (window.__fcLegacySrc) return 1; window.__fcLegacySrc = setInterval(function() { if (window.ProjectRFieldCombat && ProjectRFieldCombat.setLoadoutSource) { ProjectRFieldCombat.setLoadoutSource('legacy'); clearInterval(window.__fcLegacySrc); } }, 20); return 1; })()");
   if (!opts.field) await ev("(function() { if (window.__fcLegacy) return 1; window.__fcLegacy = setInterval(function() { if (window.ProjectRFieldCombat) { ProjectRFieldCombat.setSoulMode('on'); ProjectRFieldCombat.setDevAllowOutsideEncounter(true); clearInterval(window.__fcLegacy); } }, 20); return 1; })()");
   const place = async (x, y) => { await ev(`$gamePlayer.locate(${x}, ${y}); $gamePlayer._realX = ${x}; $gamePlayer._realY = ${y}; $gamePlayer.center(${x}, ${y}); 'ok'`); await sleep(350); };
   const foot = () => ev("({ x: $gamePlayer.screenX(), y: $gamePlayer.screenY() })");

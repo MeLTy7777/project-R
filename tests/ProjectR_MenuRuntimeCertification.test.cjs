@@ -55,7 +55,7 @@ test("通常メニューの SKILL / ULTIMATE / ITEM が、それぞれの実Scen
     for (const name of ["Scene_ProjectRMenu", "Scene_ProjectRDeckBuilder", "Scene_ProjectRUltimateSelect", "Scene_ProjectRInventory", "Scene_ProjectRRings"]) {
         assert.equal(typeof w.ctx[name], "function", name);
     }
-    assert.equal(table.skill, w.ctx.Scene_ProjectRDeckBuilder);
+    assert.equal(table.skill, w.ctx.Scene_ProjectRSkillLoadout, "SKILL は指輪のスキル編成(Stage: SKILL メニュー。デッキ構築 Scene は残るが、SKILL の入口ではない)");
     assert.equal(table.ultimate, w.ctx.Scene_ProjectRUltimateSelect);
     assert.equal(table.item, w.ctx.Scene_ProjectRInventory);
 });
@@ -257,6 +257,10 @@ test("指輪画面: 製品(仲間にできる指輪が未設定)では「移せ�
     let scene = open(w, "Scene_ProjectRRings");
     assert.equal(scene._rings.maxItems() >= 1, true);
     scene._rings.select(scene._rings._items.findIndex(e => e.ringId === "hermes"));
+    // Stage 1C: 主人公が持つ指輪には「主人公が装備する」が出る。製品では仲間に渡せる指輪が無いので、操作はそれだけ(仲間への受け渡しは出ない)
+    assert.deepEqual(plain(scene._targets._items.map(t => t.kind)), ["equip"]);
+    // 誰も持っていない指輪(janus)は従来どおり「移せる相手がいません」
+    scene._rings.select(scene._rings._items.findIndex(e => e.ringId === "janus"));
     scene._rings.processOk();
     assert.match(scene._notice, /移せる相手がいません/);
     assert.equal(d.getRingOwner("hermes") === "player" || d.hasPlayerRing("hermes"), true);

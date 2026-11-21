@@ -655,3 +655,154 @@ Map008 の扉口(8,7)に敵が並ぶと、次の 2 つの渋滞が起きてい�
     11. **命中の手応え**(Stage 6B): 戦闘マップで敵の近くへ行き、**左クリック**で斬る。当たった敵が**白く光り、斬った向きへ少しだけ押されて戻り、一瞬止まる**(約0.05秒)。3回目(強撃)は、光る時間・押される幅・止まる時間が大きく、音が低く重い。**右クリックの銃**は、小さな光と反動・小さな音。**敵が何体いても、音は1回の攻撃につき1回**。敵に当たらなかったときは、斬る音だけで何も起きない。敵の位置そのものは動かない(壁際に押し込まれたりしない)。止まっている敵以外・自分の動き・ボタン操作は止まらない。壁・閉じた扉の向こうの見えない敵には、光も音も出ない。
     12. **近接と銃の攻撃力**(Stage 6C): 同じ敵に、**左クリックの1段目**と**右クリックの銃**を1回ずつ当てて、敵のHPの減りを見る。以前は同じ(銃の攻撃力)だったが、今は近接のほうが少し大きい(ロングソード分)。3回目の強撃は1回目の約2倍。銃の攻撃力(武器の設定)を変えても近接の数字は変わらない。
 
+
+## Stage 1D-1: 指輪ロードアウトを通常スキル5枠へつなぐ(v0.7.0)
+
+LMB / Shift / E / X / C の5枠に、`ProjectRRingLoadout` で割り当てた承認済みの通常スキル(Hermes 5種・Apollo 5種)を入れられる。RingLoadout の保存データは書かない。
+
+- **モード**: RingLoadout があれば `ring`、無ければ(またはパラメータ `LoadoutSource=legacy` / DEV の `setLoadoutSource("legacy")`)旧い固定スロット。**空の枠の代わりに旧い固定スキルを使うことはない**(空の枠は何もしない)。
+- **写しと確認**: 戦闘開始(`begin`)で5枠の写しを取り、発動のたびに所持・装備を確かめ直す(外れていたら `skillUnavailable`)。スロット名(attack/mobility/special/card1/card2)と物理キーは従来のまま。
+- **どのキーでも同じ**: スキルの働き・Cooldown はキーに依らない。Cooldown は**スキルIDごと**(`getCooldowns()` のキーはスキルID + ultimate + consumable)。
+- **薙ぎ払い(hermes_sweep)**: どのキーでも SwordSystem の3段コンボ(1・2段 前方 / 3段 全周・2倍 / 受付 0.5秒 / Cooldown 0)。単発のカード版は使わない。
+- **黄金の矢**: 通常の発射 Lv1=3本・Lv2=5本・Lv3=11本。Cooldown 0・発射の最小の間隔 0.5秒(HUD の Cooldown には出ない)。Lv3 は押した瞬間には発射しない(押す・離す・長押しビームの確定した規則は、下の「Stage 1D-2A」)。
+- **入力**: 5枠すべてで押す・離すを別々に受ける。左クリックは TouchInput から離した瞬間を読み、押しっぱなしでは1回だけ。竪琴の演奏中の左クリックは、通常の攻撃(LMB が空でも)より先に音符の選択へ。
+- **Q(奥義)**: CardDeckCore の保存された奥義の選択は一時的にも書き換えず、ヘルメースの自動選択もしない。1D-1 の時点では Stage 1E まで Q と U は発動しなかった(`ringUltimatePending`)。**Stage 1E-1 で Q は RingLoadout の Q 枠につないだ(U は指輪モードでは無効のまま)。下の「Stage 1E-1」の節を参照。**旧い固定スロットでは従来どおり。
+- **HUD**: 名前・アイコン・Cooldown はスキルIDで決まる。空の枠は `---`(暗い表示・`empty: true`)。アイコンのうち、薙ぎ払い・絶・一閃・黄金の矢以外の6つは仮の IconSet 番号(実機で要確認)。
+- **未対応**: なし(黄金の矢 Lv3 のビームは Stage 1D-2A、葦笛の睡眠 × 敵のAIは Stage 1D-2B で実装)。
+- **テスト**: `tests/ProjectR_FieldCombat.loadout.test.cjs`(15項目。実エンジン・実ハンドラ)。`tests/RealEngineHarness.cjs` と `tools/mz_cdp/lib.cjs` は、従来のテスト・検証が壊れないよう旧い固定スロットを既定にする(指輪ロードアウトの検証は `setLoadoutSource("auto")` / `session({ ring: true })`)。
+
+## Stage 1D-2A: 黄金の矢 Lv3 の押す・離す・長押しビーム(FieldCombat v0.8.0 / GoldenVolley v1.4.0)
+
+LMB / Shift / E / X / C の**どのキーでも同じ**。Lv1・Lv2 は従来どおり(押した瞬間に通常の発射 3本 / 5本)。時間は戦闘の更新(60/秒)で数える。
+
+| 押している長さ | 動き |
+|---|---|
+| 離す < 0.25秒(15更新) | 通常の発射(11本)。Cooldown 0・最小の間隔 0.5秒 |
+| 0.25秒〜0.90秒未満で離す | **取り消し**(発射もCooldownも無し) |
+| 0.90秒(54更新)に達した瞬間 | **ビームを自動で開始**(通常の発射は出ない) |
+
+- **ビーム**(`ProjectR_ApolloGoldenVolley` の持続ビーム `startHeldBeam` / `stopHeldBeam`): 最大 1.5秒(90更新)。離す・中断で終わる。同じ敵へは 0.2秒(12更新)に1回(1.5秒で最大8回)。1回のダメージ・Lv2 のスリップ(最初のヒットで1回)・ヒットストップ・効果音は、従来のビームと同じ(CardBalance の `beamHitDamage` ほか)。マウスの向きへ毎フレーム追従(原点もプレイヤー中心に追従)。幅3マス・壁の遮蔽は従来のビームと同じ。
+- **移動速度**: 溜めている間 100% / ビーム中 50%(`ProjectRCardModifiers.setMoveSpeedFactor`。毎フレーム延長し、終わったら外す。ほかの係数とは掛け合わさる)。
+- **ビーム専用のCooldown 6秒**: ビームが終わってから(離す・時間切れ・中断のどれでも)。**スキルIDごと**(キーではない)。通常の発射とは独立(通常の発射の Cooldown は 0 のまま)。ビームを始める前に取り消した場合は付かない。
+- **Cooldown 中の連射**: 押している間、押した瞬間と 0.5秒ごとに通常の発射。Cooldown が明けても、**押しっぱなしのままではビームへ切り替わらない**(離して押し直したとき)。ビームが時間切れで終わったあとも、押し続けている間は何も出ない(同じ押下から通常の発射とビームの両方は出さない)。
+- **中断**(溜め中 = 取り消し・Cooldownなし / ビーム中 = ビーム終了 + 6秒のCooldown): ほかのスキルの成功、回避・怯み・スタン(入口は `ProjectRFieldCombat.interruptHold("dodge" | "stagger" | "stun")`)、メニュー・会話・フォーカス喪失、戦闘終了、戦闘不能。**通常のHPダメージだけでは中断しない**。失敗したほかのスキル(Cooldown 中など)は中断しない。連射中は「ほかのスキル」では止まらない(回避・怯み・スタンでは止まる)。
+- **同時発射**: 指輪ロードアウトのフィールド戦闘だけ、前の矢が確定待ちでも次を撃てる(`deck.concurrentVolleysAllowed`。0.5秒おきの連射のために必要)。旧い固定スロットとカード戦闘は従来どおり(確定待ちの間は `volleyPending` で拒否)。
+- **HUD**: 黄金の矢(Lv3)の枠に `beam: { state: ready | charging | active | cooldown, cooldown, total, ratio }`。枠の下の文字は CHARGE(溜め中)/ BEAM(ビーム中)/ `B 5.2`(ビームのCooldown 中。通常の発射は撃てる)。通常の Cooldown 表示・`ready` は変わらない。
+- **API**: `getBeamState()` / `getBeamRules()` / `interruptHold(reason)` / `getHoldState()`(押している枠の mode・phase と、離した記録 outcome = tap / cancel / beam / repeat / interrupted / afterBeam / canceled)。GoldenVolley 側: `getHeldBeam()` / `getHeldBeamLog()` / `heldBeamRules`。
+- **テスト**: `tests/ProjectR_FieldCombat.goldenBeam.test.cjs`(20項目。実エンジン・実ハンドラ。0.25秒・0.90秒の境界、5キー、ビームの持続・当たり・追従、移動速度、Cooldown、連射、中断、HP ダメージ、旧い固定スロットの据え置き、HUD)。
+- **未確認 / 未対応**: 実機(MZ)での、ビームの絵(向き・位置が変わったときの描き直し)・HUD の描画・操作感。溜め中の演出(弓を引く絵など)は、フィールド戦闘にはまだつないでいない。プレイヤーの回避・怯み・スタンは、フィールド戦闘にまだ無いため、中断の入口(`interruptHold`)だけ用意してある。
+
+## Stage 1D-2B: 葦笛の睡眠 × 敵のAI(FieldCombat v0.8.1)
+
+**仕組み(調べた結果)**: 葦笛(`ProjectR_HermesReedFlute`)は、睡眠を **State 32**(note `<ProjectRCard: hermes_reed_flute_sleep>`)として、Hendrix の `AddState` で敵のバトラーに付ける。耐性・無効は公式の State 耐性(特性 code 14)に任せる。時間(既定4秒)は `deck.updateCooldown` の戦闘時計で数え、ダメージを与えたとき(ヒットフック)・戦闘の終了・マップ移動などで外れる。FieldCombat の敵(`rt.enemies`)は、これまでこのステートを見ていなかった(旧い注意書き「共通のEnemy AIが無いため、止まる接続は後続Phase」のとおり)。
+
+**実装**(FieldCombat の `updateEnemies` に、睡眠の判定だけを足した。葦笛・EnemyAttack・FieldStrongEnemy・Hendrix は変更なし):
+- 毎フレーム、敵ごとに `hasState(eventId, State 32)` を見る(`isEnemyAsleep`)。眠っている間は、その敵のそのフレームの処理を打ち切る: **追わない・道を空けない・位置取りもしない / 攻撃を始めない / Cooldown と視界の更新も止まる**。
+- **溜め中の攻撃(予兆つき近接)・強敵の攻撃は中断**する(`EnemyAttack.interrupt` / `FieldStrongEnemy.interrupt`。ダメージなし。溜めが終わる瞬間に当てない)。中断した攻撃は「撃ち終えた」扱いで通常と同じ Cooldown になり、起きた直後に続けて撃たない(撃ち終えた攻撃の数には入れない)。葦笛を使った同じフレームのうちに `sleepSweep()` が中断する(次のフレームの攻撃の発射を待たない)。
+- **起きたら**(ステートが消えたら): そのフレームから通常のAI(追う・攻撃を選ぶ)へ。**眠らなかった敵**(耐性・無効・範囲外)はステートが無いので何も変わらない。
+- 睡眠の付与・時間・解除・耐性・ダメージ加算、葦笛の Cooldown(8秒)、RingLoadout、黄金の矢、SOUL は変更なし。
+- **API**: `isEnemyAsleep(eventId)` / `getEnemySleep(eventId)` = `{ asleep, sleeps, interrupted }`。記録は `note` の `sleep` / `wake`。
+- **テスト**: `tests/ProjectR_FieldCombat.sleep.test.cjs`(8項目。実エンジン・実ハンドラ。付与・移動の抑止・攻撃開始の抑止・溜め中の中断・起床(時間切れ / ダメージ)・耐性・強敵・既存の動き)。
+- **既知だった問題(Stage 1D-2C で修正済み)**: フィールド戦闘では、カード戦闘の時計(`deck.updateCooldown`)が1フレームに2回進んでいた(睡眠が実時間で約2秒だった)。詳しくは下の「Stage 1D-2C」。
+
+## Stage 1D-2C: カード戦闘の時計の二重加算を修正(FieldCombat v0.8.2)
+
+**症状**: フィールド戦闘(FieldCombat)中は、カード戦闘の時計(`ProjectRCardDeck.updateCooldown`)が1フレームに **2回** 進み、この時計で数える効果が実時間では設計の半分の長さになっていた。葦笛の睡眠 4秒 は約2秒、一閃の分割ダメージ 3秒 は約1.5秒。
+
+**原因(実測)**: 2つの plugin が、毎フレームの `Scene_Map.update` の中で `deck.updateCooldown(1/60)` を呼んでいた。
+1. `ProjectR_CardBattleInput`(カード戦闘中、操作を受け付けられるフレームごとに1回)。
+2. `ProjectR_FieldCombat`(戦闘中、`cardInput().getBlockedReason() === null` のフレームごとに1回。Stage 3 から)。
+2つの止まる条件は同じ(メニュー・会話・イベント・Scene切替・フォーカス喪失)なので、片方を外しても「止まる/進む」の場面は変わらない。実測: フィールド戦闘 60フレーム = 120回(2秒分) / 通常のカード戦闘(Arena)60フレーム = 60回(1秒分)。SOUL は FieldCombat が動かない(`rt.active = false`)ので元から1回だった。
+
+**修正**: FieldCombat 側の呼び出し(`safe(() => deck().updateCooldown(dt))` 1行)を外しただけ。時計を進めるのは CardBattleInput だけ。睡眠時間・Cooldown・ダメージの間隔・各スキルの値・`ProjectR_CardBattleInput`・SOUL は変更なし。
+
+**同じ時計を使う他の効果**(`deck.updateCooldown` を包んで進む約15の plugin): 睡眠・認識阻害・一閃の分割ダメージと鈍足・絶・各ステータス・DamageModifiers の状態・CardModifiers・Apollo の病/竜笛/ヒュアキントス・神の召喚 など。これらは、フィールド戦闘では **以前は2倍速、いまは設計どおり(実時間)**。設計の値を変えていないので、「実時間で見た長さ」は2倍になる(例: 睡眠は約2秒 → 4秒)。FieldCombat 自身の Cooldown・ゲート・ビームは、FieldCombat 自身の `dt` で数えていたので変わらない(黄金の矢のビーム 1.5秒・Cooldown 6秒 など)。
+
+**テスト**: `tests/ProjectR_FieldCombat.clock.test.cjs`(6項目)。時計の呼び出しを数える包みを deck.updateCooldown(全呼び出し)と BattleDeckSession.prototype.updateCooldown(実際に進んだ分)の両方に足して確かめる: 【1】フィールド戦闘で毎フレーム1回・1/60秒・呼び出し元は CardBattleInput だけ・FieldCombat のコードに呼び出しが無い / 【2】睡眠が約240フレーム(4秒) / 【3】一閃の分割ダメージが 60・120・180フレーム目(合計50・直接200) / 【4】開始・メッセージ中の停止と再開・終了・再開始で欠落も重複も無い / 【5】通常のカード戦闘(Arena)は従来どおり1フレーム1回 / 【6】SOUL は準備の間は止まり、ATTACK で1フレーム1回(FieldCombat は動かない)。二重加算を戻すと【1】が落ちることを変異テストで確認。
+
+## Stage 1D-2D: 指輪ロードアウト(RingLoadout)モードの統合検証(コードの変更なし)
+
+**目的**: 旧い固定スロットではなく RingLoadout モード(`setLoadoutSource("auto")`)で、10スキル・ストレングス・葦笛・黄金の矢 Lv3・編成/保存/ロード/HUD・空の枠・編集ロック・スキルID単位の Cooldown・一閃(補正後の時計)を通しで確かめる。**確認できなかった不具合は無く、ゲームのコード(js/・data/)は変更していない**。
+
+- **実エンジン(Node)**: `tests/ProjectR_FieldCombat.integration.test.cjs`(6項目): 【1】10スキル × 5枠 = 50通りを実際のキー・左クリックで発動(ヘルメース5・アポロン5 を枠で5通りに回し、効果の状態まで確認)/【2】ストレングス(薙ぎ払い 100 → 115(Lv1)・Lv3 防御無視・銃 76 → 88・1回で消費・銃を持っていても近接の武器で計算)/【3】葦笛(睡眠 約240フレーム・溜め中の予兆が消える・起床後に再び攻撃)/【4】黄金の矢 Lv3 の実キー(短押し・54フレームでビーム・移動 50%・6秒 Cooldown)/【5】編成 → 保存 → ロード → 戦闘(HUD・空の枠・スキルID Cooldown・戦闘中の編集拒否)/【6】一閃の分割ダメージが 1・2・3秒。
+- **実機(MZ Playtest・CDP)**: `tools/mz_cdp/field_ring_verify.cjs`(**45/45 PASS**。`session({ field: true, ring: true })` で RingLoadout モードを明示。既存の field_* の検証は旧い固定スロットが既定)。`MZ_ONLY=R2,R5` のように、項目を選んで実行できる。実キー(物理 Shift の修飾つき)・実マウスで、Hermes 5 / Apollo 5 の実発動、ストレングス(薙ぎ払い 98 → 113・銃 74 → 86・1回で消費)、葦笛(実時間 4.03秒・予兆が消える・起床後に再び溜める・ダメージで起きる)、一閃(直接 200 + 実時間 1.03・2.02・3.03秒に分割 17・17・16)、黄金の矢 Lv3(54〜56フレームでビーム・追従・1.5秒で終了・移動速度 0.52 倍・6秒 Cooldown・短押し・0.5秒で取り消し)、保存 → ロード → 戦闘の HUD、空の枠、編集ロック、Console エラー 0・保存の書き込み 0 を確認。
+- **仕様どおりの挙動(不具合ではない)**: 一閃の分割ダメージ(1・2・3秒)は、睡眠の「ダメージで解除」で眠りを解く。一閃のあとに葦笛を使うと、次の分割ダメージ(約1秒後)で起きる(Node でも同じ: 葦笛の 36 フレーム後に起床)。
+- **手動確認が必要**: 本物の人の手でのキー・マウス操作の感触、メニュー画面(指輪装備・スキル編成)の見た目と操作、本番のセーブ・ロード(Scene_Save / Scene_Load)、敵の予兆(赤い範囲)の描画。
+
+## Stage 1E-1: RingLoadout の Q 奥義(ヘルメース・アポロン)を指輪モードへつなぐ(FieldCombat v0.9.0)
+
+**目的**: 指輪モード(RingLoadout)の Q を、RingLoadout の Q 枠で選んだ奥義にする。ULTIMATE メニュー側(CardDeckCore の保存された選択)は読み替えも書き換えもしない。
+
+**仕様**
+- 使える奥義 = Q 枠の指輪が「主人公が今持っている + 装備している + その神の奥義の処理(handler)が登録されている」(いまはヘルメース・アポロン)。Q 枠が空・無効(未実装の Janus など)なら、**奥義なし**(常駐の神もゲージもない。ヘルメースへの自動選択もしない)。
+- 戦闘の開始時に Q 枠を写し(`getUltimateState()`)、`deck.startCardBattle(FIXED_BATTLE, { ultimateRingId })` の第2引数でその戦闘だけ GodSummonManager へ渡す。**第2引数を省略**すれば従来どおり Core の選択を読む。`{ ultimateRingId: null }`(や空・文字列以外)は「この戦闘は奥義なし」(Core の選択へは戻さない)。省略と明示の null は `hasOwnProperty` で区別する。
+- **Core の開始は内部で `endBattle()` → Manager の `clear()` を通る**ので、指定は wrapper の入口で読み、Core の開始が成功したあとに戦闘ごとの変数 `sessionRing` へ取り込み、そのあとで常駐の神を作る(`ensurePersistent`)。`clear()`(戦闘の終了・マップ移動・読み込み・開始の失敗)で消える。保存しない。
+- Q の発動のたびに、開始時の写しを現在の所持・装備・handler・常駐の神の指輪と照らし直す(`ultimateReason`): 空 = `emptySlot`(何も起きない・記録も点滅もない)/ 未実装・未所持・未装備・戦闘中の変更 = `ultimateUnavailable`(ゲージは消費しない)。ゲージが満タンか、成功後の消費は、既存の UltimateActivation・UltimateGauge のまま(handler が `{ok:true, started:true}` を返した直後にだけ消費)。
+- **U は指輪モードの戦闘中は無効**。FieldCombat の入口での遮断に加えて、UltimateActivation の独自の入力経路(keydown の保留・`Scene_Map.update` での発動)を止める追加専用の**入力ゲート**(`registerInputGate(id, () => boolean)`。ゲートの例外は「止める」側)を FieldCombat が登録する(`rt.active && ringMode()` の間だけ true)。legacy・SOUL・戦闘外は従来どおり。`requestUltimateActivation` の直接呼び出し(Q・API)は止めない。
+- HUD(`getHudState().slots` の ultimate): `empty`(Q 空・ゲージなし)/ `unavailable`(使えない指輪)/ `charging` / `ready`。
+
+**変更したファイル**
+- `js/plugins/ProjectR_GodSummonManager.js`: startCardBattle の第2引数 `{ ultimateRingId }`(追加専用・約20行)+ 診断用 `getBattleUltimateRingOverride()`。
+- `js/plugins/ProjectR_UltimateActivation.js`: 入力ゲート `registerInputGate` / `unregisterInputGate`(追加専用)。
+- `js/plugins/ProjectR_FieldCombat.js`(v0.8.2 → v0.9.0): `begin`(Q 枠の写しと第2引数)・`castReason`(`ultimateReason`)・HUD・U のゲート登録・`getUltimateState()`。
+- 保護テストの更新(狭く): `tests/ProjectR_SoulBattlePoC.test.cjs` の SEAMS に GodSummonManager(`/ultimateRingId/`)。GodSummonManager を過去のコミットと完全一致で固定していた4つのテスト(HermesUltimate.phase4d1・ApolloUltimate.phase4d2・BattleHUD.phase5a・CombatTestArena・rt2)は、新しい `tests/ProtectedSeams.cjs` の `assertGodSummonSeamOnly(commit)`(許す削除3行・追加は ultimateRingId の窓口とコメントだけ・40行以内。ほかの行が1つでも変われば失敗)に置き換えた(保護を外していない)。1D-1 のテスト「Q(奥義)の隔離」は `ringUltimatePending` から `emptySlot` へ更新。
+
+**テスト**: `tests/ProjectR_FieldCombat.ultimate.test.cjs`(18項目): Q 空・Janus・ヘルメース・アポロン(Core の選択は別)・成功後にだけゲージ消費・失敗(handler の失敗・例外・崩壊・解除)でゲージ不変・戦闘中の所有・装備の変更・Q 枠の差し替え・U(FieldCombat の入口と独自の入力経路)・Core の保存データ不変(`setUltimateRing` 呼び出し 0 回・getter 不変)・後始末(終了・開始の失敗・マップ移動・setup)・保存→読み込み・legacy・通常のカード戦闘の第2引数(省略 / `{}` / null / 文字列)。変異確認: Manager の取り込みを外す・入力ゲートを外すと失敗する。
+**実機(CDP)**: `tools/mz_cdp/field_ring_ultimate_verify.cjs`(ring モード・実キー Q/U)。
+
+**既知の制限・注意**
+- Core は戦闘中の指輪の移動を拒否する(`RING_TRANSFER_DURING_BATTLE`)ので、戦闘中の所有の変更は通常は起きない。読み込み・外部の変更に備えた確かめ直し。
+- Q が空の戦闘では、常駐の神の同行表示とゲージがない(以前の legacy の自動ヘルメースとは異なる。指輪モードの仕様)。
+- ULTIMATE メニュー(Core の選択)と Q 枠は別々の選択。FieldCombat の指輪モードは Q 枠だけを見る。
+- **手動確認が必要**: 奥義の見た目(カットイン・VFX・神の同行表示)、本番のセーブ・ロード(Scene_Save / Load)、メニュー画面での Q 枠の操作。
+
+## Stage 1E-2: 指輪装備・スキル編成・Q 奥義の最終統合 QA(メニューの説明文だけ修正)
+
+**目的**: メニュー(指輪装備・仲間への受け渡し・スキル編成・Q 枠・ULTIMATE 画面)→ 保存・読み込み → フィールド戦闘(HUD・Q 奥義)の通しの確認。確認された不具合だけを最小限で直す。戦闘の仕組み・スキルのバランス・2つの奥義の選択(Q 枠 / ULTIMATE 画面)は変えていない。
+
+**確認された不具合(UI の説明だけ)と修正**
+- ULTIMATE 画面が「選んだ神は…Uキーで発動します」とだけ書いており、フィールド戦闘(指輪モード)では使われず Q 枠を使うこと・U が使えないことが分からなかった。→ `ProjectR_UltimateSelect.js` の詳細欄と @help に追記。
+- 指輪画面(`ProjectR_RingParty.js`)の @help に「まだ FieldCombat(実戦)には接続していません」という古い記述が残っていた。→ 現状(フィールド戦闘にそのまま使われる・Q 枠は ULTIMATE 画面の選択とは別)へ更新。Q 枠の候補・説明欄にも「フィールド戦闘の Q キーで発動します(「ULTIMATE」画面の選択とは別です)」を追記。
+- 2つの選択の使われ方: **Q 枠(RingLoadout)= フィールド戦闘(指輪モード)/ ULTIMATE 画面(CardDeckCore)= SOUL 戦闘・通常のカード戦闘(U キー)**。どちらを変えても他方は変わらない(両方向をテストで確認)。
+
+**テスト**
+- Node(実エンジン・実 Scene/Window): `tests/ProjectR_RingQA.stage1e2.test.cjs`(10項目): メニュー → 戦闘への反映 / 2つの選択の独立と説明文 / 仲間への受け渡し(Q・スキルの解除・戻して再装備・1人1つ)/ 戦闘中の編集ロック(画面・RingLoadout API・指輪の移動。Core の奥義の選択 API だけは従来どおり呼べるが、いまの戦闘の神は変わらない)/ Q の表示状態 / 保存→読み込み / 戦闘の終了・再開・マップ移動・legacy・通常のカード戦闘・SOUL / 通常スキル10種 × HUD。
+- 実機(CDP): `tools/mz_cdp/ring_qa_verify.cjs`(**36/36 PASS**)。実の Scene_ProjectRRings・Scene_ProjectRUltimateSelect・Scene_Save・Scene_Load を実キーで操作。**セーブは隔離**: `StorageManager` の saveObject / loadObject / exists / remove をメモリ上のストアへ差し替え(実の `save/` は書かない・読まない)、`fs.writeFileSync` の save パスは拒否して数える(ディスクへの書き込み 0)。実行の前後で `save/` のハッシュも一致を確認。
+- このプロジェクトの決定キーは **F**(Hendrix のキー割当。Enter は標準の決定にならない)。ProjectR のメニュー画面は Enter でも動く。
+
+**既知の挙動(不具合ではない)**
+- 画面内に生存敵がいる間は、戦闘が終わっても CombatPresence が「戦闘中」で、指輪の移動(仲間へ渡す・戻す)は拒否される(従来の仕様)。
+- 戦闘中は Esc でメニューが開かない。強制的に別の Scene を挟んで Scene_Map が作り直されると、常駐の神・ゲージは `onMapLoaded` の後始末で消え、Q は `ultimateUnavailable` で断る(ゲージは消費しない)。
+- Q が空の戦闘では、画面の ULTIMATE ゲージ・神のパネルが出ない(Q が空であることを示す専用の表示は無い)。
+- **人の目での確認が必要**: 説明文の言い回し・文字の見やすさ、HUD の Q の見た目(空のとき何も出ない点)、本物の `save/` を使ったセーブ・ロード、奥義のカットイン・VFX。
+
+## 空の Q の HUD 表示(指輪モード)
+
+**仕様**: 指輪モード(RingLoadout)の戦闘で、Q 枠が空のとき、Ultimate 区画に**暗い Q のキーと「未設定」**を出す。円弧のゲージ・数値・神のパネルは出さない(従来どおり、Q が空なら常駐の神もゲージもない)。Q が割り当て済みなら、従来の表示のまま(充填中 / READY / 発動中 ULTIMATE ACTIVE / 発動後の充填中)。
+
+**変更**
+- `ProjectR_FieldCombat.js`: HUD の DataAdapter の `ultimate()` を、戦闘中・指輪モード・Q が空(`ultimateReason() === "emptySlot"`)のときだけ `{ mode: "card", available: false, key: "Q", slotEmpty: true, … }` に差し替える。それ以外は元のデータをそのまま返す(legacy・戦闘外・SOUL・使えない指輪は変わらない)。
+- `ProjectR_BattleHUD.js`(追加のみ・約 30 行): `Sprite_ProjectRUltimateHUD` が `data.slotEmpty` のとき、区画を見せて、既存の Q のキー(金色の枠)を暗く(透過 0.35)し、同じ文字のスタイル・muted 色で「未設定」を右に置く。円弧・数値は隠す。`slotEmpty` が無いときは従来の描画(`applySlotEmpty(false)` で表示を戻してから)。新しい素材・レイアウトの変更なし。
+- 使えない指輪(Janus など)が Q の場合は、従来どおり区画なし(「未設定」にはしない)。
+
+**テスト**: `tests/ProjectR_FieldCombat.hudQ.test.cjs`(5項目)・実機 `tools/mz_cdp/field_ring_hudq_verify.cjs`(15/15 PASS。描画の Sprite の表示状態を読み、スクリーンショット `hudq_*.png` を撮る)。
+
+## Stage 1E-3: Q の HUD の仕上げ(使用不可の表示)
+
+指輪モードの戦闘中は、Q の枠を Ultimate 区画に**常に**出す。
+- **空**: 暗い Q + 「未設定」(ゲージ・神のパネルなし)。
+- **割り当て済みで使えない**(未実装の指輪・奥義の処理の解除など): 暗い Q + **「使用不可」**(ゲージ・神のパネルなし)。前の節の「使えない指輪は区画なし」を置き換えた。
+- **検証ですでに外れた割り当て**(戦闘中の所有の変更で RingLoadout の `getUltimate()` が空になった): 「使用不可」ではなく「未設定」。発動の判定(`ultimateReason`)は変えない(`ultimateUnavailable` のまま・ゲージは消費しない)。
+- **使える Q**: 従来の表示(充填中・READY・発動中・発動後)のまま。legacy・戦闘外・SOUL は変更なし。
+
+**実装**: 新しい判定は作らず、`ultimateReason()` の結果を写す `ultimateHudKind()`(`null` / `"empty"` / `"unavailable"`)だけを追加。`getHudState()` の ultimate 枠の `state`、HUD の DataAdapter の `ultimate()`(`slotEmpty` / `slotUnavailable`)と `divine()`(暗い表示のときは `null`)が、これを使う。`ProjectR_BattleHUD.js` は、`slotUnavailable` のときに同じ暗い表示で「使用不可」を出すだけ(スタイル・素材・配置は前の節のまま)。保存データ・状態は増やしていない。
+
+**テスト**: `tests/ProjectR_FieldCombat.hudQ.test.cjs`(6項目)・実機 `tools/mz_cdp/field_ring_hudq_verify.cjs`(15/15 PASS。スクリーンショット `hudq_H1_empty.png` / `hudq_H3_unavailable.png` ほか)。`ProjectR_FieldCombat.ultimate.test.cjs` の 4a は、割り当てが外れた場合の HUD の期待値を「未設定」へ更新。
+
+## メインメニューの SKILL = 指輪のスキル編成
+
+メインメニュー(原画)の既存の「SKILL」(重複の項目は作らない)を、**指輪のスキル編成(LMB / Shift / E / X / C / Q)が開いた状態の画面**へ接続した(旧: デッキ構築)。
+- `ProjectR_RingParty.js`: `Scene_ProjectRSkillLoadout`(既存の指輪画面 `Scene_ProjectRRings` を継承。別の編成画面・仕組みは作らない)。開いた直後は「スキル編成」の枠の一覧が動く。Esc は従来どおり1つずつ: 枠の一覧 → 上の項目(ここで「指輪装備」・仲間への受け渡しへ切替)→ メインメニュー。登録できるスキル・奥義が1つも無いとき(装備中の指輪が無い等)は案内を出す。
+- `ProjectR_MenuIntegration.js`: `commandScenes.skill = Scene_ProjectRSkillLoadout`(RingParty が無い環境だけ従来のデッキ構築)。`openSkillLoadout()` を追加。戦闘中ロック・ULTIMATE・ITEM・ULTIMATE → Tab → 指輪画面は変更なし。判定・保存はすべて既存の RingLoadout / MenuCore のモデル。
+- **デッキ構築(`Scene_ProjectRDeckBuilder`・`openDeckBuilder()`)はメインメニューからは開けなくなった**(Scene・API は残っている)。必要なら入口を足す。
+- テスト: `tests/ProjectR_SkillMenu.test.cjs`(6項目)、実機 `tools/mz_cdp/skill_menu_verify.cjs`(21/21 PASS・実のメインメニューを実キーで操作)。`SKILL = DeckBuilder` を固定していた3テスト(FullSpec.menu・MenuRuntimeCertification・RingLoadout.menu)は更新。

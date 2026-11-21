@@ -200,9 +200,11 @@ test("孤児: 管理外の神の表示Event(印あり)は、3フレーム後に�
 });
 
 test("保護: GodSummonVisual / GodSummonManager は変更しない。登録は FogOfWar の後(末尾)・既定値・Chromium 85 の構文。表示だけ(状態・保存を持たない)", () => {
-    for (const file of ["js/plugins/ProjectR_GodSummonVisual.js", "js/plugins/ProjectR_GodSummonManager.js"]) {
+    for (const file of ["js/plugins/ProjectR_GodSummonVisual.js"]) {
         assert.equal(cp.execFileSync("git", ["diff", "--stat", "HEAD", "--", file], { cwd: project }).toString().trim(), "", file + " は変更していない");
     }
+    // GodSummonManager は、Stage 1E-1 で意図して変更した(startCardBattle の第2引数 { ultimateRingId } の追加専用の窓口)。許す差分は tests/ProtectedSeams.cjs が厳密に確かめる。
+    require("./ProtectedSeams.cjs").assertGodSummonSeamOnly("HEAD");
     const names = configuration.$plugins.map(p => p.name);
     assert.equal(names[names.length - 1], "ProjectR_FieldGodCompanion", "末尾に登録");
     assert.ok(names.indexOf("ProjectR_FieldGodCompanion") > names.indexOf("ProjectR_GodSummonVisual") && names.indexOf("ProjectR_FieldGodCompanion") > names.indexOf("ProjectR_FogOfWar"));

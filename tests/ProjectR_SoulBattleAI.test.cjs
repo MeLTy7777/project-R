@@ -99,7 +99,7 @@ test("安全: AI・データのコードは入力・手札・ダメージ・HP�
     const status = cp.execFileSync("git", ["status", "--porcelain"], { cwd: project, encoding: "utf8" }).split(/\r?\n/);
     for (const file of ["js/plugins/Hendrix_Action_Engine.js", "js/plugins/DotMoveSystem.js", "js/plugins/ProjectR_BossFramework.js", "js/plugins/ProjectR_CombatTestArena.js", "js/plugins/ProjectR_EnemyAttack.js",
         "js/plugins/ProjectR_HermesSweep.js", "js/plugins/ProjectR_HermesIssen.js", "js/plugins/ProjectR_HermesUltimate.js", "js/plugins/ProjectR_HermesSwordsmanship.js",
-        "js/plugins/ProjectR_ApolloGoldenArrow.js", "js/plugins/ProjectR_ApolloGoldenVolley.js", "js/plugins/ProjectR_CardDeckCore.js", "data/Skills.json", "data/Enemies.json", "data/Weapons.json"]) {
+        "js/plugins/ProjectR_ApolloGoldenArrow.js", /* ProjectR_ApolloGoldenVolley.js は Stage 1D-2A(フィールド戦闘の持続ビーム)で変更。SOUL側の範囲は ProjectR_SoulBattlePoC.test.cjs の許可リストで確認 */ "js/plugins/ProjectR_CardDeckCore.js", "data/Skills.json", "data/Enemies.json", "data/Weapons.json"]) {
         assert.ok(!status.some(line => line.slice(3) === file), file + " は変更されていない");
     }
 });

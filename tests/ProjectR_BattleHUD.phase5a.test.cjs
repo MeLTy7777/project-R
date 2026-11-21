@@ -185,7 +185,10 @@ test("HUDが依存する本体plugin(Core/Input/Manager/Gauge/Activation/Ultimat
     // HermesSwordsmanship(表示連携)も意図して変更した。検証は tests/ProjectR_CombatRuntimeCompliance.test.cjs。
     // 全仕様パス: MenuHUD(MenuHUD.commandScenes)・BattleHUD(getCardPresentation/getGodPresentation)に小さな接続口を追加。
     // git diffは改行コード(autocrlf)の差を正規化するので、内容の変更だけを検出できる。
+    // ProjectR_GodSummonManager は、Stage 1E-1 で意図して変更した(startCardBattle の第2引数 { ultimateRingId } の追加専用の窓口)。許す差分は tests/ProtectedSeams.cjs が厳密に確かめる。
+    require("./ProtectedSeams.cjs").assertGodSummonSeamOnly("0060015");
     for (const name of names) {
+        if (name === "ProjectR_GodSummonManager.js") continue;
         const result = cp.spawnSync("git", ["diff", "--quiet", "0060015", "--", `js/plugins/${name}`], { cwd: path.join(__dirname, "..") });
         assert.equal(result.status, 0, name);
     }

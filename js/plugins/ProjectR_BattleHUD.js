@@ -2081,6 +2081,26 @@
             this._keyText.y = 64;
             this._keyText.setText("R");
             this.addChild(this._keyText);
+
+            // フィールド戦闘(指輪モード)で Q 枠が空(data.slotEmpty)/ 割り当て済みで使えない(data.slotUnavailable)とき: ゲージ・数値は出さず、暗い Q のキーと「未設定」/「使用不可」だけを出す。
+            this._emptyText = new Sprite_ProjectRText(160, 42, {
+                fontSize: 24,
+                bold: true,
+                color: rgbaHex(COLORS.muted),
+                align: "left"
+            });
+            this._emptyText.x = 876;
+            this._emptyText.y = 66;
+            this._emptyText.setText("未設定");
+            this._emptyText.visible = false;
+            this.addChild(this._emptyText);
+        }
+
+        // Q 枠の暗い表示(暗い Q + 「未設定」/「使用不可」)に切り替える / 通常のゲージ表示へ戻す。
+        applySlotEmpty(empty, label = "未設定") {
+            for (const part of [this._baseGraphics, this._valueGraphics, this._titleText, this._valueText]) part.visible = !empty;
+            this._emptyText.visible = empty;
+            if (empty) this._emptyText.setText(label);
         }
 
         // 状態別の配色/文言。ready（満タン＋神が顕現中）とfullUnavailable（満タンだが神が崩壊中）は別物。
@@ -2181,7 +2201,7 @@
             if (Graphics.frameCount % 4 !== 0) return;
             const data = this._adapter.ultimate();
             // カード戦闘中に有効なUltimate（ゲージ状態）が無いときは、偽の0/100を出さず区画ごと隠す。
-            this.visible = data.mode !== "card" || data.available;
+            this.visible = data.mode !== "card" || data.available || !!data.slotEmpty || !!data.slotUnavailable;
             if (!this.visible) {
                 this._lastSignature = "";
                 return;
@@ -2195,10 +2215,20 @@
                 data.max,
                 data.key,
                 data.keyActive,
-                data.executing
+                data.executing,
+                !!data.slotEmpty,
+                !!data.slotUnavailable
             ]);
             if (signature === this._lastSignature) return;
             this._lastSignature = signature;
+            if (data.slotEmpty || data.slotUnavailable) {
+                this.applySlotEmpty(true, data.slotUnavailable ? "使用不可" : "未設定");
+                this._keyText.setText(data.key || "Q");
+                this._keyText.alpha = 0.35;
+                this._keyGraphics.alpha = 0.35;
+                return;
+            }
+            this.applySlotEmpty(false);
             this.redrawGauge(data);
         }
     }

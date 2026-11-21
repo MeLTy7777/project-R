@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc v1.3.0 Apollo「黄金の矢」(設計ID 8 / apollo_golden_volley) Lv1〜3: 矢を3/5/11本同時に発射。Lv3は長押しで幅3マスのビーム(連続ヒット・ヒットストップ)。命中が確定してから消費。
+ * @plugindesc v1.4.0 Apollo「黄金の矢」(設計ID 8 / apollo_golden_volley) Lv1〜3: 矢を3/5/11本同時に発射。Lv3は長押しで幅3マスのビーム(連続ヒット・ヒットストップ)。フィールド戦闘は持続ビーム(追尾・最大1.5秒)。命中が確定してから消費。
  * @author ProjectR
  * @base ProjectR_CardDeckCore
  * @base ProjectR_CardCatalog
@@ -90,6 +90,16 @@
  *   ・消費: 最初の有効なヒットで1回だけ(矢と同じ予約→確定)。1ヒットも無ければ消費しない。確定待ちの間の再入力は volleyPending で拒否。
  *   ・数値はすべて ProjectR_CardBalance.json の beam* / hitStop* (開発用エディタ F6)。仮の既定値で、最終のバランス承認を待っている。
  *
+ * 【持続ビーム(Stage 1D-2A。フィールド戦闘 ProjectR_FieldCombat の Lv3 長押し)】
+ *   上の「Phase A5B のビーム」(先端が進む1発撃ち)とは別の入口。FieldCombat が startHeldBeam({ onEnd }) で始め、stopHeldBeam(reason) で止める。入力の判定(0.25秒・0.9秒)・6秒のCooldown・移動速度は FieldCombat が持つ。
+ *   ・最大1.5秒(90更新)。毎フレーム、原点はプレイヤー中心・向きはマウスへ追従。先端は常に全長。幅3マス・壁の遮蔽・敵の見える部分で判定は A5B と同じ。
+ *   ・同じ敵へは0.2秒(12更新)に1回(その敵に最初に入った更新から数える)。1回のダメージ・Lv2のスリップ(最初のヒットで1回)・ヒットストップ・効果音は A5B と同じ(balance の beamHitDamage ほか)。1.5秒の間に同じ敵へ最大8回。
+ *   ・カードの消費の確定は、最初の有効なヒットで1回だけ(固定戦闘では実際の消費は無い)。ヒットが1つも無ければ確定しない。
+ *   ・終わるとき(時間切れ "duration" / stopHeldBeam / 戦闘終了・マップ移動・戦闘不能)に onEnd({ reason, age, totalHits, totalDamage }) を1回だけ呼ぶ。
+ *   ・フィールド戦闘の指輪ロードアウトでは、前の矢が飛んでいても次を撃てる(deck.concurrentVolleysAllowed)。カード戦闘は従来どおり「確定待ちの間は次を拒否(volleyPending)」。
+ *   ・絵は A5B と同じ素材を、向き・位置が変わったとき(または24更新ごと)に描き直して追従させる(表示だけ。実機の見た目は未確認)。
+ *   API: startHeldBeam({ onEnd }) / stopHeldBeam(reason) / getHeldBeam() / getHeldBeamLog() / heldBeamRules
+ *
  * 【長押し中のチャージ演出(Phase A5C。Lv3のhold中だけ。表示だけ)】
  *   押して8更新(約0.13秒)を過ぎたら、Apolloが主人公の前に現れて弓を引く(公式Show VFX = VFX Designerライブラリ ProjectR_Charge_Bow。向きは押した時のマウス方向)、
  *   主人公は「弓を引いて構える」(ArmDraw)。黄金の光が集まり、段階(8/15/25更新)ごとに強まり、30更新で「引き切った弓」へ替わって合図(輪の閃光 + 効果音1回)が出る。
@@ -126,6 +136,10 @@
     const HOLD_SECONDS = 0.5; // Lv3: これ以上押して離すとビーム(戦闘時計で30更新)
     const HOLD_FRAMES = Math.max(1, Math.round(HOLD_SECONDS * 60));
     const BEAM_VFX_FRAMES = 30; // ビームのVFX(8コマ / 18fps)が終わるまでのframe。過ぎたら公式のdisposeで確実に外す
+    // 持続ビーム(Stage 1D-2A。フィールド戦闘の Lv3 長押し): 最大1.5秒 / 同じ敵へは0.2秒に1回(戦闘の更新 60/秒)
+    const HELD_BEAM_FRAMES = 90;
+    const HELD_HIT_FRAMES = 12;
+    const HELD_VFX_MIN_GAP = 6, HELD_VFX_REFRESH = 24, HELD_VFX_TURN = 4, HELD_VFX_MOVE = 0.4; // 追尾する絵の描き直し(表示だけ): 最短の間隔 / 最長の間隔 / 向きが変わった度 / 動いたマス
     const HIT_SOUND_GAP_FRAMES = 4; // ビームの連続ヒットの効果音は、この間隔より近いものを間引く
     const BEAM_RECORD_LIMIT = 400; // 診断に残す個別ヒットの上限
     const LANE_TILES = 1; // ビームの幅を並走するレーン(1マス幅)に分けて、レーンごとに遮蔽を判定する(見た目のレーンと同じ分け方)
@@ -259,9 +273,10 @@
         if (!m || arrow.map !== m || m.event(arrow.eventId) !== arrow.event) return;
         try { command("DestroyEvent", { target: String(arrow.eventId), destroyNearby: "", permanent: "false" }, arrow.eventId); } catch (_error) { /* 後片付けの失敗は握りつぶす */ }
     };
-    const destroyVolley = volley => {
+    const destroyVolley = (volley, reason) => {
         for (const arrow of volley.arrows) destroyArrow(arrow);
-        if (volley.kind === "beam") releaseHitStop(volley);
+        if (volley.kind === "beam" || volley.kind === "heldBeam") releaseHitStop(volley);
+        if (volley.kind === "heldBeam") finishHeldBeam(volley, reason || "destroyed");
     };
     const liveArrows = volley => volley.arrows.filter(arrow => !arrow.gone);
 
@@ -564,13 +579,158 @@
         return failure("reserved");
     };
 
+    // ---------- 持続ビーム(Stage 1D-2A。フィールド戦闘の Lv3 長押し) ----------
+    //   FieldCombat が、長押しが 0.9 秒に達した瞬間に startHeldBeam() で始め、離す・中断で stopHeldBeam() で止める。最大1.5秒で自分でも終わる(時間切れ)。
+    //   ・毎フレーム、原点はプレイヤー中心・向きはマウスへ追従。幅3マス・壁で止まる(レーン)・敵の見える部分で判定、は従来のビームと同じ(buildLanes / beamRegion)。先端は常に全長。
+    //   ・同じ敵へは0.2秒に1回(その敵に最初に入ったフレームから12フレーム空ける)。1回のダメージ・スリップ・ヒットストップ・効果音は従来のビームと同じ(balance の beamHitDamage ほか)。
+    //   ・カードの消費の確定は従来どおり、最初の有効なヒットで1回だけ(固定戦闘では実際の消費は無い)。
+    //   ・終わるとき(時間切れ・止める・戦闘終了・マップ移動・戦闘不能)に、startHeldBeam の onEnd を1回だけ呼ぶ。通常の発射(扇)とは別の発動で、同じ入力から両方は出ない(呼ぶ側の責任)。
+    let heldRequest = null; // activate に「持続ビームとして」と伝える(startHeldBeam の同期呼び出しの間だけ)
+    let heldBeam = null; // 動いている持続ビーム
+    const heldLog = [];
+    const concurrentAllowed = () => { try { return deck.concurrentVolleysAllowed?.() === true; } catch (_error) { return false; } }; // フィールド戦闘(指輪ロードアウト)は、前の矢が飛んでいても次を撃てる
+
+    const activateHeldBeam = (context, env) => {
+        const summons = root.ProjectRGodSummonManager;
+        if (!summons) return failure("godSummonUnavailable");
+        const cfg = beamConfig();
+        if (!cfg) return failure("balanceUnavailable");
+        const level = cardLevel(), effects = effectsForLevel(level), request = heldRequest;
+        if (level < BEAM_LEVEL) return failure("beamLevelLocked");
+        let volley = null;
+        const result = summons.perform({ definition: context?.definition }, summon => {
+            if (!Number.isFinite(summon.degree) || !(summon.distance >= EPSILON)) return failure("invalidMousePosition");
+            const aim = normalize(summon.degree), p = $gamePlayer.centerPositionPoint(), origin = { x: p.x, y: p.y };
+            const lanes = buildLanes(origin, aim, cfg.width, reachOf(cfg.range));
+            const limit = Math.max(0, ...lanes.map(l => l.limit));
+            volley = { kind: "heldBeam", serial: ++serial, instanceId: context.instance.instanceId, definition: context.definition, level, effects, aim, degrees: [aim], count: 0, arrows: [], hits: [],
+                committed: false, summonId: summon.summonId, cfg, element: tune("element"), weaknessMultiplier: tune("weaknessMultiplier"), slipTicks: Math.floor(tune("splitTicks")), held: request,
+                beam: { origin, degree: aim, lanes, limit, head: limit, sampled: 0, done: false, targets: new Map(), age: 0, maxFrames: HELD_BEAM_FRAMES, hitFrames: HELD_HIT_FRAMES,
+                    finished: false, endReason: null, vfx: null, vfxAt: 0, vfxState: null, vfxSerial: 0 } };
+            return { ok: true };
+        });
+        if (!result?.ok || !volley) return failure(result?.reason || "activationFailed");
+        volley.summonId = result.summonId ?? volley.summonId;
+        reserve = volley;
+        beamLog.push({ serial: volley.serial, level, degree: volley.aim, limit: volley.beam.limit, width: cfg.width, held: true });
+        if (beamLog.length > 40) beamLog.shift();
+        return failure("reserved");
+    };
+
+    const heldSummary = volley => {
+        const targets = [...volley.beam.targets.values()].map(r => ({ eventId: r.eventId, hits: r.hits, damage: r.damage, slip: r.slip, hitStopFrames: r.stopFrames }));
+        return { targets, totalHits: targets.reduce((s, r) => s + r.hits, 0), totalDamage: targets.reduce((s, r) => s + r.damage, 0) };
+    };
+    const stopHeldVfx = volley => {
+        const b = volley.beam;
+        if (!b.vfx) return;
+        const i = vfxJobs.indexOf(b.vfx);
+        if (i >= 0) vfxJobs.splice(i, 1);
+        endVfxJob(b.vfx);
+        b.vfx = null;
+    };
+    // 追尾する絵(表示だけ): 向き・位置が変わったとき、または一定間隔で、前の絵を外して描き直す。
+    const refreshHeldVfx = (volley, force) => {
+        const b = volley.beam, since = b.age - b.vfxAt;
+        const turned = b.vfxState ? Math.abs(((b.degree - b.vfxState.degree + 540) % 360) - 180) : 999;
+        const moved = b.vfxState ? Math.hypot(b.origin.x - b.vfxState.origin.x, b.origin.y - b.vfxState.origin.y) : 999;
+        if (!force && (since < HELD_VFX_MIN_GAP || (since < HELD_VFX_REFRESH && turned < HELD_VFX_TURN && moved < HELD_VFX_MOVE))) return;
+        stopHeldVfx(volley);
+        b.vfxSerial++;
+        b.vfx = playBeamVfx(volley, `v${volley.serial}.h${b.vfxSerial}`);
+        b.vfxAt = b.age; b.vfxState = { degree: b.degree, origin: { x: b.origin.x, y: b.origin.y } };
+    };
+    // 終わり: 何度呼んでも1回だけ。onEnd は最後に呼ぶ(呼んだ先が、すぐ次のビームを始めても安全なように、状態を片づけてから)。
+    const finishHeldBeam = (volley, reason) => {
+        const b = volley.beam;
+        if (b.finished) return;
+        b.finished = true; b.done = true; b.endReason = String(reason || "end");
+        try { stopHeldVfx(volley); } catch (_error) { /* 表示のみ */ }
+        releaseHitStop(volley);
+        volleys.delete(volley.serial);
+        finishPending(volley);
+        if (heldBeam === volley) heldBeam = null;
+        releaseSummon(volley.summonId);
+        const summary = heldSummary(volley);
+        const entry = { serial: volley.serial, reason: b.endReason, age: b.age, committed: volley.committed, ...summary };
+        heldLog.push(entry); if (heldLog.length > 40) heldLog.shift();
+        lastResult = volley.committed ? { ok: true, pending: false, consumed: true, committed: true, kind: "heldBeam", level: volley.level, serial: volley.serial, degree: b.degree, ...summary,
+            hits: volley.hits.map(h => ({ ...h })), done: true, endReason: b.endReason, effects: volley.effects, instanceId: volley.instanceConsumed }
+            : { ok: false, reason: "missed", aborted: !volley.committed, consumed: false, committed: false, kind: "heldBeam", level: volley.level, serial: volley.serial, endReason: b.endReason };
+        const callback = volley.held && volley.held.onEnd;
+        if (typeof callback === "function") { try { callback({ serial: volley.serial, reason: b.endReason, age: b.age, totalHits: summary.totalHits, totalDamage: summary.totalDamage }); } catch (_error) { /* 呼んだ先の失敗は握りつぶす */ } }
+    };
+    const processHeldBeam = volley => {
+        const b = volley.beam, cfg = volley.cfg, occ = occlusion();
+        if (b.finished) return;
+        b.age++;
+        const p = $gamePlayer.centerPositionPoint(), degree = aimNow(); // 追尾: 原点は毎フレームのプレイヤー中心 / 向きはマウス(決まらないときは直前の向き)
+        b.origin = { x: p.x, y: p.y };
+        if (degree !== null) b.degree = degree;
+        volley.aim = b.degree; volley.degrees = [b.degree];
+        b.lanes = buildLanes(b.origin, b.degree, cfg.width, reachOf(cfg.range));
+        b.limit = Math.max(0, ...b.lanes.map(l => l.limit)); b.head = b.limit;
+        const planned = [];
+        for (const enemy of map().events().filter(event => isEnemy(event) && hpOf(event.eventId()) > 0)) {
+            const id = enemy.eventId(), rec = b.targets.get(id);
+            if (rec && rec.lastAge !== null && b.age - rec.lastAge < b.hitFrames) continue; // 同じ敵へは0.2秒に1回
+            if (!beamRegion(b, occ.eventPolygon(enemy))) continue;
+            planned.push({ id, enemy });
+        }
+        if (planned.length && !volley.committed) { if (!commitVolley(volley)) return; } // 最初の有効なヒットで1回だけ確定。失敗なら何も与えない(abortVolley が終わらせる)
+        planned.sort((x, y) => x.id - y.id);
+        for (const hit of planned) {
+            const enemy = hit.enemy;
+            if (!enemy || enemy._erased || map().event(hit.id) !== enemy || hpOf(hit.id) <= 0) continue; // 倒れた・消えた敵には当てない
+            let rec = b.targets.get(hit.id);
+            if (!rec) { rec = { eventId: hit.id, hits: 0, damage: 0, lastAge: null, slip: false, stopFrames: 0 }; b.targets.set(hit.id, rec); }
+            const record = { target: hit.id, age: b.age, hit: rec.hits + 1, damage: cfg.damage };
+            rec.lastAge = b.age; // 失敗しても毎フレーム繰り返さない
+            try {
+                dealFixed(hit.id, cfg.damage, `heldbeam:${volley.serial}:${hit.id}:${b.age}`, volley, true);
+                rec.hits++; rec.damage += cfg.damage;
+                if (rec.hits === 1 && volley.effects.splitTotal > 0) { record.slip = startSlip(hit.id, volley); rec.slip = !!record.slip; }
+                if (cfg.stopFrames > 0 && hitStop()) {
+                    const r = hitStop().apply(enemy, cfg.stopFrames, { owner: `volley:${volley.serial}`, maxFrames: cfg.stopMax });
+                    rec.stopFrames = r?.total ?? rec.stopFrames;
+                }
+                playHitSound(rec.hits);
+            } catch (error) { record.error = String(error?.message || error); }
+            if (volley.hits.length < BEAM_RECORD_LIMIT) volley.hits.push(record);
+        }
+        if (volley.committed) {
+            lastResult = { ok: true, pending: false, consumed: true, committed: true, kind: "heldBeam", level: volley.level, serial: volley.serial, degree: b.degree, ...heldSummary(volley),
+                hits: volley.hits.map(h => ({ ...h })), done: false, effects: volley.effects, instanceId: volley.instanceConsumed };
+        }
+        try { refreshHeldVfx(volley, false); } catch (_error) { /* 表示のみ */ }
+        if (b.age >= b.maxFrames) finishHeldBeam(volley, "duration");
+    };
+    const startHeldBeam = (options = {}) => {
+        if (heldBeam) return failure("beamActive");
+        if (typeof deck.useFixedCard !== "function") return failure("fixedBattleUnavailable");
+        heldRequest = { onEnd: typeof options?.onEnd === "function" ? options.onEnd : null };
+        let used;
+        try { used = deck.useFixedCard(CARD); } catch (error) { used = { ok: false, reason: "activationFailed", detail: String(error?.message || error) }; } finally { heldRequest = null; }
+        if (heldBeam && !heldBeam.beam.finished) return { ok: true, serial: heldBeam.serial, maxFrames: heldBeam.beam.maxFrames, hitFrames: heldBeam.beam.hitFrames };
+        return failure(used?.detail || used?.reason || "activationFailed");
+    };
+    const stopHeldBeam = reason => { const v = heldBeam; if (!v) return false; finishHeldBeam(v, reason || "stop"); return true; };
+    const heldBeamState = () => {
+        const v = heldBeam;
+        if (!v) return { active: false };
+        const b = v.beam;
+        return { active: true, serial: v.serial, degree: b.degree, origin: { ...b.origin }, age: b.age, maxFrames: b.maxFrames, hitFrames: b.hitFrames, limit: b.limit, width: v.cfg.width, committed: v.committed,
+            targets: [...b.targets.values()].map(r => ({ eventId: r.eventId, hits: r.hits, damage: r.damage, lastAge: r.lastAge, slip: r.slip, stopFrames: r.stopFrames })), hits: v.hits.map(h => ({ ...h })) };
+    };
+
     const activate = context => {
         if (mode === "commit") return commitPlan ? { ok: true } : failure("noCommitPlan");
         if (!deck.isCardBattleActive() || !root.ProjectRCardCatalog) return failure("battleInactive");
-        if (pendingVolley) return failure("volleyPending");
+        if (pendingVolley && !concurrentAllowed()) return failure("volleyPending");
         if (!balanceReady()) return failure("balanceUnavailable");
         const env = environment();
         if (!env.ok) return failure(env.reason);
+        if (heldRequest) return activateHeldBeam(context, env); // FieldCombat の長押し(startHeldBeam)。カード戦闘の長押し(hold)とは別の入口
         // Lv3の長押し(hold)はビーム。1回の入力で扇とビームの両方は出ない(variantは1つ)。
         if (cardLevel() >= BEAM_LEVEL && activationVariant() === "hold") return activateBeam(context, env);
         const summons = root.ProjectRGodSummonManager;
@@ -631,21 +791,23 @@
             if (name && typeof AudioManager !== "undefined") AudioManager.playSe({ name, volume: 80, pitch: 100, pan: 0 });
         } catch (_error) { /* 表示のみ */ }
         particleWait = PARTICLE_WAIT_FRAMES;
-        if (volley.kind === "beam") { // 幅3マスの黄金のビーム(VFX Designerライブラリ ProjectR_Volley_Beam を区間ごとに並べる)
-            try {
-                const b = volley.beam, vr = visualReach(), limits = b.lanes.map(l => Math.min(l.limit, vr)), job = { frames: BEAM_VFX_FRAMES, notes: [], anchors: [] };
-                const collect = r => { if (r?.ok && Array.isArray(r.notes)) { job.notes.push(...r.notes); if (Array.isArray(r.anchors)) job.anchors.push(...r.anchors); } };
-                if (Math.max(...limits) - Math.min(...limits) < UNIFORM_LANE_GAP) { // 遮られていない(または一様に遮られた)ビーム: 幅3マスの1枚で描く
-                    if (b.limit > 0) collect(root.ProjectRPresentationVfx?.play("apollo_golden.beam", { degree: volley.aim, length: Math.min(b.limit, vr), instance: "v" + volley.serial, origin: b.origin }));
-                } else { // 一部のレーンだけ遮られた: レーンごとに、そのレーンの長さまで描く(ダメージの届く範囲と同じ)
-                    for (const lane of b.lanes) {
-                        if (lane.limit > 0) collect(root.ProjectRPresentationVfx?.play("apollo_golden.beamlane", { degree: volley.aim, length: Math.min(lane.limit, vr), lateral: lane.center,
-                            instance: `v${volley.serial}.l${lane.index}`, origin: b.origin }));
-                    }
-                }
-                if (job.notes.length) vfxJobs.push(job);
-            } catch (_error) { /* 表示のみ */ }
+        if (volley.kind === "beam") { try { playBeamVfx(volley); } catch (_error) { /* 表示のみ */ } }
+        if (volley.kind === "heldBeam") { try { refreshHeldVfx(volley, true); } catch (_error) { /* 表示のみ */ } }
+    };
+    // 幅3マスの黄金のビーム(VFX Designerライブラリ ProjectR_Volley_Beam を区間ごとに並べる)。描いた絵の後片付け用の job を返す(何も描かなければ null)。
+    const playBeamVfx = (volley, instance) => {
+        const b = volley.beam, vr = visualReach(), limits = b.lanes.map(l => Math.min(l.limit, vr)), job = { frames: BEAM_VFX_FRAMES, notes: [], anchors: [] }, name = instance || "v" + volley.serial;
+        const collect = r => { if (r?.ok && Array.isArray(r.notes)) { job.notes.push(...r.notes); if (Array.isArray(r.anchors)) job.anchors.push(...r.anchors); } };
+        if (Math.max(...limits) - Math.min(...limits) < UNIFORM_LANE_GAP) { // 遮られていない(または一様に遮られた)ビーム: 幅3マスの1枚で描く
+            if (b.limit > 0) collect(root.ProjectRPresentationVfx?.play("apollo_golden.beam", { degree: volley.aim, length: Math.min(b.limit, vr), instance: name, origin: b.origin }));
+        } else { // 一部のレーンだけ遮られた: レーンごとに、そのレーンの長さまで描く(ダメージの届く範囲と同じ)
+            for (const lane of b.lanes) {
+                if (lane.limit > 0) collect(root.ProjectRPresentationVfx?.play("apollo_golden.beamlane", { degree: volley.aim, length: Math.min(lane.limit, vr), lateral: lane.center,
+                    instance: `${name}.l${lane.index}`, origin: b.origin }));
+            }
         }
+        if (job.notes.length) { vfxJobs.push(job); return job; }
+        return null;
     };
     // Apolloの表示Eventは発動の次のマップ更新で現れるため、現れたら光の粒子を漂わせる(最大 PARTICLE_WAIT_FRAMES 待つ)。
     const updateParticles = () => {
@@ -707,7 +869,7 @@
     const abortVolley = (volley, reason, extra = {}) => {
         if (volley.aborted) return;
         volley.aborted = true;
-        destroyVolley(volley);
+        destroyVolley(volley, reason);
         volleys.delete(volley.serial);
         finishPending(volley);
         releaseSummon(volley.summonId);
@@ -757,9 +919,10 @@
         const volley = reserve;
         reserve = null;
         if (!volley) return result;
-        // 予約(まだ消費していない): 矢は飛んでいる。確定待ちとして覚え、状態を持つ呼び出し元には pending として返す。
+        // 予約(まだ消費していない): 矢は飛んでいる。確定待ちとして覚え、状態を持つ呼び出し元には pending として返す(同時に飛べるのはフィールド戦闘の指輪ロードアウトだけ。確定待ちは最新の1つを覚える)。
         pendingVolley = volley;
         volleys.set(volley.serial, volley);
+        if (volley.kind === "heldBeam") heldBeam = volley;
         lastResult = { ok: true, pending: true, consumed: false, committed: false, kind: volley.kind || "fan", level: volley.level, serial: volley.serial, degree: volley.aim,
             arrows: volley.count, degrees: volley.degrees.slice(), effects: volley.effects, instanceId: volley.instanceId };
         present(volley);
@@ -826,6 +989,7 @@
 
     const processVolley = volley => {
         if (volley.kind === "beam") return processBeam(volley);
+        if (volley.kind === "heldBeam") return processHeldBeam(volley);
         const m = map();
         const enemies = m.events().filter(event => isEnemy(event) && hpOf(event.eventId()) > 0);
         const hits = [];
@@ -860,7 +1024,7 @@
     const clearAll = reason => {
         for (const volley of [...volleys.values()]) {
             if (!volley.committed) abortVolley(volley, reason);
-            else { destroyVolley(volley); volleys.delete(volley.serial); }
+            else { destroyVolley(volley, reason); volleys.delete(volley.serial); }
         }
         if (pendingVolley) abortVolley(pendingVolley, reason);
         pendingVolley = null;
@@ -920,6 +1084,9 @@
         holdFrames: HOLD_FRAMES,
         getBeamAttempts: () => beamLog.map(entry => ({ ...entry })), // A5Aの名前(ビームの分岐に入った記録)。A5BからはビームのBeamLogと同じ
         getBeam: () => { const v = [...volleys.values()].find(x => x.kind === "beam"); return v ? beamState(v) : null; },
+        // Stage 1D-2A: フィールド戦闘の持続ビーム(Lv3 長押し)。startHeldBeam({ onEnd }) / stopHeldBeam(reason) / getHeldBeam() / getHeldBeamLog() / heldBeamRules
+        startHeldBeam, stopHeldBeam, getHeldBeam: heldBeamState, getHeldBeamLog: () => heldLog.map(e => ({ ...e })),
+        heldBeamRules: Object.freeze({ frames: HELD_BEAM_FRAMES, hitFrames: HELD_HIT_FRAMES, seconds: HELD_BEAM_FRAMES / 60, hitSeconds: HELD_HIT_FRAMES / 60 }),
         beamConfig: () => { const c = beamConfig(); return c ? { ...c } : null; },
         geometry: Object.freeze({ tileCenter, arrowBody, beamRegion, beamLimit, laneLayout, buildLanes, laneLimit }),
         isPending: () => !!pendingVolley,

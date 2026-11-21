@@ -39,10 +39,10 @@ test("プラグイン登録: 新規11個が本番の順で登録され、ファ�
 });
 
 // ---------------- メニュー接続 ----------------
-test("メニュー: SKILL=デッキ構築 / ULTIMATE=神の選択 / ITEM=所持品 が MenuHUD.commandScenes に接続される", () => {
+test("メニュー: SKILL=指輪のスキル編成(旧: デッキ構築。指輪の編成が読み込まれている環境) / ULTIMATE=神の選択 / ITEM=所持品 が MenuHUD.commandScenes に接続される", () => {
     const g = createGame();
     const scenes = g.ProjectR.MenuHUD.commandScenes;
-    assert.equal(scenes.skill, g.Scene_ProjectRDeckBuilder);
+    assert.equal(scenes.skill, g.Scene_ProjectRSkillLoadout || g.Scene_ProjectRDeckBuilder, "RingParty があれば SKILL はスキル編成。無い環境だけデッキ構築");
     assert.equal(scenes.ultimate, g.Scene_ProjectRUltimateSelect);
     assert.equal(scenes.item, g.Scene_ProjectRInventory);
     // SKILLは標準Scene_Skillではない

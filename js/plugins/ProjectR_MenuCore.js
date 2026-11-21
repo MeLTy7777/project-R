@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc v1.0.0 ProjectR メニュー基盤（表示カタログ・デッキ/Ultimate/指輪/所持品のモデル・戦闘中ロック）。
+ * @plugindesc v1.1.0 ProjectR メニュー基盤（表示カタログ・デッキ/Ultimate/指輪/指輪装備・スキル編成/所持品のモデル・戦闘中ロック）。
  * @author ProjectR
  * @base ProjectR_CardDeckCore
  * @orderAfter ProjectR_CardDeckCore
@@ -19,6 +19,14 @@
  *     setDeck / setUltimateRing / assignRingTo* を呼びます。
  *   ・所持品の正はRPGツクールの$gameParty（アイテム・武器・防具）です。別の所持DBは作りません。
  *   ・カード名/アイコンは ProjectR_BattleHUD と同じ解決（Skillのnote <ProjectRCard: id> 等）。
+ *
+ * 指輪の装備・スキル編成（v1.1.0 / Stage 1C）:
+ *   ProjectRMenuCore.loadout が、ProjectR_RingLoadout のAPIだけを呼ぶモデルです（保存データには直接触れません）。
+ *   rings()      指輪ごとの一覧（所持者と、主人公の「装備中/未装備」を別々に持つ）
+ *   slots()      LMB/Shift/E/X/C/Q の6枠と登録内容
+ *   choices(枠)  その枠に登録できる候補（装備中の指輪の承認済みスキル / 奥義が実装済みの指輪）。先頭は「空欄にする」
+ *   assign / equip / unequip   変更（戦闘中は「inCombat」で拒否。重複・未装備などの判定は RingLoadout）
+ *   ProjectR_RingLoadout が無い環境では available() が false です。
  *
  * 戦闘中ロック（最終ルール）:
  *   明示的な戦闘イベント（ProjectRCombatPresence.isCombatEventActive）またはカード戦闘中は
@@ -392,6 +400,163 @@
             : { ok: false, reason: result.reasons[0]?.code, message: describeReasons(result.reasons)[0] || "", reasons: result.reasons };
     };
 
+    // ---- 指輪装備・スキル編成モデル（正は ProjectR_RingLoadout。保存データには直接触れず、そのAPIだけを呼ぶ） ----------
+    // 画面(ProjectR_RingParty)は、ここの戻り値と reason / message だけを使います。ロック・所持・重複の判定は RingLoadout が行い、
+    // ここでは「戦闘中の事前拒否」「表示用の並び」「日本語の理由」を足すだけです。RingLoadout が無い環境では available() が false です。
+    const loadoutApi = () => root.ProjectRRingLoadout || null;
+    const LOADOUT_SLOTS = Object.freeze([
+        Object.freeze({ slot: "lmb", key: "LMB", label: "LMB（左クリック）", ultimate: false }),
+        Object.freeze({ slot: "shift", key: "Shift", label: "Shift", ultimate: false }),
+        Object.freeze({ slot: "e", key: "E", label: "E", ultimate: false }),
+        Object.freeze({ slot: "x", key: "X", label: "X", ultimate: false }),
+        Object.freeze({ slot: "c", key: "C", label: "C", ultimate: false }),
+        Object.freeze({ slot: "q", key: "Q", label: "Q（奥義）", ultimate: true })
+    ]);
+    const loadoutSlotDef = slot => LOADOUT_SLOTS.find(def => def.slot === slot) || null;
+    // スキル名は設計カタログ(ProjectR_CardCatalog)の日本語名。無ければカード表示名。
+    const loadoutSkillName = skillId => {
+        const rows = root.ProjectRCardCatalog?.designs?.() || [];
+        const row = rows.find(r => r && r.runtimeCardId === skillId);
+        return (row && row.name) || cardInfo(skillId).name || text(skillId);
+    };
+    const ultimateName = ringId => `${ringInfo(ringId).godName}の奥義`;
+    const LOADOUT_MESSAGE = {
+        inCombat: "戦闘中は変更できません。",
+        ringNotOwned: "主人公が所持していない指輪です。",
+        ringNotEquipped: "その指輪を装備していません。先に「指輪装備」で装備してください。",
+        skillNotUnlocked: "このスキルはまだ使えません。",
+        invalidSkillId: "登録できないスキルです。",
+        invalidRingId: "不明な指輪です。",
+        invalidSlot: "不明な枠です。",
+        noSystem: "ゲームが始まっていないため変更できません。",
+        noLoadout: "指輪の装備・編成の機能が読み込まれていません。"
+    };
+    const loadoutMessage = result => {
+        if (result?.reason === "duplicateSkill") {
+            const other = loadoutSlotDef(result.slot);
+            return `すでに${other ? other.key : "別の"}枠に登録されています（同じスキルは1つの枠だけ）。`;
+        }
+        if (result?.reason === "ULTIMATE_NOT_IMPLEMENTED") return describeReason({ code: "ULTIMATE_NOT_IMPLEMENTED" });
+        return LOADOUT_MESSAGE[result?.reason] || (result?.reason ? String(result.reason) : "変更できません。");
+    };
+    const loadoutResult = result => result.ok
+        ? { ok: true, reason: null, message: "", changed: !!result.changed }
+        : { ok: false, reason: result.reason, message: loadoutMessage(result), changed: false };
+    const loadoutAvailable = () => !!loadoutApi();
+    // 保存データのコピー(装備した指輪・5枠・奥義)。無ければ空。
+    const loadoutState = () => {
+        const api = loadoutApi();
+        const state = api ? api.getState() : null;
+        return {
+            equipped: state ? [...state.equipped] : [],
+            slots: state ? { ...state.slots } : {},
+            ultimate: state ? state.ultimate : null
+        };
+    };
+    // 指輪ごとの一覧: 「所持」(誰が持っているか) と「主人公の装備」を別の項目として返す。
+    const loadoutRings = () => {
+        const state = loadoutState();
+        return ringEntries().map(entry => {
+            const equipped = entry.ownedByPlayer && state.equipped.includes(entry.ringId);
+            const assigned = [];
+            for (const def of LOADOUT_SLOTS) {
+                if (def.ultimate) continue;
+                const skillId = state.slots[def.slot];
+                if (skillId && equipped && loadoutApi()?.getSkillRing?.(skillId) === entry.ringId) assigned.push({ slot: def.slot, key: def.key, skillId, name: loadoutSkillName(skillId) });
+            }
+            return { ...entry, equipped, assignedSkills: assigned, ultimateAssigned: equipped && state.ultimate === entry.ringId };
+        });
+    };
+    // 6つの枠(LMB/Shift/E/X/C/Q)と、いま登録されているもの。
+    const loadoutSlots = () => {
+        const state = loadoutState();
+        const api = loadoutApi();
+        return LOADOUT_SLOTS.map(def => {
+            if (def.ultimate) {
+                const ringId = state.ultimate || "";
+                return { ...def, assigned: !!ringId, skillId: null, ringId, name: ringId ? ultimateName(ringId) : "", ringName: ringId ? ringInfo(ringId).name : "" };
+            }
+            const skillId = state.slots[def.slot] || null;
+            const ringId = skillId ? (api?.getSkillRing?.(skillId) || "") : "";
+            return { ...def, assigned: !!skillId, skillId, ringId, name: skillId ? loadoutSkillName(skillId) : "", ringName: ringId ? ringInfo(ringId).name : "" };
+        });
+    };
+    // ある枠に登録できる候補。先頭は「空欄にする」。通常枠は装備中の指輪の承認済みスキルだけ(他の枠で使用中のものは enabled:false)。
+    // Q枠は、装備中で奥義が実装済みの指輪ごとに1つ。実装されていない奥義・装備していない指輪は出さない。
+    const loadoutChoices = slotId => {
+        const def = loadoutSlotDef(slotId);
+        const api = loadoutApi();
+        if (!def || !api) return [];
+        const state = loadoutState();
+        const current = def.ultimate ? state.ultimate : state.slots[def.slot] || null;
+        const list = [{ kind: "clear", label: "（空欄にする）", enabled: !!current, selected: false, disabledReason: "すでに空欄です。" }];
+        const owned = state.equipped.filter(ringId => api.isRingOwned(ringId));
+        if (def.ultimate) {
+            const entries = ultimateEntries();
+            for (const ringId of owned) {
+                const entry = entries.find(e => e.ringId === ringId);
+                if (!entry || !entry.implemented || !api.isUltimateUnlocked(ringId)) continue;
+                list.push({ kind: "ultimate", ringId, ringName: entry.ringName, godName: entry.godName, name: ultimateName(ringId), enabled: true, selected: current === ringId, disabledReason: "" });
+            }
+            return list;
+        }
+        for (const ringId of owned) {
+            for (const skillId of api.getUnlockedSkills(ringId)) {
+                const usedBy = LOADOUT_SLOTS.find(s => !s.ultimate && s.slot !== def.slot && state.slots[s.slot] === skillId) || null;
+                list.push({
+                    kind: "skill", skillId, name: loadoutSkillName(skillId), ringId, ringName: ringInfo(ringId).name,
+                    enabled: !usedBy, selected: current === skillId, usedBySlot: usedBy ? usedBy.slot : null, usedByKey: usedBy ? usedBy.key : "",
+                    disabledReason: usedBy ? `すでに${usedBy.key}枠に登録されています（同じスキルは1つの枠だけ）。` : ""
+                });
+            }
+        }
+        return list;
+    };
+    // 枠に登録する/空欄にする。choice は loadoutChoices の項目(kind: clear / skill / ultimate)。
+    const loadoutAssign = (slotId, choice) => {
+        if (inCombat()) return { ...IN_COMBAT };
+        const api = loadoutApi();
+        if (!api) return { ok: false, reason: "noLoadout", message: LOADOUT_MESSAGE.noLoadout, changed: false };
+        const def = loadoutSlotDef(slotId);
+        if (!def) return { ok: false, reason: "invalidSlot", message: LOADOUT_MESSAGE.invalidSlot, changed: false };
+        const kind = choice?.kind || "clear";
+        if (kind === "clear") return loadoutResult(def.ultimate ? api.clearUltimate() : api.clearSkill(def.slot));
+        if (def.ultimate) {
+            if (kind !== "ultimate") return { ok: false, reason: "invalidSkillId", message: LOADOUT_MESSAGE.invalidSkillId, changed: false };
+            const entry = ultimateEntries().find(e => e.ringId === text(choice.ringId));
+            if (entry && !entry.implemented) return loadoutResult({ ok: false, reason: "ULTIMATE_NOT_IMPLEMENTED" });
+            return loadoutResult(api.setUltimate(choice.ringId));
+        }
+        if (kind !== "skill") return { ok: false, reason: "invalidSkillId", message: LOADOUT_MESSAGE.invalidSkillId, changed: false };
+        return loadoutResult(api.setSkill(def.slot, choice.skillId));
+    };
+    // 解除されたスキル・奥義を、変更前の状態(loadoutState)と比べて返す。表示用。
+    const loadoutCleared = before => {
+        const after = loadoutState();
+        const skills = [];
+        for (const def of LOADOUT_SLOTS) {
+            if (def.ultimate) continue;
+            const was = before?.slots?.[def.slot];
+            if (was && after.slots[def.slot] !== was) skills.push({ slot: def.slot, key: def.key, skillId: was, name: loadoutSkillName(was) });
+        }
+        return { skills, ultimate: !!(before?.ultimate && after.ultimate !== before.ultimate) };
+    };
+    const loadoutEquip = ringId => {
+        if (inCombat()) return { ...IN_COMBAT };
+        const api = loadoutApi();
+        if (!api) return { ok: false, reason: "noLoadout", message: LOADOUT_MESSAGE.noLoadout, changed: false };
+        return loadoutResult(api.equipRing(ringId));
+    };
+    // 外すと、その指輪のスキル・奥義の登録も解除される(再装備しても復元しない)。戻り値の cleared に解除されたものが入る。
+    const loadoutUnequip = ringId => {
+        if (inCombat()) return { ...IN_COMBAT };
+        const api = loadoutApi();
+        if (!api) return { ok: false, reason: "noLoadout", message: LOADOUT_MESSAGE.noLoadout, changed: false };
+        const before = loadoutState();
+        const result = loadoutResult(api.unequipRing(ringId));
+        return { ...result, cleared: result.ok ? loadoutCleared(before) : { skills: [], ultimate: false } };
+    };
+
     // ---- 所持品モデル（正は$gameParty。読み取り専用） -------------------------------------------------
     const INVENTORY_CATEGORIES = Object.freeze([
         { key: "item", label: "アイテム" }, { key: "weapon", label: "武器" }, { key: "armor", label: "防具" },
@@ -474,7 +639,7 @@
     };
 
     root.ProjectRMenuCore = {
-        VERSION: "1.0.0",
+        VERSION: "1.1.0",
         setCardText, setGodText, setCategoryLabel,
         cardInfo, godInfo, ringInfo, describeReason, describeReasons,
         combatLock, isLocked: inCombat,
@@ -484,6 +649,10 @@
         },
         ultimate: { entries: ultimateEntries, select: selectUltimate, selected: selectedUltimate },
         rings: { entries: ringEntries, transferToActor: transferRingToActor, returnToPlayer: returnRingToPlayer },
+        loadout: {
+            available: loadoutAvailable, slotDefs: LOADOUT_SLOTS, state: loadoutState, rings: loadoutRings, slots: loadoutSlots,
+            choices: loadoutChoices, assign: loadoutAssign, equip: loadoutEquip, unequip: loadoutUnequip, cleared: loadoutCleared
+        },
         inventory: { categories: INVENTORY_CATEGORIES, entries: inventoryEntries, useOnLeader: useItemOnLeader }
     };
     if (typeof module !== "undefined" && module.exports) module.exports = root.ProjectRMenuCore;

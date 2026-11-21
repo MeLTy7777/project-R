@@ -15,6 +15,9 @@
  *   ・その神のUltimate handlerが実装済み（ProjectRUltimateActivation）
  * 未実装の神（現状はヤヌス・テミス・アテナ）は「未実装」と表示され、選択できません。
  * 選択は次の戦闘から有効です。戦闘中はメニューが開けず、モデルも変更を拒否します。
+ * 【フィールド戦闘との関係】フィールド戦闘（FieldCombat・指輪モード）は、この選択を使いません。「指輪」画面の「スキル編成」のQ枠で選んだ奥義を、
+ *   Qキーで発動します（Uキーは使えません）。このULTIMATE画面の選択は、それ以外の戦闘（SOUL戦闘・通常のカード戦闘）で使われます。
+ *   2つの選択は独立で、どちらかを変えても、もう一方は変わりません。
  * 操作: 上下で選び、決定で選択。Tabキーで指輪の管理画面（ProjectR_RingParty）へ。キャンセルでメニューへ戻る。
  */
 
@@ -97,7 +100,8 @@
                 if (entry.messages.length && !entry.selectable) {
                     w.drawWrapped(entry.messages.join("\n"), 0, line * 6, width, ColorManager.deathColor());
                 }
-                w.drawWrapped("選んだ神は次の戦闘から常にそばにいて、Ultimateゲージが満タンのときにUキーで発動します。", 0, line * 8, width);
+                const y = w.drawWrapped("選んだ神は、SOUL戦闘・通常のカード戦闘で、次の戦闘から常にそばにいて、Ultimateゲージが満タンのときにUキーで発動します。", 0, line * 8, width);
+                w.drawWrapped("※フィールド戦闘では、この選択は使いません。「指輪」画面の「スキル編成」のQ枠で選んだ奥義を、Qキーで発動します（Uキーは使えません）。2つの選択は別々です。", 0, y + Math.floor(line / 2), width, ColorManager.systemColor());
             });
         }
 

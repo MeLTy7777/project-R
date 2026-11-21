@@ -538,7 +538,9 @@ test("操作盤(Control Hub)の選択肢は戦闘中も呼べる: Reset/End/Inst
 test("カード定義・Cooldown・Divine・Gauge・Ultimate・本番検証・Playtestガードは不変（ソースの差分で確認）", () => {
     // (RT3で意図して変えたCardBattleInput/UltimateActivation/HermesReedFluteSleep/HermesSwordsmanshipは除く)
     // ProjectR_UltimateGauge は、Stage 6D で意図して変更した(HPが次のフレームで減る実ゲームでも与ダメージを加算する待ち。式・加算量は不変)。検証: tests/ProjectR_UltimateGauge.phase4b.test.cjs(従来)と tests/ProjectR_GunSystem.test.cjs(遅れて反映されるHP)
-    const unchanged = ["ProjectR_CardDeckCore", "ProjectR_GodSummonManager",
+    // ProjectR_GodSummonManager は、Stage 1E-1 で意図して変更した(startCardBattle の第2引数 { ultimateRingId } の追加専用の窓口)。許す差分は tests/ProtectedSeams.cjs が厳密に確かめる(ほかの行は 72c386a と同じ)。
+    require("./ProtectedSeams.cjs").assertGodSummonSeamOnly("72c386a");
+    const unchanged = ["ProjectR_CardDeckCore",
         "ProjectR_UltimateGodDamageBridge", "ProjectR_HermesUltimate", "ProjectR_ApolloUltimate",
         "ProjectR_ApolloGoldenArrow", "ProjectR_ApolloDiseaseAttack", "ProjectR_ApolloLyreCalm", "ProjectR_HermesRecognitionObscure",
         "ProjectR_HermesSwiftMovement",

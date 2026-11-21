@@ -120,7 +120,9 @@ function buildWorld({ playtest = true } = {}) {
         catch (error) { failures.push({ plugin: plugin.name, error: String(error.stack).split("\n").slice(0, 3).join(" | ") }); }
     }
     // フィールド戦闘(ProjectR_FieldCombat)への移行後も、従来のSOUL・カード戦闘のテストが動くように、この世界ではSOUL戦闘を許可し、探索マップでも戦闘・武器を使えるようにする(本番の既定は SoulMode=off / 戦闘はエンカウンター中だけ)。
-    if (ctx.ProjectRFieldCombat) { ctx.ProjectRFieldCombat.setSoulMode("on"); ctx.ProjectRFieldCombat.setDevAllowOutsideEncounter(true); }
+    // 通常スキル5枠(LMB/Shift/E/X/C)は、本番では指輪ロードアウト(空の枠は何もしない)。従来のテストは旧い固定スロットを前提にしているので、この世界では旧い固定スロット(DEV互換)にする。
+    //   指輪ロードアウトの戦闘は tests/ProjectR_FieldCombat.loadout.test.cjs が setLoadoutSource("auto") で確かめる。
+    if (ctx.ProjectRFieldCombat) { ctx.ProjectRFieldCombat.setSoulMode("on"); ctx.ProjectRFieldCombat.setDevAllowOutsideEncounter(true); if (ctx.ProjectRFieldCombat.setLoadoutSource) ctx.ProjectRFieldCombat.setLoadoutSource("legacy"); }
     const data = name => parse(read(`data/${name}.json`));
     for (const [variable, file] of [["$dataSystem", "System"], ["$dataStates", "States"], ["$dataEnemies", "Enemies"], ["$dataActors", "Actors"],
         ["$dataClasses", "Classes"], ["$dataSkills", "Skills"], ["$dataItems", "Items"], ["$dataWeapons", "Weapons"], ["$dataArmors", "Armors"],

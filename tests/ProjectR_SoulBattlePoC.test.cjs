@@ -107,13 +107,17 @@ test("保護対象(Hendrix・DotMove・既存カード・ダメージ式)は変�
         // 絶(Zetsu): フィールド戦闘(Stage 5b)が「敵の体」を通り抜けるための、衝突フィルターの追加専用の窓口(フィルターが無ければ従来のまま。SOUL・通常のカード戦闘は何も登録しない)
         "js/plugins/ProjectR_HermesZetsu.js": /registerCollisionFilter/,
         // UltimateGauge: 与ダメージを、HPが次のフレームで減る実ゲームでも取りこぼさないための待ち(Stage 6D。同期に減るときは従来どおり。ゲージの式・加算量は変えない)
-        "js/plugins/ProjectR_UltimateGauge.js": /pendingHp/ };      // CardModifiers: フックが返す倍率を固定ダメージの基礎値に掛ける追加(SOUL のストレングス用)
+        "js/plugins/ProjectR_UltimateGauge.js": /pendingHp/,
+        // GodSummonManager: フィールド戦闘の指輪モード(Stage 1E-1)が、Q 枠の指輪をその戦闘だけ渡すための、startCardBattle の第2引数 { ultimateRingId }(追加専用。省略すれば従来どおり Core の選択を読む。Core の選択は書き換えない)
+        "js/plugins/ProjectR_GodSummonManager.js": /ultimateRingId/,
+        // 黄金の矢: フィールド戦闘(Stage 1D-2A)の Lv3 長押しの持続ビーム(startHeldBeam / stopHeldBeam)と、同時発射の許可(concurrentVolleysAllowed)の追加専用の入口。SOUL・通常のカード戦闘は呼ばない(従来の扇・ビームの動きは変えない)
+        "js/plugins/ProjectR_ApolloGoldenVolley.js": /startHeldBeam/ };      // CardModifiers: フックが返す倍率を固定ダメージの基礎値に掛ける追加(SOUL のストレングス用)
     const changed = out.stdout.split(/\r?\n/).filter(Boolean).map(line => line.slice(3).trim());
     for (const file of changed) {
         assert.ok(SEAMS[file], file + " は変更されていない(許すのはSOULスキルの受け口だけ)");
         assert.match(fs.readFileSync(path.join(project, file), "utf8"), SEAMS[file], file + " の変更はSOULスキルの受け口");
         const stat = cp.spawnSync("git", ["diff", "--numstat", "--", file], { cwd: project, encoding: "utf8" }).stdout.trim().split(/\s+/);
-        const limit = file === "js/plugins/ProjectR_SwordSystem.js" ? 220 : 60;            // SwordSystem だけ、フィールド戦闘の扇形の判定(sector)の分だけ広く
+        const limit = file === "js/plugins/ProjectR_SwordSystem.js" ? 220 : file === "js/plugins/ProjectR_ApolloGoldenVolley.js" ? 260 : 60;            // SwordSystem だけ、フィールド戦闘の扇形の判定(sector)の分だけ広く
         assert.ok(Number(stat[0]) + Number(stat[1]) <= limit, file + " の変更は小さい(" + stat.slice(0, 2).join("+") + ")");
     }
 });

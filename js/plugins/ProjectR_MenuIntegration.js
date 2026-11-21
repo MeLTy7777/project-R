@@ -1,6 +1,6 @@
 /*:
  * @target MZ
- * @plugindesc v1.0.0 ProjectR メニュー接続（SKILL=デッキ構築 / ULTIMATE=神の選択 / ITEM=所持品、戦闘中ロック、進行用プラグインコマンド）。
+ * @plugindesc v1.0.0 ProjectR メニュー接続（SKILL=指輪のスキル編成 / ULTIMATE=神の選択 / ITEM=所持品、戦闘中ロック、進行用プラグインコマンド）。
  * @author ProjectR
  * @base ProjectR_MenuHUD
  * @base ProjectR_MenuCore
@@ -59,7 +59,8 @@
  * ProjectR_MenuIntegration.js
  *
  * ProjectR_MenuHUD の7コマンドのうち、次の3つを実画面へ接続します（SAVE/LOAD/SYSTEM/TITLEは従来どおり）。
- *   SKILL    → デッキ構築（ProjectR_DeckBuilder）
+ *   SKILL    → 指輪のスキル編成（ProjectR_RingParty の Scene_ProjectRSkillLoadout。LMB/Shift/E/X/C/Q の登録。装備・受け渡しは Esc で上の項目 →「指輪装備」）。
+ *              ProjectR_RingParty が無い環境だけ、従来どおりデッキ構築（ProjectR_DeckBuilder）
  *   ULTIMATE → 神の選択（ProjectR_UltimateSelect。Tabで指輪の管理）
  *   ITEM     → 所持品・装備の確認（ProjectR_Inventory）
  *
@@ -73,7 +74,7 @@
  *   検証・上限・戦闘中拒否はすべてCardDeckCore側のルールに従います。
  *
  * API: ProjectRMenuIntegration
- *   openDeckBuilder() / openUltimateSelect() / openInventory()   Sceneを開く
+ *   openDeckBuilder() / openUltimateSelect() / openInventory() / openRings() / openSkillLoadout()   Sceneを開く
  *   isMenuBlocked()                                              戦闘中ロック中か
  */
 
@@ -86,7 +87,7 @@
 
     const hud = root.ProjectR?.MenuHUD || root.ProjectRMenuHUD || null;
     const scenes = () => ({
-        skill: root.Scene_ProjectRDeckBuilder,
+        skill: root.Scene_ProjectRSkillLoadout || root.Scene_ProjectRDeckBuilder,        // 指輪の編成(RingParty)があれば、SKILL はそのスキル編成。無い環境だけ従来のデッキ構築
         ultimate: root.Scene_ProjectRUltimateSelect,
         item: root.Scene_ProjectRInventory
     });
@@ -143,6 +144,7 @@
         openUltimateSelect: () => open(root.Scene_ProjectRUltimateSelect),
         openInventory: () => open(root.Scene_ProjectRInventory),
         openRings: () => open(root.Scene_ProjectRRings),
+        openSkillLoadout: () => open(root.Scene_ProjectRSkillLoadout),
         isMenuBlocked,
         commands
     };

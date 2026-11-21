@@ -69,6 +69,9 @@
  *     ・activationが完了する前に戦闘を同期的に終了すること
  *   これらはUltimateの効果の進行中(後続のフレーム)に行ってください。
  *
+ * 【入力ゲート(Stage 1E-1)】registerInputGate(id, () => boolean) / unregisterInputGate(id)。ゲートが true の間は、キー入力(U)を
+ *   保留にも発動にもしません(フィールド戦闘の指輪モードが、Qだけを奥義の入口にするため)。ゲート無しは従来どおり。
+ *
  * 【後始末・保存】
  *   endCardBattle・マップ移動・onMapLoaded・ロードで、直近の結果・入力の保留を破棄します。
  *   handlerの登録は実行時の定義なので残ります(将来のUltimate効果pluginが読み込み時に登録するため)。
@@ -221,12 +224,35 @@
 
     const matches = (event, binding) => event.code ? event.code === binding.code : event.keyCode === binding.keyCode;
 
+    // キー入力(U)の受付を止める追加専用の窓口(Stage 1E-1)。フィールド戦闘の指輪モードは、Qだけを奥義の入口にするため、
+    // 独自の入力経路(keydown の保留・Scene_Map.update での発動)も止める。gate() が true の間は、キー入力は保留にも発動にもならない。
+    // 例外は「止める」側に倒す。ゲートが無ければ従来どおり。requestUltimateActivation の直接呼び出し(Q・API)は止めない。
+    const inputGates = new Map();
+    const registerInputGate = (id, gate) => {
+        if (typeof id !== "string" || !id.length) return { ok: false, reason: "invalidGateId" };
+        if (typeof gate !== "function") return { ok: false, reason: "invalidGate" };
+        inputGates.set(id, gate);
+        return { ok: true, id };
+    };
+    const unregisterInputGate = id => ({ ok: inputGates.delete(id), id });
+    const inputSuppressed = () => {
+        for (const gate of inputGates.values()) {
+            try { if (gate() === true) return true; } catch (error) { return true; }
+        }
+        return false;
+    };
+
     if (deck && typeof Input !== "undefined" && typeof Scene_Map !== "undefined") {
         const _onKeyDown = Input._onKeyDown;
         Input._onKeyDown = function(event) {
             const binding = getInputBinding();
             if (event && matches(event, binding)) {
                 inputDiagnostics.keyDowns++;
+                if (inputSuppressed()) {
+                    noteInput(event, "suppressed", "inputGate");
+                    event.preventDefault?.();
+                    return; // ゲートが止めている間は、保留にも元のInputにも渡さない。
+                }
                 if (!binding.active) {
                     noteInput(event, "bindingInactive", binding.reason);
                 } else if (held) {
@@ -272,6 +298,7 @@
             const accept = cardInput()?.canAcceptInput;
             for (const origin of requests) {
                 if (stamp !== generation || !windowFocused || typeof accept !== "function" || !accept()) break;
+                if (inputSuppressed()) { held = false; continue; } // 保留中だったキー入力も、ゲートが止めている間は捨てる(戦闘の開始より前に押されたU)。
                 requestUltimateActivation(origin);
             }
         };
@@ -303,6 +330,8 @@
         hasUltimateHandler: godId => validGodId(godId) && handlers.has(godId),
         getRegisteredUltimateGods: () => [...handlers.keys()].sort(),
         getLastUltimateActivationResult: () => lastResult ? JSON.parse(JSON.stringify(lastResult)) : null,
+        registerInputGate,
+        unregisterInputGate,
         getInputBinding,
         getInputDiagnostics: () => ({ ...inputDiagnostics })
     };
