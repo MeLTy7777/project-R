@@ -96,14 +96,23 @@ test("コード: ファイル・セーブへ書かず、HPを自分で書かな�
 
 test("保護対象(Hendrix・DotMove・既存カード・ダメージ式)は変更していない", () => {
     const targets = fs.readdirSync(path.join(project, "js/plugins")).filter(f => /^(Hendrix_|DotMoveSystem|ProjectR_(Apollo|Card|Hermes|DamageModifiers|GunSystem|SwordSystem|KillAttribution|UltimateGauge|GodSummon|CombatSession|EnemyAttack))/.test(f)).map(f => "js/plugins/" + f);
-    const out = cp.spawnSync("git", ["status", "--porcelain", "--", ...targets, "js/rmmz_objects.js", "js/rmmz_scenes.js", "data/Skills.json", "data/Map002.json"], { cwd: project, encoding: "utf8" });
-    if (out.status !== 0) { console.log("  (git が使えないため保護対象の差分確認を省略)"); return; }
+    // 比較の基準は「いまの git の状態(未ステージ・ステージ済み・コミット後)」ではなく、固定の Stage 1 のコミット(15b74d1)。どの状態でも同じ差分を見る
+    const BASE = "15b74d1";
+    const gitRun = (...args) => cp.spawnSync("git", args, { cwd: project, encoding: "utf8" });
+    if (gitRun("rev-parse", "--git-dir").status !== 0) { console.log("  (git が使えないため保護対象の差分確認を省略)"); return; }
+    assert.equal(gitRun("rev-parse", "--verify", "--quiet", BASE + "^{commit}").status, 0, "比較の基準 " + BASE + " (Stage 1)が見つからない");
+    const scope = [...targets, "js/rmmz_objects.js", "js/rmmz_scenes.js", "data/Skills.json", "data/Map002.json"];
+    const diffOut = gitRun("diff", "--name-only", BASE, "--", ...scope);        // 基準からの変更(未ステージ・ステージ済み・コミット済みのすべて)
+    const newOut = gitRun("ls-files", "--others", "--exclude-standard", "--", ...scope);       // 追跡されていない新規ファイル
+    assert.equal(diffOut.status, 0, "git diff が失敗: " + diffOut.stderr);
     // SOUL戦闘のスキル(ProjectR_SoulSkills)のための、SOUL以外では何もしない小さな受け口だけは許す(各ファイルの変更はその受け口だけ)
     const SEAMS = { "js/plugins/ProjectR_GunSystem.js": /cooldownScale/, "js/plugins/ProjectR_SwordSystem.js": /cooldownScale/,      // SwordSystem: さらに、フィールド戦闘(Stage 5 / 5c)の3段コンボ用の追加(options の damageScale・sector 等。options を渡さなければ従来と同じ)
          "js/plugins/ProjectR_ApolloLyreRhythm.js": /soulAdapter/, "js/plugins/ProjectR_ApolloErosArrow.js": /projectRAttackId/,
         // ATTACK の終了で飛行中の攻撃・蓄えを打ち切る追加専用の窓口 clear(reason)(SOUL の準備ループだけが呼ぶ。通常戦闘では呼ばれない)
         "js/plugins/ProjectR_ApolloPlagueRain.js": /clear: reason/, "js/plugins/ProjectR_HermesStrength.js": /clear: reason|setSoulCards/,
         "js/plugins/ProjectR_CardModifiers.js": /damageMultiplier/,
+        // CardCatalog: Stage 2(Janus)の5枚を、実行時のカードと設計の一覧へ追加する(janus_ のID・行だけ。SOUL・既存のカードの行は変えない)
+        "js/plugins/ProjectR_CardCatalog.js": /janus_dual_gate/,
         // 絶(Zetsu): フィールド戦闘(Stage 5b)が「敵の体」を通り抜けるための、衝突フィルターの追加専用の窓口(フィルターが無ければ従来のまま。SOUL・通常のカード戦闘は何も登録しない)
         "js/plugins/ProjectR_HermesZetsu.js": /registerCollisionFilter/,
         // UltimateGauge: 与ダメージを、HPが次のフレームで減る実ゲームでも取りこぼさないための待ち(Stage 6D。同期に減るときは従来どおり。ゲージの式・加算量は変えない)
@@ -112,11 +121,11 @@ test("保護対象(Hendrix・DotMove・既存カード・ダメージ式)は変�
         "js/plugins/ProjectR_GodSummonManager.js": /ultimateRingId/,
         // 黄金の矢: フィールド戦闘(Stage 1D-2A)の Lv3 長押しの持続ビーム(startHeldBeam / stopHeldBeam)と、同時発射の許可(concurrentVolleysAllowed)の追加専用の入口。SOUL・通常のカード戦闘は呼ばない(従来の扇・ビームの動きは変えない)
         "js/plugins/ProjectR_ApolloGoldenVolley.js": /startHeldBeam/ };      // CardModifiers: フックが返す倍率を固定ダメージの基礎値に掛ける追加(SOUL のストレングス用)
-    const changed = out.stdout.split(/\r?\n/).filter(Boolean).map(line => line.slice(3).trim());
+    const changed = [...new Set([...diffOut.stdout.split(/\r?\n/), ...newOut.stdout.split(/\r?\n/)].map(line => line.trim()).filter(Boolean))];
     for (const file of changed) {
         assert.ok(SEAMS[file], file + " は変更されていない(許すのはSOULスキルの受け口だけ)");
         assert.match(fs.readFileSync(path.join(project, file), "utf8"), SEAMS[file], file + " の変更はSOULスキルの受け口");
-        const stat = cp.spawnSync("git", ["diff", "--numstat", "--", file], { cwd: project, encoding: "utf8" }).stdout.trim().split(/\s+/);
+        const stat = gitRun("diff", "--numstat", BASE, "--", file).stdout.trim().split(/\s+/);
         const limit = file === "js/plugins/ProjectR_SwordSystem.js" ? 220 : file === "js/plugins/ProjectR_ApolloGoldenVolley.js" ? 260 : 60;            // SwordSystem だけ、フィールド戦闘の扇形の判定(sector)の分だけ広く
         assert.ok(Number(stat[0]) + Number(stat[1]) <= limit, file + " の変更は小さい(" + stat.slice(0, 2).join("+") + ")");
     }

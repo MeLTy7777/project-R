@@ -281,14 +281,14 @@ test("ボス開始のデッキ検証はCore。メニュー側に検証ロジッ�
 test("Ultimate選択: 主人公が所持かつ実装済みの神だけ選べる。Janus/Themis/Athenaは『未実装』で選択不可", () => {
     const g = createGame();
     const core = g.ProjectRMenuCore;
-    giveEverything(g, { rings: ["hermes", "janus"] });
+    giveEverything(g, { rings: ["hermes", "themis"] });
     const entries = core.ultimate.entries();
     const by = id => entries.find(e => e.ringId === id);
     assert.equal(by("hermes").selectable, true);
     assert.equal(by("apollo").selectable, false); assert.match(by("apollo").messages.join(), /所持していない/);
-    assert.equal(by("janus").implemented, false); assert.equal(by("janus").selectable, false);
-    assert.match(by("janus").messages.join(), /未実装/);
-    assert.equal(core.ultimate.select("janus").reason, "ULTIMATE_NOT_IMPLEMENTED");
+    assert.equal(by("themis").implemented, false); assert.equal(by("themis").selectable, false);
+    assert.match(by("themis").messages.join(), /未実装/);
+    assert.equal(core.ultimate.select("themis").reason, "ULTIMATE_NOT_IMPLEMENTED");
     assert.equal(core.ultimate.select("apollo").reason, "ULTIMATE_RING_NOT_OWNED");
     assert.equal(g.ProjectRCardDeck.getUltimateRingId(), null);
     const ok = core.ultimate.select("hermes");
@@ -313,12 +313,12 @@ test("Ultimate選択: 保存先は1つだけ(新しい変数を作らない)。�
 
 test("Ultimate選択Scene: 一覧→決定で保存・未実装はブザー・現在の選択がヘッダーに出る", () => {
     const g = createGame();
-    giveEverything(g, { rings: ["hermes", "apollo", "janus"] });
+    giveEverything(g, { rings: ["hermes", "apollo", "themis"] });
     const scene = new g.Scene_ProjectRUltimateSelect();
     scene.create();
     const items = scene._list.items();
     const index = id => items.findIndex(e => e.ringId === id);
-    scene._list.select(index("janus")); scene._list.ok();
+    scene._list.select(index("themis")); scene._list.ok();
     assert.ok(g.sounds.includes("playBuzzer"));
     assert.match(scene._header.text(), /未実装/);
     scene._list.select(index("apollo")); scene._list.ok();

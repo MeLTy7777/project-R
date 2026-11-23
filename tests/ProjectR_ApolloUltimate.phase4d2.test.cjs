@@ -136,7 +136,7 @@ test("Apolloのhandlerを、Managerが解決したgod IDで登録。Hermesの本
     assert.equal(godId, "apollo");
     assert.deepEqual(plain(act(g).getRegisteredUltimateGods()), ["apollo", "hermes"]);
     assert.equal(act(g).hasUltimateHandler("apollo"), true); assert.equal(act(g).hasUltimateHandler("hermes"), true);
-    for (const god of ["janus", "themis", "athena", "zeus"]) assert.equal(act(g).hasUltimateHandler(god), false, god);
+    for (const god of ["themis", "athena", "zeus"]) assert.equal(act(g).hasUltimateHandler(god), false, god);
     assert.deepEqual(plain(au(g).getRegistration()), { ok: true, reason: "registered", godId: "apollo", replaced: false });
     assert.deepEqual(plain(hu(g).getRegistration()), { ok: true, reason: "registered", godId: "hermes", replaced: false });
     const code = read(APOLLO_FILE).replace(/\/\*:[\s\S]*?\*\//, "");
@@ -160,8 +160,8 @@ test("handlerが無い神はnoUltimateHandlerのまま検証できる(Apollo han
     assert.equal(gauge(g).getUltimateGauge(), 100); assert.equal(au(g).isApolloUltimateActive(), false);
     assert.equal(arrowEvents(g).length, 0);
     // 未登録の神(ring未実装)を選んだ場合も同じ
-    const other = load(); assert.equal(act(other).hasUltimateHandler("janus"), false);
-    assert.equal(act(other).unregisterUltimateHandler("janus").reason, "noUltimateHandler");
+    const other = load(); assert.equal(act(other).hasUltimateHandler("themis"), false);
+    assert.equal(act(other).unregisterUltimateHandler("themis").reason, "noUltimateHandler");
 });
 test("Activation不在のときは登録しない(例外なし)", () => {
     const g = load({}, { withApollo: false }); vm.runInContext("delete window.ProjectRUltimateActivation; delete globalThis.ProjectRUltimateActivation", g); g.reload();

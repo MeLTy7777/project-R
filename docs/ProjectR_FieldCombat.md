@@ -806,3 +806,31 @@ LMB / Shift / E / X / C の**どのキーでも同じ**。Lv1・Lv2 は従来ど
 - `ProjectR_MenuIntegration.js`: `commandScenes.skill = Scene_ProjectRSkillLoadout`(RingParty が無い環境だけ従来のデッキ構築)。`openSkillLoadout()` を追加。戦闘中ロック・ULTIMATE・ITEM・ULTIMATE → Tab → 指輪画面は変更なし。判定・保存はすべて既存の RingLoadout / MenuCore のモデル。
 - **デッキ構築(`Scene_ProjectRDeckBuilder`・`openDeckBuilder()`)はメインメニューからは開けなくなった**(Scene・API は残っている)。必要なら入口を足す。
 - テスト: `tests/ProjectR_SkillMenu.test.cjs`(6項目)、実機 `tools/mz_cdp/skill_menu_verify.cjs`(21/21 PASS・実のメインメニューを実キーで操作)。`SKILL = DeckBuilder` を固定していた3テスト(FullSpec.menu・MenuRuntimeCertification・RingLoadout.menu)は更新。
+
+## Stage 2: Janus(ヤヌス)の5スキル + Ultimate「始まりと終わりの門」
+
+既存の RingLoadout・CardCatalog・CardBalance・FieldCombat・HUD・Q 奥義の仕組みへ **Janus を登録**した(新しい装備・保存の仕組みは作らない)。5スキルは LMB / Shift / E / X / C のどの枠からでも同じに使える(Lv1〜3)。
+
+| スキル(ID) | 内容 | Cooldown |
+|---|---|---|
+| 双門 `janus_dual_gate` | 基本の2連撃。1段目 = 正面 110°・1.8 マスの扇(100/108/115 %)。2段目 = 正面の貫通する線(3.0 × 幅 0.9 マス。125/135/150 %)。2回目の入力で向きを取り直す。受付は硬直後 0.5 秒。1段ごとに同じ敵へ1回 | 0 |
+| 閉門 `janus_closed_gate` | カーソル方向 3 マス先(壁の手前まで)を中心に半径 1.2 マス。ダメージなし。通常の敵を 1.5/2.0/2.5 秒だけ**移動不能**(攻撃は止めない)。ボスは移動速度 20/25/30 % 低下(同じ秒数)。重ねがけはせず、効果中の再発動は残り時間を取り直すだけ。状態耐性(DB の状態 12/13)があれば無効 | 10 秒 |
+| 反照 `janus_reflection` | 受付 0.4/0.5/0.6 秒の間、敵の直接攻撃(近接・弾)の1回を無効にして、3 マス以内の攻撃者へ基礎物理ダメージの 100/125/150 % で反撃。弾の反射はしない・環境ダメージは無効にしない・反撃は連鎖しない | 9 秒 |
+| 表裏転化 `janus_inversion` | カーソル上の通常の敵1体(2.5/3.0/3.5 マス以内)とプレイヤーの位置を入れ替える。ダメージなし。ボス・範囲外・入れ替え先が壁などで危険なときは失敗し、Cooldown も位置も変えない(失敗の理由は `abilityFailed` の `detail`) | 12 秒 |
+| 境界断ち `janus_boundary_slash` | 0.2 秒の溜めのあと、貫通する線(4 × 幅 1.2 マス)に 180/210/240 %。各敵1回。壁を貫通せず、防御は無視しない(通常の物理ダメージ) | 7 秒 |
+
+**Ultimate「始まりと終わりの門」**(Q 枠。`ProjectR_JanusUltimate.js`・既存の GodSummonManager / UltimateActivation / 共有ゲージ): Q を押した瞬間のカーソル位置(プレイヤーから最大 4 マス・壁の手前で止まる)に2つの門を開き、**0.3 秒後に半径 2 マス・基礎物理 150 %**、**0.9 秒後に半径 2.8 マス・250 %**。各回は同じ敵に1回(両方の範囲に入った敵は2回)。ゲージは開始に成功した後だけ消費。この奥義のダメージではゲージは増えない。戦闘終了・マップ移動・ロードで中断(保存しない)。Q は自動では割り当てない。Core(ULTIMATE メニュー)の選択は書き換えない。
+
+- 実装: `ProjectR_JanusSkills.js`(閉門・反照・表裏転化・境界断ち。プラグイン順は DamageModifiers の後・CardModifiers の前)/ `ProjectR_JanusUltimate.js` / FieldCombat(2段コンボの一般化 `comboMax`・`dualGateClick`。Hermes の3段薙ぎ払いは従来どおり)/ CardCatalog・RingLoadout(`SKILL_SETS.janus`)・`data/ProjectR_CardBalance.json`(janus 5枚・7項目)。効果はすべて実行時の状態で、**セーブには何も追加しない**。
+- テスト: `tests/ProjectR_Janus.dualGate.test.cjs`(9)・`ProjectR_Janus.skills.test.cjs`(17)・`ProjectR_Janus.ultimate.test.cjs`(7)。実機: `tools/mz_cdp/janus_verify.cjs`(47/47 PASS・実キー・実マウス・Chromium 85)。
+- 既存テストの調整: 「未実装の例」に Janus を使っていたもの(RingLoadout・FieldCombat.ultimate/hudQ・RingQA・SkillMenu・ApolloUltimate・MenuRuntimeCertification・FullSpec と実機の4スクリプト)は Themis に変更。件数を固定していたもの(ApolloA2/A3・HermesZetsu・HermesProductionDeck・CardBalance・CardCatalog.audit・H2CB3・FieldCombat.loadout)は `tests/ProjectR_JanusImplemented.cjs` から値を作る。SOUL 側の保護ガードは、CardCatalog の Janus 行(`janus_dual_gate` を含む小さな差分)だけを許可リストに追加した。
+- **まだ無い物・決めていない点**: 門・反照・転化・断ちの**専用の見た目と音(SE だけ)**/ Janus の神(同行・カットイン)の素材(Hermes の絵に代替)/ HUD のアイコン番号(76・84〜87 は仮)/ カードのレアリティ・最大枚数・設計ID(仮)/ Janus の指輪の入手経路(本番の付与はまだ無い)/ 状態耐性の判定(DB の状態 12/13 を拘束系の耐性として扱う仮定)/ ヒット演出(HitFx・HitStop)は新しい4スキルでは出ない / SOUL 戦闘での Janus。
+
+## Stage 2-E: Janus の品質の仕上げ(耐性・カットイン・命中の手応え・見た目)
+
+- **`CombatTestArena.rt2` の失敗(141/142)の原因**: 作業前から変更されていた `data/States.json` が「**ファイル末尾の改行が無い**」だけの差分(JSON の中身は HEAD と同一)。このテストは `git diff --quiet 72c386a -- data/States.json` で厳密に比べるため失敗する。隔離したコピー(HEAD の clone)で、(A) HEAD のまま = 合格 / (B) 作業中の States.json を置く = 失敗 / (C) B に末尾の改行だけを足す = 合格 を確認済み。**ユーザーのデータは変更・復元していない**(末尾の改行を戻すか、States.json をコミットすれば解消)。Janus・Stage 2 とは無関係。
+- **閉門の耐性**(`ProjectR_JanusSkills`): DB の状態 12 = 麻痺・13 = スタン(どちらも制約 4 = 行動不能)で、「状態異常防止」(23)の無効化リストに入っていることを確認(敵のデータに 12/13 の耐性を持つ敵は今は無い)。判定を **Hendrix の公式の状態付与 AddState と同じ `ScheckStateResistanceH`**(状態無効化・状態有効度・有効な状態の特徴)に委ねるよう修正した。旧: 有効度 ≤ 0 だけを見ていた → 新: 有効度は確率(0 = 必ず効かない / 1 = 必ず効く / 途中は確率。2 つの状態の低い方で1回判定)。無効化は拘束にも、ボスの低下にも効く。
+- **カットイン**: `ProjectR_CutIn` は、目元の絵が `GodEyesJson` に登録されていない神には何も出さない(`show` が `noArtwork` を返す)。Janus の奥義は Hermes の絵で代用せず、**カットインなし**(神の表示の素材も無い)。Hermes・Apollo は従来どおり。Janus 用の絵が用意されたら `GodEyesJson` に `{"janus":"ファイル名"}` を足すだけで出る。代わりに、奥義の開始は門の輪と画面のごく軽い光で知らせる。
+- **命中の手応え**: `ProjectR_FieldCombat` に追加専用の入口 `reportHit({ enemyId, heavy, serial, hp0 })` を追加(外部のスキルが、ダメージを出した直後に通知する。点滅・反動・ヒットストップ・SE の既存の仕組みへ乗せるだけで、ダメージ・判定・時間は変えない)。Janus の双門(既存の SwordSystem の通知)・境界断ち(強撃)・反照の反撃・奥義の2回(強撃)に出る。閉門・表裏転化はダメージが無いので出ない。
+- **見た目**: 画像・音声の**新しい素材は使わず**、`ProjectR_JanusSkills` がコードで描く輪・線(加算合成)を出す。閉門 = 閉じる輪 + 拘束した敵の輪 / 反照 = 待機の輪・受け流しの光 / 表裏転化 = 入れ替わった2か所の輪 / 境界断ち = 予備動作の線・斬撃の光 / 奥義 = 内側(半径 2)・外側(半径 2.8)の2つの門が開き、範囲攻撃の瞬間に弾ける。表示だけ(出せなくても効果は変わらない)。戦闘終了・マップ移動・ロードで全部消える。使う SE はすべて `audio/se` に実在する。
+- テスト: `tests/ProjectR_Janus.stage2e.test.cjs`(17)。実機: `tools/mz_cdp/janus_verify.cjs`(57/57 PASS。J8 = 命中の手応え・見た目・カットイン)。

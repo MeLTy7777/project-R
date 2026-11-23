@@ -98,7 +98,7 @@ const SLOTS = ["lmb", "shift", "e", "x", "c"];
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
   await check("M1 メニューで装備・5枠・Q を編成(実の Scene_ProjectRRings・実キー)・ULTIMATE 画面", async () => {
-    await ev(`${FC}.end(); ${D}.assignRingToPlayer('janus'); (function(){ ${RL}.unequipRing('hermes'); ${RL}.unequipRing('apollo'); ${SLOT5.map(sl => `${RL}.clearSkill('${sl}');`).join(" ")} ${RL}.clearUltimate(); return 'ok'; })()`);
+    await ev(`${FC}.end(); ${D}.assignRingToPlayer('themis'); (function(){ ${RL}.unequipRing('hermes'); ${RL}.unequipRing('apollo'); ${SLOT5.map(sl => `${RL}.clearSkill('${sl}');`).join(" ")} ${RL}.clearUltimate(); return 'ok'; })()`);
     rec("M1-0 まっさらな状態(装備なし・5枠空・Q 空)", same(await rlState(), { schema: 1, equipped: [], slots: { lmb: null, shift: null, e: null, x: null, c: null }, ultimate: null }), JSON.stringify(await rlState()));
     rec("M1a 指輪画面を開く(Scene_ProjectRRings)", await pushScene("Scene_ProjectRRings"), await sceneName());
     rec("M1b 実キー Enter で、ヘルメース・アポロンを装備", (await equipKey("hermes")) && (await equipKey("apollo")) && (await rlState()).equipped.join() === "hermes,apollo", JSON.stringify(await rlState()));
@@ -201,9 +201,9 @@ const SLOTS = ["lmb", "shift", "e", "x", "c"];
     rec("M6c 空の Q は何も起こさない", !(await ev("ProjectRHermesUltimate.isHermesUltimateActive() || ProjectRApolloUltimate.isApolloUltimateActive()")), "");
     await ev(`${FC}.end(); 'ok'`); await sleep(300);
     // 未実装の指輪を Q に(古い保存データなどを想定)
-    await ev(`(function(){ ${RL}.equipRing('janus'); ${RL}.setUltimate('janus'); return 'ok'; })()`);
+    await ev(`(function(){ ${RL}.equipRing('themis'); ${RL}.setUltimate('themis'); return 'ok'; })()`);
     await begin(); await prep(2.2); const un = await ultHud();
-    rec("M6d 未実装の指輪(Janus)が Q: HUD は unavailable・神もゲージもなし・ヘルメースへ落ちない", un.state === "unavailable" && (await mgrRing()) === null && (await gaugeNow()).has === false, JSON.stringify(un.state));
+    rec("M6d 未実装の指輪(Themis)が Q: HUD は unavailable・神もゲージもなし・ヘルメースへ落ちない", un.state === "unavailable" && (await mgrRing()) === null && (await gaugeNow()).has === false, JSON.stringify(un.state));
     await s.shot("qa_M6_q_unavailable");
     await ev(`${FC}.end(); ${RL}.clearUltimate(); ${RL}.setUltimate('hermes'); 'ok'`); await sleep(300);
     // 再開: Q = ヘルメース(Core もヘルメース)→ Core をアポロンにして legacy

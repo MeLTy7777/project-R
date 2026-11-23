@@ -162,9 +162,23 @@
             migration: migration("apollo_plague_attack", "coexist-pending", "implemented-as-new-id",
                 "Phase Apollo-A7でLv1〜3を新ランタイムID apollo_plague_rain として実装。旧「疫病攻撃/アポロン病攻撃」(最大2・Cooldown 12・命中した敵への継続ダメージ)とは着弾サークル・ネズミ・分裂を持つ別カードで、自動変換しない。旧カードは共存。") })
     ]);
-    const DESIGNS_BY_GOD = Object.freeze({ hermes: HERMES, apollo: APOLLO });
+    // ---- Janus(Stage 2): 通常スキル5枠(双門・閉門・反照・表裏転化・境界断ち)。実装済みとして登録する。
+    //   designId はワークブックの番号が未確定なので null(仮の番号は作らない)。強さ・最大コピー数は標準(通常 / 3枚)の仮置きで、フィールド戦闘(指輪ロードアウト)の装備・発動には影響しない(デッキ構築の設計値)。
+    //   targetType: 双門 = direction(フィールド戦闘の基本攻撃のコンボ。カード戦闘の手札からは使えない)/ 閉門 = ground(カーソル方向の最大3マス先)/ 反照 = instant /
+    //   表裏転化 = ground(カーソル上の敵)/ 境界断ち = direction。確定は各実装(ProjectR_JanusSkills)。
+    const janusRow = (name, classification, cooldownSeconds, extra) => design(null, name, classification, 3, cooldownSeconds, {
+        god: "janus", ringId: "janus", targetTypeStatus: "confirmed", status: "implemented", implemented: true, implementedLevels: 3,
+        migration: migration(null, "new", "implemented", "Stage 2(Janus)で新ランタイムIDとして実装。旧カードに対応なし。新規。"), ...extra });
+    const JANUS = Object.freeze([
+        janusRow("双門", "normal", 0, { workbookTargetType: "Direction", targetType: "direction", category: "attack", runtimeCardId: "janus_dual_gate" }),
+        janusRow("閉門", "normal", 10, { workbookTargetType: "Ground", targetType: "ground", category: "disrupt", runtimeCardId: "janus_closed_gate" }),
+        janusRow("反照", "normal", 9, { workbookTargetType: "その他", targetType: "instant", category: "support", runtimeCardId: "janus_reflection" }),
+        janusRow("表裏転化", "normal", 12, { workbookTargetType: "Ground", targetType: "ground", category: "movement", runtimeCardId: "janus_inversion" }),
+        janusRow("境界断ち", "normal", 7, { workbookTargetType: "Direction", targetType: "direction", category: "attack", runtimeCardId: "janus_boundary_slash" })
+    ]);
+    const DESIGNS_BY_GOD = Object.freeze({ hermes: HERMES, apollo: APOLLO, janus: JANUS });
     const GOD_IDS = Object.freeze(Object.keys(DESIGNS_BY_GOD));
-    const ALL_DESIGNS = Object.freeze([].concat(HERMES, APOLLO));
+    const ALL_DESIGNS = Object.freeze([].concat(HERMES, APOLLO, JANUS));
     const godRows = godId => DESIGNS_BY_GOD[godId] || Object.freeze([]);
     // 設計に含まれない/設計と別カードの現行カード(削除・変更しない)。Apollo 3枚は新設計(設計ID 8/10/15)とは別の旧実装で、共存する。
     const UNMAPPED_LEGACY = Object.freeze([
@@ -215,7 +229,18 @@
         Object.freeze({ cardId: "apollo_lyre_rhythm", ringId: "apollo", maxCopies: 2, cooldownSeconds: 4, maxLevel: 3,
             rarity: "special", category: "special", targetType: "instant" }),
         Object.freeze({ cardId: "apollo_oracle", ringId: "apollo", maxCopies: 3, cooldownSeconds: 3, maxLevel: 3,
-            rarity: "strong", category: "special", targetType: "instant" })
+            rarity: "strong", category: "special", targetType: "instant" }),
+        // Janus(Stage 2): 双門(基本攻撃の2段コンボ。Cooldown 0)/ 閉門 10秒 / 反照 9秒 / 表裏転化 12秒 / 境界断ち 7秒。強さ・最大コピー数は標準の仮置き。
+        Object.freeze({ cardId: "janus_dual_gate", ringId: "janus", maxCopies: 3, cooldownSeconds: 0, maxLevel: 3,
+            rarity: "normal", category: "attack", targetType: "direction" }),
+        Object.freeze({ cardId: "janus_closed_gate", ringId: "janus", maxCopies: 3, cooldownSeconds: 10, maxLevel: 3,
+            rarity: "normal", category: "disrupt", targetType: "ground" }),
+        Object.freeze({ cardId: "janus_reflection", ringId: "janus", maxCopies: 3, cooldownSeconds: 9, maxLevel: 3,
+            rarity: "normal", category: "support", targetType: "instant" }),
+        Object.freeze({ cardId: "janus_inversion", ringId: "janus", maxCopies: 3, cooldownSeconds: 12, maxLevel: 3,
+            rarity: "normal", category: "movement", targetType: "ground" }),
+        Object.freeze({ cardId: "janus_boundary_slash", ringId: "janus", maxCopies: 3, cooldownSeconds: 7, maxLevel: 3,
+            rarity: "normal", category: "attack", targetType: "direction" })
     ]);
     const registerRuntimeCards = () => {
         const registry = root.ProjectRCardDeck?.definitions;

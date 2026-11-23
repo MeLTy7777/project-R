@@ -89,7 +89,7 @@ test("入手・解放: 入手しても自動装備されない。所持から解
     assert.equal(w.rl().isUltimateUnlocked("hermes"), true);
     assert.deepEqual(plain(w.rl().getUnlockedSkills("apollo")), [], "未所持の指輪は解放されない");
     assert.deepEqual(plain(w.rl().getRingSkills("apollo")), APOLLO);
-    for (const ring of ["janus", "themis", "athena"]) assert.deepEqual(plain(w.rl().getRingSkills(ring)), [], `${ring}: 表に無い・実装済みスキルなし(IDを作らない)`);
+    for (const ring of ["themis", "athena"]) assert.deepEqual(plain(w.rl().getRingSkills(ring)), [], `${ring}: 表に無い・実装済みスキルなし(IDを作らない)`);
     assert.equal(w.rl().isSkillUnlocked("hermes_issen"), true);
     assert.equal(w.rl().isSkillUnlocked("apollo_oracle"), false);
     assert.equal(w.rl().getSkillRing("hermes_zetsu"), "hermes");
@@ -186,13 +186,13 @@ test("許可リスト: 解放・登録・読み込み時の検証が同じ5ス�
     assert.deepEqual(["黄金の矢", "エロスの矢", "竪琴", "月桂冠", "疫病の矢"].map(idOf), APOLLO);
     for (const id of HERMES.concat(APOLLO)) { assert.ok(w.deck().definitions.card(id), id); }
     assert.deepEqual([w.rl().getSkillSetSource("hermes"), w.rl().getSkillSetSource("apollo")], ["approvedSet", "approvedSet"]);
-    for (const ring of ["janus", "themis", "athena"]) assert.equal(w.rl().getSkillSetSource(ring), "none", ring);
+    for (const ring of ["themis", "athena"]) assert.equal(w.rl().getSkillSetSource(ring), "none", ring);
     // 表に無いカードは、所持・装備していても解放されず、登録できない
     w.own("hermes", "apollo", "janus", "themis", "athena");
     w.rl().equipRing("hermes"); w.rl().equipRing("apollo");
     assert.deepEqual(plain(w.rl().getUnlockedSkills("hermes")), HERMES);
     assert.deepEqual(plain(w.rl().getUnlockedSkills("apollo")), APOLLO);
-    for (const ring of ["janus", "themis", "athena"]) {
+    for (const ring of ["themis", "athena"]) {
         assert.deepEqual(plain(w.rl().getUnlockedSkills(ring)), [], ring);
         assert.equal(w.rl().isRingOwned(ring), true);
     }

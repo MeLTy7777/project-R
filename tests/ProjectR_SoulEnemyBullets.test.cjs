@@ -825,7 +825,19 @@ test("B3 フェーズに合わせた選択: BossFramework のフェーズごと�
     assert.deepEqual(es(wj).bossPhaseEvents.map(e => [e.from, e.to]), [[0, 1], [1, 2]]);
     wj.soul.end("t");
     // BossFramework 自体は変えていない(読み取りだけ): ファイルは HEAD と同じ
-    for (const f of ["js/plugins/ProjectR_BossFramework.js", "js/plugins/ProjectR_SoulBattleStage.js", "js/plugins/ProjectR_SoulBattleHUD.js", "js/plugins/ProjectR_SoulBattleDodge.js", "js/plugins/ProjectR_SoulBattleInput.js", "js/plugins/ProjectR_CutIn.js", "js/plugins/ProjectR_SoulMana.js", "js/plugins/ProjectR_SoulLoopHand.js", "js/plugins/ProjectR_DamageModifiers.js"]) assert.equal(gitDiffers(f), false, f + " は変更していない");
+    for (const f of ["js/plugins/ProjectR_BossFramework.js", "js/plugins/ProjectR_SoulBattleStage.js", "js/plugins/ProjectR_SoulBattleHUD.js", "js/plugins/ProjectR_SoulBattleDodge.js", "js/plugins/ProjectR_SoulBattleInput.js", "js/plugins/ProjectR_SoulMana.js", "js/plugins/ProjectR_SoulLoopHand.js", "js/plugins/ProjectR_DamageModifiers.js"]) assert.equal(gitDiffers(f), false, f + " は変更していない");
+    // ProjectR_CutIn は Stage 2-E で、「目元の絵が登録されていない神(Janus)には出さない」の追加(2行・削除なし)だけを変更した。SOUL の敵のカットイン(apollo など絵のある神)は変わらない
+    // 比較の基準は、いまの git の状態(未ステージ・ステージ済み・コミット後)ではなく、固定の Stage 1 のコミット 15b74d1 の CutIn。コミット後に HEAD との差分が空になっても、基準との内容の差を直接見るので素通りしない
+    const cutInFile = "js/plugins/ProjectR_CutIn.js", cutInBase = cp.spawnSync("git", ["show", "15b74d1:" + cutInFile], { cwd: project, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+    assert.equal(cutInBase.status, 0, "比較の基準 15b74d1 (Stage 1)の CutIn が読めない: " + cutInBase.stderr);
+    const cutInLines = text => text.replace(/\r\n/g, "\n").split("\n");
+    const baseLines = cutInLines(cutInBase.stdout), nowLines = cutInLines(fs.readFileSync(path.join(project, cutInFile), "utf8"));
+    const guardAt = nowLines.findIndex(line => line.trim() === 'if (!Object.prototype.hasOwnProperty.call(GOD_EYES, godId)) return { ok: false, reason: "noArtwork" };');
+    assert.ok(guardAt > 0, "CutIn に noArtwork の判定(承認された追加の1行)がある");
+    assert.equal(nowLines.filter(line => /noArtwork/.test(line)).length, 1, "noArtwork の行は1つだけ");
+    assert.ok(nowLines[guardAt - 1].trim().startsWith("//"), "その直前の1行は説明のコメント");
+    // この2行(コメント + 判定)を取り除くと、Stage 1 の CutIn と1行も違わない(= 変更はこの2行の追加だけ。削除・他の変更なし)
+    assert.deepEqual(nowLines.filter((line, i) => i !== guardAt && i !== guardAt - 1), baseLines, "CutIn は、noArtwork の追加の2行を除いて Stage 1 から変わっていない");
 });
 
 test("B3 フェーズの境目と例外: 弾幕の途中でフェーズが変わってもいまの弾幕はそのまま終わり、次の DEFENSE から新しい表。ボスが無ければ第一形態の表、表より先のフェーズは最後の表、独自の表は登録できる", () => {

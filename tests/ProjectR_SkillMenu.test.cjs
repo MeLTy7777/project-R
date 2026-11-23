@@ -91,11 +91,11 @@ test("戻る操作は従来どおり1つずつ: 枠の一覧 → (Esc)→ 上の
     w.press(scene, "Escape", 27); assert.equal(scene.popped, 1, "上の項目でEscするとメインメニューへ戻る(1回だけ)");
 });
 
-test("空の状態: 装備中の指輪が無い / 装備中の指輪に登録できるものが無い(Janus だけ)ときは案内が出る。使える指輪を装備して開き直すと出ない", () => {
-    const w = world(); w.own("hermes", "janus");
+test("空の状態: 装備中の指輪が無い / 装備中の指輪に登録できるものが無い(Themis だけ)ときは案内が出る。使える指輪を装備して開き直すと出ない", () => {
+    const w = world(); w.own("hermes", "themis");
     const s0 = w.open(); assert.match(s0._notice, /登録できるスキル・奥義がありません/);
-    assert.equal(w.rl().equipRing("janus").ok, true);
-    const s1 = w.open(); assert.match(s1._notice, /登録できるスキル・奥義がありません/, "装備中の指輪が未実装の Janus だけ: 登録できるものなし");
+    assert.equal(w.rl().equipRing("themis").ok, true);
+    const s1 = w.open(); assert.match(s1._notice, /登録できるスキル・奥義がありません/, "装備中の指輪が未実装の Themis だけ: 登録できるものなし");
     assert.equal(w.rl().equipRing("hermes").ok, true);
     const s2 = w.open(); assert.equal(s2._notice, "", "使える指輪があれば案内は出ない");
     assert.deepEqual([s2._slots.active, s2._choices.active], [true, false]);

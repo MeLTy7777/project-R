@@ -33,7 +33,7 @@ function world({ q = null, extra = [], source = "auto", slots = { lmb: "hermes_s
 }
 
 test("【1】Q が空(指輪モード): Ultimate 区画のデータは「Q の空の枠」(slotEmpty・キー Q)。ゲージなし・神のパネルなし。ほかの枠は変わらない", () => {
-    const w = world({ q: null, extra: ["janus"] });
+    const w = world({ q: null, extra: ["themis"] });
     const v = vm(w);
     assert.deepEqual([v.ultimate.slotEmpty, v.ultimate.key, v.ultimate.keyActive, v.ultimate.available, v.ultimate.state, v.ultimate.mode], [true, "Q", true, false, "none", "card"]);
     assert.equal(w.ctx.ProjectRUltimateGauge.hasUltimateGaugeState(), false, "ゲージの状態は作らない");
@@ -57,8 +57,8 @@ test("【2】Q が割り当て済み: 充填中 → READY → 発動後。従来
     FC(w).end("test");
 });
 
-test("【3】割り当て済みで使えない Q(Janus・奥義の処理の解除): 暗い Q + 「使用不可」(slotUnavailable)。ゲージ・神のパネルなし。HUD の状態は unavailable", () => {
-    const j = world({ q: null, extra: ["janus"], begin: false }); assert.equal(RL(j).setUltimate("janus").ok, true);
+test("【3】割り当て済みで使えない Q(Themis・奥義の処理の解除): 暗い Q + 「使用不可」(slotUnavailable)。ゲージ・神のパネルなし。HUD の状態は unavailable", () => {
+    const j = world({ q: null, extra: ["themis"], begin: false }); assert.equal(RL(j).setUltimate("themis").ok, true);
     assert.equal(FC(j).begin().ok, true); frames(j, 2);
     let u = vm(j).ultimate; assert.deepEqual([u.slotUnavailable, u.slotEmpty, u.key, u.keyActive, u.available, u.state], [true, undefined, "Q", true, false, "none"]);
     assert.equal(vm(j).divine, null, "神のパネルなし"); assert.equal(GA(j).hasUltimateGaugeState(), false);

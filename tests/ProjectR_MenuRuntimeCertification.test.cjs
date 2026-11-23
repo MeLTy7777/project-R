@@ -192,7 +192,7 @@ test("デッキ構築: 戦闘中はデッキを変更できない(モデルが�
     assert.ok(scene);
 });
 
-test("アルティメット選択: 主人公が指輪を持ち、handlerが実装済みの神(Hermes/Apollo)だけ選べる。Janus/Themis/Athenaは未実装で選べない", () => {
+test("アルティメット選択: 主人公が指輪を持ち、handlerが実装済みの神(Hermes/Apollo)だけ選べる。Themis/Athenaは未実装(Janusは実装済み・未所持なら選べない)で選べない", () => {
     const w = world();
     const { ctx } = w;
     const d = deckApi(w);
@@ -202,8 +202,9 @@ test("アルティメット選択: 主人公が指輪を持ち、handlerが実�
     const status = id => scene.statusLabel(scene._list._items[byRing(id)]);
     assert.equal(status("hermes"), "選択可");
     assert.equal(status("apollo"), "未所持");
-    for (const id of ["janus", "themis", "athena"]) assert.equal(status(id), "未実装", id);
-    // Apollo(未所持)・Janus(未実装)は選べない
+    assert.equal(status("janus"), "未所持");
+    for (const id of ["themis", "athena"]) assert.equal(status(id), "未実装", id);
+    // Apollo・Janus(未所持)・Themis・Athena(未実装)は選べない
     for (const id of ["apollo", "janus", "themis", "athena"]) {
         scene._list.select(byRing(id));
         scene._list.processOk();

@@ -128,7 +128,14 @@
     "cleanse": { "label": "全部同じ音符のとき味方の異常状態を解除(0=なし / 1=あり)", "unit": "0/1", "min": 0, "max": 1, "integer": true },
     "predictSeconds": { "label": "敵の攻撃を待ち受ける時間(使ってから)", "unit": "秒", "min": 0.5, "max": 60 },
     "predictLengthTiles": { "label": "予告線の長さ(壁で止まる)", "unit": "マス", "min": 1, "max": 30 },
-    "oraclePredict": { "label": "次の敵の攻撃を予測する(0=なし / 1=あり)", "unit": "0/1", "min": 0, "max": 1, "integer": true }
+    "oraclePredict": { "label": "次の敵の攻撃を予測する(0=なし / 1=あり)", "unit": "0/1", "min": 0, "max": 1, "integer": true },
+    "damageScale": { "label": "基礎物理ダメージの倍率(装備の武器のダメージ × この値)", "unit": "倍", "min": 0.1, "max": 20 },
+    "secondDamageScale": { "label": "2段目の基礎物理ダメージの倍率", "unit": "倍", "min": 0.1, "max": 20 },
+    "comboWindowSeconds": { "label": "コンボの継続受付(攻撃の硬直が終わってから)", "unit": "秒", "min": 0.1, "max": 5 },
+    "castRangeTiles": { "label": "カーソル方向の中心までの最大距離", "unit": "マス", "min": 1, "max": 40 },
+    "immobilizeSeconds": { "label": "拘束(移動不能・攻撃は可)の持続", "unit": "秒", "min": 0.1, "max": 60 },
+    "counterWindowSeconds": { "label": "カウンターの受付時間", "unit": "秒", "min": 0.1, "max": 10 },
+    "windupSeconds": { "label": "発動までの予備動作", "unit": "秒", "min": 0, "max": 5 }
   },
   "cards": {
     "hermes_issen": {
@@ -298,6 +305,51 @@
         "1": { "oraclePredict": 1 },
         "2": { "slowSeconds": 1, "slowFactor": 0.5 },
         "3": { "hitMultiplier": 2, "hitSeconds": 10 }
+      }
+    },
+    "janus_dual_gate": {
+      "name": "双門", "designId": null, "cooldownSeconds": 0.05,
+      "constants": { "arcDegrees": 110, "radiusTiles": 1.8, "rangeTiles": 3, "pathWidthTiles": 0.9, "comboWindowSeconds": 0.5, "element": 0, "weaknessMultiplier": 1 },
+      "levels": {
+        "1": { "damageScale": 1, "secondDamageScale": 1.25 },
+        "2": { "damageScale": 1.08, "secondDamageScale": 1.35 },
+        "3": { "damageScale": 1.15, "secondDamageScale": 1.5 }
+      }
+    },
+    "janus_closed_gate": {
+      "name": "閉門", "designId": null, "cooldownSeconds": 10,
+      "constants": { "castRangeTiles": 3, "radiusTiles": 1.2, "element": 0, "weaknessMultiplier": 1 },
+      "levels": {
+        "1": { "immobilizeSeconds": 1.5, "slowSeconds": 1.5, "slowFactor": 0.8 },
+        "2": { "immobilizeSeconds": 2, "slowSeconds": 2, "slowFactor": 0.75 },
+        "3": { "immobilizeSeconds": 2.5, "slowSeconds": 2.5, "slowFactor": 0.7 }
+      }
+    },
+    "janus_reflection": {
+      "name": "反照", "designId": null, "cooldownSeconds": 9,
+      "constants": { "rangeTiles": 3, "element": 0, "weaknessMultiplier": 1 },
+      "levels": {
+        "1": { "counterWindowSeconds": 0.4, "damageScale": 1 },
+        "2": { "counterWindowSeconds": 0.5, "damageScale": 1.25 },
+        "3": { "counterWindowSeconds": 0.6, "damageScale": 1.5 }
+      }
+    },
+    "janus_inversion": {
+      "name": "表裏転化", "designId": null, "cooldownSeconds": 12,
+      "constants": { "element": 0, "weaknessMultiplier": 1 },
+      "levels": {
+        "1": { "rangeTiles": 2.5 },
+        "2": { "rangeTiles": 3 },
+        "3": { "rangeTiles": 3.5 }
+      }
+    },
+    "janus_boundary_slash": {
+      "name": "境界断ち", "designId": null, "cooldownSeconds": 7,
+      "constants": { "windupSeconds": 0.2, "rangeTiles": 4, "pathWidthTiles": 1.2, "element": 0, "weaknessMultiplier": 1 },
+      "levels": {
+        "1": { "damageScale": 1.8 },
+        "2": { "damageScale": 2.1 },
+        "3": { "damageScale": 2.4 }
       }
     }
   }

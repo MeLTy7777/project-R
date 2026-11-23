@@ -88,7 +88,7 @@ const SLOTS = ["lmb", "shift", "e", "x", "c"];
   const SLOTS_A = { lmb: "hermes_sweep", shift: "hermes_zetsu", e: "apollo_eros_arrow", x: "hermes_issen", c: "apollo_golden_volley" };
 
   await check("K1 メインメニュー(原画)の SKILL → スキル編成が直接開く(空の状態)", async () => {
-    await ev(`${FC}.end(); ${D}.assignRingToPlayer('janus'); (function(){ ${RL}.unequipRing('hermes'); ${RL}.unequipRing('apollo'); ${RL}.unequipRing('janus'); ${["lmb", "shift", "e", "x", "c"].map(sl => `${RL}.clearSkill('${sl}');`).join(" ")} ${RL}.clearUltimate(); return 'ok'; })()`);
+    await ev(`${FC}.end(); ${D}.assignRingToPlayer('themis'); (function(){ ${RL}.unequipRing('hermes'); ${RL}.unequipRing('apollo'); ${RL}.unequipRing('themis'); ${["lmb", "shift", "e", "x", "c"].map(sl => `${RL}.clearSkill('${sl}');`).join(" ")} ${RL}.clearUltimate(); return 'ok'; })()`);
     rec("K1-0 何も装備していない状態", (await rlState()).equipped.length === 0, "");
     rec("K1a 実キー Esc でメインメニュー(Scene_ProjectRMenu)が開く", await openMainMenu(), await sceneName());
     await s.shot("skillmenu_K1_main");

@@ -535,7 +535,13 @@
         apollo_eros_arrow:    Object.freeze({ label: "エロスの矢", kind: "card",  cooldown: null, interval: 0 }),
         apollo_lyre_rhythm:   Object.freeze({ label: "竪琴",       kind: "card",  cooldown: null, interval: 0 }),
         apollo_laurel_wreath: Object.freeze({ label: "月桂冠",     kind: "card",  cooldown: null, interval: 0 }),
-        apollo_plague_rain:   Object.freeze({ label: "疫病の矢",   kind: "card",  cooldown: null, interval: 0 })
+        apollo_plague_rain:   Object.freeze({ label: "疫病の矢",   kind: "card",  cooldown: null, interval: 0 }),
+        // Janus(Stage 2): 双門 = 基本攻撃の2段コンボ(Cooldown 0。薙ぎ払いと同じ combo の枠)/ 閉門・反照・表裏転化・境界断ち = カード(Cooldown はカタログの値: 10 / 9 / 12 / 7 秒)
+        janus_dual_gate:      Object.freeze({ label: "双門",       kind: "combo", cooldown: 0, interval: 0 }),
+        janus_closed_gate:    Object.freeze({ label: "閉門",       kind: "card",  cooldown: null, interval: 0 }),
+        janus_reflection:     Object.freeze({ label: "反照",       kind: "card",  cooldown: null, interval: 0 }),
+        janus_inversion:      Object.freeze({ label: "表裏転化",   kind: "card",  cooldown: null, interval: 0 }),
+        janus_boundary_slash: Object.freeze({ label: "境界断ち",   kind: "card",  cooldown: null, interval: 0 })
     });
     // 黄金の矢 Lv3 の押す・離す・長押しビーム(Stage 1D-2A。どのキーでも同じ。ビームの働き本体は ProjectR_ApolloGoldenVolley の持続ビーム)
     //   離す < 0.25秒 = 通常の11本 / 0.25秒〜0.90秒未満で離す = 取り消し(発射もCooldownも無し)/ 0.90秒押し続けた瞬間 = ビーム自動開始(最大1.5秒。離す・中断で終わる)。
@@ -948,14 +954,19 @@
 
     // ---- 近接3段コンボ(左クリック)と銃(右クリック)。斬撃・弾は既存の ProjectRSwordSystem.swing / ProjectRGunSystem.fire ----
     const comboTimeout = () => (ringMode() ? Math.max(12, Math.round(SWEEP_COMBO_SECONDS * FPS)) : COMBO.timeout);          // 指輪ロードアウトの薙ぎ払い = 0.5秒 / 旧い固定の左クリック = ComboTimeout
+    // Janus 双門(Stage 2)は2段コンボ。受付は「攻撃の硬直が終わってから」なので、斬撃のとき c.timeout = 硬直 + 受付(フレーム)を持つ。薙ぎ払い・旧い固定の左クリックは c.timeout が無く、従来の comboTimeout()。
+    const JANUS_DUAL = "janus_dual_gate";
+    const comboSkill = () => rt.combo.skill || (ringMode() && skillIdOf("attack") === JANUS_DUAL ? JANUS_DUAL : "hermes_sweep");
+    const comboMax = () => (comboSkill() === JANUS_DUAL ? 2 : COMBO.max);
+    const comboWindow = () => rt.combo.timeout || comboTimeout();
     const comboStep = () => {
         const c = rt.combo;
-        if (c.step > 0 && rt.frame - c.lastAt > comboTimeout()) { c.step = 0; c.resets++; }          // 受付時間を過ぎたら1段目へ戻る
+        if (c.step > 0 && rt.frame - c.lastAt > comboWindow()) { c.step = 0; c.resets++; }          // 受付時間を過ぎたら1段目へ戻る
         return c.step;
     };
     const getComboState = () => {
         const step = comboStep(), c = rt.combo;
-        return { step, next: step + 1, max: COMBO.max, timeout: comboTimeout(), timeLeft: step > 0 ? Math.max(0, 1 - (rt.frame - c.lastAt) / comboTimeout()) : 0,
+        return { step, next: step + 1, max: comboMax(), timeout: comboWindow(), timeLeft: step > 0 ? Math.max(0, 1 - (rt.frame - c.lastAt) / comboWindow()) : 0,
             swings: c.swings, finishers: c.finishers, resets: c.resets, rejected: c.rejected, finisherFlash: rt.frame - c.finisherAt < 24, last: c.last && { ...c.last } };
     };
     const combatInputReason = () => {
@@ -1000,6 +1011,7 @@
         if (reason) result = fail(reason);
         else if (!sword || typeof sword.swing !== "function") result = fail("swordUnavailable");
         else {
+            if (rt.combo.skill !== "hermes_sweep") { rt.combo.skill = "hermes_sweep"; rt.combo.step = 0; rt.combo.timeout = null; }          // 別のコンボ(双門)から切り替わったら、1段目から
             const next = comboStep() + 1, def = COMBO.steps[next - 1], meleeSource = getMeleeDamageSource();
             const swung = sword.swing("field", { anyWeapon: true, step: next, width: def.width, depth: def.depth, forward: def.forward, lifetime: def.lifetime, cooldown: def.cooldown,
                 damageScale: def.heavy ? COMBO.finisher : 1, style: def.style, pitch: def.pitch, speed: def.speed, visual: !hasSweepVfx(),
@@ -1017,6 +1029,42 @@
         result.source = source; result.frame = rt.frame;
         rt.combo.last = { ...result };
         note({ type: "attack", ok: result.ok === true, step: result.step || 0, reason: result.reason || null });
+        return result;
+    };
+    // ---- Janus 双門(Stage 2): 基本攻撃の2段コンボ。斬撃・ダメージは既存の ProjectRSwordSystem.swing(扇形の判定 sector・長方形のHitbox・1振り1ヒット・武器の攻撃力 × damageScale)。 ----
+    //   1段目: 前方 110° の扇・1.8 マス・基礎物理ダメージの 100 / 108 / 115 %(Lv1 / 2 / 3)。2段目: 前方の貫通する直線(3.0 マス × 幅 0.9)・125 / 135 / 150 %。
+    //   2段目の入力でも、いまのマウスの方向へ向け直す(swing が毎回マウスの向きを読む)。Cooldown 0。継続の受付 = 攻撃の硬直(斬撃の最小の間隔)が終わってから 0.5 秒。
+    //   数値は ProjectR_CardBalance の janus_dual_gate(Lv は所持データの cardOwnership の level)。硬直(フレーム)と扇の振る時間は、薙ぎ払いの近接に合わせた実装の値(仕様の指定なし)。
+    const DUAL_RECOVERY = Object.freeze([18, 24]), DUAL_SWEEP_FRAMES = 9;
+    const cardLevelOf = id => safe(() => { const maxLevel = deck().definitions.card(id)?.maxLevel || 3, lv = Number.parseInt(deck().getPersistentData().cardOwnership?.[id]?.level, 10); return Math.min(maxLevel, Math.max(1, Number.isFinite(lv) ? lv : 1)); }, 1);
+    const dualGateSpec = () => {
+        const bal = root.ProjectRCardBalance, lv = cardLevelOf(JANUS_DUAL);
+        const eff = safe(() => bal.effects(JANUS_DUAL, lv), null) || {}, k = key => safe(() => Number(bal.constant(JANUS_DUAL, key)), NaN), pick = (v, f) => (Number.isFinite(v) && v > 0 ? v : f);
+        return { level: lv, scale1: pick(Number(eff.damageScale), 1), scale2: pick(Number(eff.secondDamageScale), 1.25), arc: pick(k("arcDegrees"), 110), radius: pick(k("radiusTiles"), 1.8),
+            length: pick(k("rangeTiles"), 3), width: pick(k("pathWidthTiles"), 0.9), windowFrames: Math.max(1, Math.round(pick(k("comboWindowSeconds"), 0.5) * FPS)) };
+    };
+    const dualGateClick = (source = "api") => {
+        let result = null;
+        const reason = combatInputReason(), sword = root.ProjectRSwordSystem;
+        if (reason) result = fail(reason);
+        else if (!sword || typeof sword.swing !== "function") result = fail("swordUnavailable");
+        else {
+            const c = rt.combo;
+            if (c.skill !== JANUS_DUAL) { c.skill = JANUS_DUAL; c.step = 0; c.timeout = null; }          // 別のコンボ(薙ぎ払い)から切り替わったら、1段目から
+            const next = comboStep() + 1, spec = dualGateSpec(), meleeSource = getMeleeDamageSource(), recovery = DUAL_RECOVERY[next - 1];
+            const common = { anyWeapon: true, step: next, cooldown: recovery, ...(meleeSource.weaponId !== null ? { damageWeapon: meleeSource.weaponId } : {}) };
+            const swung = sword.swing("field", next === 1
+                ? { ...common, damageScale: spec.scale1, style: "clockwise", sector: { radius: spec.radius, arc: spec.arc, frames: DUAL_SWEEP_FRAMES, passes: [{ offset: 0, delay: 0 }] } }
+                : { ...common, damageScale: spec.scale2, style: "thrust", width: spec.width, depth: spec.length, forward: spec.length / 2, lifetime: 3 });
+            if (swung && swung.ok) {
+                c.swings++; c.lastAt = rt.frame; c.timeout = recovery + spec.windowFrames;
+                if (next >= 2) { c.step = 0; c.finishers++; c.finisherAt = rt.frame; } else c.step = next;
+                result = { ok: true, step: next, heavy: next >= 2, scale: next === 1 ? spec.scale1 : spec.scale2, level: spec.level, degree: swung.degree, serial: swung.serial };
+            } else { c.rejected++; result = fail(swung?.reason || "swingFailed", { step: next }); }
+        }
+        result.source = source; result.frame = rt.frame;
+        rt.combo.last = { ...result };
+        note({ type: "attack", ok: result.ok === true, step: result.step || 0, reason: result.reason || null, skillId: JANUS_DUAL });
         return result;
     };
     const fireGun = (source = "api") => {
@@ -1071,7 +1119,7 @@
             const def = slotDef(slot);
             try {
                 if (isRingSlot(slot) && def.kind === "combo") {
-                    const swung = sweepClick(source);                                                // 薙ぎ払い: どのキーでも同じ3段コンボ
+                    const swung = def.skillId === JANUS_DUAL ? dualGateClick(source) : sweepClick(source);      // 薙ぎ払い: どのキーでも同じ3段コンボ / 双門(Janus): 同じく2段コンボ
                     result = { ...swung, slot, skillId: def.skillId };
                 } else if (def.kind === "card") {
                     const used = deck().useFixedCard(def.cardId);
@@ -2153,7 +2201,7 @@
         if (!rt.active || !hitCfg.enabled || !payload) return;
         const id = Number(payload.enemyId), e = map()?.event(id);
         if (!e || e._erased) return;
-        const hp0 = safe(() => map().getCurrentEventHp(id), null);
+        const hp0 = Number.isFinite(Number(payload.hp0)) ? Number(payload.hp0) : safe(() => map().getCurrentEventHp(id), null);      // payload.hp0 = ダメージを出す前の HP(外部のスキルが渡す。SwordSystem・GunSystem は渡さない = 従来どおり)
         if (hp0 == null || !(hp0 > 0)) return;
         if (!eventVisible(e)) { hit.stats.hidden++; return; }                               // 見えていない敵には何も出さない(位置がもれる)
         const kind = payload.kind === "gun" ? "gun" : (Number(payload.step) >= COMBO.max ? "heavy" : "melee");
@@ -2249,6 +2297,15 @@
         return getHitFx().config;
     };
     ensureHitListeners();
+    // 外部のスキル(Stage 2-E: Janus)が与えたダメージを、同じ手応え(点滅・反動・ヒットストップ・SE)に乗せる追加専用の入口。見た目だけ。
+    // 呼ぶ側が、ダメージを出した直後に通知する(HP が実際に減ったことは onHit → hitTick が確かめる。減らなければ何も出ない)。heavy: true は強撃の手応え。
+    const reportHit = o => {
+        try {
+            if (!o || !Number.isFinite(Number(o.enemyId))) return false;
+            onHit({ enemyId: Number(o.enemyId), kind: "skill", step: o.heavy ? COMBO.max : 1, serial: String(o.serial === undefined ? "" : o.serial), degree: Number(o.degree), hp0: o.hp0 });
+            return true;
+        } catch (_error) { return false; }
+    };
 
     // ------------------------------------------------------------------ 表示(スロットのHUD・敵の予兆) ----------------------------------------------------------------
     const reloadView = () => {
@@ -2354,7 +2411,7 @@
     const CARD_NAMES = Object.freeze({ apollo_golden_volley: "黄金の矢", apollo_gigas_slayer: "ギガース殺し", hermes_reed_flute: "葦笛", hermes_veil: "ヴェイル", hermes_psychopomp: "サイコポンポス", hermes_strength: "ストレングス", hermes_sweep: "薙ぎ払い" });
     // 指輪ロードアウト: スキルごとのアイコン(物理キーではなくスキルIDで決める)。新しい素材は使わず、既存の IconSet の番号だけ。
     //   薙ぎ払い・絶・一閃・黄金の矢は従来の枠と同じ番号。残りの6つは仮の番号(実機で見た目を確かめて、必要なら差し替える。BattleHUD の setCardPresentation があればそちらが優先)。
-    const SKILL_ICON_DEFAULT = Object.freeze({ hermes_sweep: 76, hermes_zetsu: 82, hermes_issen: 78, apollo_golden_volley: 102, hermes_reed_flute: 79, hermes_strength: 77, apollo_eros_arrow: 103, apollo_lyre_rhythm: 81, apollo_laurel_wreath: 83, apollo_plague_rain: 104 });
+    const SKILL_ICON_DEFAULT = Object.freeze({ hermes_sweep: 76, hermes_zetsu: 82, hermes_issen: 78, apollo_golden_volley: 102, hermes_reed_flute: 79, hermes_strength: 77, apollo_eros_arrow: 103, apollo_lyre_rhythm: 81, apollo_laurel_wreath: 83, apollo_plague_rain: 104, janus_dual_gate: 76, janus_closed_gate: 84, janus_reflection: 85, janus_inversion: 86, janus_boundary_slash: 87 });
     // Stage 6A: 5つの固定スキルのアイコン。新しい素材は使わず、既存の img/system/IconSet.png の番号を使う。
     //   優先順: BattleHUD の setCardPresentation / Skill の note <ProjectRCard> が決めたアイコン(あれば)> この既定。
     //   attack=薙ぎ払い(DBの薙ぎ払いスキル id173 と同じ 76)/ mobility=絶(82 ブーツ)/ special=一閃(78 閃光)/ card1=黄金の矢(102 弓)/ card2=ギガース殺し(70 光の柱)
@@ -2372,7 +2429,7 @@
         const bySlot = Object.fromEntries(state.slots.map(s => [s.slot, s]));
         const make = slot => {
             const d = slotDef(slot), view = bySlot[slot];
-            if (isRingSlot(slot) ? d.skillId === "hermes_sweep" : slot === "attack") {            // 薙ぎ払い(旧い固定 = LMB / 指輪ロードアウト = 入っているキー): 近接3段コンボ(進み具合)
+            if (isRingSlot(slot) ? d.kind === "combo" : slot === "attack") {            // 薙ぎ払い(旧い固定 = LMB / 指輪ロードアウト = 入っているキー): 近接3段コンボ(進み具合)
                 const ic = slotIconOf(slot, d), c = state.combo;
                 return { mode: "field", key: d.key, slot, name: d.label, detail: c.finisherFlash ? "強撃!" : (c.step > 0 ? `${c.step}/${c.max}` : "READY"), tone: c.finisherFlash ? "warn" : "ok", accent: "",
                     iconIndex: ic.iconIndex, imageName: ic.imageName, skillId: 0, available: true, disabled: false, selected: c.step > 0 || c.finisherFlash, cooldown: { active: false, remaining: 0, total: 0 },
@@ -2501,7 +2558,7 @@
         getSkillDefs: () => JSON.parse(JSON.stringify(SKILL_DEFS)),
         useAbility, cancel, getHudState, getHudSlots: hudSlots,
         attackClick, fireGun, getComboState, getComboConfig: () => JSON.parse(JSON.stringify({ ...COMBO, timeout: comboTimeout() })), getSweepVfxKey: () => sweepVfx(), listConsumables, selectConsumable, getSelectedConsumable: () => { const i = selectedConsumable(); return i ? itemView(i) : null; },
-        getRadialState, openRadial, closeRadial, getHitFx, setHitFeedback, getMeleeDamageSource, setMeleeDamageSource, getItemHoldFrames: () => ITEM_HOLD_FRAMES, getControlStats: () => ({ combo: getComboState(), gun: { ...rt.gun, last: rt.gun.last && { ...rt.gun.last } }, item: { ...rt.item }, radial: getRadialState(), diag: { ...rt.diag } }),
+        getRadialState, openRadial, closeRadial, getHitFx, setHitFeedback, reportHit, getMeleeDamageSource, setMeleeDamageSource, getItemHoldFrames: () => ITEM_HOLD_FRAMES, getControlStats: () => ({ combo: getComboState(), gun: { ...rt.gun, last: rt.gun.last && { ...rt.gun.last } }, item: { ...rt.item }, radial: getRadialState(), diag: { ...rt.diag } }),
         getLastResult: () => (rt.lastResult ? JSON.parse(JSON.stringify(rt.lastResult)) : null),
         getLog: () => rt.log.map(e => ({ ...e })),
         attachEnemy, detachEnemy, listEnemies: () => [...rt.enemies.keys()],

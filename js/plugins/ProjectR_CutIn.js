@@ -75,6 +75,8 @@
             const kind = request?.kind === "ultimate" ? "ultimate" : request?.kind === "card" ? "card" : null;
             const godId = String(request?.godId || "");
             if (!kind || !godId) return { ok: false, reason: "invalidRequest" };
+            // 専用の目元画像が登録されていない神(Janus など)は、他の神の絵(Hermes)で代用せず、カットインを出さない(画像が用意されたら GodEyesJson へ足すだけで出る)。
+            if (!Object.prototype.hasOwnProperty.call(GOD_EYES, godId)) return { ok: false, reason: "noArtwork" };
             const entry = { id: ++serial, kind, godId, cardId: request.cardId ? String(request.cardId) : null, owner: request.owner === "enemy" ? "enemy" : "ally", frame: 0, total: FRAMES[kind] };
             if (kind === "card") {
                 entry.side = random() < 0.5 ? "left" : "right";
