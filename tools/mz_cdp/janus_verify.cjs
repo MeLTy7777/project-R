@@ -42,7 +42,7 @@ const SLOTS = ["lmb", "shift", "e", "x", "c"];
   await wait("SceneManager._scene instanceof Scene_Title && !SceneManager.isSceneChanging() && !!ColorManager._windowskin && ColorManager._windowskin.isReady()", 30000);
   console.log("chromium", await ev("process.versions.chromium + ' / nw ' + process.versions.nw"));
   await ev("DataManager._globalInfo = DataManager._globalInfo || []; DataManager.setupNewGame(); SceneManager.goto(Scene_Map); 'ok'");
-  await waitMap(1); await sleep(1500);
+  await waitMap(1); await sleep(1500); await s.parkFar();
   await ev("window.__writes = 0; StorageManager.saveObject = function() { window.__writes++; return Promise.reject(new Error('blocked by test')); }; 'ok'");
   await ev(`(function() { var it = new Game_Interpreter(); it.setup([{ code: 357, indent: 0, parameters: ['ProjectR_HermesProductionDeck', 'AcquireHermesRing', 'AcquireHermesRing', {}] }, { code: 0, indent: 0, parameters: [] }], 0); for (var i = 0; i < 20 && it.isRunning(); i++) it.update(); $gameParty.gainItem($dataItems[7], 6); $gameParty.gainItem($dataItems[8], 2); Math.random = function() { return 0.9; }; return 'ok'; })()`);
   await sleep(300);
@@ -236,7 +236,7 @@ const SLOTS = ["lmb", "shift", "e", "x", "c"];
     await ev(`${FC}.end(); 'ok'`); await sleep(300);
     // 本物のロードと同じ流れ(Scene_Load.onLoadSuccess): extractSaveContents → 同じマップを読み直し → Scene_Map
     await ev(`(function(){ var c = JsonEx.parse(${JSON.stringify(contents)}); DataManager.extractSaveContents(c); $gamePlayer.reserveTransfer($gameMap.mapId(), $gamePlayer.x, $gamePlayer.y); $gamePlayer.requestMapReload(); SceneManager.goto(Scene_Map); return 'ok'; })()`);
-    await sleep(800); await waitMap(1); await sleep(1200);
+    await sleep(800); await waitMap(1); await sleep(1200); await s.parkFar();
     const after = await json(`({ slots: ${RL}.getSlots(), q: ${RL}.getUltimate(), eq: ${RL}.getEquippedRings(), lv: ${D}.getPersistentData().cardOwnership['janus_closed_gate'].level, state: ${JS}.getState() })`);
     rec("J6b ロード後: 5枠・Q・装備・Lv が復元され、実行時の効果は残らない", after.slots.lmb === "janus_dual_gate" && after.slots.shift === "janus_closed_gate" && after.slots.e === "janus_reflection" && after.slots.x === "janus_inversion" && after.slots.c === "janus_boundary_slash" && after.q === "janus" && after.eq.includes("janus") && after.lv === 3 && after.state.holds.length === 0 && !after.state.armed, JSON.stringify(after));
     await patchEnemy();                                                                         // マップを読み直したので、実行時の <enemy> の付与をやり直す

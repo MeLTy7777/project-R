@@ -856,3 +856,26 @@ LMB / Shift / E / X / C の**どのキーでも同じ**。Lv1・Lv2 は従来ど
 - テスト: `tests/ProjectR_Themis.skills.test.cjs`(19)・`ProjectR_Themis.sinMark.test.cjs`(9)・`ProjectR_Themis.ultimate.test.cjs`(10)。実機: `tools/mz_cdp/themis_verify.cjs`(56 項目 PASS・実キー・実マウス・Chromium 85)。
 - 既存テストの調整: 「未実装の例」に Themis を使っていたもの(FieldCombat.hudQ / ultimate・RingQA・SkillMenu・RingLoadout(.menu)・MenuRuntimeCertification と実機の4スクリプト)は **Athena** に変更。件数・一覧を固定していたもの(ApolloA2/A3・HermesZetsu・HermesProductionDeck・CardBalance・CardCatalog.audit・H2CB3・FieldCombat.loadout)は `tests/ProjectR_ThemisImplemented.cjs` から値を作る。SOUL 側の保護ガードは、CardCatalog の Themis 行を許可リストの条件に足し(上限 60 行はそのまま)、SOUL の15枚の集合は `janus_` / `themis_` を除いて確かめる。
 - **まだ無い物・決めていない点**: 専用の見た目と音(コードで描く輪・線と既存の SE だけ)/ Themis の神(同行・カットイン)の素材(無いので何も出さない。ほかの神の絵で代用しない)/ HUD のアイコン番号(88〜91 は仮)/ カードのレアリティ・最大枚数・設計ID(仮)/ Themis の指輪の入手経路(本番の付与はまだ無い)/ 「ターゲット = カーソル上の敵」の操作感(体の中、または中心から 0.75 マス以内)・3段コンボの形と硬直(双門・薙ぎ払いに合わせた実装の値で、仕様の指定なし)/ 衡平の天秤の「最初の敵の攻撃」は、Janus の反照が無効にした攻撃を数えない/ SOUL 戦闘での Themis。
+
+## Stage 4: Athena(アテナ)の5スキル + Ultimate「アイギス・不落の戦陣」
+
+これで5つの指輪(Hermes・Apollo・Janus・Themis・Athena)がすべて実装済みです。Athena の通常スキル5つは、LMB / Shift / E / X / C のどの枠にも入れられます(装備・SKILL メニュー・HUD・保存・Cooldown・Q の奥義は、既存の RingLoadout / FieldCombat / UltimateActivation のまま)。ダメージはすべて基礎物理ダメージ(装備の武器のダメージ)× 倍率です。
+
+| スキル | ID | 内容(Lv1 / 2 / 3) | Cooldown |
+| --- | --- | --- | --- |
+| アイギスの加護 | athena_aegis | 自分の被ダメージを 25 / 35 / 45 % 軽減(4 秒)。効果中の再発動は拒否(何も消費しない)。仲間への付与なし(既存の ApolloStatus の台帳 = 他の軽減とは積) | 14 秒 |
+| 護槍旋陣 | athena_spear_circle | 全周(360°)半径 2 マスを 0.3 秒間隔で2回。1回ごとに 70 / 80 / 90 %。各回で同じ敵に1ヒットまで。壁越しは当たらない | 8 秒 |
+| 断陣の投槍 | athena_spear_throw | 基本攻撃。**タップ(0.25 秒未満)**= 2段コンボ: 1段目 前方 90° の扇・1.8 マス・85 / 95 / 105 %、2段目 直線 2.4 マス × 幅 0.9・105 / 115 / 130 %(継続の受付 = 硬直が終わってから 0.5 秒)。**長押し(0.25 秒に達した瞬間)**= 4.5 マスの貫通する投擲1回・160 / 190 / 220 %(壁は貫通しない。離したときには出さない)。投擲の再使用は別に 10 秒(タップのコンボは再使用中も使える) | タップ 0 / 投擲の再使用 10 秒 |
+| 破陣の盾衝 | athena_shield_charge | カーソルの向きへ、最大 2 マスを約 0.3 秒で前進(壁・敵・マップの端の手前で止まる)。前進のあと、前方の敵に1回 140 / 170 / 200 %。通常の敵は 0.4 / 0.6 / 0.8 秒の怯み。ボスは怯まない・敵は押し出さない。進めない開始(目の前が壁・端)は失敗(何も消費しない) | 10 秒 |
+| 女神の迎撃 | athena_counter | 0.6 / 0.7 / 0.8 秒の間、前方 140° からの敵の直接攻撃(近接・飛び道具)の1回を 60 / 75 / 90 % 軽減して受け、3 マス以内の攻撃者へ 100 / 120 / 140 % で反撃。環境ダメージ・背後は対象外。飛び道具の削除はしない。反撃は迎撃を再び呼ばない | 11 秒 |
+| Ultimate アイギス・不落の戦陣 | athena(Q) | 主人公を中心に半径 3 マスの陣を 6 秒(その場に残る)。開いた瞬間に範囲内の敵へ 1 回 180 %。主人公が陣の中にいる間は被ダメージ 60 % 軽減。ゲージは成功後だけ消費・奥義のダメージではゲージは増えない。Q の自動割り当て・Core の選択・U キーは触らない | 共有ゲージ |
+
+**入力の一般化(断陣の投槍)**: 長押しの入力は、これまで黄金の矢 Lv3 専用でした。FieldCombat の `holdCapable` が断陣の投槍も認め(mode = "throw")、押した瞬間には何も出さず、0.25 秒未満で離せばタップ(コンボ)、0.25 秒に達した瞬間に投擲1回です。黄金の矢 Lv3 の溜め・ビーム・タップ(mode = "charge")の動きは、どの枠でも変わりません(テストで確認)。投擲の再使用の時計は、黄金の矢のビーム専用 Cooldown と同じ仕組み(`beamCd` をスキル ID で持つ)。HUD の状態には `slot.lock`(ready / charging / cooldown)が出ます。
+
+**怯み(盾衝)**: 敵の行動(FieldCombat)へ `staggerEnemy(eventId, seconds)` を足しました。溜め中の攻撃を中断し、次の攻撃を秒数だけ遅らせます。移動は速度の係数(0.0001)で止めます。ノックバックは Hendrix にありますが、衝突の安全が確かめられないので使いません。
+
+**ファイル**: ProjectR_AthenaSkills.js(加護・旋陣・盾衝・迎撃・投擲)/ ProjectR_AthenaUltimate.js / ProjectR_FieldCombat.js(断陣の投槍の入力・2段コンボ・staggerEnemy)/ ProjectR_CardCatalog.js・data/ProjectR_CardBalance.json・ProjectR_RingLoadout.js・js/plugins.js(登録)。
+
+**テスト**: tests/ProjectR_Athena.skills・spear・ultimate.test.cjs(Node)/ tools/mz_cdp/athena_verify.cjs(実機。追跡されているデータだけで動く)。5つの指輪がすべて実装済みになったので、「実装されていない指輪」を確かめるテストは、一時の指輪(tests/ProjectR_TempRing.cjs・CDP は lib.cjs の tempRing。実在しない神 zeus を、その世界・ページの実行時のレジストリにだけ足す)に置き換えました。SoulBattlePoC の CardCatalog の検査は、行数(60 行)ではなく中身の検査(承認済みの指輪 Janus・Themis・Athena のカード・設計の追加だけを許し、基準の Hermes・Apollo・SOUL の定義は変えない)になりました。
+
+**未確認・仮置き**: 専用の絵・音は無い(輪・線はコードで描画、SE は既存のもの)/ HUD のアイコン(128〜130・99・100)・レアリティ・最大コピー数・設計IDは仮 / Athena の指輪の入手経路は未実装 / 断陣の投槍のタップの形・硬直(16 / 22 フレーム)・投擲の幅(0.9)・盾衝の帯の幅(1.0)・迎撃の「前方」(カーソルの向き)・怯みの扱い(耐性判定なし)は実装の値(仕様に指定なし)/ 実機の見た目(陣・槍・突進の跡)・操作感は手動で確認。

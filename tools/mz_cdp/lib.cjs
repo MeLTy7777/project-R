@@ -25,7 +25,13 @@ async function session(opts = {}) {
   const slow = n => ev(`(() => { if (!window.__slowInstalled) { const orig = SceneManager.updateScene; let k = 0; SceneManager.updateScene = function() { if (window.__slow > 1 && (++k % window.__slow)) return; window.__sf = (window.__sf || 0) + 1; return orig.apply(this, arguments); }; window.__slowInstalled = true; } window.__slow = ${n}; return window.__slow; })()`);
   // シーンが実際に進んだフレーム数で待つ(スロー再生中も正しい。HP表示は「次のフレーム」で更新されるため)
   const sceneFrames = async n => { const t0 = await ev("window.__sf || 0"); const t = Date.now(); while (Date.now() - t < 30000) { if ((await ev("window.__sf || 0")) - t0 >= n) return true; await sleep(30); } return false; };
+  // 追跡されているデータ(HEAD の Map001)では、テスト敵(イベント 1・2)が開始位置の画面内(x=42)にいて、戦闘中扱いになり、指輪の付与(戦闘中は移せない)が失敗する。
+  //   未コミットの DEV の Map データ(x=52 へ移した版)に頼らず、スクリプトの側で画面の外へ置く(以降の検証は敵を都度置くので、検証の内容は変わらない。データ・ファイルは書かない)。
+  //   マップを読み込んだあと(waitMap のあと)と、マップを読み直したあとに呼ぶ。
+  const parkFar = async () => { await ev("(function(){ [[1, 52, 15], [2, 52, 18]].forEach(function(p){ var e = $gameMap.event(p[0]); if (!e) return; e.locate(p[1], p[2]); e._realX = p[1]; e._realY = p[2]; }); return 'ok'; })()"); await sleep(300); };
+  // Stage 4: 5つの指輪(hermes / apollo / janus / themis / athena)がすべて実装済み。「定義はあるが実装されていない指輪」を確かめる検証は、このページの実行時のレジストリにだけ、一時の指輪(実在しない神 zeus)を足して使う(ファイル・データ・セーブは書かない。ページを閉じれば消える)。
+  const tempRing = async (id = "zeus") => { await ev(`(function(){ var d = ProjectRCardDeck; if (!d.definitions.ring('${id}')) d.definitions.rings.set('${id}', Object.freeze({ ringId: '${id}', godId: '${id}', equipActorIds: Object.freeze([]), initialOwner: 'unowned' })); return 'ok'; })()`); return id; };
   const results = []; const rec = (id, ok, detail) => { results.push({ id, ok: !!ok, detail }); console.log((ok ? "PASS " : "FAIL ") + id + "  " + (typeof detail === "string" ? detail : JSON.stringify(detail))); };
-  return { sceneFrames, c, ev, place, foot, aim, pos, last, status, state, errors, slow, rec, results, sleep, shot: (n) => c.shot(`${OUT}/${n}.png`) };
+  return { tempRing, parkFar, sceneFrames, c, ev, place, foot, aim, pos, last, status, state, errors, slow, rec, results, sleep, shot: (n) => c.shot(`${OUT}/${n}.png`) };
 }
 module.exports = { session };

@@ -181,7 +181,7 @@ test("カード名のラベル: 15枚すべて、ワークブックのカード�
         quietly(() => w.sb.stop());
     }
     assert.equal(new Set(seen).size, 15, "15枚すべて");
-    assert.deepEqual(plain(a16 && Object.keys(WORKBOOK_NAMES)).sort(), plain(JSON.parse(fs.readFileSync(path.join(project, "data/ProjectR_CardBalance.json"), "utf8")).cards && Object.keys(JSON.parse(fs.readFileSync(path.join(project, "data/ProjectR_CardBalance.json"), "utf8")).cards).filter(id => !/^(janus|themis)_/.test(id))).sort(), "ワークブックの15枚 = バランス表の15枚(Janus・Themis は Stage 2・3 のフィールド戦闘用のカードで、SOUL の15枚には含まれない)");
+    assert.deepEqual(plain(a16 && Object.keys(WORKBOOK_NAMES)).sort(), plain(JSON.parse(fs.readFileSync(path.join(project, "data/ProjectR_CardBalance.json"), "utf8")).cards && Object.keys(JSON.parse(fs.readFileSync(path.join(project, "data/ProjectR_CardBalance.json"), "utf8")).cards).filter(id => !/^(janus|themis|athena)_/.test(id))).sort(), "ワークブックの15枚 = バランス表の15枚(Janus・Themis・Athena は Stage 2・3・4 のフィールド戦闘用のカードで、SOUL の15枚には含まれない)");
     for (const id of Object.keys(WORKBOOK_NAMES)) assert.equal(JSON.parse(fs.readFileSync(path.join(project, "data/ProjectR_CardBalance.json"), "utf8")).cards[id].name, WORKBOOK_NAMES[id], id + " のバランス表の名前 = ワークブック");
 });
 

@@ -4,6 +4,7 @@
 // 実際のメインメニュー(原画)からのキー操作・見た目は → tools/mz_cdp/skill_menu_verify.cjs(実機)。
 const assert = require("node:assert/strict");
 const { buildWorld, plain } = require("./RealEngineHarness.cjs");
+const { TEMP_RING, addTempRing } = require("./ProjectR_TempRing.cjs");
 
 let passed = 0;
 function test(name, body) { body(); console.log(`ok ${++passed} - ${name}`); }
@@ -91,11 +92,12 @@ test("戻る操作は従来どおり1つずつ: 枠の一覧 → (Esc)→ 上の
     w.press(scene, "Escape", 27); assert.equal(scene.popped, 1, "上の項目でEscするとメインメニューへ戻る(1回だけ)");
 });
 
-test("空の状態: 装備中の指輪が無い / 装備中の指輪に登録できるものが無い(Athena だけ)ときは案内が出る。使える指輪を装備して開き直すと出ない", () => {
-    const w = world(); w.own("hermes", "athena");
+test("空の状態: 装備中の指輪が無い / 装備中の指輪に登録できるものが無い(未実装の一時の指輪だけ)ときは案内が出る。使える指輪を装備して開き直すと出ない", () => {
+    const w = world(); const temp = addTempRing(w);          // Stage 4: 5つの指輪はすべて実装済み。「未実装の指輪」は、この世界だけの一時の指輪
+    w.own("hermes", temp.ringId);
     const s0 = w.open(); assert.match(s0._notice, /登録できるスキル・奥義がありません/);
-    assert.equal(w.rl().equipRing("athena").ok, true);
-    const s1 = w.open(); assert.match(s1._notice, /登録できるスキル・奥義がありません/, "装備中の指輪が未実装の Athena だけ: 登録できるものなし");
+    assert.equal(w.rl().equipRing(temp.ringId).ok, true);
+    const s1 = w.open(); assert.match(s1._notice, /登録できるスキル・奥義がありません/, "装備中の指輪が未実装の一時の指輪だけ: 登録できるものなし");
     assert.equal(w.rl().equipRing("hermes").ok, true);
     const s2 = w.open(); assert.equal(s2._notice, "", "使える指輪があれば案内は出ない");
     assert.deepEqual([s2._slots.active, s2._choices.active], [true, false]);

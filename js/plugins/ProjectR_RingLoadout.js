@@ -54,7 +54,8 @@
  *     Apollo: 黄金の矢 apollo_golden_volley / エロスの矢 apollo_eros_arrow / 竪琴 apollo_lyre_rhythm / 月桂冠 apollo_laurel_wreath / 疫病の矢 apollo_plague_rain
  *     Janus: 双門 janus_dual_gate / 閉門 janus_closed_gate / 反照 janus_reflection / 表裏転化 janus_inversion / 境界断ち janus_boundary_slash(Stage 2)
  *     Themis: 戒律の宣告 themis_edict / 審理の鎖 themis_chain / 衡平の天秤 themis_balance / 罪科の刻印 themis_sin_mark / 断罪の判決 themis_verdict(Stage 3)
- *     表に無い指輪(Athena など。Janus は Stage 2、Themis は Stage 3 で表に追加)や、表に無い既存カード(サイコポンポス・ヴェイル・旧カードなど)は、解放も登録もできません。
+ *     Athena: アイギスの加護 athena_aegis / 護槍旋陣 athena_spear_circle / 断陣の投槍 athena_spear_throw / 破陣の盾衝 athena_shield_charge / 女神の迎撃 athena_counter(Stage 4)
+ *     表に無い指輪(将来の指輪など。Janus は Stage 2、Themis は Stage 3、Athena は Stage 4 で表に追加)や、表に無い既存カード(サイコポンポス・ヴェイル・旧カードなど)は、解放も登録もできません。
  *   ・奥義は「指輪ID」で表します(1指輪につき奥義1種類のため)。奥義が実装済みかどうかは、このStageでは確認しません。
  *
  * API: ProjectRRingLoadout
@@ -81,12 +82,13 @@
     const NOTICE_FRAMES = 180;
     // 承認済みの「指輪ごとの通常5スキル」の表: { ringId: [スキルID x5] }。解放・登録できるスキルはこの表にあるものだけです。
     // 既存の実装済みスキル(CardCatalogの設計 ∩ CardDeckCoreの登録)のIDだけを書く(未実装のIDを推測で書かない)。表のIDが実装済みでない・指輪が違う場合、そのIDは無視されます。
-    // 表に無い指輪(Athena など)は、解放・登録できるスキルが0です。実装済みスキルが追加されたら、ここに { ringId: [ID...] } の1行を足します。
+    // 表に無い指輪(将来の指輪など)は、解放・登録できるスキルが0です。実装済みスキルが追加されたら、ここに { ringId: [ID...] } の1行を足します。
     const SKILL_SETS = Object.freeze({
         hermes: Object.freeze(["hermes_sweep", "hermes_zetsu", "hermes_issen", "hermes_reed_flute", "hermes_strength"]), // 薙ぎ払い・絶・一閃・葦笛・ストレングス
         apollo: Object.freeze(["apollo_golden_volley", "apollo_eros_arrow", "apollo_lyre_rhythm", "apollo_laurel_wreath", "apollo_plague_rain"]), // 黄金の矢・エロスの矢・竪琴・月桂冠・疫病の矢
         janus: Object.freeze(["janus_dual_gate", "janus_closed_gate", "janus_reflection", "janus_inversion", "janus_boundary_slash"]), // 双門・閉門・反照・表裏転化・境界断ち(Stage 2)
-        themis: Object.freeze(["themis_edict", "themis_chain", "themis_balance", "themis_sin_mark", "themis_verdict"]) // 戒律の宣告・審理の鎖・衡平の天秤・罪科の刻印・断罪の判決(Stage 3)
+        themis: Object.freeze(["themis_edict", "themis_chain", "themis_balance", "themis_sin_mark", "themis_verdict"]), // 戒律の宣告・審理の鎖・衡平の天秤・罪科の刻印・断罪の判決(Stage 3)
+        athena: Object.freeze(["athena_aegis", "athena_spear_circle", "athena_spear_throw", "athena_shield_charge", "athena_counter"]) // アイギスの加護・護槍旋陣・断陣の投槍・破陣の盾衝・女神の迎撃(Stage 4)
     });
 
     const safe = (fn, fallback = null) => { try { const v = fn(); return v === undefined ? fallback : v; } catch (_error) { return fallback; } };

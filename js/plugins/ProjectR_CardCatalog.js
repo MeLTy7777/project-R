@@ -189,9 +189,21 @@
         themisRow("罪科の刻印", "normal", 0, { workbookTargetType: "Direction", targetType: "direction", category: "attack", runtimeCardId: "themis_sin_mark" }),
         themisRow("断罪の判決", "normal", 8, { workbookTargetType: "Ground", targetType: "ground", category: "attack", runtimeCardId: "themis_verdict" })
     ]);
-    const DESIGNS_BY_GOD = Object.freeze({ hermes: HERMES, apollo: APOLLO, janus: JANUS, themis: THEMIS });
+    // ---- Athena(Stage 4): 通常スキル5枠(アイギスの加護・護槍旋陣・断陣の投槍・破陣の盾衝・女神の迎撃)。実装済みとして登録する。designId は未確定なので null。強さ・最大コピー数は標準の仮置き。
+    //   targetType: 加護・旋陣・迎撃 = instant / 投槍 = direction(フィールド戦闘の基本攻撃。タップ = 2段コンボ・長押し = 投擲)/ 盾衝 = direction。確定は各実装(ProjectR_AthenaSkills)。
+    const athenaRow = (name, classification, cooldownSeconds, extra) => design(null, name, classification, 3, cooldownSeconds, {
+        god: "athena", ringId: "athena", targetTypeStatus: "confirmed", status: "implemented", implemented: true, implementedLevels: 3,
+        migration: migration(null, "new", "implemented", "Stage 4(Athena)で新ランタイムIDとして実装。旧カードに対応なし。新規。"), ...extra });
+    const ATHENA = Object.freeze([
+        athenaRow("アイギスの加護", "normal", 14, { workbookTargetType: "その他", targetType: "instant", category: "support", runtimeCardId: "athena_aegis" }),
+        athenaRow("護槍旋陣", "normal", 8, { workbookTargetType: "その他", targetType: "instant", category: "attack", runtimeCardId: "athena_spear_circle" }),
+        athenaRow("断陣の投槍", "normal", 0, { workbookTargetType: "Direction", targetType: "direction", category: "attack", runtimeCardId: "athena_spear_throw" }),
+        athenaRow("破陣の盾衝", "normal", 10, { workbookTargetType: "Direction", targetType: "direction", category: "movement", runtimeCardId: "athena_shield_charge" }),
+        athenaRow("女神の迎撃", "normal", 11, { workbookTargetType: "その他", targetType: "instant", category: "support", runtimeCardId: "athena_counter" })
+    ]);
+    const DESIGNS_BY_GOD = Object.freeze({ hermes: HERMES, apollo: APOLLO, janus: JANUS, themis: THEMIS, athena: ATHENA });
     const GOD_IDS = Object.freeze(Object.keys(DESIGNS_BY_GOD));
-    const ALL_DESIGNS = Object.freeze([].concat(HERMES, APOLLO, JANUS, THEMIS));
+    const ALL_DESIGNS = Object.freeze([].concat(HERMES, APOLLO, JANUS, THEMIS, ATHENA));
     const godRows = godId => DESIGNS_BY_GOD[godId] || Object.freeze([]);
     // 設計に含まれない/設計と別カードの現行カード(削除・変更しない)。Apollo 3枚は新設計(設計ID 8/10/15)とは別の旧実装で、共存する。
     const UNMAPPED_LEGACY = Object.freeze([
@@ -264,7 +276,18 @@
         Object.freeze({ cardId: "themis_sin_mark", ringId: "themis", maxCopies: 3, cooldownSeconds: 0, maxLevel: 3,
             rarity: "normal", category: "attack", targetType: "direction" }),
         Object.freeze({ cardId: "themis_verdict", ringId: "themis", maxCopies: 3, cooldownSeconds: 8, maxLevel: 3,
-            rarity: "normal", category: "attack", targetType: "ground" })
+            rarity: "normal", category: "attack", targetType: "ground" }),
+        // Athena(Stage 4): 断陣の投槍(基本攻撃。タップ = 2段コンボ・Cooldown 0 / 長押し = 投擲・別の10秒)/ 加護 14秒 / 旋陣 8秒 / 盾衝 10秒 / 迎撃 11秒。強さ・最大コピー数は標準の仮置き。
+        Object.freeze({ cardId: "athena_aegis", ringId: "athena", maxCopies: 3, cooldownSeconds: 14, maxLevel: 3,
+            rarity: "normal", category: "support", targetType: "instant" }),
+        Object.freeze({ cardId: "athena_spear_circle", ringId: "athena", maxCopies: 3, cooldownSeconds: 8, maxLevel: 3,
+            rarity: "normal", category: "attack", targetType: "instant" }),
+        Object.freeze({ cardId: "athena_spear_throw", ringId: "athena", maxCopies: 3, cooldownSeconds: 0, maxLevel: 3,
+            rarity: "normal", category: "attack", targetType: "direction" }),
+        Object.freeze({ cardId: "athena_shield_charge", ringId: "athena", maxCopies: 3, cooldownSeconds: 10, maxLevel: 3,
+            rarity: "normal", category: "movement", targetType: "direction" }),
+        Object.freeze({ cardId: "athena_counter", ringId: "athena", maxCopies: 3, cooldownSeconds: 11, maxLevel: 3,
+            rarity: "normal", category: "support", targetType: "instant" })
     ]);
     const registerRuntimeCards = () => {
         const registry = root.ProjectRCardDeck?.definitions;

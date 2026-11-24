@@ -42,7 +42,7 @@ const SLOTS = ["lmb", "shift", "e", "x", "c"];
   await wait("SceneManager._scene instanceof Scene_Title && !SceneManager.isSceneChanging() && !!ColorManager._windowskin && ColorManager._windowskin.isReady()", 30000);
   console.log("chromium", await ev("process.versions.chromium + ' / nw ' + process.versions.nw"));
   await ev("DataManager._globalInfo = DataManager._globalInfo || []; DataManager.setupNewGame(); SceneManager.goto(Scene_Map); 'ok'");
-  await waitMap(1); await sleep(1500);
+  await waitMap(1); await sleep(1500); await s.parkFar();
   await ev("window.__writes = 0; StorageManager.saveObject = function() { window.__writes++; return Promise.reject(new Error('blocked by test')); }; 'ok'");
   await ev(`(function() { var it = new Game_Interpreter(); it.setup([{ code: 357, indent: 0, parameters: ['ProjectR_HermesProductionDeck', 'AcquireHermesRing', 'AcquireHermesRing', {}] }, { code: 0, indent: 0, parameters: [] }], 0); for (var i = 0; i < 20 && it.isRunning(); i++) it.update(); $gameParty.gainItem($dataItems[7], 6); $gameParty.gainItem($dataItems[8], 2); Math.random = function() { return 0.9; }; return 'ok'; })()`);
   await sleep(300);
@@ -196,7 +196,7 @@ const SLOTS = ["lmb", "shift", "e", "x", "c"];
     const before = await json(`${RL}.getState()`);
     // 保存データの往復(JsonEx)。ファイルは書かない(saveObject は遮断済み)。マップへ戻る手順は MZ の読み込みと同じ(SceneManager.goto(Scene_Map))
     const ok = await ev(`(function(){ var json = JsonEx.stringify(DataManager.makeSaveContents()); DataManager.createGameObjects(); DataManager.extractSaveContents(JsonEx.parse(json)); Scene_Load.prototype.reloadMapIfUpdated.call(null); SceneManager.goto(Scene_Map); return json.length > 0; })()`);
-    await sleep(500); await waitMap(1); await sleep(1500);
+    await sleep(500); await waitMap(1); await sleep(1500); await s.parkFar();
     const after = await json(`${RL}.getState()`);
     rec("R8a 保存 → ロードで、装備と5枠が同じ(ファイルへは書かない)", ok && JSON.stringify(after) === JSON.stringify(before) && (await ev("window.__writes")) === 0, JSON.stringify(after).slice(0, 200));
     await ev(`${FC}.setDevAllowOutsideEncounter(true); ${FC}.setLoadoutSource('auto'); 'ok'`);

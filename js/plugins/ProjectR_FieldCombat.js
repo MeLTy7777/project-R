@@ -547,7 +547,13 @@
         themis_chain:         Object.freeze({ label: "審理の鎖",   kind: "card",  cooldown: null, interval: 0 }),
         themis_balance:       Object.freeze({ label: "衡平の天秤", kind: "card",  cooldown: null, interval: 0 }),
         themis_sin_mark:      Object.freeze({ label: "罪科の刻印", kind: "combo", cooldown: 0, interval: 0 }),
-        themis_verdict:       Object.freeze({ label: "断罪の判決", kind: "card",  cooldown: null, interval: 0 })
+        themis_verdict:       Object.freeze({ label: "断罪の判決", kind: "card",  cooldown: null, interval: 0 }),
+        // Athena(Stage 4): 断陣の投槍 = 基本攻撃(タップ = 2段コンボ・Cooldown 0 / 長押し = 投擲・別の再使用 10秒。hold: true)/ 加護・旋陣・盾衝・迎撃 = カード(Cooldown はカタログの値: 14 / 8 / 10 / 11 秒)
+        athena_aegis:         Object.freeze({ label: "アイギスの加護", kind: "card",  cooldown: null, interval: 0 }),
+        athena_spear_circle:  Object.freeze({ label: "護槍旋陣",   kind: "card",  cooldown: null, interval: 0 }),
+        athena_spear_throw:   Object.freeze({ label: "断陣の投槍", kind: "combo", cooldown: 0, interval: 0, hold: true }),
+        athena_shield_charge: Object.freeze({ label: "破陣の盾衝", kind: "card",  cooldown: null, interval: 0 }),
+        athena_counter:       Object.freeze({ label: "女神の迎撃", kind: "card",  cooldown: null, interval: 0 })
     });
     // 黄金の矢 Lv3 の押す・離す・長押しビーム(Stage 1D-2A。どのキーでも同じ。ビームの働き本体は ProjectR_ApolloGoldenVolley の持続ビーム)
     //   離す < 0.25秒 = 通常の11本 / 0.25秒〜0.90秒未満で離す = 取り消し(発射もCooldownも無し)/ 0.90秒押し続けた瞬間 = ビーム自動開始(最大1.5秒。離す・中断で終わる)。
@@ -964,8 +970,10 @@
     const JANUS_DUAL = "janus_dual_gate";
     // Themis 罪科の刻印(Stage 3)は3段コンボ(薙ぎ払いと同じ段数)。受付は Janus と同じく「攻撃の硬直が終わってから」。
     const THEMIS_MARK = "themis_sin_mark";
-    const comboSkill = () => rt.combo.skill || (ringMode() && skillIdOf("attack") === JANUS_DUAL ? JANUS_DUAL : ringMode() && skillIdOf("attack") === THEMIS_MARK ? THEMIS_MARK : "hermes_sweep");
-    const comboMax = () => (comboSkill() === JANUS_DUAL ? 2 : COMBO.max);
+    // Athena 断陣の投槍(Stage 4)は2段コンボ(タップ)+ 長押しの投擲。受付は Janus と同じく「攻撃の硬直が終わってから」。
+    const ATHENA_SPEAR = "athena_spear_throw";
+    const comboSkill = () => rt.combo.skill || (ringMode() && skillIdOf("attack") === JANUS_DUAL ? JANUS_DUAL : ringMode() && skillIdOf("attack") === THEMIS_MARK ? THEMIS_MARK : ringMode() && skillIdOf("attack") === ATHENA_SPEAR ? ATHENA_SPEAR : "hermes_sweep");
+    const comboMax = () => (comboSkill() === JANUS_DUAL || comboSkill() === ATHENA_SPEAR ? 2 : COMBO.max);
     const comboWindow = () => rt.combo.timeout || comboTimeout();
     const comboStep = () => {
         const c = rt.combo;
@@ -1110,6 +1118,41 @@
         note({ type: "attack", ok: result.ok === true, step: result.step || 0, reason: result.reason || null, skillId: THEMIS_MARK });
         return result;
     };
+    // ---- Athena 断陣の投槍(Stage 4): 基本攻撃。タップ(0.25秒未満で離す)= 2段コンボ / 長押し(0.25秒に達した瞬間)= 貫通する投擲1回(別の再使用 10秒。コンボには影響しない)。 ----
+    //   コンボ 1段目: 前方 90° の扇・1.8 マス・基礎物理ダメージの 85 / 95 / 105 %。2段目: 前方の直線(2.4 マス × 幅 0.9)・105 / 115 / 130 %。斬撃・ダメージは SwordSystem.swing(1振り1ヒット)。
+    //   Cooldown 0。継続の受付 = 攻撃の硬直が終わってから 0.5 秒。投擲の本体(幾何・ダメージ)は ProjectR_AthenaSkills(throwSpear)。ここは入力の段階と再使用の時計だけ。
+    const SPEAR_RECOVERY = Object.freeze([16, 22]), SPEAR_SWEEP_FRAMES = 9;
+    const spearSpec = () => {
+        const bal = root.ProjectRCardBalance, lv = cardLevelOf(ATHENA_SPEAR);
+        const eff = safe(() => bal.effects(ATHENA_SPEAR, lv), null) || {}, k = key => safe(() => Number(bal.constant(ATHENA_SPEAR, key)), NaN), pick = (v, f) => (Number.isFinite(v) && v > 0 ? v : f);
+        return { level: lv, scale1: pick(Number(eff.damageScale), 0.85), scale2: pick(Number(eff.secondDamageScale), 1.05), arc: pick(k("arcDegrees"), 90), radius: pick(k("radiusTiles"), 1.8),
+            length: pick(k("rangeTiles"), 2.4), width: pick(k("pathWidthTiles"), 0.9), windowFrames: Math.max(1, Math.round(pick(k("comboWindowSeconds"), 0.5) * FPS)),
+            holdFrames: Math.max(1, Math.round(pick(k("holdSeconds"), 0.25) * FPS)), lockSeconds: pick(k("lockSeconds"), 10) };
+    };
+    const spearClick = (source = "api") => {
+        let result = null;
+        const reason = combatInputReason(), sword = root.ProjectRSwordSystem;
+        if (reason) result = fail(reason);
+        else if (!sword || typeof sword.swing !== "function") result = fail("swordUnavailable");
+        else {
+            const c = rt.combo;
+            if (c.skill !== ATHENA_SPEAR) { c.skill = ATHENA_SPEAR; c.step = 0; c.timeout = null; }          // 別のコンボ(薙ぎ払い・双門・刻印)から切り替わったら、1段目から
+            const next = comboStep() + 1, spec = spearSpec(), meleeSource = getMeleeDamageSource(), recovery = SPEAR_RECOVERY[next - 1];
+            const common = { anyWeapon: true, step: next, cooldown: recovery, ...(meleeSource.weaponId !== null ? { damageWeapon: meleeSource.weaponId } : {}) };
+            const swung = sword.swing("field", next === 1
+                ? { ...common, damageScale: spec.scale1, style: "clockwise", sector: { radius: spec.radius, arc: spec.arc, frames: SPEAR_SWEEP_FRAMES, passes: [{ offset: 0, delay: 0 }] } }
+                : { ...common, damageScale: spec.scale2, style: "thrust", width: spec.width, depth: spec.length, forward: spec.length / 2, lifetime: 3 });
+            if (swung && swung.ok) {
+                c.swings++; c.lastAt = rt.frame; c.timeout = recovery + spec.windowFrames;
+                if (next >= 2) { c.step = 0; c.finishers++; c.finisherAt = rt.frame; } else c.step = next;
+                result = { ok: true, step: next, heavy: next >= 2, scale: next === 1 ? spec.scale1 : spec.scale2, level: spec.level, degree: swung.degree, serial: swung.serial };
+            } else { c.rejected++; result = fail(swung?.reason || "swingFailed", { step: next }); }
+        }
+        result.source = source; result.frame = rt.frame;
+        rt.combo.last = { ...result };
+        note({ type: "attack", ok: result.ok === true, step: result.step || 0, reason: result.reason || null, skillId: ATHENA_SPEAR });
+        return result;
+    };
     const fireGun = (source = "api") => {
         let result = null;
         const reason = combatInputReason();
@@ -1135,6 +1178,18 @@
     };
 
     const sleepSweep = () => { const api = enemyAttack(); if (!api) return; for (const [id, b] of rt.enemies) { const e = map()?.event(id); if (e && enemyAlive(e) && enemyAsleep(e)) suppressSleeper(id, b, api); } };
+    // 敵の怯み(Athena 破陣の盾衝: Stage 4): 溜め中の攻撃(予兆つき・強敵)を中断し、次の攻撃を seconds 秒後まで遅らせる。移動を止めるのは呼ぶ側(速度の係数)。戦闘に付いていない敵には何もしない。
+    const staggerEnemy = (eventId, seconds) => {
+        const id = Number(eventId), b = rt.enemies.get(id), api = enemyAttack(), frames = Math.max(1, Math.round(Number(seconds) * FPS));
+        if (!b || !Number.isFinite(frames)) return { ok: false, reason: b ? "invalidSeconds" : "notAttached" };
+        if ((b.state === "windup" || b.attackId != null) && api) { safe(() => api.interrupt(id, "stagger")); b.state = "chase"; b.attackId = null; }
+        if (b.strong) { const sx = strongApi(); if (sx) safe(() => sx.interrupt(id, "stagger")); if (b.state === "strong") b.state = "chase"; }
+        b.cooldown = Math.max(b.cooldown || 0, frames);
+        navIdle(b);
+        b.staggers = (b.staggers || 0) + 1;
+        note({ type: "stagger", eventId: id });
+        return { ok: true, eventId: id, frames };
+    };
     const castReason = slot => {
         if (!rt.active) return "inactive";
         if (playerDead()) return "playerDead";
@@ -1162,7 +1217,7 @@
             const def = slotDef(slot);
             try {
                 if (isRingSlot(slot) && def.kind === "combo") {
-                    const swung = def.skillId === JANUS_DUAL ? dualGateClick(source) : def.skillId === THEMIS_MARK ? sinMarkClick(source) : sweepClick(source);      // 薙ぎ払い: どのキーでも同じ3段コンボ / 双門(Janus): 同じく2段コンボ / 罪科の刻印(Themis): 3段コンボ
+                    const swung = def.skillId === JANUS_DUAL ? dualGateClick(source) : def.skillId === THEMIS_MARK ? sinMarkClick(source) : def.skillId === ATHENA_SPEAR ? spearClick(source) : sweepClick(source);      // 薙ぎ払い: どのキーでも同じ3段コンボ / 双門(Janus): 同じく2段コンボ / 罪科の刻印(Themis): 3段コンボ
                     result = { ...swung, slot, skillId: def.skillId };
                 } else if (def.kind === "card") {
                     const used = deck().useFixedCard(def.cardId);
@@ -1200,7 +1255,9 @@
     const BEAM_TAP_FRAMES = Math.max(1, Math.round(BEAM_RULE.tapSeconds * FPS)), BEAM_START_FRAMES = Math.max(BEAM_TAP_FRAMES + 1, Math.round(BEAM_RULE.startSeconds * FPS));
     const BEAM_SPEED_ID = "fieldcombat_golden_beam";
     const goldenApi = () => { const a = root.ProjectRApolloGoldenVolley; return a && typeof a.startHeldBeam === "function" && typeof a.stopHeldBeam === "function" ? a : null; };
+    const athenaApi = () => { const a = root.ProjectRAthenaSkills; return a && typeof a.throwSpear === "function" ? a : null; };
     const holdCapable = id => {
+        if (id === ATHENA_SPEAR) return ringMode() && !!(SKILL_DEFS[id] && SKILL_DEFS[id].hold) && !!athenaApi();          // 断陣の投槍: どのキーでも、押した瞬間には何も出さず、離す(タップ)か 0.25 秒に達する(投擲)まで待つ
         if (id !== "apollo_golden_volley" || !(SKILL_DEFS[id] && SKILL_DEFS[id].hold) || !ringMode()) return false;
         const api = goldenApi();
         return !!api && Number(safe(() => api.cardLevel(), 0)) >= Number(api.beamLevel);                    // ビームの段階(Lv3)でなければ、押した瞬間に通常の発射
@@ -1238,9 +1295,31 @@
         interruptHolds("skill", h.slot);
         return true;
     };
+    // 断陣の投槍の投擲(長押し 0.25 秒に達した瞬間に1回だけ)。再使用の時計(rt.beamCd[スキルID] = 10 秒)は、実際に投げたときだけ始まる。タップのコンボには関係しない。
+    //   再使用中・投げられない(向きなし・API なし)ときは何も出さず(Cooldown も使わない)、離しても何も出ない(コンボにも変わらない)。
+    const fireThrowFor = h => {
+        const api = athenaApi(), reason = api ? castReason(h.slot) : "apiUnavailable", lock = rt.beamCd[h.skillId] || 0;
+        const failWith = why => {
+            h.phase = "locked";
+            rt.lastResult = { ...fail(why, { slot: h.slot, skillId: h.skillId, throw: true, lock }), source: "hold", frame: rt.frame }; flash(h.slot, false);
+            holdLogPush({ slot: h.slot, skillId: h.skillId, frames: rt.frame - h.downAt, outcome: "throwFailed", reason: why }); note({ type: "throwFailed", slot: h.slot, skillId: h.skillId, reason: why });
+            return false;
+        };
+        if (reason) return failWith(reason);
+        if (lock > 0) return failWith("throwLock");
+        const thrown = api.throwSpear();
+        if (!thrown || thrown.ok !== true) return failWith((thrown && thrown.reason) || "throwFailed");
+        h.phase = "thrown"; h.serial = thrown.serial;
+        rt.beamCd[h.skillId] = spearSpec().lockSeconds;
+        rt.lastResult = { ok: true, slot: h.slot, skillId: h.skillId, cardId: h.skillId, throw: true, hit: thrown.hit ? thrown.hit.slice() : [], source: "hold", frame: rt.frame }; flash(h.slot, true);
+        holdLogPush({ slot: h.slot, skillId: h.skillId, frames: rt.frame - h.downAt, outcome: "throw", hits: thrown.hit ? thrown.hit.length : 0 }); note({ type: "throw", slot: h.slot, skillId: h.skillId });
+        interruptHolds("skill", h.slot);
+        return true;
+    };
     // 押している長さで、段階(tap → charge → beam)を進める。離したとき・毎フレームの両方から呼んでも結果は同じ。
     const advanceHold = h => {
         const frames = rt.frame - h.downAt;
+        if (h.mode === "throw") { if (h.phase === "tap" && frames >= spearSpec().holdFrames) fireThrowFor(h); return frames; }          // 断陣の投槍: 0.25 秒に達した瞬間に投擲(離したときには出さない)
         if (h.mode !== "charge") return frames;
         if (h.phase === "tap" && frames >= BEAM_TAP_FRAMES) h.phase = "charge";
         if ((h.phase === "tap" || h.phase === "charge") && frames >= BEAM_START_FRAMES) { h.ready = true; startBeamFor(h); }
@@ -1270,6 +1349,11 @@
             const id = skillIdOf(slot);
             if (id && holdCapable(id) && !holdStartReason(slot)) {
                 if (rt.holds[slot]) return { ok: false, reason: "holding", slot, skillId: id, source, frame: rt.frame };          // 押しっぱなしの重複は無視(二重の発動なし)
+                if (id === ATHENA_SPEAR) {                                                                  // 断陣の投槍: タップ / 長押しの分かれ目まで何も出さない
+                    rt.holds[slot] = { slot, skillId: id, downAt: rt.frame, source, mode: "throw", phase: "tap", ready: false, beamStarted: false, repeats: 0 };
+                    note({ type: "holdStart", slot, skillId: id, mode: "throw" });
+                    return { ok: true, held: true, slot, skillId: id, source, frame: rt.frame };
+                }
                 const repeat = (rt.beamCd[id] || 0) > 0;                                                    // ビーム専用のCooldown中は、押している間の連射
                 const h = { slot, skillId: id, downAt: rt.frame, source, mode: repeat ? "repeat" : "charge", phase: repeat ? "repeat" : "tap", ready: false, beamStarted: false, repeats: 0 };
                 rt.holds[slot] = h;
@@ -1290,6 +1374,7 @@
         const entry = { slot, skillId: h.skillId, frames, source, mode: h.mode };
         if (h.phase === "beam") { const api = goldenApi(); if (api) api.stopHeldBeam("release"); return { ok: true, beam: true, ended: "release", slot, skillId: h.skillId, frames, source, frame: rt.frame }; }          // ログは beamEnded が書く
         if (h.phase === "repeat") { entry.outcome = "repeat"; entry.repeats = h.repeats; holdLogPush(entry); note({ type: "holdRelease", slot, skillId: h.skillId, frames, outcome: entry.outcome }); return null; }
+        if (h.phase === "thrown" || h.phase === "locked") { entry.outcome = h.phase === "thrown" ? "afterThrow" : "afterLock"; holdLogPush(entry); note({ type: "holdRelease", slot, skillId: h.skillId, frames, outcome: entry.outcome }); return null; }          // 投擲の後に離しても、何も出ない(二重に撃たない)
         if (h.phase === "spent" || h.phase === "canceled") { entry.outcome = h.phase === "spent" ? "afterBeam" : "canceled"; holdLogPush(entry); note({ type: "holdRelease", slot, skillId: h.skillId, frames, outcome: entry.outcome }); return null; }
         if (h.phase === "charge") {                                                                          // 0.25秒〜0.90秒未満: 取り消し(発射もCooldownも無し)
             entry.outcome = "cancel"; holdLogPush(entry); note({ type: "holdRelease", slot, skillId: h.skillId, frames, outcome: entry.outcome });
@@ -2379,6 +2464,12 @@
         const state = rt.beam && rt.beam.skillId === id ? "active" : (h && h.mode === "charge" && h.phase === "charge") ? "charging" : cd > 0 ? "cooldown" : "ready";
         return { state, cooldown: cd, total: BEAM_RULE.cooldownSeconds, ratio: cd > 0 ? Math.min(1, cd / BEAM_RULE.cooldownSeconds) : 0 };
     };
+    // 断陣の投槍の再使用(長押しの投擲だけ。タップのコンボの Cooldown 0 とは別): ready / charging(押している)/ cooldown(10秒)
+    const throwView = id => {
+        if (id !== ATHENA_SPEAR || !holdCapable(id)) return null;
+        const cd = rt.beamCd[id] || 0, total = spearSpec().lockSeconds, h = Object.values(rt.holds).find(x => x.skillId === id);
+        return { state: cd > 0 ? "cooldown" : (h && h.mode === "throw" && h.phase === "tap") ? "charging" : "ready", cooldown: cd, total, ratio: cd > 0 ? Math.min(1, cd / total) : 0 };
+    };
     const getHudState = () => {
         const gauge = safe(() => { const g = root.ProjectRUltimateGauge; const max = g?.getUltimateGaugeMax?.() ?? 0; return max > 0 ? { gauge: g.getUltimateGauge(), max } : null; }, null);
         const slotNames = ["ultimate", "mobility", "special", "reload", "consumable", "card1", "card2"];
@@ -2404,8 +2495,9 @@
                 else if (d.kind === "combo") { ready = true; state = "ready"; extra = { skillId: d.skillId, combo: true }; }
                 else { const known = safe(() => !!deck().definitions.card(d.cardId), false) && skillAvailable(d.skillId); ready = ready && known; state = !known ? "unavailable" : state; extra = { skillId: d.skillId, cardId: d.cardId, known }; }
             } else if (slot === "card1" || slot === "card2") { const known = safe(() => !!deck().definitions.card(d.cardId), false); ready = ready && known; state = !known ? "unavailable" : state; extra = { cardId: d.cardId, known }; }
+            const tv = isRingSlot(slot) && d.skillId ? throwView(d.skillId) : null;
             const bv = isRingSlot(slot) && d.skillId ? beamView(d.skillId) : null;                  // 黄金の矢 Lv3 のスロットだけ: ビームの状態(通常の Cooldown・ready とは別)
-            return { slot, key: d.key, label: d.label, cooldown: cd, ratio: cooldownSecondsOf(slot) > 0 ? Math.min(1, cd / total) : 0, ready, state, extra, flash: rt.flash.slot === slot && rt.frame < rt.flash.until ? (rt.flash.ok ? "ok" : "ng") : null, notice: noticeOf(slot), ...(bv ? { beam: bv } : {}) };
+            return { slot, key: d.key, label: d.label, cooldown: cd, ratio: cooldownSecondsOf(slot) > 0 ? Math.min(1, cd / total) : 0, ready, state, extra, flash: rt.flash.slot === slot && rt.frame < rt.flash.until ? (rt.flash.ok ? "ok" : "ng") : null, notice: noticeOf(slot), ...(bv ? { beam: bv } : {}), ...(tv ? { lock: tv } : {}) };
         });
         const reload = reloadView();
         return { active: rt.active, mode: rt.mode, slots, attack: { key: "LMB", label: slotDef("attack").label }, gun: { key: "RMB", label: "射撃", ammo: reload.ammo, capacity: reload.capacity, equipped: reload.equipped },
@@ -2454,7 +2546,7 @@
     const CARD_NAMES = Object.freeze({ apollo_golden_volley: "黄金の矢", apollo_gigas_slayer: "ギガース殺し", hermes_reed_flute: "葦笛", hermes_veil: "ヴェイル", hermes_psychopomp: "サイコポンポス", hermes_strength: "ストレングス", hermes_sweep: "薙ぎ払い" });
     // 指輪ロードアウト: スキルごとのアイコン(物理キーではなくスキルIDで決める)。新しい素材は使わず、既存の IconSet の番号だけ。
     //   薙ぎ払い・絶・一閃・黄金の矢は従来の枠と同じ番号。残りの6つは仮の番号(実機で見た目を確かめて、必要なら差し替える。BattleHUD の setCardPresentation があればそちらが優先)。
-    const SKILL_ICON_DEFAULT = Object.freeze({ hermes_sweep: 76, hermes_zetsu: 82, hermes_issen: 78, apollo_golden_volley: 102, hermes_reed_flute: 79, hermes_strength: 77, apollo_eros_arrow: 103, apollo_lyre_rhythm: 81, apollo_laurel_wreath: 83, apollo_plague_rain: 104, janus_dual_gate: 76, janus_closed_gate: 84, janus_reflection: 85, janus_inversion: 86, janus_boundary_slash: 87, themis_edict: 88, themis_chain: 89, themis_balance: 90, themis_sin_mark: 76, themis_verdict: 91 });
+    const SKILL_ICON_DEFAULT = Object.freeze({ hermes_sweep: 76, hermes_zetsu: 82, hermes_issen: 78, apollo_golden_volley: 102, hermes_reed_flute: 79, hermes_strength: 77, apollo_eros_arrow: 103, apollo_lyre_rhythm: 81, apollo_laurel_wreath: 83, apollo_plague_rain: 104, janus_dual_gate: 76, janus_closed_gate: 84, janus_reflection: 85, janus_inversion: 86, janus_boundary_slash: 87, themis_edict: 88, themis_chain: 89, themis_balance: 90, themis_sin_mark: 76, themis_verdict: 91, athena_aegis: 129, athena_spear_circle: 99, athena_spear_throw: 100, athena_shield_charge: 128, athena_counter: 130 });
     // Stage 6A: 5つの固定スキルのアイコン。新しい素材は使わず、既存の img/system/IconSet.png の番号を使う。
     //   優先順: BattleHUD の setCardPresentation / Skill の note <ProjectRCard> が決めたアイコン(あれば)> この既定。
     //   attack=薙ぎ払い(DBの薙ぎ払いスキル id173 と同じ 76)/ mobility=絶(82 ブーツ)/ special=一閃(78 閃光)/ card1=黄金の矢(102 弓)/ card2=ギガース殺し(70 光の柱)
@@ -2605,6 +2697,7 @@
         getLastResult: () => (rt.lastResult ? JSON.parse(JSON.stringify(rt.lastResult)) : null),
         getLog: () => rt.log.map(e => ({ ...e })),
         attachEnemy, detachEnemy, listEnemies: () => [...rt.enemies.keys()],
+        staggerEnemy,          // 敵の怯み(Athena 破陣の盾衝): 溜め中の攻撃の中断と、次の攻撃の遅れ
         isEnemyAsleep: eventId => { const e = map()?.event(Number(eventId)); return !!e && enemyAsleep(e); },          // 葦笛の睡眠ステートがあるか(Stage 1D-2B)
         getEnemySleep: eventId => { const b = rt.enemies.get(Number(eventId)); return b ? { asleep: !!b.asleep, sleeps: b.sleeps || 0, interrupted: b.slept || 0 } : null; },
         getEnemyNav, findNavPath, invalidateNavCache, getSoftPass: () => [...rt.soft.keys()], setSoftCollision: on => { cfg.softCollision = !!on; if (!on) clearSoft(); return cfg.softCollision; }, setPathfinding, isPathfinding: () => navState.enabled, resetPathfinding: () => setPathfinding(navDefault), getNavStats: () => ({ ...navStats, why: { ...navStats.why }, lastError: navState.lastError }), resetNavStats,

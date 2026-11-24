@@ -14,6 +14,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const fx = require("./ProjectR_HermesB1Fixture.cjs");
+const { TEMP_RING, addTempRing } = require("./ProjectR_TempRing.cjs");
 const a7 = require("./ProjectR_ApolloA7Fixture.cjs");
 const { buildWorld, plain, attachHpBars, ENEMIES, HP } = fx;
 
@@ -42,6 +43,7 @@ function qaWorld({ owned = ["hermes", "apollo"], ally = null } = {}) {
     const w = buildWorld(); assert.deepEqual(w.failures, [], "全pluginが本番順で読み込める");
     w.enterMap(4, 12, 25); w.frames(3); w.mouse(700, 300);
     FC(w).setLoadoutSource("auto");
+    if (owned.includes(TEMP_RING)) addTempRing(w);          // Stage 4: 5つの指輪はすべて実装済み。「未実装の指輪」は、この世界だけの一時の指輪
     Object.assign(w.ctx.Graphics, { boxWidth: 1920, boxHeight: 1080 });                         // 実機の画面サイズ(無いと窓の大きさが0になる)
     for (const ring of owned) assert.equal(D(w).assignRingToPlayer(ring).ok, true, ring);
     for (const id of CARDS) { assert.equal(D(w).setCardOwned(id, true).ok, true, id); assert.equal(D(w).setCardLevel(id, 1).ok, true, id); }
@@ -245,15 +247,15 @@ test("【4】戦闘中: 指輪画面の操作・メニューのモデル・RingL
 
 // ---------------------------------------------------------------- 【5】Q の表示状態 ----------------------------------------------------------------
 test("【5】Q の表示状態: 空(empty)/ 未実装の指輪(unavailable)/ 充填中(charging)/ READY(ready)/ 発動後に充填中へ戻る。BattleHUD の枠・ゲージの表示の元データも同じ", () => {
-    const w = qaWorld({ owned: ["hermes", "apollo", "athena"] });
-    const scene = openRings(w); for (const id of ["hermes", "apollo", "athena"]) equipViaScene(scene, id);
+    const w = qaWorld({ owned: ["hermes", "apollo", TEMP_RING] });
+    const scene = openRings(w); for (const id of ["hermes", "apollo", TEMP_RING]) equipViaScene(scene, id);
     assignViaScene(scene, "lmb", "hermes_sweep");
     const view = () => { const s = ultSlot(w); return [s.state, s.ready]; };
     // 空
     begin(w); assert.deepEqual(view(), ["empty", false]); assert.equal(gauge(w).has, false); FC(w).end("test");
-    // 未実装の指輪(Athena。画面は未実装の奥義を候補に出さないので、API で登録した状態 = 古い保存データなどを想定)
-    assert.equal(RL(w).setUltimate("athena").ok, true);
-    openSlot(scene, "q"); assert.equal(scene._choices.items().some(c => c.ringId === "athena"), false, "画面は未実装の奥義を候補に出さない");
+    // 未実装の指輪(一時の指輪。画面は未実装の奥義を候補に出さないので、API で登録した状態 = 古い保存データなどを想定)
+    assert.equal(RL(w).setUltimate(TEMP_RING).ok, true);
+    openSlot(scene, "q"); assert.equal(scene._choices.items().some(c => c.ringId === TEMP_RING), false, "画面は未実装の奥義を候補に出さない");
     begin(w); assert.deepEqual(view(), ["unavailable", false]); assert.equal(gauge(w).has, false); FC(w).end("test");
     // 充填中 → READY → 発動 → 充填中
     assignViaScene(scene, "q", "hermes");

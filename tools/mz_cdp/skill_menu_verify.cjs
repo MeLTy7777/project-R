@@ -44,7 +44,7 @@ const SLOTS = ["lmb", "shift", "e", "x", "c"];
   await wait("SceneManager._scene instanceof Scene_Title && !SceneManager.isSceneChanging() && !!ColorManager._windowskin && ColorManager._windowskin.isReady()", 30000);
   console.log("chromium", await ev("process.versions.chromium + ' / nw ' + process.versions.nw"));
   await ev("DataManager._globalInfo = DataManager._globalInfo || []; DataManager.setupNewGame(); SceneManager.goto(Scene_Map); 'ok'");
-  await waitMap(1); await sleep(1500);
+  await waitMap(1); await sleep(1500); await s.parkFar();
   // 【セーブの保護】StorageManager をメモリ上のストアへ差し替える(実の save/ は書かない・読まない)。fs.writeFileSync も save パスは拒否して数える。
   await ev(`(function(){
     window.__writes = 0; window.__diskWrites = 0; window.__mem = {}; window.__memWrites = 0;
@@ -88,7 +88,7 @@ const SLOTS = ["lmb", "shift", "e", "x", "c"];
   const SLOTS_A = { lmb: "hermes_sweep", shift: "hermes_zetsu", e: "apollo_eros_arrow", x: "hermes_issen", c: "apollo_golden_volley" };
 
   await check("K1 メインメニュー(原画)の SKILL → スキル編成が直接開く(空の状態)", async () => {
-    await ev(`${FC}.end(); ${D}.assignRingToPlayer('athena'); (function(){ ${RL}.unequipRing('hermes'); ${RL}.unequipRing('apollo'); ${RL}.unequipRing('athena'); ${["lmb", "shift", "e", "x", "c"].map(sl => `${RL}.clearSkill('${sl}');`).join(" ")} ${RL}.clearUltimate(); return 'ok'; })()`);
+    await s.tempRing(); await ev(`${FC}.end(); ${D}.assignRingToPlayer('zeus'); (function(){ ${RL}.unequipRing('hermes'); ${RL}.unequipRing('apollo'); ${RL}.unequipRing('zeus'); ${["lmb", "shift", "e", "x", "c"].map(sl => `${RL}.clearSkill('${sl}');`).join(" ")} ${RL}.clearUltimate(); return 'ok'; })()`);
     rec("K1-0 何も装備していない状態", (await rlState()).equipped.length === 0, "");
     rec("K1a 実キー Esc でメインメニュー(Scene_ProjectRMenu)が開く", await openMainMenu(), await sceneName());
     await s.shot("skillmenu_K1_main");

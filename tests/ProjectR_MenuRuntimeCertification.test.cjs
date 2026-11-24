@@ -5,6 +5,7 @@
 // 対象外: 実際の描画ピクセル・音・マウス座標のヒットテスト。見た目はdocs/ProjectR_FullSpec_ManualVerification.mdで手動確認。
 const assert = require("node:assert/strict");
 const { buildWorld, plain } = require("./RealEngineHarness.cjs");
+const { TEMP_RING, addTempRing } = require("./ProjectR_TempRing.cjs");
 
 let passed = 0;
 function test(name, fn) { fn(); console.log(`ok ${++passed} - ${name}`); }
@@ -192,10 +193,11 @@ test("デッキ構築: 戦闘中はデッキを変更できない(モデルが�
     assert.ok(scene);
 });
 
-test("アルティメット選択: 主人公が指輪を持ち、handlerが実装済みの神(Hermes/Apollo)だけ選べる。Athenaは未実装(Janus・Themisは実装済み・未所持なら選べない)で選べない", () => {
+test("アルティメット選択: 主人公が指輪を持ち、handlerが実装済みの神(Hermes/Apollo)だけ選べる。実装済みでも未所持なら選べない(Janus・Themis・Athena)。一時の未実装の指輪は「未実装」で選べない", () => {
     const w = world();
     const { ctx } = w;
     const d = deckApi(w);
+    addTempRing(w);          // Stage 4: 5つの指輪はすべて実装済み。「未実装の指輪」は、この世界だけの一時の指輪
     d.assignRingToPlayer("hermes");
     const scene = open(w, "Scene_ProjectRUltimateSelect");
     const byRing = id => scene._list._items.findIndex(e => e.ringId === id);
@@ -204,9 +206,10 @@ test("アルティメット選択: 主人公が指輪を持ち、handlerが実�
     assert.equal(status("apollo"), "未所持");
     assert.equal(status("janus"), "未所持");
     assert.equal(status("themis"), "未所持", "Themis は実装済み(Stage 3)・未所持");
-    assert.equal(status("athena"), "未実装", "athena");
-    // Apollo・Janus・Themis(未所持)・Athena(未実装)は選べない
-    for (const id of ["apollo", "janus", "themis", "athena"]) {
+    assert.equal(status("athena"), "未所持", "Athena は実装済み(Stage 4)・未所持");
+    assert.equal(status(TEMP_RING), "未実装", "一時の指輪(handler なし)");
+    // Apollo・Janus・Themis・Athena(未所持)・一時の指輪(未実装)は選べない
+    for (const id of ["apollo", "janus", "themis", "athena", TEMP_RING]) {
         scene._list.select(byRing(id));
         scene._list.processOk();
         assert.notEqual(d.getUltimateRingId(), id, id);

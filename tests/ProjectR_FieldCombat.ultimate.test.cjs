@@ -11,6 +11,7 @@
 //   【8】隔離: legacy の FieldCombat・通常のカード戦闘(第2引数なし / {} / null / 文字列)・SoulMode・ULTIMATE メニュー(Core)の選択は従来どおり
 const assert = require("node:assert/strict");
 const fx = require("./ProjectR_HermesB1Fixture.cjs");
+const { TEMP_RING, addTempRing } = require("./ProjectR_TempRing.cjs");
 const { buildWorld, plain, attachHpBars, ENEMIES, HP } = fx;
 
 let passed = 0;
@@ -32,6 +33,7 @@ function ringWorld({ q = null, core = null, extra = [], source = "auto", begin =
     assert.deepEqual(w.failures, [], "全pluginが本番順で読み込める");
     w.enterMap(4, 12, 25); w.frames(3); w.mouse(700, 300);
     FC(w).setLoadoutSource(source);
+    if (extra.includes(TEMP_RING)) addTempRing(w);          // Stage 4: 5つの指輪はすべて実装済み。「未実装の指輪」は、この世界だけの一時の指輪
     for (const ring of ["hermes", "apollo", ...extra]) assert.equal(D(w).assignRingToPlayer(ring).ok, true, ring);
     for (const ring of ["hermes", "apollo", ...extra]) assert.equal(RL(w).equipRing(ring).ok, true, "equip " + ring);
     if (q) assert.equal(RL(w).setUltimate(q).ok, true, "Q=" + q);
@@ -68,11 +70,11 @@ test("【1a】Q が空: 奥義なし(常駐の神・ゲージ・自動のヘル�
     }
 });
 
-test("【1b】Q が未実装の指輪(Athena): 奥義なし。常駐の神・ゲージなし。Q は ultimateUnavailable(HUD は unavailable)", () => {
-    const w = ringWorld({ q: "athena", core: "hermes", extra: ["athena"] });
-    assert.equal(RL(w).getUltimate(), "athena");
-    assert.equal(UA(w).hasUltimateHandler(GM(w).resolveGodId("athena")), false, "athena の handler はない(作らない)");
-    const s = plain(FC(w).getUltimateState()); assert.deepEqual([s.selected, s.ringId, s.reason], ["athena", null, "ultimateUnavailable"]);
+test("【1b】Q が未実装の指輪(一時の指輪): 奥義なし。常駐の神・ゲージなし。Q は ultimateUnavailable(HUD は unavailable)", () => {
+    const w = ringWorld({ q: TEMP_RING, core: "hermes", extra: [TEMP_RING] });
+    assert.equal(RL(w).getUltimate(), TEMP_RING);
+    assert.equal(UA(w).hasUltimateHandler(GM(w).resolveGodId(TEMP_RING)), false, "一時の指輪の handler はない(作らない)");
+    const s = plain(FC(w).getUltimateState()); assert.deepEqual([s.selected, s.ringId, s.reason], [TEMP_RING, null, "ultimateUnavailable"]);
     assert.equal(GM(w).hasPersistentUltimateBattleState(), false);
     assert.equal(gauge(w).has, false);
     assert.equal(D(w).getUltimateRingId(), "hermes", "Core の選択(ヘルメース)は使われず、変わりもしない");

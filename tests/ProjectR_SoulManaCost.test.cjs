@@ -143,7 +143,7 @@ test("承認済みコスト表: docs/spece の承認CSV(推奨 Lv1〜3 = 承認)
     assert.deepEqual(Object.keys(costs).sort(), Object.keys(approved).sort());
     assert.equal(Object.keys(costs).length, 15);
     for (const [card, row] of Object.entries(approved)) assert.deepEqual(costs[card], row, card);
-    const balance = Object.keys(JSON.parse(read("data/ProjectR_CardBalance.json")).cards).filter(id => !/^(janus|themis)_/.test(id)).sort();        // Janus・Themis は Stage 2・3 のフィールド戦闘用で SOUL の対象外
+    const balance = Object.keys(JSON.parse(read("data/ProjectR_CardBalance.json")).cards).filter(id => !/^(janus|themis|athena)_/.test(id)).sort();        // Janus・Themis・Athena は Stage 2・3・4 のフィールド戦闘用で SOUL の対象外
     assert.deepEqual(Object.keys(costs).sort(), balance, "今あるカード15枚すべて(増減なし)");
     assert.equal(Object.isFrozen(M(w).COSTS) && Object.values(M(w).COSTS).every(Object.isFrozen), true);
     for (const row of Object.values(costs)) { assert.ok(row[0] <= row[1] && row[1] <= row[2], "Lvが上がっても下がらない"); assert.ok(row.every(v => v >= 1 && v <= 10)); }

@@ -9,6 +9,7 @@
 //   【6】5つの枠・失敗は Cooldown を使わない・保存データ・ほかの神への影響なし
 const assert = require("node:assert/strict");
 const fx = require("./ProjectR_HermesB1Fixture.cjs");
+const { TEMP_RING, addTempRing } = require("./ProjectR_TempRing.cjs");
 const { buildWorld, plain, attachHpBars, placePolar, parkOthers, aimDegree, lost, resetHp, setRegion, center, ENEMIES, HP } = fx;
 
 let passed = 0;
@@ -69,7 +70,7 @@ test("【0】登録: 5スキルが設計(実装済み)・実行時定義・バ�
     assert.equal(RL(w).equipRing("themis").ok, true);
     for (const slot of ["lmb", "shift", "e", "x", "c"]) for (const id of THEMIS) { assert.equal(RL(w).setSkill(slot, id).ok, true, slot + "=" + id); RL(w).clearSkill(slot); }
     assert.equal(RL(w).getSkillRing("themis_verdict"), "themis");
-    assert.deepEqual(plain(RL(w).getRingSkills("athena")), [], "Athena は未実装のまま(表に無い)");
+    const temp = addTempRing(w); assert.deepEqual(plain(RL(w).getRingSkills(temp.ringId)), [], "表に無い指輪(一時の指輪)にはスキルが無い"); assert.equal(temp.cleanup().removed, true);
 });
 test("【0b】バランス(Lv1〜3 の数値): 戒律 100/120/140・鎖 1.5/2/2.5 秒と 80/75/70 %・天秤 20/30/40 % と 2.5 秒・刻印 90/100/110・100/110/125・115/130/145・判決 160/195/230 と +40%", () => {
     const w = buildWorld(); w.enterMap(4, 12, 25); w.frames(3); const b = w.ctx.ProjectRCardBalance, e = (id, lv) => plain(b.effects(id, lv));

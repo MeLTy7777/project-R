@@ -94,6 +94,76 @@ test("コード: ファイル・セーブへ書かず、HPを自分で書かな�
     assert.doesNotMatch(source, /gainHp|setHp\(|\$gameActors/); // HPを自分で書かない
 });
 
+// ---- CardCatalog の変更の検査(中身で見る。行数の上限は使わない) ----
+//   基準(15b74d1)からの差分(git diff -U0)の「消えた行」と「増えた行」を、1行ずつ決まった形と照らす。
+//   ・消えた行: 決まった3行だけ(DESIGNS_BY_GOD・ALL_DESIGNS の行と、最後のカード行の末尾へカンマを足すための元の行)。それ以外が消える・変わる = Hermes・Apollo・SOUL の定義を変えている → 失敗。
+//   ・増えた行: 承認済みの指輪の神(APPROVED_RING_GODS)の設計の行・実行時のカードの行・その見出し/終わり・コメントだけ。神の名前と、行の中のカード ID の接頭辞・ringId が一致していること。
+//   ・SOUL・既存のカード(hermes_・apollo_ など)・require・eval・fetch などを含む行が増えたら失敗。承認する神を増やすときは、APPROVED_RING_GODS へ明示的に足す(上限の数字を上げるのではなく)。
+//   ・安全網: 承認した神1つあたりの追加行数の上限(MAX_ADDED_LINES_PER_GOD)。1つの神の追加は、いまの実装(約 25 行)の範囲に収まる。
+const CATALOG_FILE = "js/plugins/ProjectR_CardCatalog.js";
+const APPROVED_RING_GODS = Object.freeze(["janus", "themis", "athena"]);
+const MAX_ADDED_LINES_PER_GOD = 32;
+function validateCardCatalogDiff(diffText, gods = APPROVED_RING_GODS) {
+    const problems = [], removed = [], added = [];
+    for (const raw of String(diffText).split(/\r?\n/)) {
+        if (raw.startsWith("+++") || raw.startsWith("---") || raw.startsWith("@@") || raw.startsWith("diff ") || raw.startsWith("index ")) continue;
+        if (raw.startsWith("+")) added.push(raw.slice(1).trim()); else if (raw.startsWith("-")) removed.push(raw.slice(1).trim());
+    }
+    const G = "(" + gods.join("|") + ")", GU = "(" + gods.map(g => g.toUpperCase()).join("|") + ")", GC = "(" + gods.map(g => g[0].toUpperCase() + g.slice(1)).join("|") + ")";
+    const godList = gods.map(g => g + ": " + g.toUpperCase()).join(", ");
+    const APPROVED_REMOVED = ['const DESIGNS_BY_GOD = Object.freeze({ hermes: HERMES, apollo: APOLLO });', 'const ALL_DESIGNS = Object.freeze([].concat(HERMES, APOLLO));', 'rarity: "strong", category: "special", targetType: "instant" })'];
+    const expectedByGod = 'const DESIGNS_BY_GOD = Object.freeze({ hermes: HERMES, apollo: APOLLO, ' + godList + ' });';
+    const expectedAll = 'const ALL_DESIGNS = Object.freeze([].concat(HERMES, APOLLO, ' + gods.map(g => g.toUpperCase()).join(", ") + '));';
+    for (const line of removed) if (!APPROVED_REMOVED.includes(line)) problems.push("基準の行が変わった・消えた: " + line.slice(0, 80));
+    for (const need of APPROVED_REMOVED) if (removed.filter(l => l === need).length > 1) problems.push("同じ基準の行が複数回消えた: " + need.slice(0, 60));
+    const SHAPES = [
+        l => l === "",
+        l => /^\/\/(\s|$)/.test(l) && !/(require|eval|fetch|Function\(|import\()/.test(l),                                                                                  // コメント(動作に影響しない)
+        l => new RegExp("^const " + G + "Row = \\(name, classification, cooldownSeconds, extra\\) => design\\(null, name, classification, 3, cooldownSeconds, \\{$").test(l),
+        l => new RegExp('^god: "' + G + '", ringId: "\\1", targetTypeStatus: "confirmed", status: "implemented", implemented: true, implementedLevels: 3,$').test(l),
+        l => new RegExp('^migration: migration\\(null, "new", "implemented", "Stage [0-9]\\(' + GC + '\\)で新ランタイムIDとして実装。旧カードに対応なし。新規。"\\), \\.\\.\\.extra \\}\\);$').test(l),
+        l => new RegExp("^const " + GU + " = Object\\.freeze\\(\\[$").test(l),
+        l => l === "]);",
+        l => { const m = new RegExp('^' + G + 'Row\\("[^"]+", "normal", [0-9]+, \\{ workbookTargetType: "[^"]+", targetType: "(direction|ground|instant)", category: "[a-z]+", runtimeCardId: "' + G + '_[a-z_]+" \\}\\),?$').exec(l); return !!m && m[1] === m[3]; },
+        l => l === expectedByGod,
+        l => l === expectedAll,
+        l => l === 'rarity: "strong", category: "special", targetType: "instant" }),',                                                                                         // 最後の基準のカード行の末尾へカンマを足しただけ
+        l => { const m = new RegExp('^Object\\.freeze\\(\\{ cardId: "' + G + '_[a-z_]+", ringId: "' + G + '", maxCopies: 3, cooldownSeconds: [0-9]+, maxLevel: 3,$').exec(l); return !!m && l.includes('cardId: "' + m[1] + '_') && m[1] === m[2]; },
+        l => /^rarity: "normal", category: "[a-z]+", targetType: "(direction|ground|instant)" \}\),?$/.test(l)
+    ];
+    const FORBIDDEN = /(soul|hermes_|apollo_|require\(|eval\(|fetch\(|XMLHttpRequest|Function\()/i;
+    for (const line of added) {
+        if (!SHAPES.some(ok => ok(line))) problems.push("承認した形ではない行が増えた: " + line.slice(0, 100));
+        else if (!/^\/\//.test(line) && line !== expectedByGod && line !== expectedAll && FORBIDDEN.test(line)) problems.push("禁止の語を含む行が増えた: " + line.slice(0, 100));
+    }
+    if (added.length > gods.length * MAX_ADDED_LINES_PER_GOD) problems.push("増えた行が多すぎる: " + added.length + " > " + gods.length + " x " + MAX_ADDED_LINES_PER_GOD);
+    return problems;
+}
+
+test("CardCatalog の差分の検査そのもの: 承認した追加だけを通し、基準の定義の変更・SOUL・承認外の神・禁止の語・過大な追加は弾く", () => {
+    const base = ['-    const DESIGNS_BY_GOD = Object.freeze({ hermes: HERMES, apollo: APOLLO });', '+    const DESIGNS_BY_GOD = Object.freeze({ hermes: HERMES, apollo: APOLLO, janus: JANUS, themis: THEMIS, athena: ATHENA });'];
+    const ok = ['+    const athenaRow = (name, classification, cooldownSeconds, extra) => design(null, name, classification, 3, cooldownSeconds, {',
+        '+        god: "athena", ringId: "athena", targetTypeStatus: "confirmed", status: "implemented", implemented: true, implementedLevels: 3,',
+        '+        migration: migration(null, "new", "implemented", "Stage 4(Athena)で新ランタイムIDとして実装。旧カードに対応なし。新規。"), ...extra });',
+        '+    const ATHENA = Object.freeze([',
+        '+        athenaRow("アイギスの加護", "normal", 14, { workbookTargetType: "その他", targetType: "instant", category: "support", runtimeCardId: "athena_aegis" }),',
+        '+    ]);',
+        '+        Object.freeze({ cardId: "athena_aegis", ringId: "athena", maxCopies: 3, cooldownSeconds: 14, maxLevel: 3,',
+        '+            rarity: "normal", category: "support", targetType: "instant" })'];
+    const run = lines => validateCardCatalogDiff(lines.join("\n"));
+    assert.deepEqual(run([...base.slice(0, 1), '-    const ALL_DESIGNS = Object.freeze([].concat(HERMES, APOLLO));', ...base.slice(1), '+    const ALL_DESIGNS = Object.freeze([].concat(HERMES, APOLLO, JANUS, THEMIS, ATHENA));', ...ok]), [], "承認した追加だけの差分は通る");
+    const bad = (label, extra, removedExtra = []) => assert.notDeepEqual(run([...removedExtra, ...base, '+    const ALL_DESIGNS = Object.freeze([].concat(HERMES, APOLLO, JANUS, THEMIS, ATHENA));', ...ok, ...extra]), [], label + " は弾く");
+    bad("基準のカード行(hermes)の書き換え", [], ['-        Object.freeze({ cardId: "hermes_zetsu", ringId: "hermes", maxCopies: 5, cooldownSeconds: 3, maxLevel: 3,']);
+    bad("SOUL の語を含む行", ['+    const soulBoost = 1;']);
+    bad("既存のカード ID を足す", ['+        Object.freeze({ cardId: "hermes_new_card", ringId: "hermes", maxCopies: 3, cooldownSeconds: 1, maxLevel: 3,']);
+    bad("承認外の神の行", ['+        zeusRow("雷", "normal", 5, { workbookTargetType: "Ground", targetType: "ground", category: "attack", runtimeCardId: "zeus_bolt" }),']);
+    bad("神と ID の接頭辞が違う行", ['+        athenaRow("盾", "normal", 5, { workbookTargetType: "Ground", targetType: "ground", category: "attack", runtimeCardId: "janus_shield" }),']);
+    bad("ringId が神と違うカード行", ['+        Object.freeze({ cardId: "athena_x", ringId: "janus", maxCopies: 3, cooldownSeconds: 1, maxLevel: 3,']);
+    bad("任意の式", ['+    const x = eval("1");']);
+    bad("require を含むコメントでない行", ['+    const fs = require("fs");']);
+    assert.notDeepEqual(run([...base, ...Array.from({ length: 120 }, () => '+    // 注釈'), ...ok]), [], "増えた行が多すぎる(承認した神1つあたりの上限)");
+});
+
 test("保護対象(Hendrix・DotMove・既存カード・ダメージ式)は変更していない", () => {
     const targets = fs.readdirSync(path.join(project, "js/plugins")).filter(f => /^(Hendrix_|DotMoveSystem|ProjectR_(Apollo|Card|Hermes|DamageModifiers|GunSystem|SwordSystem|KillAttribution|UltimateGauge|GodSummon|CombatSession|EnemyAttack))/.test(f)).map(f => "js/plugins/" + f);
     // 比較の基準は「いまの git の状態(未ステージ・ステージ済み・コミット後)」ではなく、固定の Stage 1 のコミット(15b74d1)。どの状態でも同じ差分を見る
@@ -111,8 +181,8 @@ test("保護対象(Hendrix・DotMove・既存カード・ダメージ式)は変�
         // ATTACK の終了で飛行中の攻撃・蓄えを打ち切る追加専用の窓口 clear(reason)(SOUL の準備ループだけが呼ぶ。通常戦闘では呼ばれない)
         "js/plugins/ProjectR_ApolloPlagueRain.js": /clear: reason/, "js/plugins/ProjectR_HermesStrength.js": /clear: reason|setSoulCards/,
         "js/plugins/ProjectR_CardModifiers.js": /damageMultiplier/,
-        // CardCatalog: Stage 2(Janus)・Stage 3(Themis)の各5枚を、実行時のカードと設計の一覧へ追加する(janus_ / themis_ のID・行だけ。SOUL・既存のカードの行は変えない。変更量の上限 60 行はそのまま)
-        "js/plugins/ProjectR_CardCatalog.js": /janus_dual_gate[\s\S]*themis_edict/,
+        // CardCatalog は SEAMS に入れない。行数の上限(60 行)ではなく、中身の検査(validateCardCatalogDiff)で見る: 承認済みの指輪(Janus・Themis・Athena)のカード・設計の追加だけを許し、
+        //   基準(15b74d1)の Hermes・Apollo・SOUL の定義は、決まった3行(DESIGNS_BY_GOD・ALL_DESIGNS・最後のカード行の末尾のカンマ)以外、1文字も変えない。
         // 絶(Zetsu): フィールド戦闘(Stage 5b)が「敵の体」を通り抜けるための、衝突フィルターの追加専用の窓口(フィルターが無ければ従来のまま。SOUL・通常のカード戦闘は何も登録しない)
         "js/plugins/ProjectR_HermesZetsu.js": /registerCollisionFilter/,
         // UltimateGauge: 与ダメージを、HPが次のフレームで減る実ゲームでも取りこぼさないための待ち(Stage 6D。同期に減るときは従来どおり。ゲージの式・加算量は変えない)
@@ -123,6 +193,11 @@ test("保護対象(Hendrix・DotMove・既存カード・ダメージ式)は変�
         "js/plugins/ProjectR_ApolloGoldenVolley.js": /startHeldBeam/ };      // CardModifiers: フックが返す倍率を固定ダメージの基礎値に掛ける追加(SOUL のストレングス用)
     const changed = [...new Set([...diffOut.stdout.split(/\r?\n/), ...newOut.stdout.split(/\r?\n/)].map(line => line.trim()).filter(Boolean))];
     for (const file of changed) {
+        if (file === CATALOG_FILE) {                                            // 行数の上限ではなく、中身で見る(許すのは承認済みの指輪のカード・設計の追加だけ)
+            const problems = validateCardCatalogDiff(gitRun("diff", "-U0", "--no-color", BASE, "--", file).stdout);
+            assert.deepEqual(problems, [], file + " の変更は、承認済みの指輪(" + APPROVED_RING_GODS.join("・") + ")のカード・設計の追加だけ: " + problems.slice(0, 3).join(" / "));
+            continue;
+        }
         assert.ok(SEAMS[file], file + " は変更されていない(許すのはSOULスキルの受け口だけ)");
         assert.match(fs.readFileSync(path.join(project, file), "utf8"), SEAMS[file], file + " の変更はSOULスキルの受け口");
         const stat = gitRun("diff", "--numstat", BASE, "--", file).stdout.trim().split(/\s+/);

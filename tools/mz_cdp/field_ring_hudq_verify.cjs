@@ -40,7 +40,7 @@ const SLOTS = ["lmb", "shift", "e", "x", "c"];
   await wait("SceneManager._scene instanceof Scene_Title && !SceneManager.isSceneChanging() && !!ColorManager._windowskin && ColorManager._windowskin.isReady()", 30000);
   console.log("chromium", await ev("process.versions.chromium + ' / nw ' + process.versions.nw"));
   await ev("DataManager._globalInfo = DataManager._globalInfo || []; DataManager.setupNewGame(); SceneManager.goto(Scene_Map); 'ok'");
-  await waitMap(1); await sleep(1500);
+  await waitMap(1); await sleep(1500); await s.parkFar();
   await ev("window.__writes = 0; StorageManager.saveObject = function() { window.__writes++; return Promise.reject(new Error('blocked by test')); }; 'ok'");
   await ev(`(function() { var it = new Game_Interpreter(); it.setup([{ code: 357, indent: 0, parameters: ['ProjectR_HermesProductionDeck', 'AcquireHermesRing', 'AcquireHermesRing', {}] }, { code: 0, indent: 0, parameters: [] }], 0); for (var i = 0; i < 20 && it.isRunning(); i++) it.update(); $gameParty.gainItem($dataItems[7], 6); $gameParty.gainItem($dataItems[8], 2); Math.random = function() { return 0.9; }; return 'ok'; })()`);
   await sleep(300);
@@ -70,8 +70,9 @@ const SLOTS = ["lmb", "shift", "e", "x", "c"];
   const hermesOn = () => ev("ProjectRHermesUltimate.isHermesUltimateActive()");
   const apolloOn = () => ev("ProjectRApolloUltimate.isApolloUltimateActive()");
 
-  // 未実装の指輪(Athena)は、最初(戦闘の前)に付与・装備しておく。戦闘のあと(敵が交戦中の間)は、Core が指輪の移動を拒否する(RING_TRANSFER_DURING_BATTLE)
-  rec("U0 Athena を付与・装備(戦闘の外)", await json(`({ a: ${D}.assignRingToPlayer('athena').ok, e: ${RL}.equipRing('athena').ok })`).then(r => r.a && r.e), "");
+  // 未実装の指輪(未実装の zeus)は、最初(戦闘の前)に付与・装備しておく。戦闘のあと(敵が交戦中の間)は、Core が指輪の移動を拒否する(RING_TRANSFER_DURING_BATTLE)
+  await s.tempRing();
+  rec("U0 一時の指輪(zeus。未実装)を付与・装備(戦闘の外)", await json(`({ a: ${D}.assignRingToPlayer('zeus').ok, e: ${RL}.equipRing('zeus').ok })`).then(r => r.a && r.e), "");
 
 
   // ---- HUD の Ultimate 区画の描画(Sprite_ProjectRUltimateHUD)を、シーンの中から探して、実際の表示状態を読む ----
@@ -117,12 +118,12 @@ const SLOTS = ["lmb", "shift", "e", "x", "c"];
     rec("H2d 終了後は充填中(0/100)", u.state === "charging" && sp.valueLabel === "0/100" && sp.emptyText === false && sp.base === true, JSON.stringify(sp));
   });
 
-  await check("H3 未実装の指輪(Athena が Q)・legacy・Q を設定して再開: 従来どおり / 空の表示は残らない", async () => {
-    rec("H3-0 Q = Athena", await setQ("athena", "hermes"), "");
+  await check("H3 未実装の指輪(一時の指輪 zeus が Q)・legacy・Q を設定して再開: 従来どおり / 空の表示は残らない", async () => {
+    rec("H3-0 Q = zeus(未実装)", await setQ("zeus", "hermes"), "");
     await begin(); await prep(2.2); await settle();
     let u = await vmU(), sp = await sprite();
     const dv = await vmD();
-    rec("H3a 割り当て済みで使えない Q(Athena): 暗い Q + 「使用不可」(「未設定」ではない)。ゲージ・数値・神のパネルなし", u.slotUnavailable === true && u.slotEmpty === undefined && dv === null && !!sp && sp.visible === true && sp.emptyText === true && sp.emptyLabel === "使用不可" && sp.keyAlpha === 0.35 && sp.base === false && sp.valueText === false, JSON.stringify({ u, dv, sp }));
+    rec("H3a 割り当て済みで使えない Q(zeus): 暗い Q + 「使用不可」(「未設定」ではない)。ゲージ・数値・神のパネルなし", u.slotUnavailable === true && u.slotEmpty === undefined && dv === null && !!sp && sp.visible === true && sp.emptyText === true && sp.emptyLabel === "使用不可" && sp.keyAlpha === 0.35 && sp.base === false && sp.valueText === false, JSON.stringify({ u, dv, sp }));
     await s.shot("hudq_H3_unavailable");
     await ev(`${FC}.end(); 'ok'`); await sleep(300);
     // Q が空 → 設定して再開: 空の表示が残らない

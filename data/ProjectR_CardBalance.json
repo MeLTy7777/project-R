@@ -138,7 +138,15 @@
     "windupSeconds": { "label": "発動までの予備動作", "unit": "秒", "min": 0, "max": 5 },
     "thirdDamageScale": { "label": "3段目の基礎物理ダメージの倍率", "unit": "倍", "min": 0.1, "max": 20 },
     "incomingReduction": { "label": "被ダメージの軽減(0.2=20%軽減)", "unit": "割合", "min": 0.01, "max": 0.95 },
-    "sinStackBonus": { "label": "対象の罪状1つあたりの追加ダメージ(0.4=+40%)", "unit": "割合", "min": 0, "max": 5 }
+    "sinStackBonus": { "label": "対象の罪状1つあたりの追加ダメージ(0.4=+40%)", "unit": "割合", "min": 0, "max": 5 },
+    "hitIntervalSeconds": { "label": "多段の1回ごとの間隔", "unit": "秒", "min": 0.05, "max": 5 },
+    "holdDamageScale": { "label": "長押し攻撃の基礎物理ダメージの倍率", "unit": "倍", "min": 0.1, "max": 20 },
+    "holdSeconds": { "label": "長押しとみなす時間(これ未満で離すとタップ)", "unit": "秒", "min": 0.05, "max": 5 },
+    "lockSeconds": { "label": "長押し攻撃の再使用までの時間(タップのコンボとは別)", "unit": "秒", "min": 0.1, "max": 600 },
+    "throwRangeTiles": { "label": "投擲の射程", "unit": "マス", "min": 1, "max": 40 },
+    "chargeDistanceTiles": { "label": "突進の距離", "unit": "マス", "min": 0.5, "max": 10 },
+    "staggerSeconds": { "label": "怯み(行動の中断)の時間", "unit": "秒", "min": 0.1, "max": 10 },
+    "frontArcDegrees": { "label": "正面の防御の角度(全体)", "unit": "度", "min": 10, "max": 360 }
   },
   "cards": {
     "hermes_issen": {
@@ -398,6 +406,51 @@
         "1": { "damageScale": 1.6 },
         "2": { "damageScale": 1.95 },
         "3": { "damageScale": 2.3 }
+      }
+    },
+    "athena_aegis": {
+      "name": "アイギスの加護", "designId": null, "cooldownSeconds": 14,
+      "constants": { "durationSeconds": 4, "element": 0, "weaknessMultiplier": 1 },
+      "levels": {
+        "1": { "incomingReduction": 0.25 },
+        "2": { "incomingReduction": 0.35 },
+        "3": { "incomingReduction": 0.45 }
+      }
+    },
+    "athena_spear_circle": {
+      "name": "護槍旋陣", "designId": null, "cooldownSeconds": 8,
+      "constants": { "radiusTiles": 2, "hitCount": 2, "hitIntervalSeconds": 0.3, "element": 0, "weaknessMultiplier": 1 },
+      "levels": {
+        "1": { "damageScale": 0.7 },
+        "2": { "damageScale": 0.8 },
+        "3": { "damageScale": 0.9 }
+      }
+    },
+    "athena_spear_throw": {
+      "name": "断陣の投槍", "designId": null, "cooldownSeconds": 0.05,
+      "constants": { "arcDegrees": 90, "radiusTiles": 1.8, "rangeTiles": 2.4, "pathWidthTiles": 0.9, "comboWindowSeconds": 0.5, "holdSeconds": 0.25, "throwRangeTiles": 4.5, "lockSeconds": 10, "element": 0, "weaknessMultiplier": 1 },
+      "levels": {
+        "1": { "damageScale": 0.85, "secondDamageScale": 1.05, "holdDamageScale": 1.6 },
+        "2": { "damageScale": 0.95, "secondDamageScale": 1.15, "holdDamageScale": 1.9 },
+        "3": { "damageScale": 1.05, "secondDamageScale": 1.3, "holdDamageScale": 2.2 }
+      }
+    },
+    "athena_shield_charge": {
+      "name": "破陣の盾衝", "designId": null, "cooldownSeconds": 10,
+      "constants": { "chargeDistanceTiles": 2, "chargeSeconds": 0.3, "pathWidthTiles": 1, "element": 0, "weaknessMultiplier": 1 },
+      "levels": {
+        "1": { "damageScale": 1.4, "staggerSeconds": 0.4 },
+        "2": { "damageScale": 1.7, "staggerSeconds": 0.6 },
+        "3": { "damageScale": 2, "staggerSeconds": 0.8 }
+      }
+    },
+    "athena_counter": {
+      "name": "女神の迎撃", "designId": null, "cooldownSeconds": 11,
+      "constants": { "frontArcDegrees": 140, "rangeTiles": 3, "element": 0, "weaknessMultiplier": 1 },
+      "levels": {
+        "1": { "counterWindowSeconds": 0.6, "incomingReduction": 0.6, "damageScale": 1 },
+        "2": { "counterWindowSeconds": 0.7, "incomingReduction": 0.75, "damageScale": 1.2 },
+        "3": { "counterWindowSeconds": 0.8, "incomingReduction": 0.9, "damageScale": 1.4 }
       }
     }
   }

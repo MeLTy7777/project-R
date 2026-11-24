@@ -6,6 +6,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { buildWorld, plain } = require("./RealEngineHarness.cjs");
+const { TEMP_RING, addTempRing } = require("./ProjectR_TempRing.cjs");
 
 let passed = 0;
 function test(name, body) { body(); console.log(`ok ${++passed} - ${name}`); }
@@ -332,12 +333,13 @@ test("重複の拒否: 同じスキルは2つの枠に登録できない(候補�
 
 test("Q枠(奥義): 装備中で奥義が実装済みの指輪ごとに1つ。選び直すと置き換わり、空欄にできる。未実装・未装備の指輪は出ない", () => {
     const w = world();
-    w.own("hermes", "apollo", "athena");
+    const temp = addTempRing(w);          // Stage 4: 5つの指輪はすべて実装済み。「未実装の指輪」は、この世界だけの一時の指輪
+    w.own("hermes", "apollo", temp.ringId);
     const scene = w.open();
-    for (const id of ["hermes", "apollo", "athena"]) equipViaScene(scene, id);
+    for (const id of ["hermes", "apollo", temp.ringId]) equipViaScene(scene, id);
     const choices = plain(w.core().loadout.choices("q"));
     assert.deepEqual(choices.map(c => c.kind), ["clear", "ultimate", "ultimate"]);
-    assert.deepEqual(choices.filter(c => c.kind === "ultimate").map(c => c.ringId), ["hermes", "apollo"], "athena は奥義が未実装なので出ない");
+    assert.deepEqual(choices.filter(c => c.kind === "ultimate").map(c => c.ringId), ["hermes", "apollo"], "一時の指輪は奥義が未実装なので出ない");
     assert.deepEqual(choices.filter(c => c.kind === "ultimate").map(c => c.name), ["ヘルメースの奥義", "アポロンの奥義"]);
     assignViaScene(scene, "q", "apollo");
     assert.equal(w.rl().getUltimate(), "apollo");
@@ -348,7 +350,7 @@ test("Q枠(奥義): 装備中で奥義が実装済みの指輪ごとに1つ。�
     assignViaScene(scene, "lmb", "hermes_sweep");
     assert.equal(w.rl().getUltimate(), "hermes");
     assert.deepEqual(plain(w.core().loadout.assign("q", { kind: "skill", skillId: "hermes_issen" })).ok, false);
-    assert.deepEqual(plain(w.core().loadout.assign("q", { kind: "ultimate", ringId: "athena" })).reason, "ULTIMATE_NOT_IMPLEMENTED");
+    assert.deepEqual(plain(w.core().loadout.assign("q", { kind: "ultimate", ringId: temp.ringId })).reason, "ULTIMATE_NOT_IMPLEMENTED");
     assert.equal(w.rl().getUltimate(), "hermes");
     clearViaScene(scene, "q");
     assert.equal(w.rl().getUltimate(), null);
@@ -357,7 +359,7 @@ test("Q枠(奥義): 装備中で奥義が実装済みの指輪ごとに1つ。�
     assert.deepEqual(plain(w.core().loadout.choices("q").filter(c => c.kind === "ultimate").map(c => c.ringId)), ["hermes"]);
     // 奥義が登録できる指輪が無いときは、枠を開けない
     equipViaScene(scene, "hermes");        // hermesを外す
-    assert.deepEqual(w.state().equipped, ["athena"]);
+    assert.deepEqual(w.state().equipped, [temp.ringId]);
     openSlot(scene, "q");
     assert.equal(scene._choices.active, false);
     assert.match(scene._notice, /登録できる奥義がありません/);

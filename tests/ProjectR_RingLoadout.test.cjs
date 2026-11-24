@@ -3,6 +3,7 @@
 // 実エンジン(本物のrmmz_*.js + js/plugins.js の全プラグインを本番順 + 実Map004)で動かす。MZの描画・音はstub。メニュー・FieldCombat・奥義実行との接続はまだ無い。
 const assert = require("node:assert/strict");
 const { buildWorld, plain, read } = require("./RealEngineHarness.cjs");
+const { TEMP_RING, addTempRing } = require("./ProjectR_TempRing.cjs");
 
 let passed = 0;
 function test(name, body) { body(); console.log(`ok ${++passed} - ${name}`); }
@@ -78,7 +79,7 @@ test("初期値: 新しいゲームは空の装備・編成。読み取りは何
 });
 
 test("入手・解放: 入手しても自動装備されない。所持から解放済みのスキル・奥義を導出する(保存しない)", () => {
-    const w = world();
+    const w = world(); const temp = addTempRing(w);          // Stage 4: 5つの指輪はすべて実装済み。「表に無い指輪」は、この世界だけの一時の指輪
     assert.deepEqual(plain(w.rl().getUnlockedSkills("hermes")), []);
     assert.equal(w.rl().isUltimateUnlocked("hermes"), false);
     w.own("hermes");
@@ -89,7 +90,7 @@ test("入手・解放: 入手しても自動装備されない。所持から解
     assert.equal(w.rl().isUltimateUnlocked("hermes"), true);
     assert.deepEqual(plain(w.rl().getUnlockedSkills("apollo")), [], "未所持の指輪は解放されない");
     assert.deepEqual(plain(w.rl().getRingSkills("apollo")), APOLLO);
-    for (const ring of ["athena"]) assert.deepEqual(plain(w.rl().getRingSkills(ring)), [], `${ring}: 表に無い・実装済みスキルなし(IDを作らない)`);
+    for (const ring of [temp.ringId]) assert.deepEqual(plain(w.rl().getRingSkills(ring)), [], `${ring}: 表に無い・実装済みスキルなし(IDを作らない)`);
     assert.equal(w.rl().isSkillUnlocked("hermes_issen"), true);
     assert.equal(w.rl().isSkillUnlocked("apollo_oracle"), false);
     assert.equal(w.rl().getSkillRing("hermes_zetsu"), "hermes");
@@ -120,7 +121,7 @@ test("装備の制限: 主人公が所持する指輪だけ。数の上限なし
     assert.deepEqual([r.ok, r.reason], [false, "ringNotOwned"]);
     // 5指輪すべてを所持・装備できる(上限なし)
     w.deck().setRingUnowned("apollo");
-    w.own("apollo", "janus", "themis", "athena");
+    w.own("apollo", "janus", "themis", "athena");          // 実装済みの5つの指輪
     for (const id of ["apollo", "janus", "themis", "athena"]) assert.equal(w.rl().equipRing(id).ok, true, id);
     assert.deepEqual(plain(w.rl().getEquippedRings()), ["hermes", "apollo", "janus", "themis", "athena"]);
     assert.equal(w.rl().isRingEquipped("athena"), true);
@@ -178,7 +179,7 @@ test("スキル登録: 装備中の指輪のスキルだけ。5枠(LMB/Shift/E/X
 });
 
 test("許可リスト: 解放・登録・読み込み時の検証が同じ5スキルの表に従う。表に無い指輪・既存カードは許可しない", () => {
-    const w = world();
+    const w = world(); const temp = addTempRing(w);          // Stage 4: 5つの指輪はすべて実装済み。「表に無い指輪」は、この世界だけの一時の指輪
     const cat = plain(w.ctx.ProjectRCardCatalog.designs());
     const idOf = name => { const rows = cat.filter(r => r.name === name && r.implemented); assert.equal(rows.length, 1, name); return rows[0].runtimeCardId; };
     // 表の名前 → 実際のID(カタログ・CardDeckCore由来)。名前の対応を直接確認する
@@ -186,13 +187,14 @@ test("許可リスト: 解放・登録・読み込み時の検証が同じ5ス�
     assert.deepEqual(["黄金の矢", "エロスの矢", "竪琴", "月桂冠", "疫病の矢"].map(idOf), APOLLO);
     for (const id of HERMES.concat(APOLLO)) { assert.ok(w.deck().definitions.card(id), id); }
     assert.deepEqual([w.rl().getSkillSetSource("hermes"), w.rl().getSkillSetSource("apollo")], ["approvedSet", "approvedSet"]);
-    for (const ring of ["athena"]) assert.equal(w.rl().getSkillSetSource(ring), "none", ring);
+    for (const ring of [temp.ringId]) assert.equal(w.rl().getSkillSetSource(ring), "none", ring);
+    assert.equal(w.rl().getSkillSetSource("athena"), "approvedSet", "Athena は Stage 4 で表に載った");
     // 表に無いカードは、所持・装備していても解放されず、登録できない
-    w.own("hermes", "apollo", "janus", "themis", "athena");
+    w.own("hermes", "apollo", "janus", "themis", "athena", temp.ringId);
     w.rl().equipRing("hermes"); w.rl().equipRing("apollo");
     assert.deepEqual(plain(w.rl().getUnlockedSkills("hermes")), HERMES);
     assert.deepEqual(plain(w.rl().getUnlockedSkills("apollo")), APOLLO);
-    for (const ring of ["athena"]) {
+    for (const ring of [temp.ringId]) {
         assert.deepEqual(plain(w.rl().getUnlockedSkills(ring)), [], ring);
         assert.equal(w.rl().isRingOwned(ring), true);
     }

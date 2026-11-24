@@ -7,6 +7,7 @@
 //   【4】後始末: 戦闘の終了・マップ移動で中断(ダメージも罪状消費もなし)・保存しない  【5】HUD・神のパネル・カットインなし・ほかの神の絵を出さない
 const assert = require("node:assert/strict");
 const fx = require("./ProjectR_HermesB1Fixture.cjs");
+const { TEMP_RING, addTempRing } = require("./ProjectR_TempRing.cjs");
 const { buildWorld, plain, attachHpBars, placePolar, placeEnemy, parkOthers, aimDegree, lost, resetHp, setRegion, center, ENEMIES, HP } = fx;
 
 let passed = 0;
@@ -44,10 +45,10 @@ const placeAround = (w, id, d, dx = 0, dy = 0) => { const c = center(w); placeEn
 
 test("【1】登録: Themis の handler がある → ULTIMATE 画面・Q 枠で選べる(未所持は選べない)。Q が空なら自動では入らない。Core の選択は触らない(Q = themis・Core = hermes)", () => {
     const w = world({ q: "themis", core: "hermes", rings: ["themis", "hermes"] });
-    assert.equal(UA(w).hasUltimateHandler("themis"), true); assert.deepEqual(plain(UA(w).getRegisteredUltimateGods()), ["apollo", "hermes", "janus", "themis"]);
-    assert.equal(plain(TU(w).getRegistration()).ok, true); assert.equal(UA(w).hasUltimateHandler("athena"), false, "Athena は未実装のまま");
+    assert.equal(UA(w).hasUltimateHandler("themis"), true); assert.deepEqual(plain(UA(w).getRegisteredUltimateGods()), ["apollo", "athena", "hermes", "janus", "themis"]);
+    assert.equal(plain(TU(w).getRegistration()).ok, true); const temp = addTempRing(w); assert.equal(UA(w).hasUltimateHandler(temp.ringId), false, "一時の指輪(未実装)に奥義の処理は無い");
     const entry = plain(w.ctx.ProjectRMenuCore.ultimate.entries()).find(e => e.ringId === "themis"); assert.equal(entry.implemented, true, "ULTIMATE 画面: 実装済み");
-    assert.equal(plain(w.ctx.ProjectRMenuCore.ultimate.entries()).find(e => e.ringId === "athena").implemented, false);
+    assert.equal(plain(w.ctx.ProjectRMenuCore.ultimate.entries()).find(e => e.ringId === temp.ringId).implemented, false);
     assert.equal(plain(FC(w).getUltimateState()).ringId, "themis"); assert.equal(GM(w).getPersistentUltimateRingId(), "themis"); assert.equal(GM(w).getPersistentUltimateGodId(), "themis");
     assert.equal(D(w).getUltimateRingId(), "hermes", "Core の選択(ULTIMATE 画面)は別のまま");
     FC(w).end("test");
@@ -160,12 +161,12 @@ test("【5】HUD: Q は充填中 → READY → 発動後に充填中へ。神の
     FC(w).end("test");
 });
 
-test("【5b】旧い保存データ(Themis のスキル・奥義を持たない RingLoadout)がそのまま読め、Themis を持っていなければ何も変わらない(移行不要)。Athena は未実装のまま", () => {
+test("【5b】旧い保存データ(Themis のスキル・奥義を持たない RingLoadout)がそのまま読め、Themis を持っていなければ何も変わらない(移行不要)。未実装の指輪(一時の指輪)は未実装のまま", () => {
     const w = world({ q: null, rings: ["hermes"], begin: false }); const s0 = JSON.stringify(plain(RL(w).getState()));
     assert.equal(RL(w).getUltimate(), null); assert.deepEqual(plain(RL(w).getUnlockedSkills("themis")), [], "未所持の Themis のスキルは解放されない");
     assert.equal(RL(w).setUltimate("themis").ok, false, "未所持の Themis は Q に入らない"); assert.equal(JSON.stringify(plain(RL(w).getState())), s0, "失敗しても何も変わらない");
-    assert.equal(D(w).assignRingToPlayer("athena").ok, true); assert.equal(RL(w).equipRing("athena").ok, true); assert.equal(RL(w).setUltimate("athena").ok, true, "API では入るが");
-    assert.equal(UA(w).hasUltimateHandler("athena"), false, "Athena の奥義の処理は無い(未実装のまま)"); assert.deepEqual(plain(RL(w).getRingSkills("athena")), []);
+    const temp = addTempRing(w); temp.own(); temp.equip(); assert.equal(RL(w).setUltimate(temp.ringId).ok, true, "API では入るが");
+    assert.equal(UA(w).hasUltimateHandler(temp.ringId), false, "一時の指輪の奥義の処理は無い(未実装のまま)"); assert.deepEqual(plain(RL(w).getRingSkills(temp.ringId)), []); assert.equal(temp.cleanup().removed, true);
 });
 
 console.log(`\nall ${passed} passed`);

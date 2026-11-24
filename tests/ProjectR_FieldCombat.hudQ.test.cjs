@@ -7,6 +7,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const fx = require("./ProjectR_HermesB1Fixture.cjs");
 const { buildWorld, plain, attachHpBars, ENEMIES, HP } = fx;
+const { TEMP_RING, addTempRing } = require("./ProjectR_TempRing.cjs");
 
 let passed = 0;
 function test(name, fn) { const t0 = Date.now(); fn(); console.log(`ok ${++passed} - ${name} (${((Date.now() - t0) / 1000).toFixed(1)}s)`); }
@@ -23,6 +24,7 @@ function world({ q = null, extra = [], source = "auto", slots = { lmb: "hermes_s
     const w = buildWorld(); assert.deepEqual(w.failures, [], "全pluginが本番順で読み込める");
     w.enterMap(4, 12, 25); w.frames(3); w.mouse(700, 300);
     FC(w).setLoadoutSource(source);
+    if (extra.includes(TEMP_RING)) addTempRing(w);          // Stage 4: 5つの指輪はすべて実装済み。「未実装の指輪」は、この世界だけの一時の指輪
     for (const ring of ["hermes", "apollo", ...extra]) { assert.equal(D(w).assignRingToPlayer(ring).ok, true, ring); assert.equal(RL(w).equipRing(ring).ok, true, ring); }
     for (const id of CARDS) { D(w).setCardOwned(id, true); D(w).setCardLevel(id, 1); }
     for (const [slot, id] of Object.entries(slots)) assert.equal(RL(w).setSkill(slot, id).ok, true, slot);
@@ -33,7 +35,7 @@ function world({ q = null, extra = [], source = "auto", slots = { lmb: "hermes_s
 }
 
 test("【1】Q が空(指輪モード): Ultimate 区画のデータは「Q の空の枠」(slotEmpty・キー Q)。ゲージなし・神のパネルなし。ほかの枠は変わらない", () => {
-    const w = world({ q: null, extra: ["athena"] });
+    const w = world({ q: null, extra: [TEMP_RING] });
     const v = vm(w);
     assert.deepEqual([v.ultimate.slotEmpty, v.ultimate.key, v.ultimate.keyActive, v.ultimate.available, v.ultimate.state, v.ultimate.mode], [true, "Q", true, false, "none", "card"]);
     assert.equal(w.ctx.ProjectRUltimateGauge.hasUltimateGaugeState(), false, "ゲージの状態は作らない");
@@ -57,8 +59,8 @@ test("【2】Q が割り当て済み: 充填中 → READY → 発動後。従来
     FC(w).end("test");
 });
 
-test("【3】割り当て済みで使えない Q(Athena・奥義の処理の解除): 暗い Q + 「使用不可」(slotUnavailable)。ゲージ・神のパネルなし。HUD の状態は unavailable", () => {
-    const j = world({ q: null, extra: ["athena"], begin: false }); assert.equal(RL(j).setUltimate("athena").ok, true);
+test("【3】割り当て済みで使えない Q(未実装の一時の指輪・奥義の処理の解除): 暗い Q + 「使用不可」(slotUnavailable)。ゲージ・神のパネルなし。HUD の状態は unavailable", () => {
+    const j = world({ q: null, extra: [TEMP_RING], begin: false }); assert.equal(RL(j).setUltimate(TEMP_RING).ok, true);
     assert.equal(FC(j).begin().ok, true); frames(j, 2);
     let u = vm(j).ultimate; assert.deepEqual([u.slotUnavailable, u.slotEmpty, u.key, u.keyActive, u.available, u.state], [true, undefined, "Q", true, false, "none"]);
     assert.equal(vm(j).divine, null, "神のパネルなし"); assert.equal(GA(j).hasUltimateGaugeState(), false);
