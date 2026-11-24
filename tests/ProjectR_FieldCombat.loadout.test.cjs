@@ -11,6 +11,7 @@ function test(name, fn) { fn(); console.log(`ok ${++passed} - ${name}`); }
 
 const ALL = ["hermes_sweep", "hermes_zetsu", "hermes_issen", "hermes_reed_flute", "hermes_strength", "apollo_golden_volley", "apollo_eros_arrow", "apollo_lyre_rhythm", "apollo_laurel_wreath", "apollo_plague_rain"];
 const { IDS: JANUS_IDS } = require("./ProjectR_JanusImplemented.cjs");
+const { IDS: THEMIS_IDS } = require("./ProjectR_ThemisImplemented.cjs");
 const CARDS = ALL.filter(id => id !== "hermes_sweep");
 const KEY = { shift: ["ShiftLeft", 16], e: ["KeyE", 69], x: ["KeyX", 88], c: ["KeyC", 67] };
 const SLOT_NAME = { lmb: "attack", shift: "mobility", e: "special", x: "card1", c: "card2" };
@@ -198,7 +199,7 @@ test("Cooldown はスキルID単位(物理キーではない): 同じスキル�
         assert.equal(FC(w).getHudState().slots.find(s => s.slot === "card2").cooldown > 0 || want[id] === 0, true);
         const again = plain(FC(w).useAbility("card2")); assert.deepEqual([again.ok, again.reason], [false, "cooldown"], id + ": Cooldown 中");
     }
-    assert.deepEqual(Object.keys(cd(ringWorld({ slots: {} }))).sort(), ["consumable", "ultimate", ...ALL, ...JANUS_IDS].sort(), "10スキル + Janus 5 + 奥義 + アイテム");
+    assert.deepEqual(Object.keys(cd(ringWorld({ slots: {} }))).sort(), ["consumable", "ultimate", ...ALL, ...JANUS_IDS, ...THEMIS_IDS].sort(), "10スキル + Janus 5 + Themis 5 + 奥義 + アイテム");
     // 1つのスキルの Cooldown が別のキーの別スキルを止めない
     const w = ringWorld({ slots: { shift: "hermes_zetsu", e: "hermes_issen", x: "hermes_strength" } }); parkOthers(w); aimDegree(w, 0, 3);
     assert.equal(FC(w).useAbility("special").ok, true);

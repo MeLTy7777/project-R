@@ -68,11 +68,11 @@ test("【1a】Q が空: 奥義なし(常駐の神・ゲージ・自動のヘル�
     }
 });
 
-test("【1b】Q が未実装の指輪(Themis): 奥義なし。常駐の神・ゲージなし。Q は ultimateUnavailable(HUD は unavailable)", () => {
-    const w = ringWorld({ q: "themis", core: "hermes", extra: ["themis"] });
-    assert.equal(RL(w).getUltimate(), "themis");
-    assert.equal(UA(w).hasUltimateHandler(GM(w).resolveGodId("themis")), false, "themis の handler はない(作らない)");
-    const s = plain(FC(w).getUltimateState()); assert.deepEqual([s.selected, s.ringId, s.reason], ["themis", null, "ultimateUnavailable"]);
+test("【1b】Q が未実装の指輪(Athena): 奥義なし。常駐の神・ゲージなし。Q は ultimateUnavailable(HUD は unavailable)", () => {
+    const w = ringWorld({ q: "athena", core: "hermes", extra: ["athena"] });
+    assert.equal(RL(w).getUltimate(), "athena");
+    assert.equal(UA(w).hasUltimateHandler(GM(w).resolveGodId("athena")), false, "athena の handler はない(作らない)");
+    const s = plain(FC(w).getUltimateState()); assert.deepEqual([s.selected, s.ringId, s.reason], ["athena", null, "ultimateUnavailable"]);
     assert.equal(GM(w).hasPersistentUltimateBattleState(), false);
     assert.equal(gauge(w).has, false);
     assert.equal(D(w).getUltimateRingId(), "hermes", "Core の選択(ヘルメース)は使われず、変わりもしない");

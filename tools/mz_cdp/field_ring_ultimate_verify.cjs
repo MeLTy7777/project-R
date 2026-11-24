@@ -1,6 +1,6 @@
 // Stage 1E-1: RingLoadout の Q 奥義(ヘルメース・アポロン)を、指輪モードのフィールド戦闘で実機(MZ Playtest)で確認する。CDP の実際のキー・マウスで操作する。
 //   U1 Q が空(奥義なし・Core の選択が別でも漏れない)   U2 Q=ヘルメース   U3 Q=アポロン(いずれも ULTIMATE メニュー側は別の指輪)
-//   U4 未実装の指輪(Themis)・戦闘中の指輪の移動の拒否・U は戦闘外では従来どおり    U9 Console のエラーなし・保存の書き込みなし
+//   U4 未実装の指輪(Athena)・戦闘中の指輪の移動の拒否・U は戦闘外では従来どおり    U9 Console のエラーなし・保存の書き込みなし
 //   U は指輪モードの戦闘中は無効(Q だけが奥義の入口)。ゲージは既存の共有ゲージ(テストでは addUltimateGauge で満タンにする)。
 // 使い方: MZ_OUT=<出力> node tools/mz_cdp/field_ring_ultimate_verify.cjs   (新しいNW.jsセッションで実行する。ゲームのファイル・save/ は書かない)
 const { session } = require("./lib.cjs");
@@ -71,8 +71,8 @@ const SLOTS = ["lmb", "shift", "e", "x", "c"];
   const hermesOn = () => ev("ProjectRHermesUltimate.isHermesUltimateActive()");
   const apolloOn = () => ev("ProjectRApolloUltimate.isApolloUltimateActive()");
 
-  // 未実装の指輪(Themis)は、最初(戦闘の前)に付与・装備しておく。戦闘のあと(敵が交戦中の間)は、Core が指輪の移動を拒否する(RING_TRANSFER_DURING_BATTLE)
-  rec("U0 Themis を付与・装備(戦闘の外)", await json(`({ a: ${D}.assignRingToPlayer('themis').ok, e: ${RL}.equipRing('themis').ok })`).then(r => r.a && r.e), "");
+  // 未実装の指輪(Athena)は、最初(戦闘の前)に付与・装備しておく。戦闘のあと(敵が交戦中の間)は、Core が指輪の移動を拒否する(RING_TRANSFER_DURING_BATTLE)
+  rec("U0 Athena を付与・装備(戦闘の外)", await json(`({ a: ${D}.assignRingToPlayer('athena').ok, e: ${RL}.equipRing('athena').ok })`).then(r => r.a && r.e), "");
 
   await check("U1 Q が空: 奥義なし(自動のヘルメースなし・Core の選択が別にあっても漏れない)", async () => {
     rec("U1-0 Q 枠を空にする(ULTIMATE メニュー側 = ヘルメース)", await setQ(null, "hermes"), "");
@@ -116,8 +116,8 @@ const SLOTS = ["lmb", "shift", "e", "x", "c"];
   await check("U2 Q = ヘルメース(ULTIMATE メニュー側 = アポロン)", ultimateFlow("hermes", "apollo", hermesOn, "ProjectRHermesUltimate.isHermesUltimateActive()", "U2"));
   await check("U3 Q = アポロン(ULTIMATE メニュー側 = ヘルメース)", ultimateFlow("apollo", "hermes", apolloOn, "ProjectRApolloUltimate.isApolloUltimateActive()", "U3"));
 
-  await check("U4 未実装の指輪(Themis)・戦闘中の指輪の移動の拒否・U は戦闘外では従来どおり", async () => {
-    rec("U4-0 Q = Themis(未実装)", await setQ("themis", "hermes"), "");
+  await check("U4 未実装の指輪(Athena)・戦闘中の指輪の移動の拒否・U は戦闘外では従来どおり", async () => {
+    rec("U4-0 Q = Athena(未実装)", await setQ("athena", "hermes"), "");
     await begin(); await prep(2.2);
     const m = await mgr(), g = await gaugeNow(), h = await ultHud();
     rec("U4a 奥義なし(常駐の神・ゲージなし。ヘルメースへ落ちない)・HUD は unavailable", m.ring === null && m.has === false && g.has === false && h.state === "unavailable", JSON.stringify({ m, g, h: h.state }));

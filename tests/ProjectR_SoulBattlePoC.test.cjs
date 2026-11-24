@@ -111,8 +111,8 @@ test("保護対象(Hendrix・DotMove・既存カード・ダメージ式)は変�
         // ATTACK の終了で飛行中の攻撃・蓄えを打ち切る追加専用の窓口 clear(reason)(SOUL の準備ループだけが呼ぶ。通常戦闘では呼ばれない)
         "js/plugins/ProjectR_ApolloPlagueRain.js": /clear: reason/, "js/plugins/ProjectR_HermesStrength.js": /clear: reason|setSoulCards/,
         "js/plugins/ProjectR_CardModifiers.js": /damageMultiplier/,
-        // CardCatalog: Stage 2(Janus)の5枚を、実行時のカードと設計の一覧へ追加する(janus_ のID・行だけ。SOUL・既存のカードの行は変えない)
-        "js/plugins/ProjectR_CardCatalog.js": /janus_dual_gate/,
+        // CardCatalog: Stage 2(Janus)・Stage 3(Themis)の各5枚を、実行時のカードと設計の一覧へ追加する(janus_ / themis_ のID・行だけ。SOUL・既存のカードの行は変えない。変更量の上限 60 行はそのまま)
+        "js/plugins/ProjectR_CardCatalog.js": /janus_dual_gate[\s\S]*themis_edict/,
         // 絶(Zetsu): フィールド戦闘(Stage 5b)が「敵の体」を通り抜けるための、衝突フィルターの追加専用の窓口(フィルターが無ければ従来のまま。SOUL・通常のカード戦闘は何も登録しない)
         "js/plugins/ProjectR_HermesZetsu.js": /registerCollisionFilter/,
         // UltimateGauge: 与ダメージを、HPが次のフレームで減る実ゲームでも取りこぼさないための待ち(Stage 6D。同期に減るときは従来どおり。ゲージの式・加算量は変えない)

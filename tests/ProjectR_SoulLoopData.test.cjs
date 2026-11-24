@@ -249,7 +249,7 @@ test("マナコスト確認表: 実在のカード15枚すべてに行があり�
         for (const lv of [7, 8, 9]) assert.ok(cells[lv].length > 0, cells[0] + " のLv" + (lv - 6) + "の効果");
         ids.push(cells[0]);
     }
-    assert.deepEqual([...ids].sort(), Object.keys(balance).filter(id => !id.startsWith("janus_")).sort(), "今あるカードすべて(増やしも欠けもしない。Janus は Stage 2 のフィールド戦闘用で SOUL の対象外)");
+    assert.deepEqual([...ids].sort(), Object.keys(balance).filter(id => !/^(janus|themis)_/.test(id)).sort(), "今あるカードすべて(増やしも欠けもしない。Janus・Themis は Stage 2・3 のフィールド戦闘用で SOUL の対象外)");
     const md = read("docs/ProjectR_SoulMana_CostReview.md");
     assert.match(md, /未承認の案/);
     for (const id of ids) assert.ok(md.includes("`" + id + "`"), id);

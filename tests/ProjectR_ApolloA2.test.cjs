@@ -1,6 +1,7 @@
 "use strict";
 const { IMPLEMENTED: A7_IMPLEMENTED, STILL_RESERVED: A7_RESERVED, OWN_PLUGIN: A7_OWN, SHARED_USERS: A7_SHARED, COUNT: A7_COUNT } = require("./ProjectR_ApolloImplemented.cjs");
 const { IDS: JANUS_IDS, COUNT: JANUS_COUNT } = require("./ProjectR_JanusImplemented.cjs");
+const { IDS: THEMIS_IDS, COUNT: THEMIS_COUNT } = require("./ProjectR_ThemisImplemented.cjs");
 // Phase Apollo-A2: 複数の神に対応するカードカタログの基盤。Apollo 8枚の設計メタデータと予約ランタイムIDを持つが、効果は未実装で、本番では使えない。
 //   正本: Template(3)(4).xlsx(SHA-256 8cb974a7...)。数値の控え = docs/ProjectR_Apollo_Workbook_Snapshot.json。
 const assert = require("node:assert/strict");
@@ -48,8 +49,8 @@ test("予約ID: ユーザー確定の8個が設計ID 8〜15に対応し、一意
     for (const id of RESERVED) assert.match(id, /^apollo_[a-z_]+$/);
     const audit = plain(w.cat().runtimeIdAudit());
     assert.deepEqual(audit.problems, [], JSON.stringify(audit.problems));
-    assert.deepEqual(audit.ids.length, 15 + JANUS_COUNT, "Hermes 7 + Apollo 8 + Janus 5");
-    assert.equal(new Set(audit.ids).size, 15 + JANUS_COUNT);
+    assert.deepEqual(audit.ids.length, 15 + JANUS_COUNT + THEMIS_COUNT, "Hermes 7 + Apollo 8 + Janus 5 + Themis 5");
+    assert.equal(new Set(audit.ids).size, 15 + JANUS_COUNT + THEMIS_COUNT);
     const registry = new Set(w.deck().definitions.cardDefinitions().map(c => c.cardId));
     for (const id of RESERVED) { const implemented = A7_IMPLEMENTED.includes(id); assert.equal(registry.has(id), implemented, id + (implemented ? " は実装済み(登録。A4/A6A)" : " は未登録")); for (const other of [...registry, ...LEGACY_APOLLO].filter(o => o !== id)) assert.ok(!other.startsWith(id) && !id.startsWith(other), `${id} と ${other} が接頭辞で重ならない`); }
     for (const id of LEGACY_APOLLO) assert.ok(registry.has(id), id + " は旧カードとして残っている");
@@ -89,8 +90,8 @@ test("設計メタデータ: ワークブックの強さ・最大コピー数・
     assert.equal(w.cat().godTotalMaxCopies("apollo"), 30);
     assert.equal(snapshot.totalMaxCopies, 30);
     assert.ok(Object.isFrozen(w.cat().godDesign("apollo")) && Object.isFrozen(w.cat().designs()));
-    assert.equal(w.cat().designs().length, 15 + JANUS_COUNT);
-    assert.deepEqual(plain(w.cat().gods()), ["hermes", "apollo", "janus"]);
+    assert.equal(w.cat().designs().length, 15 + JANUS_COUNT + THEMIS_COUNT);
+    assert.deepEqual(plain(w.cat().gods()), ["hermes", "apollo", "janus", "themis"]);
 });
 
 test("Hermes は変わらない: hermesDesign()・引数なしのmigrationAudit()・30枚デッキ・設計IDと予約IDの対応は従来どおり", () => {
@@ -105,7 +106,7 @@ test("Hermes は変わらない: hermesDesign()・引数なしのmigrationAudit(
     assert.deepEqual(plain(w.cat().godDesign("hermes")), hermes);
     assert.equal(w.cat().isGodDeckReady("hermes"), true);
     assert.deepEqual(plain(w.cat().buildGodDeck("hermes")), plain(w.cat().buildFinalHermesDeck()));
-    assert.deepEqual(plain(w.cat().registeredRuntimeCards()), ["hermes_zetsu", "hermes_sweep", "hermes_reed_flute", "hermes_issen", "hermes_strength", "hermes_veil", "hermes_psychopomp", ...A7_IMPLEMENTED, ...JANUS_IDS], "登録されるのはHermesの7枚 + 実装済みのApollo(ProjectR_ApolloImplemented.cjs)だけ");
+    assert.deepEqual(plain(w.cat().registeredRuntimeCards()), ["hermes_zetsu", "hermes_sweep", "hermes_reed_flute", "hermes_issen", "hermes_strength", "hermes_veil", "hermes_psychopomp", ...A7_IMPLEMENTED, ...JANUS_IDS, ...THEMIS_IDS], "登録されるのはHermesの7枚 + 実装済みのApollo(ProjectR_ApolloImplemented.cjs)だけ");
     const status = plain(w.cat().godStatus("apollo"));
     assert.deepEqual([status.count, status.totalMaxCopies, status.implemented, status.reserved, status.ready], [8, 30, A7_COUNT, 8 - A7_COUNT, A7_COUNT === 8]);
     assert.equal(w.cat().isGodDeckReady("apollo"), A7_COUNT === 8);
@@ -119,7 +120,7 @@ test("未実装カードは本番で使えない: レジストリに無く、所
     assert.deepEqual(plain(w.cat().inactiveRuntimeCards()), INACTIVE);
     for (const id of INACTIVE) assert.equal(d.definitions.card(id), null, id);
     const cardList = d.definitions.cardDefinitions().map(c => c.cardId);
-    assert.equal(cardList.length, 14 + A7_COUNT + JANUS_COUNT, "旧7(Hermes旧4+Apollo旧3) + 新Hermes 7 + 黄金の矢(A4) + エロスの矢(A6A) + Janus 5");
+    assert.equal(cardList.length, 14 + A7_COUNT + JANUS_COUNT + THEMIS_COUNT, "旧7(Hermes旧4+Apollo旧3) + 新Hermes 7 + 黄金の矢(A4) + エロスの矢(A6A) + Janus 5");
     // 所持・付与
     for (const id of INACTIVE) {
         assert.equal(d.setCardOwned(id, true).ok, false, "解放できない: " + id);
@@ -290,7 +291,7 @@ test("既存基盤の再利用: 累積Lv規則(resolveLevels)・バランスJSON
     assert.deepEqual(plain(w.cat().resolveLevels(rows, 3)), { arrows: 11, spread: 10 });
     // バランスJSONは実装済みの8枚だけ(Hermes 7 + 黄金の矢(A4))。予約のままの7枚の数値は、各カードの実装Phaseで仕様が確定してから追加する。
     const balance = w.ctx.ProjectRCardBalance;
-    assert.deepEqual(plain(balance.cardIds()).sort(), [...HERMES_IDS, ...A7_IMPLEMENTED, ...JANUS_IDS].sort());
+    assert.deepEqual(plain(balance.cardIds()).sort(), [...HERMES_IDS, ...A7_IMPLEMENTED, ...JANUS_IDS, ...THEMIS_IDS].sort());
     for (const id of INACTIVE) assert.equal(balance.hasCard(id), false);
     assert.equal(balance.validate(A7_RESERVED[0] || "apollo_not_a_card", "cooldown", "cooldownSeconds", 3).reason, "unknownCard");
     assert.equal(typeof w.ctx.ProjectRElements.fixedFactor, "function");

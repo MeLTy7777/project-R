@@ -834,3 +834,25 @@ LMB / Shift / E / X / C の**どのキーでも同じ**。Lv1・Lv2 は従来ど
 - **命中の手応え**: `ProjectR_FieldCombat` に追加専用の入口 `reportHit({ enemyId, heavy, serial, hp0 })` を追加(外部のスキルが、ダメージを出した直後に通知する。点滅・反動・ヒットストップ・SE の既存の仕組みへ乗せるだけで、ダメージ・判定・時間は変えない)。Janus の双門(既存の SwordSystem の通知)・境界断ち(強撃)・反照の反撃・奥義の2回(強撃)に出る。閉門・表裏転化はダメージが無いので出ない。
 - **見た目**: 画像・音声の**新しい素材は使わず**、`ProjectR_JanusSkills` がコードで描く輪・線(加算合成)を出す。閉門 = 閉じる輪 + 拘束した敵の輪 / 反照 = 待機の輪・受け流しの光 / 表裏転化 = 入れ替わった2か所の輪 / 境界断ち = 予備動作の線・斬撃の光 / 奥義 = 内側(半径 2)・外側(半径 2.8)の2つの門が開き、範囲攻撃の瞬間に弾ける。表示だけ(出せなくても効果は変わらない)。戦闘終了・マップ移動・ロードで全部消える。使う SE はすべて `audio/se` に実在する。
 - テスト: `tests/ProjectR_Janus.stage2e.test.cjs`(17)。実機: `tools/mz_cdp/janus_verify.cjs`(57/57 PASS。J8 = 命中の手応え・見た目・カットイン)。
+
+## Stage 3: Themis(テミス)の5スキル + 罪状 + Ultimate「神罰・最後の審判」
+
+既存の RingLoadout・CardCatalog・CardBalance・FieldCombat・HUD・Q 奥義の仕組みへ **Themis を登録**した(新しい装備・保存の仕組みは作らない)。5スキルは LMB / Shift / E / X / C のどの枠からでも同じに使える(Lv1〜3)。数値は `data/ProjectR_CardBalance.json` の `themis_*`。
+
+| スキル(ID) | 内容 | Cooldown |
+|---|---|---|
+| 戒律の宣告 `themis_edict` | カーソル上の敵1体(4 マス以内・壁の向こうは不可)に基礎物理ダメージの 100/120/140 %。当たったら**罪状 +1** | 7 秒 |
+| 審理の鎖 `themis_chain` | カーソル上の敵1体(3.5 マス以内)に**罪状 +1**。通常の敵は 1.5/2.0/2.5 秒**移動不能**(攻撃は止めない)。ボスは同じ時間の移動速度低下 20/25/30 %。耐性(麻痺 12・スタン 13)の敵は拘束されないが、罪状は付く | 10 秒 |
+| 衡平の天秤 `themis_balance` | 2.5 秒の間、被ダメージを 20/30/40 % 軽減(既存の ApolloStatus 台帳 = 他の軽減とは積。DamageModifiers の規則は変えない)。効果中に最初に主人公へ当たった敵の直接攻撃の元の敵へ**罪状 +1**(1回の発動で最大1回・環境ダメージは数えない) | 13 秒 |
+| 罪科の刻印 `themis_sin_mark` | 基本攻撃の3連撃(FieldCombat)。1段目 = 前方 110°・1.8 マスの扇(90/100/110 %)/ 2段目 = 同じ扇(100/110/125 %)/ 3段目 = 貫通する直線 3.0 × 幅 0.9(115/130/145 %)。**3段目に当たった敵ごとに罪状 +1**。継続の受付は硬直が終わってから 0.5 秒 | 0 |
+| 断罪の判決 `themis_verdict` | カーソル上の敵1体(4 マス以内)に 160/195/230 % × (1 + 0.4 × その敵の罪状)。**ダメージが出た後にだけ**その敵の罪状を全部消費 | 8 秒 |
+
+**罪状(Sin)**: 敵ごとに最大 3(ボスにも付く)。付くたびに +1 され、8 秒の期限が取り直される。期限が切れると**全部**消える。敵の死亡・戦闘の終了・マップ移動・ロードで消える。**実行時のみ(セーブしない)・Themis のスキルと奥義以外は触れない**(DamageModifiers には登録しない)。見た目 = 敵の足元の輪(数が増えるほど大きく濃い)。
+
+**Ultimate「神罰・最後の審判」**(Q 枠。`ProjectR_ThemisUltimate.js`・既存の GodSummonManager / UltimateActivation / 共有ゲージ): Q を押した瞬間のカーソル位置(プレイヤーから最大 4 マス・壁の手前で止まる)に裁きの輪を開き、0.8 秒後に半径 2.8 マスへ、基礎物理ダメージの 250 % × (1 + 0.2 × その敵の罪状)。各敵1回・ダメージが出た敵の罪状だけ全部消費。ゲージは handler が成功した後にだけ消費し、**この奥義のダメージでゲージは増えない**。Core の選択・U キーの制限・Q の自動割り当てには触れない。
+
+- 失敗(対象なし・射程外・壁の向こう・効果中の再発動・ゲージ不足)は何も消費しない(Cooldown・罪状・ゲージ)。
+- 実装: `ProjectR_ThemisSkills.js`(4スキル + 罪状の台帳 + 3段目の斬撃の見張り。プラグイン順は JanusUltimate の後・CardModifiers の前)/ `ProjectR_ThemisUltimate.js` / FieldCombat(3段コンボ `sinMarkClick`・定義・アイコン)/ CardCatalog・CardBalance・RingLoadout(登録)。
+- テスト: `tests/ProjectR_Themis.skills.test.cjs`(19)・`ProjectR_Themis.sinMark.test.cjs`(9)・`ProjectR_Themis.ultimate.test.cjs`(10)。実機: `tools/mz_cdp/themis_verify.cjs`(56 項目 PASS・実キー・実マウス・Chromium 85)。
+- 既存テストの調整: 「未実装の例」に Themis を使っていたもの(FieldCombat.hudQ / ultimate・RingQA・SkillMenu・RingLoadout(.menu)・MenuRuntimeCertification と実機の4スクリプト)は **Athena** に変更。件数・一覧を固定していたもの(ApolloA2/A3・HermesZetsu・HermesProductionDeck・CardBalance・CardCatalog.audit・H2CB3・FieldCombat.loadout)は `tests/ProjectR_ThemisImplemented.cjs` から値を作る。SOUL 側の保護ガードは、CardCatalog の Themis 行を許可リストの条件に足し(上限 60 行はそのまま)、SOUL の15枚の集合は `janus_` / `themis_` を除いて確かめる。
+- **まだ無い物・決めていない点**: 専用の見た目と音(コードで描く輪・線と既存の SE だけ)/ Themis の神(同行・カットイン)の素材(無いので何も出さない。ほかの神の絵で代用しない)/ HUD のアイコン番号(88〜91 は仮)/ カードのレアリティ・最大枚数・設計ID(仮)/ Themis の指輪の入手経路(本番の付与はまだ無い)/ 「ターゲット = カーソル上の敵」の操作感(体の中、または中心から 0.75 マス以内)・3段コンボの形と硬直(双門・薙ぎ払いに合わせた実装の値で、仕様の指定なし)/ 衡平の天秤の「最初の敵の攻撃」は、Janus の反照が無効にした攻撃を数えない/ SOUL 戦闘での Themis。

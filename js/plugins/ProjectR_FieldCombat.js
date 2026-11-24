@@ -541,7 +541,13 @@
         janus_closed_gate:    Object.freeze({ label: "閉門",       kind: "card",  cooldown: null, interval: 0 }),
         janus_reflection:     Object.freeze({ label: "反照",       kind: "card",  cooldown: null, interval: 0 }),
         janus_inversion:      Object.freeze({ label: "表裏転化",   kind: "card",  cooldown: null, interval: 0 }),
-        janus_boundary_slash: Object.freeze({ label: "境界断ち",   kind: "card",  cooldown: null, interval: 0 })
+        janus_boundary_slash: Object.freeze({ label: "境界断ち",   kind: "card",  cooldown: null, interval: 0 }),
+        // Themis(Stage 3): 罪科の刻印 = 基本攻撃の3段コンボ(Cooldown 0。薙ぎ払い・双門と同じ combo の枠)/ 戒律の宣告・審理の鎖・衡平の天秤・断罪の判決 = カード(Cooldown はカタログの値: 7 / 10 / 13 / 8 秒)
+        themis_edict:         Object.freeze({ label: "戒律の宣告", kind: "card",  cooldown: null, interval: 0 }),
+        themis_chain:         Object.freeze({ label: "審理の鎖",   kind: "card",  cooldown: null, interval: 0 }),
+        themis_balance:       Object.freeze({ label: "衡平の天秤", kind: "card",  cooldown: null, interval: 0 }),
+        themis_sin_mark:      Object.freeze({ label: "罪科の刻印", kind: "combo", cooldown: 0, interval: 0 }),
+        themis_verdict:       Object.freeze({ label: "断罪の判決", kind: "card",  cooldown: null, interval: 0 })
     });
     // 黄金の矢 Lv3 の押す・離す・長押しビーム(Stage 1D-2A。どのキーでも同じ。ビームの働き本体は ProjectR_ApolloGoldenVolley の持続ビーム)
     //   離す < 0.25秒 = 通常の11本 / 0.25秒〜0.90秒未満で離す = 取り消し(発射もCooldownも無し)/ 0.90秒押し続けた瞬間 = ビーム自動開始(最大1.5秒。離す・中断で終わる)。
@@ -956,7 +962,9 @@
     const comboTimeout = () => (ringMode() ? Math.max(12, Math.round(SWEEP_COMBO_SECONDS * FPS)) : COMBO.timeout);          // 指輪ロードアウトの薙ぎ払い = 0.5秒 / 旧い固定の左クリック = ComboTimeout
     // Janus 双門(Stage 2)は2段コンボ。受付は「攻撃の硬直が終わってから」なので、斬撃のとき c.timeout = 硬直 + 受付(フレーム)を持つ。薙ぎ払い・旧い固定の左クリックは c.timeout が無く、従来の comboTimeout()。
     const JANUS_DUAL = "janus_dual_gate";
-    const comboSkill = () => rt.combo.skill || (ringMode() && skillIdOf("attack") === JANUS_DUAL ? JANUS_DUAL : "hermes_sweep");
+    // Themis 罪科の刻印(Stage 3)は3段コンボ(薙ぎ払いと同じ段数)。受付は Janus と同じく「攻撃の硬直が終わってから」。
+    const THEMIS_MARK = "themis_sin_mark";
+    const comboSkill = () => rt.combo.skill || (ringMode() && skillIdOf("attack") === JANUS_DUAL ? JANUS_DUAL : ringMode() && skillIdOf("attack") === THEMIS_MARK ? THEMIS_MARK : "hermes_sweep");
     const comboMax = () => (comboSkill() === JANUS_DUAL ? 2 : COMBO.max);
     const comboWindow = () => rt.combo.timeout || comboTimeout();
     const comboStep = () => {
@@ -1067,6 +1075,41 @@
         note({ type: "attack", ok: result.ok === true, step: result.step || 0, reason: result.reason || null, skillId: JANUS_DUAL });
         return result;
     };
+    // ---- Themis 罪科の刻印(Stage 3): 基本攻撃の3段コンボ。斬撃・ダメージは既存の ProjectRSwordSystem.swing(扇形の判定 sector・長方形のHitbox・1振り1ヒット・武器の攻撃力 × damageScale)。 ----
+    //   1段目: 前方 110° の扇・1.8 マス・基礎物理ダメージの 90 / 100 / 110 %(Lv1 / 2 / 3)。2段目: 同じ扇(振る向きは同じ)・100 / 110 / 125 %。3段目: 前方の貫通する直線(3.0 マス × 幅 0.9)・115 / 130 / 145 %。
+    //   3段目に当たった敵ごとに、罪状 1(ProjectR_ThemisSkills が、この斬撃の serial を見張って付ける。ダメージが出た敵だけ)。各段の入力でマウスの向きへ向け直す。
+    //   Cooldown 0。継続の受付 = 攻撃の硬直(斬撃の最小の間隔)が終わってから 0.5 秒。数値は ProjectR_CardBalance の themis_sin_mark。形(扇・直線)と硬直(フレーム)は、双門・薙ぎ払いに合わせた実装の値(仕様の指定なし)。
+    const MARK_RECOVERY = Object.freeze([16, 18, 26]), MARK_SWEEP_FRAMES = 9;
+    const sinMarkSpec = () => {
+        const bal = root.ProjectRCardBalance, lv = cardLevelOf(THEMIS_MARK);
+        const eff = safe(() => bal.effects(THEMIS_MARK, lv), null) || {}, k = key => safe(() => Number(bal.constant(THEMIS_MARK, key)), NaN), pick = (v, f) => (Number.isFinite(v) && v > 0 ? v : f);
+        return { level: lv, scale: [pick(Number(eff.damageScale), 0.9), pick(Number(eff.secondDamageScale), 1), pick(Number(eff.thirdDamageScale), 1.15)], arc: pick(k("arcDegrees"), 110), radius: pick(k("radiusTiles"), 1.8),
+            length: pick(k("rangeTiles"), 3), width: pick(k("pathWidthTiles"), 0.9), windowFrames: Math.max(1, Math.round(pick(k("comboWindowSeconds"), 0.5) * FPS)) };
+    };
+    const sinMarkClick = (source = "api") => {
+        let result = null;
+        const reason = combatInputReason(), sword = root.ProjectRSwordSystem;
+        if (reason) result = fail(reason);
+        else if (!sword || typeof sword.swing !== "function") result = fail("swordUnavailable");
+        else {
+            const c = rt.combo;
+            if (c.skill !== THEMIS_MARK) { c.skill = THEMIS_MARK; c.step = 0; c.timeout = null; }          // 別のコンボ(薙ぎ払い・双門)から切り替わったら、1段目から
+            const next = comboStep() + 1, spec = sinMarkSpec(), meleeSource = getMeleeDamageSource(), recovery = MARK_RECOVERY[next - 1];
+            const common = { anyWeapon: true, step: next, cooldown: recovery, damageScale: spec.scale[next - 1], ...(meleeSource.weaponId !== null ? { damageWeapon: meleeSource.weaponId } : {}) };
+            const sector = { radius: spec.radius, arc: spec.arc, frames: MARK_SWEEP_FRAMES, passes: [{ offset: 0, delay: 0 }] };
+            const swung = sword.swing("field", next === 1 ? { ...common, style: "clockwise", sector } : next === 2 ? { ...common, style: "counterclockwise", sector }
+                : { ...common, style: "thrust", width: spec.width, depth: spec.length, forward: spec.length / 2, lifetime: 3 });
+            if (swung && swung.ok) {
+                c.swings++; c.lastAt = rt.frame; c.timeout = recovery + spec.windowFrames;
+                if (next >= 3) { safe(() => root.ProjectRThemisSkills?.watchSwing?.(swung.serial)); c.step = 0; c.finishers++; c.finisherAt = rt.frame; } else c.step = next;          // 3段目: 当たった敵ごとに罪状 1(見張りは ThemisSkills)
+                result = { ok: true, step: next, heavy: next >= 3, scale: spec.scale[next - 1], level: spec.level, degree: swung.degree, serial: swung.serial };
+            } else { c.rejected++; result = fail(swung?.reason || "swingFailed", { step: next }); }
+        }
+        result.source = source; result.frame = rt.frame;
+        rt.combo.last = { ...result };
+        note({ type: "attack", ok: result.ok === true, step: result.step || 0, reason: result.reason || null, skillId: THEMIS_MARK });
+        return result;
+    };
     const fireGun = (source = "api") => {
         let result = null;
         const reason = combatInputReason();
@@ -1119,7 +1162,7 @@
             const def = slotDef(slot);
             try {
                 if (isRingSlot(slot) && def.kind === "combo") {
-                    const swung = def.skillId === JANUS_DUAL ? dualGateClick(source) : sweepClick(source);      // 薙ぎ払い: どのキーでも同じ3段コンボ / 双門(Janus): 同じく2段コンボ
+                    const swung = def.skillId === JANUS_DUAL ? dualGateClick(source) : def.skillId === THEMIS_MARK ? sinMarkClick(source) : sweepClick(source);      // 薙ぎ払い: どのキーでも同じ3段コンボ / 双門(Janus): 同じく2段コンボ / 罪科の刻印(Themis): 3段コンボ
                     result = { ...swung, slot, skillId: def.skillId };
                 } else if (def.kind === "card") {
                     const used = deck().useFixedCard(def.cardId);
@@ -2411,7 +2454,7 @@
     const CARD_NAMES = Object.freeze({ apollo_golden_volley: "黄金の矢", apollo_gigas_slayer: "ギガース殺し", hermes_reed_flute: "葦笛", hermes_veil: "ヴェイル", hermes_psychopomp: "サイコポンポス", hermes_strength: "ストレングス", hermes_sweep: "薙ぎ払い" });
     // 指輪ロードアウト: スキルごとのアイコン(物理キーではなくスキルIDで決める)。新しい素材は使わず、既存の IconSet の番号だけ。
     //   薙ぎ払い・絶・一閃・黄金の矢は従来の枠と同じ番号。残りの6つは仮の番号(実機で見た目を確かめて、必要なら差し替える。BattleHUD の setCardPresentation があればそちらが優先)。
-    const SKILL_ICON_DEFAULT = Object.freeze({ hermes_sweep: 76, hermes_zetsu: 82, hermes_issen: 78, apollo_golden_volley: 102, hermes_reed_flute: 79, hermes_strength: 77, apollo_eros_arrow: 103, apollo_lyre_rhythm: 81, apollo_laurel_wreath: 83, apollo_plague_rain: 104, janus_dual_gate: 76, janus_closed_gate: 84, janus_reflection: 85, janus_inversion: 86, janus_boundary_slash: 87 });
+    const SKILL_ICON_DEFAULT = Object.freeze({ hermes_sweep: 76, hermes_zetsu: 82, hermes_issen: 78, apollo_golden_volley: 102, hermes_reed_flute: 79, hermes_strength: 77, apollo_eros_arrow: 103, apollo_lyre_rhythm: 81, apollo_laurel_wreath: 83, apollo_plague_rain: 104, janus_dual_gate: 76, janus_closed_gate: 84, janus_reflection: 85, janus_inversion: 86, janus_boundary_slash: 87, themis_edict: 88, themis_chain: 89, themis_balance: 90, themis_sin_mark: 76, themis_verdict: 91 });
     // Stage 6A: 5つの固定スキルのアイコン。新しい素材は使わず、既存の img/system/IconSet.png の番号を使う。
     //   優先順: BattleHUD の setCardPresentation / Skill の note <ProjectRCard> が決めたアイコン(あれば)> この既定。
     //   attack=薙ぎ払い(DBの薙ぎ払いスキル id173 と同じ 76)/ mobility=絶(82 ブーツ)/ special=一閃(78 閃光)/ card1=黄金の矢(102 弓)/ card2=ギガース殺し(70 光の柱)

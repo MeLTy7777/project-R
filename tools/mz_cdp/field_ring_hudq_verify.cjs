@@ -70,8 +70,8 @@ const SLOTS = ["lmb", "shift", "e", "x", "c"];
   const hermesOn = () => ev("ProjectRHermesUltimate.isHermesUltimateActive()");
   const apolloOn = () => ev("ProjectRApolloUltimate.isApolloUltimateActive()");
 
-  // 未実装の指輪(Themis)は、最初(戦闘の前)に付与・装備しておく。戦闘のあと(敵が交戦中の間)は、Core が指輪の移動を拒否する(RING_TRANSFER_DURING_BATTLE)
-  rec("U0 Themis を付与・装備(戦闘の外)", await json(`({ a: ${D}.assignRingToPlayer('themis').ok, e: ${RL}.equipRing('themis').ok })`).then(r => r.a && r.e), "");
+  // 未実装の指輪(Athena)は、最初(戦闘の前)に付与・装備しておく。戦闘のあと(敵が交戦中の間)は、Core が指輪の移動を拒否する(RING_TRANSFER_DURING_BATTLE)
+  rec("U0 Athena を付与・装備(戦闘の外)", await json(`({ a: ${D}.assignRingToPlayer('athena').ok, e: ${RL}.equipRing('athena').ok })`).then(r => r.a && r.e), "");
 
 
   // ---- HUD の Ultimate 区画の描画(Sprite_ProjectRUltimateHUD)を、シーンの中から探して、実際の表示状態を読む ----
@@ -117,12 +117,12 @@ const SLOTS = ["lmb", "shift", "e", "x", "c"];
     rec("H2d 終了後は充填中(0/100)", u.state === "charging" && sp.valueLabel === "0/100" && sp.emptyText === false && sp.base === true, JSON.stringify(sp));
   });
 
-  await check("H3 未実装の指輪(Themis が Q)・legacy・Q を設定して再開: 従来どおり / 空の表示は残らない", async () => {
-    rec("H3-0 Q = Themis", await setQ("themis", "hermes"), "");
+  await check("H3 未実装の指輪(Athena が Q)・legacy・Q を設定して再開: 従来どおり / 空の表示は残らない", async () => {
+    rec("H3-0 Q = Athena", await setQ("athena", "hermes"), "");
     await begin(); await prep(2.2); await settle();
     let u = await vmU(), sp = await sprite();
     const dv = await vmD();
-    rec("H3a 割り当て済みで使えない Q(Themis): 暗い Q + 「使用不可」(「未設定」ではない)。ゲージ・数値・神のパネルなし", u.slotUnavailable === true && u.slotEmpty === undefined && dv === null && !!sp && sp.visible === true && sp.emptyText === true && sp.emptyLabel === "使用不可" && sp.keyAlpha === 0.35 && sp.base === false && sp.valueText === false, JSON.stringify({ u, dv, sp }));
+    rec("H3a 割り当て済みで使えない Q(Athena): 暗い Q + 「使用不可」(「未設定」ではない)。ゲージ・数値・神のパネルなし", u.slotUnavailable === true && u.slotEmpty === undefined && dv === null && !!sp && sp.visible === true && sp.emptyText === true && sp.emptyLabel === "使用不可" && sp.keyAlpha === 0.35 && sp.base === false && sp.valueText === false, JSON.stringify({ u, dv, sp }));
     await s.shot("hudq_H3_unavailable");
     await ev(`${FC}.end(); 'ok'`); await sleep(300);
     // Q が空 → 設定して再開: 空の表示が残らない

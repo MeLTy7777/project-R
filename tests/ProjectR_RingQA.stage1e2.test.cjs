@@ -245,15 +245,15 @@ test("【4】戦闘中: 指輪画面の操作・メニューのモデル・RingL
 
 // ---------------------------------------------------------------- 【5】Q の表示状態 ----------------------------------------------------------------
 test("【5】Q の表示状態: 空(empty)/ 未実装の指輪(unavailable)/ 充填中(charging)/ READY(ready)/ 発動後に充填中へ戻る。BattleHUD の枠・ゲージの表示の元データも同じ", () => {
-    const w = qaWorld({ owned: ["hermes", "apollo", "themis"] });
-    const scene = openRings(w); for (const id of ["hermes", "apollo", "themis"]) equipViaScene(scene, id);
+    const w = qaWorld({ owned: ["hermes", "apollo", "athena"] });
+    const scene = openRings(w); for (const id of ["hermes", "apollo", "athena"]) equipViaScene(scene, id);
     assignViaScene(scene, "lmb", "hermes_sweep");
     const view = () => { const s = ultSlot(w); return [s.state, s.ready]; };
     // 空
     begin(w); assert.deepEqual(view(), ["empty", false]); assert.equal(gauge(w).has, false); FC(w).end("test");
-    // 未実装の指輪(Themis。画面は未実装の奥義を候補に出さないので、API で登録した状態 = 古い保存データなどを想定)
-    assert.equal(RL(w).setUltimate("themis").ok, true);
-    openSlot(scene, "q"); assert.equal(scene._choices.items().some(c => c.ringId === "themis"), false, "画面は未実装の奥義を候補に出さない");
+    // 未実装の指輪(Athena。画面は未実装の奥義を候補に出さないので、API で登録した状態 = 古い保存データなどを想定)
+    assert.equal(RL(w).setUltimate("athena").ok, true);
+    openSlot(scene, "q"); assert.equal(scene._choices.items().some(c => c.ringId === "athena"), false, "画面は未実装の奥義を候補に出さない");
     begin(w); assert.deepEqual(view(), ["unavailable", false]); assert.equal(gauge(w).has, false); FC(w).end("test");
     // 充填中 → READY → 発動 → 充填中
     assignViaScene(scene, "q", "hermes");

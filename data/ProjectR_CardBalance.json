@@ -135,7 +135,10 @@
     "castRangeTiles": { "label": "カーソル方向の中心までの最大距離", "unit": "マス", "min": 1, "max": 40 },
     "immobilizeSeconds": { "label": "拘束(移動不能・攻撃は可)の持続", "unit": "秒", "min": 0.1, "max": 60 },
     "counterWindowSeconds": { "label": "カウンターの受付時間", "unit": "秒", "min": 0.1, "max": 10 },
-    "windupSeconds": { "label": "発動までの予備動作", "unit": "秒", "min": 0, "max": 5 }
+    "windupSeconds": { "label": "発動までの予備動作", "unit": "秒", "min": 0, "max": 5 },
+    "thirdDamageScale": { "label": "3段目の基礎物理ダメージの倍率", "unit": "倍", "min": 0.1, "max": 20 },
+    "incomingReduction": { "label": "被ダメージの軽減(0.2=20%軽減)", "unit": "割合", "min": 0.01, "max": 0.95 },
+    "sinStackBonus": { "label": "対象の罪状1つあたりの追加ダメージ(0.4=+40%)", "unit": "割合", "min": 0, "max": 5 }
   },
   "cards": {
     "hermes_issen": {
@@ -350,6 +353,51 @@
         "1": { "damageScale": 1.8 },
         "2": { "damageScale": 2.1 },
         "3": { "damageScale": 2.4 }
+      }
+    },
+    "themis_edict": {
+      "name": "戒律の宣告", "designId": null, "cooldownSeconds": 7,
+      "constants": { "castRangeTiles": 4, "element": 0, "weaknessMultiplier": 1 },
+      "levels": {
+        "1": { "damageScale": 1 },
+        "2": { "damageScale": 1.2 },
+        "3": { "damageScale": 1.4 }
+      }
+    },
+    "themis_chain": {
+      "name": "審理の鎖", "designId": null, "cooldownSeconds": 10,
+      "constants": { "castRangeTiles": 3.5, "element": 0, "weaknessMultiplier": 1 },
+      "levels": {
+        "1": { "immobilizeSeconds": 1.5, "slowSeconds": 1.5, "slowFactor": 0.8 },
+        "2": { "immobilizeSeconds": 2, "slowSeconds": 2, "slowFactor": 0.75 },
+        "3": { "immobilizeSeconds": 2.5, "slowSeconds": 2.5, "slowFactor": 0.7 }
+      }
+    },
+    "themis_balance": {
+      "name": "衡平の天秤", "designId": null, "cooldownSeconds": 13,
+      "constants": { "durationSeconds": 2.5, "element": 0, "weaknessMultiplier": 1 },
+      "levels": {
+        "1": { "incomingReduction": 0.2 },
+        "2": { "incomingReduction": 0.3 },
+        "3": { "incomingReduction": 0.4 }
+      }
+    },
+    "themis_sin_mark": {
+      "name": "罪科の刻印", "designId": null, "cooldownSeconds": 0.05,
+      "constants": { "arcDegrees": 110, "radiusTiles": 1.8, "rangeTiles": 3, "pathWidthTiles": 0.9, "comboWindowSeconds": 0.5, "element": 0, "weaknessMultiplier": 1 },
+      "levels": {
+        "1": { "damageScale": 0.9, "secondDamageScale": 1, "thirdDamageScale": 1.15 },
+        "2": { "damageScale": 1, "secondDamageScale": 1.1, "thirdDamageScale": 1.3 },
+        "3": { "damageScale": 1.1, "secondDamageScale": 1.25, "thirdDamageScale": 1.45 }
+      }
+    },
+    "themis_verdict": {
+      "name": "断罪の判決", "designId": null, "cooldownSeconds": 8,
+      "constants": { "castRangeTiles": 4, "sinStackBonus": 0.4, "element": 0, "weaknessMultiplier": 1 },
+      "levels": {
+        "1": { "damageScale": 1.6 },
+        "2": { "damageScale": 1.95 },
+        "3": { "damageScale": 2.3 }
       }
     }
   }

@@ -1,6 +1,7 @@
 "use strict";
 const { IMPLEMENTED: A7_IMPLEMENTED, STILL_RESERVED: A7_RESERVED, OWN_PLUGIN: A7_OWN, SHARED_USERS: A7_SHARED, COUNT: A7_COUNT } = require("./ProjectR_ApolloImplemented.cjs");
 const { IDS: JANUS_IDS, COUNT: JANUS_COUNT } = require("./ProjectR_JanusImplemented.cjs");
+const { IDS: THEMIS_IDS, COUNT: THEMIS_COUNT } = require("./ProjectR_ThemisImplemented.cjs");
 // Phase H1: Hermes「絶」(Zetsu)。実エンジン(実rmmz_* + DotMoveSystem + Hendrix_Action_Engine + 全ProjectR plugin)を
 // 本番のplugin順で読み込み、実Map004(Combat Test Arena)で、物理キーQ/E/X/C/V → requestUseCard → 実DotMoveの経路を通して確認する。
 // これは「MZ実機で確認済み」ではない。描画・音・実マウス・VFX Designerの実再生は対象外(docs/ProjectR_HermesZetsu_H1.md の実機手順を参照)。
@@ -20,8 +21,8 @@ test("旧7枚のCardDefinitions(plugins.js)は変えず、絶は実行時に追�
     const def = deckApi(w).definitions.card(ZETSU);
     assert.deepEqual(plain(def), { cardId: ZETSU, ringId: "hermes", maxCopies: 5, cooldownSeconds: 0.5, maxLevel: 3, rarity: "strong", category: "movement", targetType: "ground" });
     assert.equal(Object.isFrozen(def), true);
-    assert.equal(deckApi(w).definitions.cardDefinitions().length, 14 + A7_COUNT + JANUS_COUNT, "旧7 + 実行時に追加した7(Hermes) + 実装済みのApollo + 実装済みのJanus");
-    assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.registeredRuntimeCards()), [ZETSU, "hermes_sweep", "hermes_reed_flute", "hermes_issen", "hermes_strength", "hermes_veil", "hermes_psychopomp", ...A7_IMPLEMENTED, ...JANUS_IDS]);
+    assert.equal(deckApi(w).definitions.cardDefinitions().length, 14 + A7_COUNT + JANUS_COUNT + THEMIS_COUNT, "旧7 + 実行時に追加した7(Hermes) + 実装済みのApollo + 実装済みのJanus");
+    assert.deepEqual(plain(w.ctx.ProjectRCardCatalog.registeredRuntimeCards()), [ZETSU, "hermes_sweep", "hermes_reed_flute", "hermes_issen", "hermes_strength", "hermes_veil", "hermes_psychopomp", ...A7_IMPLEMENTED, ...JANUS_IDS, ...THEMIS_IDS]);
     // 旧カードの定義は一切変わっていない
     const reed = deckApi(w).definitions.card("hermes_reed_flute_sleep");
     assert.deepEqual([reed.maxCopies, reed.cooldownSeconds, reed.rarity], [2, 12, "strong"]);

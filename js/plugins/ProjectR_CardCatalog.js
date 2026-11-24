@@ -176,9 +176,22 @@
         janusRow("表裏転化", "normal", 12, { workbookTargetType: "Ground", targetType: "ground", category: "movement", runtimeCardId: "janus_inversion" }),
         janusRow("境界断ち", "normal", 7, { workbookTargetType: "Direction", targetType: "direction", category: "attack", runtimeCardId: "janus_boundary_slash" })
     ]);
-    const DESIGNS_BY_GOD = Object.freeze({ hermes: HERMES, apollo: APOLLO, janus: JANUS });
+    // ---- Themis(Stage 3): 通常スキル5枠(戒律の宣告・審理の鎖・衡平の天秤・罪科の刻印・断罪の判決)。実装済みとして登録する。
+    //   designId はワークブックの番号が未確定なので null(仮の番号は作らない)。強さ・最大コピー数は標準(通常 / 3枚)の仮置き(デッキ構築の設計値。フィールド戦闘の装備・発動には影響しない)。
+    //   targetType: 戒律の宣告・審理の鎖・断罪の判決 = ground(カーソル上の敵1体)/ 衡平の天秤 = instant / 罪科の刻印 = direction(フィールド戦闘の基本攻撃の3段コンボ。カード戦闘の手札からは使えない)。確定は各実装(ProjectR_ThemisSkills)。
+    const themisRow = (name, classification, cooldownSeconds, extra) => design(null, name, classification, 3, cooldownSeconds, {
+        god: "themis", ringId: "themis", targetTypeStatus: "confirmed", status: "implemented", implemented: true, implementedLevels: 3,
+        migration: migration(null, "new", "implemented", "Stage 3(Themis)で新ランタイムIDとして実装。旧カードに対応なし。新規。"), ...extra });
+    const THEMIS = Object.freeze([
+        themisRow("戒律の宣告", "normal", 7, { workbookTargetType: "Ground", targetType: "ground", category: "attack", runtimeCardId: "themis_edict" }),
+        themisRow("審理の鎖", "normal", 10, { workbookTargetType: "Ground", targetType: "ground", category: "disrupt", runtimeCardId: "themis_chain" }),
+        themisRow("衡平の天秤", "normal", 13, { workbookTargetType: "その他", targetType: "instant", category: "support", runtimeCardId: "themis_balance" }),
+        themisRow("罪科の刻印", "normal", 0, { workbookTargetType: "Direction", targetType: "direction", category: "attack", runtimeCardId: "themis_sin_mark" }),
+        themisRow("断罪の判決", "normal", 8, { workbookTargetType: "Ground", targetType: "ground", category: "attack", runtimeCardId: "themis_verdict" })
+    ]);
+    const DESIGNS_BY_GOD = Object.freeze({ hermes: HERMES, apollo: APOLLO, janus: JANUS, themis: THEMIS });
     const GOD_IDS = Object.freeze(Object.keys(DESIGNS_BY_GOD));
-    const ALL_DESIGNS = Object.freeze([].concat(HERMES, APOLLO, JANUS));
+    const ALL_DESIGNS = Object.freeze([].concat(HERMES, APOLLO, JANUS, THEMIS));
     const godRows = godId => DESIGNS_BY_GOD[godId] || Object.freeze([]);
     // 設計に含まれない/設計と別カードの現行カード(削除・変更しない)。Apollo 3枚は新設計(設計ID 8/10/15)とは別の旧実装で、共存する。
     const UNMAPPED_LEGACY = Object.freeze([
@@ -240,7 +253,18 @@
         Object.freeze({ cardId: "janus_inversion", ringId: "janus", maxCopies: 3, cooldownSeconds: 12, maxLevel: 3,
             rarity: "normal", category: "movement", targetType: "ground" }),
         Object.freeze({ cardId: "janus_boundary_slash", ringId: "janus", maxCopies: 3, cooldownSeconds: 7, maxLevel: 3,
-            rarity: "normal", category: "attack", targetType: "direction" })
+            rarity: "normal", category: "attack", targetType: "direction" }),
+        // Themis(Stage 3): 罪科の刻印(基本攻撃の3段コンボ。Cooldown 0)/ 戒律の宣告 7秒 / 審理の鎖 10秒 / 衡平の天秤 13秒 / 断罪の判決 8秒。強さ・最大コピー数は標準の仮置き。
+        Object.freeze({ cardId: "themis_edict", ringId: "themis", maxCopies: 3, cooldownSeconds: 7, maxLevel: 3,
+            rarity: "normal", category: "attack", targetType: "ground" }),
+        Object.freeze({ cardId: "themis_chain", ringId: "themis", maxCopies: 3, cooldownSeconds: 10, maxLevel: 3,
+            rarity: "normal", category: "disrupt", targetType: "ground" }),
+        Object.freeze({ cardId: "themis_balance", ringId: "themis", maxCopies: 3, cooldownSeconds: 13, maxLevel: 3,
+            rarity: "normal", category: "support", targetType: "instant" }),
+        Object.freeze({ cardId: "themis_sin_mark", ringId: "themis", maxCopies: 3, cooldownSeconds: 0, maxLevel: 3,
+            rarity: "normal", category: "attack", targetType: "direction" }),
+        Object.freeze({ cardId: "themis_verdict", ringId: "themis", maxCopies: 3, cooldownSeconds: 8, maxLevel: 3,
+            rarity: "normal", category: "attack", targetType: "ground" })
     ]);
     const registerRuntimeCards = () => {
         const registry = root.ProjectRCardDeck?.definitions;

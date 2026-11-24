@@ -332,12 +332,12 @@ test("重複の拒否: 同じスキルは2つの枠に登録できない(候補�
 
 test("Q枠(奥義): 装備中で奥義が実装済みの指輪ごとに1つ。選び直すと置き換わり、空欄にできる。未実装・未装備の指輪は出ない", () => {
     const w = world();
-    w.own("hermes", "apollo", "themis");
+    w.own("hermes", "apollo", "athena");
     const scene = w.open();
-    for (const id of ["hermes", "apollo", "themis"]) equipViaScene(scene, id);
+    for (const id of ["hermes", "apollo", "athena"]) equipViaScene(scene, id);
     const choices = plain(w.core().loadout.choices("q"));
     assert.deepEqual(choices.map(c => c.kind), ["clear", "ultimate", "ultimate"]);
-    assert.deepEqual(choices.filter(c => c.kind === "ultimate").map(c => c.ringId), ["hermes", "apollo"], "themis は奥義が未実装なので出ない");
+    assert.deepEqual(choices.filter(c => c.kind === "ultimate").map(c => c.ringId), ["hermes", "apollo"], "athena は奥義が未実装なので出ない");
     assert.deepEqual(choices.filter(c => c.kind === "ultimate").map(c => c.name), ["ヘルメースの奥義", "アポロンの奥義"]);
     assignViaScene(scene, "q", "apollo");
     assert.equal(w.rl().getUltimate(), "apollo");
@@ -348,7 +348,7 @@ test("Q枠(奥義): 装備中で奥義が実装済みの指輪ごとに1つ。�
     assignViaScene(scene, "lmb", "hermes_sweep");
     assert.equal(w.rl().getUltimate(), "hermes");
     assert.deepEqual(plain(w.core().loadout.assign("q", { kind: "skill", skillId: "hermes_issen" })).ok, false);
-    assert.deepEqual(plain(w.core().loadout.assign("q", { kind: "ultimate", ringId: "themis" })).reason, "ULTIMATE_NOT_IMPLEMENTED");
+    assert.deepEqual(plain(w.core().loadout.assign("q", { kind: "ultimate", ringId: "athena" })).reason, "ULTIMATE_NOT_IMPLEMENTED");
     assert.equal(w.rl().getUltimate(), "hermes");
     clearViaScene(scene, "q");
     assert.equal(w.rl().getUltimate(), null);
@@ -357,7 +357,7 @@ test("Q枠(奥義): 装備中で奥義が実装済みの指輪ごとに1つ。�
     assert.deepEqual(plain(w.core().loadout.choices("q").filter(c => c.kind === "ultimate").map(c => c.ringId)), ["hermes"]);
     // 奥義が登録できる指輪が無いときは、枠を開けない
     equipViaScene(scene, "hermes");        // hermesを外す
-    assert.deepEqual(w.state().equipped, ["themis"]);
+    assert.deepEqual(w.state().equipped, ["athena"]);
     openSlot(scene, "q");
     assert.equal(scene._choices.active, false);
     assert.match(scene._notice, /登録できる奥義がありません/);

@@ -37,7 +37,7 @@ function world({ q = "janus", core = null, rings = ["janus"], begin = true } = {
 
 test("【1】登録: Janus の handler がある → ULTIMATE 画面・Q 枠で選べる。Q が空なら自動では入らない。Core の選択は触らない(Q = janus・Core = hermes)", () => {
     const w = world({ q: "janus", core: "hermes", rings: ["janus", "hermes"] });
-    assert.equal(UA(w).hasUltimateHandler("janus"), true); assert.deepEqual(plain(UA(w).getRegisteredUltimateGods()), ["apollo", "hermes", "janus"]);
+    assert.equal(UA(w).hasUltimateHandler("janus"), true); assert.deepEqual(plain(UA(w).getRegisteredUltimateGods()), ["apollo", "hermes", "janus", "themis"], "Stage 3 で Themis の奥義も登録される(Athena は未実装)");
     assert.equal(plain(JU(w).getRegistration()).ok, true);
     const entry = plain(w.ctx.ProjectRMenuCore.ultimate.entries()).find(e => e.ringId === "janus"); assert.equal(entry.implemented, true, "ULTIMATE 画面: 実装済み");
     assert.equal(plain(FC(w).getUltimateState()).ringId, "janus"); assert.equal(GM(w).getPersistentUltimateRingId(), "janus"); assert.equal(GM(w).getPersistentUltimateGodId(), "janus");
