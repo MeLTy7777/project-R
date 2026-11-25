@@ -67,6 +67,7 @@ var $plugins =
 ,{"name":"ProjectR_ThemisUltimate","status":true,"description":"v0.1.0 ProjectR Themis Ultimate「神罰・最後の審判」。","parameters":{"CastRangeTiles":"4","DelaySeconds":"0.8","RadiusTiles":"2.8","DamageScale":"2.5","SinStackBonus":"0.2"}}
 ,{"name":"ProjectR_AthenaSkills","status":true,"description":"v0.1.0 ProjectR Athena 通常スキル(アイギスの加護・護槍旋陣・破陣の盾衝・女神の迎撃)と断陣の投槍の投擲。断陣の投槍の入力は FieldCombat。","parameters":{}}
 ,{"name":"ProjectR_AthenaUltimate","status":true,"description":"v0.1.0 ProjectR Athena Ultimate「アイギス・不落の戦陣」。","parameters":{"RadiusTiles":"3","DurationSeconds":"6","DamageScale":"1.8","DamageReduction":"0.6"}}
+,{"name":"ProjectR_RingRewards","status":true,"description":"v0.1.0 ProjectR 指輪の報酬(Stage 5-B1): 通信ランクを満たしたときの指輪の入手と、スキルの固定レベル報酬をイベントから呼べるようにします。","parameters":{}}
 ,{"name":"ProjectR_CardModifiers","status":true,"description":"v1.0.0 時限モディファイア(通常武器ヒット強化・移動速度係数)。戦闘時間で進み、保存しない。","parameters":{}}
 ,{"name":"ProjectR_CardTargeting","status":true,"description":"v1.0.0 ProjectR カード対象指定の共通層: Cursor(マウスに追従する範囲)の座標変換と円の判定。","parameters":{}}
 ,{"name":"ProjectR_TargetEligibility","status":true,"description":"v1.0.0 ProjectR 敵の標的選択の適格性(秘匿): Hendrixの検知・キャッシュに接続。","parameters":{"HostileTag":"<enemy>"}}
