@@ -5,7 +5,7 @@
  * @base ProjectR_CardDeckCore
  * @orderAfter ProjectR_CardDeckCore
  * @orderAfter ProjectR_RingLoadout
- * @orderAfter ProjectR_HermesProductionDeck
+ * @orderAfter ProjectR_CommunicationRank
  *
  * @command AcquireRing
  * @text 通信ランクを満たしたら指輪を入手する
@@ -42,7 +42,7 @@
  *
  * @arg resultVariableId
  * @text 結果コードを入れる変数(任意)
- * @desc 0なら書きません。ランク変数と同じ番号は指定できません(何もせず、このイベントを中断します)。コードの意味はヘルプを参照。
+ * @desc 0なら書きません。ランク用の変数は指定できません(何もせず、このイベントを中断します)。コードの意味はヘルプを参照。
  * @type variable
  * @default 0
  *
@@ -75,7 +75,7 @@
  *
  * @arg resultVariableId
  * @text 結果コードを入れる変数(任意)
- * @desc 0なら書きません。コードの意味はヘルプを参照。
+ * @desc 0なら書きません。通信ランクに登録した変数は指定できません(何もせず、このイベントを中断します)。コードの意味はヘルプを参照。
  * @type variable
  * @default 0
  *
@@ -96,7 +96,8 @@
  * 【指輪の入手 AcquireRing】
  *   対象は apollo / janus / themis / athena だけです(hermes は本編の入手のまま。ここでは扱いません)。
  *   次の順で判定し、最初に当てはまったもので終わります。
- *     1) 結果の変数がランク変数と同じ番号                      → -1  (結果は書けないので、このイベントの処理を中断します。下の【設定の誤り】)
+ *     0) 通信ランクの登録表に誤りがある                        → -1  (何も書かず、このイベントの処理を中断します。下の【設定の誤り】)
+ *     1) 結果の変数がランク用の変数と重なる                    → -1  (結果は書けないので、このイベントの処理を中断します。下の【設定の誤り】)
  *     2) 結果の変数・完了スイッチに、使えない番号を指定した      → -1
  *     3) 指輪のIDが不正 / 対象外                              → -2
  *     4) ランク変数 または 必要ランク が未設定(0・空・不正)     → -1  (ランク変数が範囲外のときも -1)
@@ -111,12 +112,14 @@
  * 【スキルのレベル RaiseSkillLevel】
  *   目標は Lv2 か Lv3 だけです。実際のレベルは max(いまのレベル, min(目標, そのカードの最大レベル)) で、下げません。
  *   そのスキルの指輪を主人公が持っているときだけ成功します(hermes のスキルは hermes の指輪)。次の順で判定します。
- *     1) 結果の変数・完了スイッチに、使えない番号を指定した          → -1
- *     2) スキルIDが指輪のスキルでない / 目標が 2・3 以外 / 未設定   → -2
- *     3) その指輪を主人公が持っていない(未所持 / 仲間が持っている)  → -6
- *     4) 戦闘中                                                    → -4
- *     5) いまのレベルが目標(上限)以上                              → 2   (何も変えない)
- *     6) 引き上げた                                                → 1
+ *     0) 通信ランクの登録表に誤りがある                              → -1  (何も書かず、このイベントの処理を中断します)
+ *     1) 結果の変数が、通信ランクに登録した変数                      → -1  (このイベントの処理を中断します。下の【設定の誤り】)
+ *     2) 結果の変数・完了スイッチに、使えない番号を指定した          → -1
+ *     3) スキルIDが指輪のスキルでない / 目標が 2・3 以外 / 未設定   → -2
+ *     4) その指輪を主人公が持っていない(未所持 / 仲間が持っている)  → -6
+ *     5) 戦闘中                                                    → -4
+ *     6) いまのレベルが目標(上限)以上                              → 2   (何も変えない)
+ *     7) 引き上げた                                                → 1
  *   -6 のときは、レベル・カードの所持フラグ・所持枚数・完了スイッチを変えません(すでに保存されているレベルもそのままです)。
  *   カードの所持フラグ・所持枚数・ほかのスキル・戦闘の処理は変えません(ほかのスキルのレベルも変わりません)。
  *
@@ -135,10 +138,17 @@
  *   イベントのページ条件に使えば「成功してから完了にする」ことができます(失敗したら、もう一度会話できます)。
  *   スイッチを OFF に戻す処理は、このプラグインは行いません。
  *
+ * 【通信ランクの登録表の誤り】ProjectR_CommunicationRank の「通信ランクの登録」が読めない、または使えない登録が1件でもある場合は、
+ *   守るべきランク用の変数がどれか分からないため、指輪の入手もレベル上げも(hermes のスキルを含め)何もしません。結果の変数・完了スイッチも
+ *   書かず、そのイベントの処理を中断します(前に残った成功の値で先へ進ませないためです)。API の戻り値は code -1 / status rankConfigurationInvalid です。
+ *   空の登録([])や、通信ランクのプラグインが無い場合は、誤りではありません。
+ *
  * 【設定の誤り】「結果の変数」「完了スイッチ」は、0(または空)なら使いません。それ以外で、データベースの範囲に無い番号などを指定すると、
  *   何も付与せず・レベルも上げずに -1 にします(結果の変数が使える番号なら -1 を書き、完了スイッチは触りません)。
- *   指輪の入手で「結果の変数」に「ランク変数」と同じ番号を指定した場合は、結果を書ける場所がありません(書くとランクが壊れ、書かないと
- *   ランクの値が 1 や 2 のとき成功に見えます)。何も付与せず、ランク変数も完了スイッチも変えずに、そのイベントの処理を中断します
+ *   「結果の変数」がランク用の変数と重なる場合は、結果を書ける場所がありません(書くとランクが壊れ、書かないとランクの値が 1 や 2 のとき
+ *   成功に見えます)。ランク用の変数 = 指輪の入手の「ランクを保存している変数」と、ProjectR_CommunicationRank の「通信ランクの登録」の
+ *   すべての変数です(レベル上げも同じ。通信ランクのプラグインが無い・登録が空なら、指輪の入手の変数だけ)。
+ *   何も付与せず・レベルも上げず、ランクの変数も完了スイッチも変えずに、そのイベントの処理を中断します
  *   (後ろの命令は実行されません。標準の「イベント処理の中断」と同じです)。原因はコンソール(F8)の警告に出ます。
  *   自動実行・並列処理のイベントでは、設定を直すまで同じ警告が繰り返し出ます。コモンイベントの中で呼んだ場合、中断するのは
  *   そのコモンイベントだけで、呼び出し元は続きます。スクリプトから API を呼んだ場合は中断しないので、戻り値の ok を確かめてください。
@@ -183,12 +193,35 @@
         return null;
     };
 
-    // 結果の書き出し(任意)。結果の変数 = コード。完了スイッチ = 成功か済みのときだけ ON(失敗では触らない)。
+    // 通信ランク(ProjectR_CommunicationRank)に登録されたランク用の変数。そのプラグインが無い・登録が空なら、何も重ならない。
+    const isRegisteredRankVariable = id => {
+        const ranks = root.ProjectRCommunicationRank;
+        return !!ranks && typeof ranks.rankVariableIds === "function" && ranks.rankVariableIds().includes(id);
+    };
+    // 通信ランクの登録表に誤りがあるとき(ProjectR_CommunicationRank の fail closed に合わせる)。守るべきランク用の変数がどれか分からないので、
+    // 指輪・レベル・結果の変数・スイッチを何も変えず、呼び出し元のイベントも中断する(残った成功の値で先へ進ませない)。プラグインが無い・登録が空なら誤りではない。
+    const rankConfigurationError = () => {
+        const ranks = root.ProjectRCommunicationRank;
+        const list = ranks && typeof ranks.problems === "function" ? ranks.problems() : [];
+        return list.length ? result(RESULT.NOT_CONFIGURED, "rankConfigurationInvalid", { configurationInvalid: true, abortEvent: true, problems: list }) : null;
+    };
+    // 結果の変数が、ランク用の変数(このコマンドの「ランクを保存している変数」/ 通信ランクに登録した変数)と重なる指定。
+    // 結果を書くとランクが壊れ、書かないと残ったランクの値(1・2)が成功のコードに見える。何もせずに拒否し、プラグインコマンドから呼ばれた場合は、
+    // 呼び出し元のイベントの処理も中断する(abortEvent)。
+    const resultCollision = (options, ownRankVariableId) => {
+        const resultVar = toInt(options.resultVariableId);
+        if (!validVariableId(resultVar) || (resultVar !== ownRankVariableId && !isRegisteredRankVariable(resultVar))) return null;
+        return result(RESULT.NOT_CONFIGURED, "resultVariableIsRankVariable", { rankVariableId: resultVar, abortEvent: true });
+    };
+
+    // 結果の書き出し(任意)。結果の変数 = コード。完了スイッチ = 成功か済みのときだけ ON(失敗では触らない)。ランク用の変数には書かない。
     const publish = (res, options, protectedVariableId) => {
         if (!hasGameData()) return res;
-        const resultVar = toInt(options.resultVariableId), doneSwitch = toInt(options.completedSwitchId);
-        if (validVariableId(resultVar) && resultVar !== protectedVariableId) $gameVariables.setValue(resultVar, res.code);
-        if (res.ok && validSwitchId(doneSwitch)) $gameSwitches.setValue(doneSwitch, true);
+        if (!res.configurationInvalid) {                                                  // 登録表の誤り: 結果の変数もスイッチも書かない
+            const resultVar = toInt(options.resultVariableId), doneSwitch = toInt(options.completedSwitchId);
+            if (validVariableId(resultVar) && resultVar !== protectedVariableId && !isRegisteredRankVariable(resultVar)) $gameVariables.setValue(resultVar, res.code);
+            if (res.ok && validSwitchId(doneSwitch)) $gameSwitches.setValue(doneSwitch, true);
+        }
         if (!res.ok && typeof console !== "undefined") console.warn(`[${PLUGIN}] ${res.status}:`, JSON.stringify(res));
         return res;
     };
@@ -205,10 +238,12 @@
     const acquireCore = options => {
         const d = deck();
         if (!d || !hasGameData()) return result(RESULT.FAILED, "noGameData");
+        const broken = rankConfigurationError();
+        if (broken) return broken;
         const rankVar = toInt(options.rankVariableId);
-        // 最優先: 結果の変数がランク変数と同じ。結果を書くとランクが壊れ、書かないと残ったランクの値(1・2)が成功のコードに見える。
-        // 何もせずに拒否し、プラグインコマンドから呼ばれた場合は、呼び出し元のイベントの処理も中断する(abortEvent)。
-        if (validVariableId(rankVar) && toInt(options.resultVariableId) === rankVar) return result(RESULT.NOT_CONFIGURED, "resultVariableIsRankVariable", { rankVariableId: rankVar, abortEvent: true });
+        // 最優先: 結果の変数がランク用の変数と重なる(上の resultCollision)。
+        const collision = resultCollision(options, rankVar);
+        if (collision) return collision;
         const badOutput = outputError(options);
         if (badOutput) return badOutput;
         const ringId = text(options.ringId);
@@ -245,6 +280,10 @@
     const raiseCore = options => {
         const d = deck();
         if (!d || !hasGameData()) return result(RESULT.FAILED, "noGameData");
+        const broken = rankConfigurationError();
+        if (broken) return broken;
+        const collision = resultCollision(options, NaN);
+        if (collision) return collision;
         const badOutput = outputError(options);
         if (badOutput) return badOutput;
         const skillId = String(options.skillId == null ? "" : options.skillId).trim();
@@ -268,13 +307,14 @@
     const raiseSkillLevel = (options = {}) => publish(raiseCore(options), options, 0);
 
     if (typeof PluginManager !== "undefined" && PluginManager.registerCommand) {
-        // abortEvent(結果の変数 = ランク変数): 結果を返す場所が無いので、後ろの条件分岐がランクの値を結果と読まないように、このイベントの処理を中断する(標準の「イベント処理の中断」と同じ)。
-        PluginManager.registerCommand(PLUGIN, "AcquireRing", function(args) {
-            const res = acquireRing(args || {});
+        // abortEvent(結果の変数がランク用の変数と重なる / 通信ランクの登録表の誤り): 結果を返せないので、後ろの条件分岐がランクの値を結果と読まないように、このイベントの処理を中断する(標準の「イベント処理の中断」と同じ)。
+        const handler = run => function(args) {
+            const res = run(args || {});
             if (res.abortEvent && this && typeof this.command115 === "function") this.command115();
             return res;
-        });
-        PluginManager.registerCommand(PLUGIN, "RaiseSkillLevel", args => raiseSkillLevel(args || {}));
+        };
+        PluginManager.registerCommand(PLUGIN, "AcquireRing", handler(acquireRing));
+        PluginManager.registerCommand(PLUGIN, "RaiseSkillLevel", handler(raiseSkillLevel));
     }
 
     root.ProjectRRingRewards = Object.freeze({ VERSION: "0.1.0", RESULT, SUPPORTED_RINGS, acquireRing, raiseSkillLevel, validSkillIds });
