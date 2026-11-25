@@ -176,4 +176,50 @@ test("【5d】保存データ: コンボの状態・投擲の再使用・押し�
     FC(w).end("test"); assert.equal(snap(), s0, "保存データは変わらない");
 });
 
+// ---------------------------------------------------------------- 【6】HUD(実画面が読む FieldCombat.getHudSlots)----------------------------------------------------------------
+//   断陣の投槍の枠: 投擲の再使用 10 秒を「T 9.9」のカウントダウンで出す(タップのコンボは再使用中も使える = available / ready のまま)・長押しの溜め(0.1〜0.25 秒)は CHARGE。ほかのコンボ・黄金の矢の表示は従来どおり。
+const hudAt = (w, slot = "lmb") => plain(FC(w).getHudSlots()).find(s => s.slot === SLOT_NAME[slot]);
+const tOf = detail => { const m = /T (\d+\.\d)$/.exec(detail || ""); return m ? Number(m[1]) : null; };
+test("【6】HUD: 投擲の再使用は T のカウントダウン(1 秒で約 1.0 減る・10 秒で READY に戻る)・タップのコンボは再使用中も使える(available のまま・コンボの段は n/2 と T が並ぶ)", () => {
+    const w = spearWorld(); aimDegree(w, 0, 3); placePolar(w, 3, 1.3, 0);
+    let h = hudAt(w); assert.equal(h.detail, "READY"); assert.equal(h.lock.state, "ready"); assert.equal(h.tone, "ok");
+    press(w, "lmb", 18); frames(w, 5); assert.equal(thrown(w), 1);
+    h = hudAt(w); assert.match(h.detail, /^T \d+\.\d$/, "投げた直後から T のカウントダウン: " + h.detail); const t0 = tOf(h.detail); near(t0, 10, 0.4, "T は約 10 秒から"); assert.equal(h.tone, "muted"); assert.equal(h.lock.state, "cooldown");
+    assert.deepEqual([h.available, h.disabled, h.state], [true, false, "ready"], "再使用中でも枠は使える(タップのコンボ)");
+    frames(w, 60); const t1 = tOf(hudAt(w).detail); near(t0 - t1, 1.0, 0.25, "1 秒で約 1.0 減る");
+    resetHp(w); press(w); frames(w, 4); h = hudAt(w); assert.match(h.detail, /^1\/2 T \d+\.\d$/, "タップのコンボ 1/2 と T が並ぶ: " + h.detail); assert.equal(combo(w).step, 1); assert.equal(h.combo.step, 1); assert.equal(h.tone, "ok");
+    frames(w, 30); press(w); frames(w, 3); h = hudAt(w); assert.match(h.detail, /^強撃! T \d+\.\d$/, "2 段目(強撃)の瞬間: " + h.detail); assert.equal(h.tone, "warn");
+    assert.ok(lost(w, 3) > 0, "再使用中でもタップのコンボは当たる");
+    frames(w, 560); assert.equal(hudAt(w).detail, "READY", "10 秒で明けると READY に戻る"); assert.equal(hudAt(w).lock.state, "ready");
+    FC(w).end("test");
+});
+test("【6b】HUD: 長押しの溜め = CHARGE は、押して 0.1 秒(6 フレーム)から 0.25 秒(15 フレーム)の間だけ。短いタップでは出ない。再使用中に押し続けても CHARGE にはならず T のまま。投げたあと・離したあとは消える", () => {
+    const w = spearWorld(); aimDegree(w, 0, 3); placePolar(w, 3, 1.3, 0);
+    down(w, "lmb"); frames(w, 3); assert.equal(hudAt(w).detail, "READY", "押した直後(0.1 秒の前)は出さない(短いタップでちらつかせない)");
+    frames(w, 5); const c1 = hudAt(w); assert.equal(c1.detail, "CHARGE", "押して 8 フレーム: " + c1.detail); assert.equal(c1.tone, "warn"); assert.equal(c1.lock.state, "charging");
+    frames(w, 10); assert.equal(thrown(w), 1); assert.match(hudAt(w).detail, /^T \d+\.\d$/, "0.25 秒で投げたあとは T(押し続けていても CHARGE は残らない)");
+    up(w, "lmb"); frames(w, 3); assert.match(hudAt(w).detail, /^T /);
+    // 再使用中の長押し: CHARGE にならない(投げられないので T のまま)
+    down(w, "lmb"); frames(w, 9); assert.match(hudAt(w).detail, /^T \d+\.\d$/, "再使用中は CHARGE を出さない: " + hudAt(w).detail); up(w, "lmb"); frames(w, 3);
+    FC(w).end("test");
+    const t = spearWorld(); aimDegree(t, 0, 3); placePolar(t, 3, 1.3, 0); const seen = new Set();
+    for (let i = 0; i < 3; i++) { down(t, "lmb"); for (let k = 0; k < 3; k++) { frames(t, 1); seen.add(hudAt(t).detail); } up(t, "lmb"); for (let k = 0; k < 40; k++) { frames(t, 1); seen.add(hudAt(t).detail); } }
+    assert.equal([...seen].includes("CHARGE"), false, "短いタップ(3 フレーム)では CHARGE は一度も出ない: " + [...seen].join(","));
+    FC(t).end("test");
+});
+test("【6c】HUD: ほかの表示は従来どおり。薙ぎ払い・双門・刻印の枠に lock は付かず(READY / n/3 / n/2)、黄金の矢 Lv3 は溜め・ビーム・ビームのあとの B のカウントダウンのまま。投槍が別の枠にあっても、それぞれの表示のまま", () => {
+    const w = spearWorld({ slots: { lmb: "hermes_sweep", e: SPEAR }, rings: ["athena", "hermes"] }); aimDegree(w, 0, 3); placePolar(w, 3, 1.2, 0);
+    let a = hudAt(w, "lmb"); assert.equal(a.detail, "READY"); assert.equal("lock" in a, false, "薙ぎ払いの枠には lock が付かない"); assert.equal(hudAt(w, "e").lock.state, "ready"); assert.equal(hudAt(w, "e").detail, "READY");
+    press(w, "lmb"); frames(w, 3); a = hudAt(w, "lmb"); assert.equal(a.detail, "1/3"); assert.equal("lock" in a, false);
+    frames(w, 40); FC(w).end("test");
+    const j = spearWorld({ slots: { lmb: "janus_dual_gate" }, rings: ["athena", "janus"] }); aimDegree(j, 0, 3); placePolar(j, 3, 1.2, 0);
+    press(j); frames(j, 3); const jd = hudAt(j, "lmb"); assert.equal(jd.detail, "1/2"); assert.equal("lock" in jd, false); FC(j).end("test");
+    const t = spearWorld({ slots: { lmb: "themis_sin_mark" }, rings: ["athena", "themis"] }); aimDegree(t, 0, 3); placePolar(t, 3, 1.2, 0);
+    press(t); frames(t, 3); const td = hudAt(t, "lmb"); assert.equal(td.detail, "1/3"); assert.equal("lock" in td, false); FC(t).end("test");
+    const g = spearWorld({ slots: { x: GV, lmb: SPEAR }, rings: ["athena", "apollo"] }); aimDegree(g, 0, 3); placePolar(g, 3, 3.0, 0);
+    down(g, "x"); frames(g, 25); assert.equal(hudAt(g, "x").detail, "CHARGE", "黄金の矢の溜め(0.25 秒を過ぎたら)は従来どおり CHARGE"); frames(g, 40); assert.equal(hudAt(g, "x").detail, "BEAM", "ビーム中は BEAM"); up(g, "x"); frames(g, 5);
+    assert.match(hudAt(g, "x").detail, /^B \d+\.\d$/, "ビームのあとは B のカウントダウン(従来どおり): " + hudAt(g, "x").detail); assert.equal("lock" in hudAt(g, "x"), false);
+    assert.equal(hudAt(g, "lmb").detail, "READY", "同時に装備した投槍は、別の表示のまま"); FC(g).end("test");
+});
+
 console.log(`\nall ${passed} passed`);

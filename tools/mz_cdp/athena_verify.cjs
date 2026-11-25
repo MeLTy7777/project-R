@@ -148,6 +148,11 @@ const SLOTS = ["lmb", "shift", "e", "x", "c"];
     rec("A3-lock 再使用中の長押しは何も出ない・タップのコンボは使える", noThrow && log2.some(e => e.outcome === "throwFailed" && e.reason === "throwLock") && tapDmg > 0, JSON.stringify({ noThrow, tapDmg, lock: await lockNow() }));
     const hudLock = await json(`${FC}.getHudState().slots.filter(function(s){ return s.slot === 'attack'; })[0].lock`);
     rec("A3-hud HUD に投擲の再使用(cooldown)が出る", !!hudLock && hudLock.state === "cooldown" && hudLock.cooldown > 0, JSON.stringify(hudLock));
+    // HUD(実画面が読む getHudSlots): T のカウントダウンが出て、減っていく。枠は使える(タップのコンボ可)
+    const hudAtk = () => json(`${FC}.getHudSlots().filter(function(s){ return s.slot === 'attack'; })[0]`);
+    const tv = x => { const m = /T (\d+\.\d)$/.exec(x.detail || ""); return m ? Number(m[1]) : null; };
+    const hs1 = await hudAtk(); await sleep(1300); const hs2 = await hudAtk();
+    rec("A3-hud-t HUD に T のカウントダウンが出て、1.3 秒で減る・枠は使える(タップのコンボ可)", tv(hs1) !== null && tv(hs2) !== null && tv(hs2) < tv(hs1) - 0.8 && hs1.available === true && hs1.disabled === false && hs1.lock.state === "cooldown", JSON.stringify({ d1: hs1.detail, d2: hs2.detail, available: hs1.available, lock: hs1.lock }));
     await s.shot("athena_A3_lock");
     // Lv の威力(投擲 160 / 220 %)
     const out = {};
@@ -155,6 +160,10 @@ const SLOTS = ["lmb", "shift", "e", "x", "c"];
     for (const n of [1, 3]) { await lvl("athena_spear_throw", n); await setSlots({ lmb: "athena_spear_throw" }); await fresh(1.5, 0); await aimAt(E1); await sleep(120); const h = await hp(E1); await HOLDFOR.lmb(450); await sleep(500); out[n] = h - await hp(E1); }
     rec("A3-lv Lv3 / Lv1 の投擲 = 220 / 160 ≒ 1.375", out[1] > 0 && near(out[3] / out[1], 2.2 / 1.6, 0.2), JSON.stringify(out));
     await lvl("athena_spear_throw", 1);
+    // 長押しの溜めの表示: 押して 0.1〜0.25 秒の間だけ CHARGE(押している最中の画面の表示データ)
+    await lvl("athena_spear_throw", 1); await setSlots({ lmb: "athena_spear_throw" }); await fresh(1.5, 0); await aimAt(E1); await sleep(120);
+    await c.mouseDown(); await sleep(110); const chg = await hudAtk(); await c.mouseUp(); await sleep(500);
+    rec("A3-chg 長押しの途中(0.1 秒以降)の HUD は CHARGE", chg.detail === "CHARGE" && chg.lock.state === "charging", JSON.stringify({ detail: chg.detail, lock: chg.lock }));
     // 10 秒後にまた投げられる(実時間)
     await setSlots({ lmb: "athena_spear_throw" }); await fresh(1.5, 0); await aimAt(E1); await sleep(120); await HOLDFOR.lmb(450); await sleep(300);
     await sleep(10300); const hh = await hp(E1); await HOLDFOR.lmb(450); await sleep(400);
@@ -263,6 +272,7 @@ const SLOTS = ["lmb", "shift", "e", "x", "c"];
     await fresh(1.2, 0); await aimAt(E1); await sleep(120);
     for (let i = 0; i < 3; i++) { await KEYFOR.lmb(); await sleep(i < 2 ? 380 : 700); }
     const sw = await json(`${FC}.getLastResult()`); rec("A8-a 薙ぎ払い 3段", sw.step === 3 && sw.skillId === "hermes_sweep", JSON.stringify(sw));
+    rec("A8-hud 薙ぎ払いの HUD は従来どおり(lock は付かない・READY か強撃!。投槍へ切り替える前)", await json(`(function(){ var a = ${FC}.getHudSlots().filter(function(s){ return s.slot === 'attack'; })[0]; return !!a && a.lock === undefined && /^(強撃!|READY)$/.test(a.detail); })()`), "");
     await KEYFOR.e(); await sleep(400); const sp = await json(`${FC}.getLastResult()`); rec("A8-b 断陣の投槍へ切り替えると1段目から", sp.step === 1 && sp.skillId === "athena_spear_throw", JSON.stringify(sp));
     for (const [sl, label] of [["lmb", "マウス"], ["shift", "Shift"], ["x", "X"]]) {
       rec(`A8-${sl}-0 ${sl} に黄金の矢(Lv3)・C に断陣の投槍`, await setSlots({ [sl]: "apollo_golden_volley", c: "athena_spear_throw" }), "");

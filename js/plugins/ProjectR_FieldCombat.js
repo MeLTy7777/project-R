@@ -2465,10 +2465,13 @@
         return { state, cooldown: cd, total: BEAM_RULE.cooldownSeconds, ratio: cd > 0 ? Math.min(1, cd / BEAM_RULE.cooldownSeconds) : 0 };
     };
     // 断陣の投槍の再使用(長押しの投擲だけ。タップのコンボの Cooldown 0 とは別): ready / charging(押している)/ cooldown(10秒)
+    //   charging は、押してから THROW_FEEDBACK_FRAMES(6 フレーム = 0.1 秒)を過ぎてから(短いタップのたびにちらつかせない)。再使用中は、押し続けても charging にしない(投げられないので、T の残りの表示のまま)。
+    const THROW_FEEDBACK_FRAMES = 6;
     const throwView = id => {
         if (id !== ATHENA_SPEAR || !holdCapable(id)) return null;
         const cd = rt.beamCd[id] || 0, total = spearSpec().lockSeconds, h = Object.values(rt.holds).find(x => x.skillId === id);
-        return { state: cd > 0 ? "cooldown" : (h && h.mode === "throw" && h.phase === "tap") ? "charging" : "ready", cooldown: cd, total, ratio: cd > 0 ? Math.min(1, cd / total) : 0 };
+        const charging = cd <= 0 && !!h && h.mode === "throw" && h.phase === "tap" && rt.frame - h.downAt >= THROW_FEEDBACK_FRAMES;
+        return { state: cd > 0 ? "cooldown" : charging ? "charging" : "ready", cooldown: cd, total, ratio: cd > 0 ? Math.min(1, cd / total) : 0 };
     };
     const getHudState = () => {
         const gauge = safe(() => { const g = root.ProjectRUltimateGauge; const max = g?.getUltimateGaugeMax?.() ?? 0; return max > 0 ? { gauge: g.getUltimateGauge(), max } : null; }, null);
@@ -2565,8 +2568,13 @@
         const make = slot => {
             const d = slotDef(slot), view = bySlot[slot];
             if (isRingSlot(slot) ? d.kind === "combo" : slot === "attack") {            // 薙ぎ払い(旧い固定 = LMB / 指輪ロードアウト = 入っているキー): 近接3段コンボ(進み具合)
-                const ic = slotIconOf(slot, d), c = state.combo;
-                return { mode: "field", key: d.key, slot, name: d.label, detail: c.finisherFlash ? "強撃!" : (c.step > 0 ? `${c.step}/${c.max}` : "READY"), tone: c.finisherFlash ? "warn" : "ok", accent: "",
+                const ic = slotIconOf(slot, d), c = state.combo, lv = view && view.lock ? view.lock : null;
+                let detail = c.finisherFlash ? "強撃!" : (c.step > 0 ? `${c.step}/${c.max}` : "READY"), tone = c.finisherFlash ? "warn" : "ok";
+                if (lv) {                                                                      // 断陣の投槍(Stage 5-A): 投擲の再使用 10 秒を、コンボの表示と並べて出す(タップのコンボは再使用中も使える)
+                    if (lv.state === "charging") { detail = "CHARGE"; tone = "warn"; }          // 長押しの溜め(0.25 秒で投げる)
+                    else if (lv.state === "cooldown") { const t = `T ${lv.cooldown.toFixed(1)}`; detail = c.finisherFlash || c.step > 0 ? `${detail} ${t}` : t; tone = c.finisherFlash ? "warn" : c.step > 0 ? "ok" : "muted"; }
+                }
+                return { mode: "field", key: d.key, slot, name: d.label, detail, tone, accent: "", ...(lv ? { lock: { state: lv.state, cooldown: lv.cooldown, total: lv.total, ratio: lv.ratio } } : {}),
                     iconIndex: ic.iconIndex, imageName: ic.imageName, skillId: 0, available: true, disabled: false, selected: c.step > 0 || c.finisherFlash, cooldown: { active: false, remaining: 0, total: 0 },
                     state: "ready", ratio: 0, alert: false, count: null, combo: { step: c.step, max: c.max, timeLeft: c.timeLeft, finisher: !!c.finisherFlash } };
             }

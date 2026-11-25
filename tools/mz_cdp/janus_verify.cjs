@@ -89,8 +89,8 @@ const SLOTS = ["lmb", "shift", "e", "x", "c"];
       await begin(); await park(); await place(44, 12); await bigAll();
       await putEnemy(E1, 1.2, 0); await putEnemy(E2, 2.6, 0); await sleep(200); await aimAt(E1); await sleep(120);
       const h1a = await hp(E1), h2a = await hp(E2);
-      await KEYFOR[sl](); await sleep(500);                                                     // 1段目
-      const h1b = await hp(E1), h2b = await hp(E2);
+      await KEYFOR[sl]();                                                                       // 1段目
+      await sleep(380); const [h1b, h2b] = await json(`[$gameMap.getCurrentEventHp(${E1}), $gameMap.getCurrentEventHp(${E2})]`);          // 受付(硬直 0.3 秒のあと 0.5 秒)の真ん中で2回目を押す。2つの HP は1回の評価で読む(往復を減らす)
       await KEYFOR[sl](); await sleep(700);                                                     // 2段目(受付時間内)
       const h2c = await hp(E2);
       perSlot[sl] = { hit1: h1a - h1b, hit1far: h2a - h2b, hit2: h2b - h2c };
@@ -102,7 +102,7 @@ const SLOTS = ["lmb", "shift", "e", "x", "c"];
     for (const n of [1, 2, 3]) {
       await lvl("janus_dual_gate", n); await setSlots({ lmb: "janus_dual_gate" }); await begin(); await park(); await place(44, 12); await bigAll();
       await putEnemy(E1, 1.2, 0); await putEnemy(E2, 2.6, 0); await sleep(200); await aimAt(E1); await sleep(120);
-      const a = await hp(E1), b = await hp(E2); await KEYFOR.lmb(); await sleep(500); const a2 = await hp(E1); await KEYFOR.lmb(); await sleep(700); const b2 = await hp(E2);
+      const a = await hp(E1), b = await hp(E2); await KEYFOR.lmb(); await sleep(380); const a2 = await hp(E1); await KEYFOR.lmb(); await sleep(700); const b2 = await hp(E2);          // 2回目は、受付の真ん中(1回目から約 0.55 秒)
       out[n] = { hit1: a - a2, hit2: b - b2 }; await sleep(800);
     }
     const r1 = out[1], r2 = out[2], r3 = out[3];
@@ -116,9 +116,11 @@ const SLOTS = ["lmb", "shift", "e", "x", "c"];
     for (const n of [1, 2, 3]) {
       await lvl("janus_closed_gate", n); await begin(); await park(); await place(44, 12); await bigAll();
       await putEnemy(E1, 3.0, 0); await sleep(150); await aimAt(E1); await sleep(100);
-      const h0 = await hp(E1); await KEYFOR.x(); await sleep(250);
-      const st = await state(), hold = st.holds.find(h => h.eventId === E1);
-      rec(`J2-lv${n} Lv${n}: 拘束され(残り ${[1.5, 2, 2.5][n - 1]} 秒前後)・ダメージなし・Cooldown 10`, !!hold && hold.kind === "immobilize" && Math.abs(hold.remaining - [1.5, 2, 2.5][n - 1]) < 0.5 && (await hp(E1)) === h0 && Math.abs((await cd("janus_closed_gate")) - 10) < 1.5, JSON.stringify({ hold, hp: [h0, await hp(E1)], cd: await cd("janus_closed_gate") }));
+      const h0 = await hp(E1);
+      const act = await json(`(function(){ var r = ${FC}.useAbility('card1'); return { r: r, st: ${JS}.getState(), cd: ${FC}.getCooldowns()['janus_closed_gate'] }; })()`);          // 発動と直後の状態を1回の評価で(CDP の往復の遅れで、拘束の残り時間が減らないように)
+      const st = act.st, hold = st.holds.find(h => h.eventId === E1);
+      await sleep(250);
+      rec(`J2-lv${n} Lv${n}: 拘束され(残り ${[1.5, 2, 2.5][n - 1]} 秒前後)・ダメージなし・Cooldown 10`, act.r.ok === true && !!hold && hold.kind === "immobilize" && Math.abs(hold.remaining - [1.5, 2, 2.5][n - 1]) < 0.5 && (await hp(E1)) === h0 && Math.abs(act.cd - 10) < 1.5, JSON.stringify({ hold, hp: [h0, await hp(E1)], cd: act.cd }));
       if (n === 1) {
         await s.shot("janus_J2_closed");
         const before = await cd("janus_closed_gate"); await KEYFOR.x(); await sleep(250);
@@ -127,8 +129,13 @@ const SLOTS = ["lmb", "shift", "e", "x", "c"];
       await sleep(300);
     }
     await lvl("janus_closed_gate", 1); await begin(); await park(); await place(44, 12); await bigAll();
-    await putEnemy(E1, 3.0, 0); await putEnemy(E2, 6.0, 0); await sleep(150); await aimAt(E1); await sleep(100); await KEYFOR.x(); await sleep(250);
-    const st2 = await state(); rec("J2-out 範囲外の敵は拘束されない", st2.holds.some(h => h.eventId === E1) && !st2.holds.some(h => h.eventId === E2), JSON.stringify(st2.holds));
+    await putEnemy(E1, 3.0, 0); await putEnemy(E2, 6.0, 0); await sleep(150); await aimAt(E1); await sleep(100);
+    const st2 = (await json(`(function(){ ${FC}.useAbility('card1'); return { st: ${JS}.getState() }; })()`)).st; rec("J2-out 範囲外の敵は拘束されない", st2.holds.some(h => h.eventId === E1) && !st2.holds.some(h => h.eventId === E2), JSON.stringify(st2.holds));
+    // 実キー X でも発動する(Cooldown が始まり、結果が記録される)。拘束の残り時間には頼らない = 往復の遅れの影響を受けない
+    await lvl("janus_closed_gate", 1); await begin(); await park(); await place(44, 12); await bigAll(); await putEnemy(E1, 3.0, 0); await sleep(150); await aimAt(E1); await sleep(100);
+    const kf0 = ((await json(`${JS}.getLastResult('closed')`)) || {}).frame ?? -1; await KEYFOR.x(); await sleep(250);
+    const kr = await json(`${JS}.getLastResult('closed')`);
+    rec("J2-key 実キー X でも閉門が発動する(Cooldown が始まる・発動の記録が新しくなる)", (await cd("janus_closed_gate")) > 0 && !!kr && kr.ok === true && kr.frame > kf0, JSON.stringify({ kf0, kr, cd: await cd("janus_closed_gate") }));
   });
 
   // ---- J3: 反照 ----
@@ -136,12 +143,16 @@ const SLOTS = ["lmb", "shift", "e", "x", "c"];
     rec("J3-0 E に反照", await setSlots({ e: "janus_reflection" }), "");
     for (const n of [1, 2, 3]) {
       await lvl("janus_reflection", n); await begin(); await park(); await place(44, 12); await bigAll();
-      await putEnemy(E1, 1.0, 0); await sleep(150); await aimAt(E1); await sleep(100);
-      await KEYFOR.e(); await sleep(60);
-      const st = await state();
-      rec(`J3-lv${n}-a Lv${n}: 受け流し待機が始まる(窓 ${[0.4, 0.5, 0.6][n - 1]} 秒)・Cooldown 9`, !!st.armed && Math.abs((st.armed.remaining ?? st.armed.seconds ?? [0.4, 0.5, 0.6][n - 1]) - [0.4, 0.5, 0.6][n - 1]) < 0.25 && Math.abs((await cd("janus_reflection")) - 9) < 1.5, JSON.stringify({ armed: st.armed, cd: await cd("janus_reflection") }));
-      const php0 = await ev("$gameParty.leader().hp"), ehp0 = await hp(E1);
-      await enemyHit(E1, "-40"); await sleep(250);
+      await putEnemy(E1, 2.5, 0); await sleep(150); await aimAt(E1); await sleep(100);          // 反撃の範囲(3 マス)の内。本物のゴブリン(イベントページの近接攻撃)の届く距離の外に置き、検証の一撃のあとに、ゴブリン自身の攻撃が主人公へ当たって HP の比較を乱さないようにする
+      const act = await json(`(function(){
+        var php0 = $gameParty.leader().hp, ehp0 = $gameMap.getCurrentEventHp(${E1});
+        var r = ${FC}.useAbility('special'), st = ${JS}.getState(), cdv = ${FC}.getCooldowns()['janus_reflection'];
+        var it = Object.assign(new Game_Interpreter(), { _eventId: ${E1} }); PluginManager.callCommand(it, 'Hendrix_Action_Engine', 'UpdateEventHp', { eventId: 'player', value: '-40', exceedMaxHealth: 'false' });
+        return { r: r, st: st, cd: cdv, php0: php0, ehp0: ehp0 }; })()`);                                                  // 発動 → 直後の状態 → 敵の一撃(窓の中)を、同じフレームの1回の評価で
+      const st = act.st;
+      rec(`J3-lv${n}-a Lv${n}: 受け流し待機が始まる(窓 ${[0.4, 0.5, 0.6][n - 1]} 秒)・Cooldown 9`, act.r.ok === true && !!st.armed && Math.abs((st.armed.remaining ?? st.armed.seconds ?? [0.4, 0.5, 0.6][n - 1]) - [0.4, 0.5, 0.6][n - 1]) < 0.25 && Math.abs(act.cd - 9) < 1.5, JSON.stringify({ armed: st.armed, cd: act.cd }));
+      const php0 = act.php0, ehp0 = act.ehp0;
+      await sleep(250);
       const php1 = await ev("$gameParty.leader().hp"), ehp1 = await hp(E1);
       const rl = await json(`${JS}.getLastResult('reflectionHit')`);                         // 本物のゴブリンの攻撃が先に受け流されることもある(その場合、追加の一撃は通常どおり当たる)
       rec(`J3-lv${n}-b Lv${n}: 敵の一撃を受け流して無効化し(Lv${n} の倍率で)反撃する。受け流しの後は待機が消える`, !!rl && rl.negated === true && rl.countered === true && rl.level === n && rl.scale === [1, 1.25, 1.5][n - 1] && ehp1 < ehp0 && (n === 1 || php1 >= php0) && !(await state()).armed, JSON.stringify({ php: [php0, php1], ehp: [ehp0, ehp1], rl }));
@@ -152,6 +163,11 @@ const SLOTS = ["lmb", "shift", "e", "x", "c"];
     await KEYFOR.e(); await sleep(800);
     const php0 = await ev("$gameParty.leader().hp"); await enemyHit(E1, "-40"); await sleep(250);
     rec("J3-end 窓(0.4 秒)が切れたあとの敵の攻撃は通常どおり当たる", (await ev("$gameParty.leader().hp")) < php0, "");
+    // 実キー E でも発動する(発動の記録が新しくなる)。受け流しの窓の時間には頼らない = 往復の遅れの影響を受けない
+    await begin(); await park(); await place(44, 12); await bigAll(); await putEnemy(E1, 1.0, 0); await sleep(150); await aimAt(E1); await sleep(100);
+    const rf0 = ((await json(`${JS}.getLastResult('reflection')`)) || {}).frame ?? -1; await KEYFOR.e(); await sleep(150);
+    const rr = await json(`${JS}.getLastResult('reflection')`);
+    rec("J3-key 実キー E でも反照が発動する(Cooldown が始まる・発動の記録が新しくなる)", (await cd("janus_reflection")) > 0 && !!rr && rr.ok === true && rr.frame > rf0, JSON.stringify({ rf0, rr, cd: await cd("janus_reflection") }));
   });
 
   // ---- J4: 表裏転化 ----
