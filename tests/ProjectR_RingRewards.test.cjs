@@ -82,7 +82,7 @@ test("【2】設定不足は付与しない: 空のコマンド・ランク変�
         ["引数なし", {}, -2, "invalidRing", true],
         ["指輪が空", { ringId: "" }, -2, "invalidRing"], ["hermes は対象外", { ringId: "hermes" }, -2, "invalidRing"], ["未知の指輪", { ringId: "zeus" }, -2, "invalidRing"],
         ["ランク変数が空", { rankVariableId: "" }, -1, "rankVariableNotConfigured"], ["ランク変数 0", { rankVariableId: 0 }, -1, "rankVariableNotConfigured"],
-        ["ランク変数が範囲外(21)", { rankVariableId: 21 }, -1, "rankVariableNotConfigured"], ["ランク変数が負", { rankVariableId: -3 }, -1, "rankVariableNotConfigured"], ["ランク変数が文字", { rankVariableId: "x" }, -1, "rankVariableNotConfigured"], ["ランク変数が小数", { rankVariableId: "3.5" }, -1, "rankVariableNotConfigured"],
+        ["ランク変数が範囲外(121)", { rankVariableId: 121 }, -1, "rankVariableNotConfigured"], ["ランク変数が負", { rankVariableId: -3 }, -1, "rankVariableNotConfigured"], ["ランク変数が文字", { rankVariableId: "x" }, -1, "rankVariableNotConfigured"], ["ランク変数が小数", { rankVariableId: "3.5" }, -1, "rankVariableNotConfigured"],
         ["必要ランクが空", { requiredRank: "" }, -1, "requiredRankNotConfigured"], ["必要ランク 0", { requiredRank: 0 }, -1, "requiredRankNotConfigured"], ["必要ランクが負", { requiredRank: -1 }, -1, "requiredRankNotConfigured"], ["必要ランクが文字", { requiredRank: "abc" }, -1, "requiredRankNotConfigured"], ["必要ランクが小数", { requiredRank: "2.5" }, -1, "requiredRankNotConfigured"],
         ["結果の変数がランク変数と同じ", { resultVariableId: RANK_VAR }, -1, "resultVariableIsRankVariable"]
     ];
@@ -428,7 +428,7 @@ test("【11e】保存・読込: 保存済みのレベルと所有者はそのま
 // ---------------------------------------------------------------- 【12】設定の誤り ----------------------------------------------------------------
 const allVars = w => JSON.stringify(plain(w.ctx.$gameVariables._data));
 const allSwitches = w => JSON.stringify(plain(w.ctx.$gameSwitches._data));
-const BAD_IDS = [999, 21, -1, "-1", "abc", "2.5", 2.5, "7a", "\\V[1]", true];                       // 指定したのに使えない番号(21 = データベースの数 = 範囲外)
+const BAD_IDS = [999, 121, -1, "-1", "abc", "2.5", 2.5, "7a", "\\V[1]", true];                       // 指定したのに使えない番号(121 = データベースの数 = 範囲外)
 const UNSET = [undefined, null, "", "  ", 0, "0"];                                                   // 指定なし(使わない)
 test("【12a】使えない完了スイッチの指定は、付与・レベル上げの前に -1: 指輪もレベルも変えない・どのスイッチも変えない・結果の変数には -1・所持済み/仲間/戦闘中でも同じ", () => {
     const w = world(); setVar(w, RANK_VAR, 9); own(w, "janus"); w.ctx.$gameSwitches.setValue(DONE_SWITCH, true);

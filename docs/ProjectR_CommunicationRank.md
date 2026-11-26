@@ -4,7 +4,7 @@
 
 - プラグイン: `js/plugins/ProjectR_CommunicationRank.js`
 - ランクはゲーム変数なので、通常のセーブ/ロードでそのまま保存されます。独自のセーブ領域はありません。
-- 人物の名前・使う変数・ランクの上限は、**まだ決めていません**。「通信ランクの登録」は空の状態で入っています(空の間は、どのキーのコマンドも `-1` になります)。
+- 現在、ヒロイン 4 人を登録しています(ランクはゲーム変数 101〜104、上限は 10)。キーの一覧は [ヒロイン通信の設計書](ProjectR_HeroineCommunicationDesign.md) にあります。登録していないキーのコマンドは `-1` になります。
 - ランクを上げても、指輪の入手やスキルのレベル上げは自動では起きません。
 
 ## 設定(プラグインの管理 → ProjectR_CommunicationRank → 通信ランクの登録)
@@ -108,9 +108,8 @@
 
 ## まだ決まっていないこと
 
-- どのキャラクター(ヒロイン / NPC)を、どのキーで、どの変数に登録するか
-- 各キャラクターのランクの上限
-- 各指輪に対応するキャラクターと必要ランク
+- 4 人のほかに登録する人物(NPC など)があるか
+- 各指輪の必要ランク(対応する人物は決定済み)
 - どのイベントでランクをいくつまで上げるか、どのスキルを何レベルにするか
 - イベントを置くマップ
 
@@ -120,5 +119,5 @@
 
 ## 検証
 
-- Node: `tests/ProjectR_CommunicationRank.test.cjs`(17 件)
-- 実機(MZ Playtest / CDP): `tools/mz_cdp/communication_rank_verify.cjs`(55 項目)。登録は実行中のページだけで差し替えます(テスト用のキー `test_a` / `test_b`)。
+- Node: `tests/ProjectR_CommunicationRank.test.cjs`(22 件)
+- 実機(MZ Playtest / CDP): `tools/mz_cdp/communication_rank_verify.cjs`(74 項目)。出荷の登録(C0・C8)を確認し、それ以外の項目では登録を実行中のページだけで差し替えます(テスト用のキー `test_a` / `test_b`)。

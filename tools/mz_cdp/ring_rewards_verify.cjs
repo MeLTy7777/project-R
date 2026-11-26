@@ -72,7 +72,7 @@ const RANK_VAR = 3, RESULT_VAR = 5, DONE_SWITCH = 7;
   // ---- R2: 設定不足 ----
   await check("R2", async () => {
     await setRank(50); await resetResult();
-    const cases = [["指輪が未設定(空)", { ringId: "" }, -2], ["hermes は対象外", { ringId: "hermes" }, -2], ["ランク変数が未設定(0)", { ringId: "janus", rankVariableId: "0" }, -1], ["必要ランクが未設定(0)", { ringId: "janus", requiredRank: "0" }, -1], ["必要ランクが空", { ringId: "janus", requiredRank: "" }, -1], ["ランク変数が範囲外(99)", { ringId: "janus", rankVariableId: "99" }, -1], ["結果の変数がランク変数と同じ", { ringId: "janus", resultVariableId: String(RANK_VAR) }, -1]];
+    const cases = [["指輪が未設定(空)", { ringId: "" }, -2], ["hermes は対象外", { ringId: "hermes" }, -2], ["ランク変数が未設定(0)", { ringId: "janus", rankVariableId: "0" }, -1], ["必要ランクが未設定(0)", { ringId: "janus", requiredRank: "0" }, -1], ["必要ランクが空", { ringId: "janus", requiredRank: "" }, -1], ["ランク変数が範囲外(121)", { ringId: "janus", rankVariableId: "121" }, -1], ["結果の変数がランク変数と同じ", { ringId: "janus", resultVariableId: String(RANK_VAR) }, -1]];
     for (const [label, over, code] of cases) {
       await resetResult(); await acquire(over.ringId === undefined ? "janus" : over.ringId, over); const o = await out();
       const rankIntact = (await ev(`$gameVariables.value(${RANK_VAR})`)) === 50;

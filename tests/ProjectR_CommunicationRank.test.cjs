@@ -10,6 +10,7 @@
 //   【6】保存・読込: ゲーム変数だけで往復・新しい保存領域なし・以前のセーブもそのまま
 //   【7】RingRewards との連携: 通信ランクの変数で指輪を入手・ランクを上げただけでは何も付与しない・スキルは専用のイベントだけ・結果の変数の重なり
 //   【8】登録の誤り(fail closed): 4つのコマンドと API は、変数・スイッチ・指輪・スキルを何も変えず、残った成功の値でイベントを続けない・直せば元どおり
+//   【9】承認された出荷の設定(登録を差し替えない): 変数 120 枠・ヒロイン4人・ランク 0〜10・結果の変数の衝突・保存と読込・RingRewards。指輪の必要ランクは未定なので、テスト専用の値を使う
 const assert = require("node:assert/strict");
 const fs = require("fs");
 const path = require("path");
@@ -25,6 +26,9 @@ const GOD = ["apollo", "janus", "themis", "athena"];
 // テスト専用の登録: キー・変数・上限
 const A = { Key: "test_a", VariableId: "3", MaxRank: "5" }, B = { Key: "test_b", VariableId: "4", MaxRank: "3" }, C = { Key: "test_npc", VariableId: "12", MaxRank: "10" };
 const RESULT_VAR = 5, OUTPUT_VAR = 6, DONE_SWITCH = 7;
+// 承認された出荷の設定: [キー, ランクの変数, 指輪]。結果コードは 109、読み取り先は 110
+const APPROVED = [["tsukune_kurage_celestial", 101, "apollo"], ["charlotte_winchester", 102, "janus"], ["catherine_kingsley", 103, "themis"], ["sophia_bancroft", 104, "athena"]];
+const SHARED_RESULT = 109, SHARED_OUTPUT = 110, TEST_THRESHOLD = 5;                              // TEST_THRESHOLD はテスト専用(ゲームの必要ランクは未定)
 const tableText = rows => JSON.stringify(rows.map(row => (typeof row === "string" ? row : JSON.stringify(row))));
 const configureRaw = (w, text) => w.ctx.PluginManager.setParameters(PLUGIN, { Characters: text });
 const configure = (w, rows) => configureRaw(w, tableText(rows));
@@ -57,14 +61,14 @@ const raiseArgs = o => ({ characterKey: "test_a", minimumRank: "2", resultVariab
 const readArgs = o => ({ characterKey: "test_a", outputVariableId: "6", resultVariableId: "5", completedSwitchId: "7", ...o });
 
 // ---------------------------------------------------------------- 【0】登録 ----------------------------------------------------------------
-test("【0】登録: plugins.js に1行(登録表は空 = 人物も値も決めていない)・コマンド2つ・API・コードは指輪/スキル/保存領域に触れない", () => {
+test("【0】登録: plugins.js に1行(出荷の登録表は承認されたヒロイン4人)・コマンド2つ・API・コードは指輪/スキル/保存領域に触れない", () => {
     const w = world(null);
     const text = fs.readFileSync(path.join(__dirname, "..", "js", "plugins.js"), "utf8");
     assert.equal((text.match(/"name":"ProjectR_CommunicationRank"/g) || []).length, 1);
     const line = text.split(/\r?\n/).find(l => l.includes('"name":"ProjectR_CommunicationRank"'));
-    assert.ok(line.includes('"parameters":{"Characters":"[]"}'), "出荷する登録表は空");
+    assert.ok(line.includes('"parameters":' + JSON.stringify({ Characters: tableText(APPROVED.map(([Key, id]) => ({ Key, VariableId: String(id), MaxRank: "10" }))) })), "出荷する登録表は承認された4件だけ");
     assert.ok(text.indexOf('"name":"ProjectR_CommunicationRank"') < text.indexOf('"name":"ProjectR_RingRewards"'));
-    assert.deepEqual(plain(CR(w).entries()), []); assert.deepEqual(plain(CR(w).rankVariableIds()), []); assert.deepEqual(plain(CR(w).problems()), []);
+    assert.deepEqual(plain(CR(w).rankVariableIds()), [101, 102, 103, 104]); assert.deepEqual(plain(CR(w).problems()), []);
     assert.deepEqual(Object.keys(w.ctx.PluginManager._commands).filter(k => k.startsWith(PLUGIN + ":")).sort(), [PLUGIN + ":RaiseRankToMinimum", PLUGIN + ":ReadRank"]);
     assert.deepEqual(plain(CR(w).RESULT), { SUCCESS: 1, ALREADY: 2, NOT_CONFIGURED: -1, INVALID: -2, BAD_RANK_VALUE: -7, FAILED: -9 });
     const src = fs.readFileSync(path.join(__dirname, "..", "js", "plugins", PLUGIN + ".js"), "utf8");
@@ -72,7 +76,7 @@ test("【0】登録: plugins.js に1行(登録表は空 = 人物も値も決め�
     assert.ok(!/_project[A-Za-z]*/.test(code), "独自の保存キーが無い");
     assert.ok(!/ProjectRCardDeck|ProjectRRingRewards|ProjectRRingLoadout|assignRing|setCardLevel|acquireRing|raiseSkillLevel/.test(code), "指輪・スキルには触れない(自動で付与しない)");
     assert.ok(!/\beval\b|new Function|require\(/.test(code));
-    // 出荷の状態(登録が空)では、どのキーも使えない
+    // 登録していないキーは使えない
     setVar(w, 3, 4); const before = allVars(w);
     const r = silenced(() => raise(w, { resultVariableId: 0, completedSwitchId: 0 })); assert.deepEqual([r.ok, r.code, r.status], [false, -1, "unknownCharacter"]);
     assert.equal(allVars(w), before);
@@ -92,7 +96,7 @@ test("【1】登録表: 正しい登録は使える・読めない表や欠け/�
     };
     const bad = [
         ["キーが空", { Key: "  ", VariableId: "3", MaxRank: "5" }, "missingKey"], ["変数が未設定", { Key: "k", VariableId: "0", MaxRank: "5" }, "invalidVariableId"],
-        ["変数が範囲外", { Key: "k", VariableId: "21", MaxRank: "5" }, "invalidVariableId"], ["変数が負", { Key: "k", VariableId: "-3", MaxRank: "5" }, "invalidVariableId"],
+        ["変数が範囲外", { Key: "k", VariableId: "121", MaxRank: "5" }, "invalidVariableId"], ["変数が負", { Key: "k", VariableId: "-3", MaxRank: "5" }, "invalidVariableId"],
         ["変数が文字", { Key: "k", VariableId: "abc", MaxRank: "5" }, "invalidVariableId"], ["上限が未設定", { Key: "k", VariableId: "3", MaxRank: "0" }, "invalidMaxRank"],
         ["上限が空", { Key: "k", VariableId: "3", MaxRank: "" }, "invalidMaxRank"], ["上限が負", { Key: "k", VariableId: "3", MaxRank: "-1" }, "invalidMaxRank"],
         ["上限が小数", { Key: "k", VariableId: "3", MaxRank: "2.5" }, "invalidMaxRank"], ["項目が無い", { Key: "k" }, "invalidVariableId"],
@@ -237,7 +241,7 @@ test("【5b】重なりは実際のイベントを中断する(残ったラン�
 });
 test("【5c】使えない番号の出力先は、ランクを変える前に拒否する・指定なし(未指定・空・0)は使える", () => {
     const w = world();
-    for (const bad of [999, 21, -1, "abc", "2.5"]) {
+    for (const bad of [999, 121, -1, "abc", "2.5"]) {
         const vars = allVars(w), switches = allSwitches(w);
         const a = silenced(() => raise(w, { completedSwitchId: bad, resultVariableId: 0 })); assert.deepEqual([a.code, a.status], [-1, "invalidCompletedSwitch"], String(bad));
         const b = silenced(() => raise(w, { resultVariableId: bad })); assert.deepEqual([b.code, b.status], [-1, "invalidResultVariable"], String(bad));
@@ -408,6 +412,112 @@ test("【8d】読込順の注記: 2つのプラグインの @base / @orderAfter 
         for (const m of source.matchAll(/@(?:base|orderAfter) (\S+)/g)) { assert.ok(list.indexOf(m[1]) >= 0, name + " " + m[1]); assert.ok(list.indexOf(m[1]) < list.indexOf(name), name + " は " + m[1] + " より後"); }
         if (name === "ProjectR_RingRewards") { assert.ok(!/HermesProductionDeck/.test(source), "HermesProductionDeck への依存は無い"); }
     }
+});
+
+// ---------------------------------------------------------------- 【9】承認された出荷の設定 ----------------------------------------------------------------
+// ここでは登録を差し替えない: plugins.js の登録と data/System.json をそのまま使う
+const shipped = () => world(null);
+const fourRanks = w => APPROVED.map(a => getVar(w, a[1]));
+const sharedArgs = o => ({ resultVariableId: String(SHARED_RESULT), completedSwitchId: "0", ...o });
+const rankCommand = (w, key, minimum) => callCommand(w, PLUGIN, "RaiseRankToMinimum", sharedArgs({ characterKey: key, minimumRank: String(minimum) }));
+const readCommand = (w, key) => callCommand(w, PLUGIN, "ReadRank", sharedArgs({ characterKey: key, outputVariableId: String(SHARED_OUTPUT) }));
+
+test("【9a】出荷の設定と変数の空き: 120 枠(名前は未設定)・登録は4件だけ・105〜120 は未登録・101〜110 を「変数の操作」で書くイベントは無い・ほかのプラグインの設定と重ならない", () => {
+    const w = shipped(), system = w.ctx.$dataSystem;
+    assert.equal(system.variables.length, 121, "変数は 1〜120"); assert.ok(system.variables.every(name => name === ""), "名前は付けていない");
+    const file = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "data", "System.json"), "utf8")); assert.equal(file.variables.length, 121);
+    assert.deepEqual(plain(CR(w).entries()).map(e => [e.key, e.variableId, e.maxRank, e.valid]), APPROVED.map(([key, id]) => [key, id, 10, true]));
+    assert.deepEqual(plain(CR(w).problems()), []); assert.deepEqual(plain(CR(w).rankVariableIds()), [101, 102, 103, 104]);
+    setVar(w, 120, 7); assert.equal(getVar(w, 120), 7); setVar(w, 121, 7); assert.equal(getVar(w, 121), 0, "範囲外には書けない");
+    const writers = [];
+    const scan = (list, where) => { for (const c of list || []) if (c.code === 122 && c.parameters[1] >= 101 && c.parameters[0] <= 110) writers.push(where); };
+    for (const f of fs.readdirSync(path.join(__dirname, "..", "data")).filter(x => /^(Map\d+|CommonEvents|Troops)\.json$/.test(x))) {
+        const data = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "data", f), "utf8"));
+        if (Array.isArray(data)) data.filter(Boolean).forEach(o => (o.pages ? o.pages.forEach(p => scan(p.list, f)) : scan(o.list, f)));
+        else for (const ev of (data.events || []).filter(Boolean)) ev.pages.forEach(p => scan(p.list, f + " EV" + ev.id));
+    }
+    assert.deepEqual(writers, [], "通信の変数を直接書き換えるイベントは無い");
+    const sandbox = {}; new Function("s", fs.readFileSync(path.join(__dirname, "..", "js", "plugins.js"), "utf8").replace("var $plugins", "s.$plugins"))(sandbox);
+    const others = sandbox.$plugins.filter(p => p.status && p.name !== PLUGIN).flatMap(p => Object.entries(p.parameters || {}).filter(([k, v]) => /var(iable)?_?id$/i.test(k) && Number(v) >= 101 && Number(v) <= 120).map(([k, v]) => p.name + "." + k + "=" + v));
+    assert.deepEqual(others, []);
+});
+test("【9b】4人それぞれのランク 0〜10: 1つずつ引き上げて読み取れる(結果 109・読取 110)・繰り返しは済み・11 は -2・0 は -1・下げない・ほかの人物は変わらない", () => {
+    const w = shipped(); const expected = [0, 0, 0, 0]; const before = cardState(w);
+    APPROVED.forEach(([key, id], index) => {
+        for (let n = 0; n <= 10; n++) {
+            if (n > 0) {
+                rankCommand(w, key, n); assert.equal(getVar(w, SHARED_RESULT), 1, key + " raise " + n);
+                rankCommand(w, key, n); assert.equal(getVar(w, SHARED_RESULT), 2, key + " repeat " + n);
+                if (n > 1) { rankCommand(w, key, n - 1); assert.equal(getVar(w, SHARED_RESULT), 2, key + " lower " + n); }
+                expected[index] = n;
+            }
+            setVar(w, SHARED_OUTPUT, 99); readCommand(w, key);
+            assert.deepEqual([getVar(w, SHARED_RESULT), getVar(w, SHARED_OUTPUT), getVar(w, id)], [1, n, n], key + " read " + n);
+            assert.deepEqual(fourRanks(w), expected, key + " " + n);
+        }
+        silenced(() => rankCommand(w, key, 11)); assert.equal(getVar(w, SHARED_RESULT), -2); silenced(() => rankCommand(w, key, 0)); assert.equal(getVar(w, SHARED_RESULT), -1);
+        assert.equal(getVar(w, id), 10);
+    });
+    assert.deepEqual(fourRanks(w), [10, 10, 10, 10]); assert.equal(cardState(w), before, "ランクを上げただけでは、指輪もスキルも変わらない");
+});
+test("【9c】結果の変数の衝突: 101〜104 のどれを結果(や読み取り先)にしても、4コマンドはイベントを中断して何も変えない・109 / 110 では成功して続く", () => {
+    const w = shipped(); D(w).assignRingToPlayer("apollo");
+    for (const rank of [1, 2]) for (const [, id] of APPROVED) {
+        for (const [, other] of APPROVED) setVar(w, other, rank);
+        const commands = [
+            [PLUGIN, "RaiseRankToMinimum", { characterKey: APPROVED[0][0], minimumRank: "10", resultVariableId: String(id), completedSwitchId: "7" }],
+            [PLUGIN, "ReadRank", { characterKey: APPROVED[0][0], outputVariableId: String(SHARED_OUTPUT), resultVariableId: String(id), completedSwitchId: "7" }],
+            [PLUGIN, "ReadRank", { characterKey: APPROVED[0][0], outputVariableId: String(id), resultVariableId: "0", completedSwitchId: "7" }],
+            ["ProjectR_RingRewards", "AcquireRing", { ringId: "janus", rankVariableId: "102", requiredRank: "1", resultVariableId: String(id), completedSwitchId: "7" }],
+            ["ProjectR_RingRewards", "RaiseSkillLevel", { skillId: "apollo_eros_arrow", targetLevel: "3", resultVariableId: String(id), completedSwitchId: "7" }]
+        ];
+        for (const [plugin, command, args] of commands) {
+            const state = cardState(w); w.ctx.$gameSwitches.setValue(DONE_SWITCH, false);
+            const r = silenced(() => runEvent(w, plugin, command, args, id));
+            assert.deepEqual(r, { successBranch: false, later: false, running: false }, `${command} -> ${id} ランク${rank}`);
+            assert.deepEqual(fourRanks(w), [rank, rank, rank, rank], command + " " + id); assert.equal(cardState(w), state); assert.equal(sw(w, DONE_SWITCH), false);
+        }
+    }
+    for (const [plugin, command, args] of [
+        [PLUGIN, "RaiseRankToMinimum", sharedArgs({ characterKey: APPROVED[1][0], minimumRank: "4" })], [PLUGIN, "ReadRank", sharedArgs({ characterKey: APPROVED[1][0], outputVariableId: String(SHARED_OUTPUT) })],
+        ["ProjectR_RingRewards", "AcquireRing", sharedArgs({ ringId: "janus", rankVariableId: "102", requiredRank: "4" })], ["ProjectR_RingRewards", "RaiseSkillLevel", sharedArgs({ skillId: "apollo_eros_arrow", targetLevel: "3" })]
+    ]) assert.deepEqual(runEvent(w, plugin, command, args, SHARED_RESULT), { successBranch: true, later: true, running: false }, command);
+    assert.deepEqual([getVar(w, 102), getVar(w, SHARED_OUTPUT), D(w).getRingOwner("janus")], [4, 4, "player"]);
+});
+test("【9d】保存・読込: 101〜104 の値は往復する・保存の項目は増えず登録は入らない・変数を増やす前のセーブはランク 0 から使える", () => {
+    const w = shipped();
+    const keys = Object.keys(w.ctx.$gameSystem).filter(k => /^_projectR/.test(k)).sort(), contentKeys = Object.keys(w.ctx.DataManager.makeSaveContents()).sort();
+    const old = saveContents(w);
+    old.variables._data = old.variables._data.slice(0, 21); old.variables._data[20] = 3;        // 変数が 20 個だったころのセーブの形(21 番より後は無い)
+    APPROVED.forEach(([key], i) => rankCommand(w, key, [3, 7, 10, 1][i])); setVar(w, SHARED_RESULT, 2); setVar(w, SHARED_OUTPUT, 7);
+    assert.deepEqual(Object.keys(w.ctx.$gameSystem).filter(k => /^_projectR/.test(k)).sort(), keys); assert.deepEqual(Object.keys(w.ctx.DataManager.makeSaveContents()).sort(), contentKeys);
+    const saved = saveContents(w);
+    assert.ok(!/tsukune|charlotte_|catherine_|sophia_|MaxRank/.test(JSON.stringify(plain({ s: saved.system, v: saved.variables._data }))), "登録はセーブに入らない");
+    for (const id of [101, 102, 103, 104, SHARED_RESULT, SHARED_OUTPUT]) setVar(w, id, 0);
+    w.ctx.DataManager.extractSaveContents(saved);
+    assert.deepEqual([fourRanks(w), getVar(w, SHARED_RESULT), getVar(w, SHARED_OUTPUT)], [[3, 7, 10, 1], 2, 7]);
+    rankCommand(w, APPROVED[1][0], 7); assert.equal(getVar(w, SHARED_RESULT), 2); assert.equal(getVar(w, 102), 7, "読込の後も冪等");
+    w.ctx.DataManager.extractSaveContents(old);
+    assert.deepEqual([fourRanks(w), getVar(w, 20)], [[0, 0, 0, 0], 3], "以前の変数はそのまま・ランクは 0");
+    rankCommand(w, APPROVED[3][0], 1); assert.deepEqual([getVar(w, SHARED_RESULT), getVar(w, 104)], [1, 1]);
+});
+test("【9e】RingRewards との動き(従来どおり): 各指輪は対応する変数で、決まった呼び出しだけで入手・レベル上げは所持が必要・Hermes は通信ランク無し・出荷の状態では指輪は未所持", () => {
+    const w = shipped();
+    assert.deepEqual(ownerOf(w), ["unowned", "unowned", "unowned", "unowned", "unowned"]);
+    for (const [key, id, ring] of APPROVED) {
+        const skill = RL(w).getRingSkills(ring)[0];
+        const run = (command, args) => { silenced(() => callCommand(w, "ProjectR_RingRewards", command, sharedArgs(args))); return getVar(w, SHARED_RESULT); };
+        assert.equal(run("RaiseSkillLevel", { skillId: skill, targetLevel: "2" }), -6, ring);
+        setVar(w, id, TEST_THRESHOLD - 1); assert.equal(run("AcquireRing", { ringId: ring, rankVariableId: String(id), requiredRank: String(TEST_THRESHOLD) }), -3, ring);
+        rankCommand(w, key, 10); assert.equal(D(w).getRingOwner(ring), "unowned", "ランクだけでは入手しない");
+        assert.equal(run("AcquireRing", { ringId: ring, rankVariableId: String(id), requiredRank: "0" }), -1, "必要ランクが未設定(0)では付与しない"); assert.equal(D(w).getRingOwner(ring), "unowned");
+        assert.equal(run("AcquireRing", { ringId: ring, rankVariableId: String(id), requiredRank: String(TEST_THRESHOLD) }), 1, ring); assert.equal(D(w).getRingOwner(ring), "player");
+        assert.equal(run("RaiseSkillLevel", { skillId: skill, targetLevel: "2" }), 1, ring);
+        assert.equal(RL(w).isUltimateUnlocked(ring), true); assert.equal(RL(w).getUnlockedSkills(ring).length, 5);
+    }
+    assert.equal(D(w).getRingOwner("hermes"), "unowned");
+    for (const [, id] of APPROVED) setVar(w, id, 0);
+    callCommand(w, "ProjectR_HermesProductionDeck", "AcquireHermesRing", {}); assert.equal(D(w).getRingOwner("hermes"), "player", "Hermes は通信ランク 0 でも本編のコマンドで入手");
 });
 
 console.log(`\nall ${passed} passed`);

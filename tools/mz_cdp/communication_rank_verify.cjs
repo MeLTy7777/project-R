@@ -3,6 +3,7 @@
 //   登録表はこのページの実行中だけ PluginManager.setParameters で差し替える(plugins.js は書き換えない)。キー test_a / test_b はテスト専用で、実在の人物ではない。
 //   C0 読み込みと出荷の状態   C1 登録の誤り(壊れた JSON・使えない登録)は全体を停止(何も書かずイベント中断)・直せば成功   C2 読み取り   C3 引き上げ(下げない・冪等・上限)   C4 重なりの防止(イベント中断)
 //   C5 RingRewards との連携   C6 保存 → 読込・以前のセーブ
+//   C8 承認された出荷の登録そのもの(変数 120 枠・ヒロイン4人のランク 0〜10・衝突・指輪の入手・保存 → 読込)。指輪の必要ランクは未定なので、テスト専用の値を使う
 // 使い方: MZ_OUT=<出力> node tools/mz_cdp/communication_rank_verify.cjs   (新しいNW.jsセッションで実行する。ゲームのファイル・save/ は書かない = saveObject を差し替えてブロックする)
 //   追跡されているデータ(HEAD)だけで動く: テスト敵(Map001 のイベント 1・2)の位置は、スクリプトが実行時に画面の外へ退避する(lib.cjs の parkFar)。
 const { session } = require("./lib.cjs");
@@ -11,6 +12,9 @@ const PLUGIN = "ProjectR_CommunicationRank";
 const GODS = ["apollo", "janus", "themis", "athena"];
 const TABLE = [{ Key: "test_a", VariableId: "3", MaxRank: "5" }, { Key: "test_b", VariableId: "4", MaxRank: "3" }];
 const RESULT_VAR = 5, OUTPUT_VAR = 6, DONE_SWITCH = 7;
+// 承認された設定: キー・ランクの変数・指輪。結果コードは 109、読み取り先は 110。TEST_THRESHOLD はテスト専用の値(ゲームの必要ランクは未定)
+const APPROVED = [["tsukune_kurage_celestial", 101, "apollo"], ["charlotte_winchester", 102, "janus"], ["catherine_kingsley", 103, "themis"], ["sophia_bancroft", 104, "athena"]];
+const SHARED_RESULT = 109, SHARED_OUTPUT = 110, TEST_THRESHOLD = 5;
 (async () => {
   const s = await session({ field: true, ring: true }); const { ev, rec, sleep } = s;
   const ONLY = (process.env.MZ_ONLY || "").split(",").filter(Boolean);
@@ -57,9 +61,10 @@ const RESULT_VAR = 5, OUTPUT_VAR = 6, DONE_SWITCH = 7;
 
   await check("C0", async () => {
     const st = await json(`({ cmds: Object.keys(PluginManager._commands).filter(function(k){ return k.indexOf('${PLUGIN}:') === 0; }).sort(), params: PluginManager.parameters('${PLUGIN}').Characters, entries: ${CR}.entries(), ids: ${CR}.rankVariableIds() })`);
-    rec("C0a 読み込まれてコマンド2つが登録されている。出荷の登録表は空(人物・値は未設定)", st.cmds.join() === `${PLUGIN}:RaiseRankToMinimum,${PLUGIN}:ReadRank` && st.params === "[]" && st.entries.length === 0 && st.ids.length === 0, JSON.stringify(st));
+    rec("C0a 読み込まれてコマンド2つが登録されている。出荷の登録は承認された4件(上限10・変数 101〜104)", st.cmds.join() === `${PLUGIN}:RaiseRankToMinimum,${PLUGIN}:ReadRank` && JSON.stringify(st.entries.map(e => [e.key, e.variableId, e.maxRank, e.valid])) === JSON.stringify(APPROVED.map(a => [a[0], a[1], 10, true])) && st.ids.join() === "101,102,103,104", JSON.stringify(st.ids));
+    await ev(`window.__shipped = PluginManager.parameters('${PLUGIN}').Characters; 'ok'`);                              // C8 で出荷の登録に戻す
     await reset(); await raise("test_a", 2); const o = await out();
-    rec("C0b 登録が空のときは、どのキーも拒否(-1)・変数は変わらない", o.code === -1 && o.done === false && JSON.stringify(await ranks()) === "[0,0]", JSON.stringify(o));
+    rec("C0b 登録していないキーは拒否(-1)・変数は変わらない", o.code === -1 && o.done === false && JSON.stringify(await ranks()) === "[0,0]", JSON.stringify(o));
   });
 
   await check("C1", async () => {
@@ -166,6 +171,56 @@ const RESULT_VAR = 5, OUTPUT_VAR = 6, DONE_SWITCH = 7;
     await reload(oldSave);
     const fresh = await ranks(); await reset(); await raise("test_a", 1); const o = await out();
     rec("C6d 以前のセーブ(ランクを使う前)は、ランク 0 から読めて、そのまま引き上げられる", JSON.stringify(fresh) === "[0,0]" && o.code === 1 && (await v(3)) === 1, JSON.stringify({ fresh, o }));
+  });
+
+  await check("C8", async () => {
+    await reload(oldSave);                                                                                   // ランクも指輪も使う前の状態に戻す
+    await ev(`PluginManager.setParameters('${PLUGIN}', { Characters: window.__shipped }); 'ok'`);
+    const st = await json(`({ slots: $dataSystem.variables.length, names: $dataSystem.variables.filter(function(n){ return n !== ''; }).length, problems: ${CR}.problems().length, ids: ${CR}.rankVariableIds(), at120: ($gameVariables.setValue(120, 7), $gameVariables.value(120)), at121: ($gameVariables.setValue(121, 7), $gameVariables.value(121)) })`);
+    await setVar(120, 0);
+    rec("C8a 出荷の設定: 変数は 120 枠(名前は未設定)・120 は使え 121 は範囲外・登録の問題なし・ランク用は 101〜104 だけ(105〜120 は未登録)", st.slots === 121 && st.names === 0 && st.at120 === 7 && st.at121 === 0 && st.problems === 0 && st.ids.join() === "101,102,103,104", JSON.stringify(st));
+    const shared = { resultVariableId: String(SHARED_RESULT), completedSwitchId: "0" };
+    const four = () => json("[101,102,103,104].map(function(i){ return $gameVariables.value(i); })");
+    for (let h = 0; h < APPROVED.length; h++) {
+      const [key, id] = APPROVED[h]; const bad = [];
+      for (let n = 0; n <= 10; n++) {
+        if (n > 0) { await raise(key, n, shared); if ((await v(SHARED_RESULT)) !== 1) bad.push("raise " + n); await raise(key, n, shared); if ((await v(SHARED_RESULT)) !== 2) bad.push("repeat " + n); }
+        await read(key, { outputVariableId: String(SHARED_OUTPUT), ...shared });
+        if ((await v(SHARED_RESULT)) !== 1 || (await v(SHARED_OUTPUT)) !== n || (await v(id)) !== n) bad.push("read " + n);
+      }
+      await raise(key, 11, shared); const over = await v(SHARED_RESULT); await raise(key, 3, shared); const lower = await v(SHARED_RESULT);
+      const now = await four();
+      rec(`C8b ${key}(変数 ${id}): ランク 0→10 を1つずつ引き上げて読める(結果 109・読取 110)・繰り返しは済み・11 は -2・下げない・後の人物は 0 のまま`, bad.length === 0 && over === -2 && lower === 2 && now[h] === 10 && now.slice(h + 1).every(x => x === 0) && now.slice(0, h).every(x => x === 10), JSON.stringify({ bad, over, lower, now }));
+    }
+    for (let i = 0; i < 4; i++) await setVar(101 + i, 1 + (i % 2));                                           // 成功コードに見える値(1・2)を残す
+    const base = JSON.stringify(await four());
+    const collisions = APPROVED.map(([, id]) => [`引き上げの結果 = ${id}`, PLUGIN, "RaiseRankToMinimum", { characterKey: APPROVED[0][0], minimumRank: "10", resultVariableId: String(id), completedSwitchId: String(DONE_SWITCH) }, id]).concat([
+      ["読み取り先 = 102", PLUGIN, "ReadRank", { characterKey: APPROVED[0][0], outputVariableId: "102", resultVariableId: "0", completedSwitchId: String(DONE_SWITCH) }, 102],
+      ["指輪の入手の結果 = 103", "ProjectR_RingRewards", "AcquireRing", { ringId: "apollo", rankVariableId: "101", requiredRank: "1", resultVariableId: "103", completedSwitchId: String(DONE_SWITCH) }, 103],
+      ["レベル上げの結果 = 104", "ProjectR_RingRewards", "RaiseSkillLevel", { skillId: "janus_reflection", targetLevel: "3", resultVariableId: "104", completedSwitchId: String(DONE_SWITCH) }, 104]]);
+    for (const [label, plugin, command, a, branchVar] of collisions) {
+      await reset(); const reward = await rewardState();
+      const r = await runMapEvent(plugin, command, a, branchVar), o = await out();
+      rec(`C8c ${label}: 出荷の登録でイベントを中断・4人のランクは不変・指輪とスキルも不変`, r.finished && r.successBranch === false && r.later === false && o.done === false && JSON.stringify(await four()) === base && (await rewardState()) === reward, JSON.stringify({ r, ranks: await four() }));
+    }
+    for (const [key, id, ring] of APPROVED) {
+      await setVar(id, TEST_THRESHOLD - 1);
+      const owner0 = await ev(`${D}.getRingOwner('${ring}')`);
+      await acquire(ring, { rankVariableId: String(id), requiredRank: String(TEST_THRESHOLD), ...shared }); const low = await v(SHARED_RESULT);
+      await raise(key, TEST_THRESHOLD, shared); const still = await ev(`${D}.getRingOwner('${ring}')`);
+      await acquire(ring, { rankVariableId: String(id), requiredRank: String(TEST_THRESHOLD), ...shared }); const got = await v(SHARED_RESULT);
+      rec(`C8d ${ring}(ランク変数 ${id}): 不足は -3・ランクを上げただけでは未所持・専用の呼び出しで入手(必要ランクはテスト専用の値)`, owner0 === "unowned" && low === -3 && still === "unowned" && got === 1 && (await ev(`${D}.getRingOwner('${ring}')`)) === "player", JSON.stringify({ owner0, low, still, got }));
+    }
+    await cmd("ProjectR_RingRewards", "RaiseSkillLevel", { skillId: "janus_reflection", targetLevel: "2", ...shared });
+    rec("C8d スキルのレベル上げは、共有の結果変数 109 で従来どおり(成功 1・Lv2)・Hermes は通信ランクと無関係に未所持のまま", (await v(SHARED_RESULT)) === 1 && (await ev(`${D}.getPersistentData().cardOwnership['janus_reflection'].level`)) === 2 && (await ev(`${D}.getRingOwner('hermes')`)) === "unowned", String(await v(SHARED_RESULT)));
+    for (let i = 0; i < 4; i++) await setVar(101 + i, [3, 7, 10, 1][i]);
+    const saved = await ev("JsonEx.stringify(DataManager.makeSaveContents())");
+    for (let i = 0; i < 4; i++) await setVar(101 + i, 0);
+    await reload(saved);
+    rec("C8e 保存 → 読込: 4人のランク(101〜104)がそのまま戻る・保存に登録のキーは入らない", JSON.stringify(await four()) === "[3,7,10,1]" && !/tsukune|charlotte_|catherine_|sophia_|MaxRank/.test(saved), JSON.stringify(await four()));
+    await reload(oldSave);
+    const fresh = await four(); await raise(APPROVED[3][0], 1, shared);
+    rec("C8e 通信ランクを使う前のセーブは、4人ともランク 0 から読めて引き上げられる", JSON.stringify(fresh) === "[0,0,0,0]" && (await v(SHARED_RESULT)) === 1 && (await v(104)) === 1, JSON.stringify(fresh));
   });
 
   const errs = s.errors();

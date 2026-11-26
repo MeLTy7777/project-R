@@ -1087,7 +1087,7 @@ test("I6-C 手順書の値: 製品の変数 12〜20 は未使用・コモンイ�
     for (const f of fs.readdirSync(path.join(project, "data")).filter(x => /^Map\d+\.json$/.test(x) && x !== "Map007.json")) for (const ev of JSON.parse(read("data/" + f)).events || []) if (ev) for (const pg of ev.pages) { scan(pg.list); if (pg.conditions && pg.conditions.variableValid) used.add(pg.conditions.variableId); }
     for (const ce of JSON.parse(read("data/CommonEvents.json")).slice(1, 5)) scan(ce.list);                                  // 既存の Map007 以外のマップ・コモンイベント 1〜4
     for (let id = 12; id <= 20; id++) assert.equal(used.has(id), false, "変数 " + id + " は未使用");
-    assert.equal(w.ctx.$dataSystem.variables.length, 21, "変数は 1〜20");
+    assert.equal(w.ctx.$dataSystem.variables.length, 121, "変数は 1〜120(101〜120 は通信ランク用)");
     assert.equal(w.ctx.PluginManager.parameters("ProjectR_SoulEncounter").ResultVariableId, "0", "プラグインパラメータの結果変数は 0 のまま(コマンドの引数で指定する)");
 });
 
@@ -1212,7 +1212,7 @@ test("I6-C2 データの検証: JSON・Map007・参照(変数・コモンイベ�
     // マップ情報: 1〜6 はそのまま・7 が追加。開始位置は元のまま
     assert.deepEqual(infos.filter(m => m && m.id !== 3).map(m => [m.id, m.name]), [[1, "MAP001"], [2, "GunTemplate"], [4, "DEV_CombatTestArena"], [5, "DEV_CombatTransferRoom"], [6, "DEV_SoulBattleStage"], [7, "TEST_SOUL"], [8, "DEV_FieldBattle"], [9, "DEV_FieldStrongEnemy"], [10, "DEV_FieldMiniboss"], [11, "DEV_FieldBoss"]]);      // 8 = フィールド戦闘のDEV戦闘マップ(後から追加)/ 9 = 強敵の攻撃パターンのDEVマップ(Stage 7A)/ 10 = 2段階の中ボスのDEVマップ(Stage 7C)/ 11 = ボスHUD確認のDEVマップ(Stage 7D-A)
     assert.deepEqual([sys.startMapId, sys.startX, sys.startY], [1, 29, 19], "ゲームの開始位置は書き換えていない");
-    assert.equal(sys.variables.length, 21);
+    assert.equal(sys.variables.length, 121);
     // Map007: 大きさ・床・イベント
     assert.deepEqual([map.width, map.height, map.data.length, map.tilesetId], [17, 13, 17 * 13 * 6, 4]);
     const flags = tilesets[map.tilesetId].flags, passable = (x, y) => { for (let z = 0; z < 4; z++) { const tile = map.data[(z * map.height + y) * map.width + x]; if (tile === 0) continue; if ((flags[tile] & 0x10) !== 0) continue; return (flags[tile] & 0x0f) === 0; } return false; };
